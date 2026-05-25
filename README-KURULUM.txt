@@ -1,17 +1,16 @@
-Liberte Club v6 - Premium Görselli Menü
+Liberte Club v7 Deneme Paketi
 
 Eklenenler:
-- Görselli premium ürün kartları
-- Ürünlerde emoji veya görsel linki kullanma alanı
-- Ürün arka plan tonu seçimi
-- Popüler ürünler yatay kaydırmalı alan
-- Menü hero/banner tasarımı
-- Admin panelden ürün görseli/tonu düzenleme
-- Mevcut QR, Neon, Vercel, domain altyapısı korunmuştur
+- Premium arka plan ve ana ekran animasyonu
+- Story baloncukları
+- Kasiyer modu
+- Ürün görseli dosya yükleme
+- Kampanya/bildirim yayınlama geliştirmesi
+- Menü kartlarında daha premium görünüm
 
-Yükleme:
-1) ZIP'i aç
-2) İçindeki tüm dosyaları GitHub reposuna yükle
-3) package-lock.json yükleme
-4) Commit changes
-5) Vercel otomatik deploy eder
+Kurulum:
+1. ZIP'i aç.
+2. İçindeki tüm dosyaları GitHub reposundaki mevcut dosyaların üstüne yükle.
+3. package-lock.json yükleme.
+4. Commit changes de.
+5. Vercel otomatik deploy edecek.
