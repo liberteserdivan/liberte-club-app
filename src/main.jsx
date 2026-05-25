@@ -36,20 +36,36 @@ const seed = {
   history:[]
 };
 
-function load(){try{const x=JSON.parse(localStorage.getItem('liberteDB'));return x?{...seed,...x,settings:{...seed.settings,...x.settings}}:seed}catch{return seed}}
+function mergeDb(x){return x?{...seed,...x,settings:{...seed.settings,...x.settings}}:seed}
+function load(){try{const x=JSON.parse(localStorage.getItem('liberteDB'));return mergeDb(x)}catch{return seed}}
 function save(db){localStorage.setItem('liberteDB',JSON.stringify(db))}
+async function loadRemote(){
+  try{
+    const r=await fetch('/api/state');
+    if(!r.ok) return null;
+    const j=await r.json();
+    return j?.data ? mergeDb(j.data) : null;
+  }catch{return null}
+}
+async function saveRemote(db){
+  try{
+    await fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:db})});
+  }catch{}
+}
+
 const normalize=p=>p.replace(/\D/g,'').replace(/^90/,'').replace(/^0/,'');
 function cssVars(settings){return {'--bg':settings.bg,'--card':settings.card,'--accent':settings.accent,'fontFamily':`${settings.font}, Inter, system-ui, Arial`}}
 
-function App(){const [db,setDb]=useState(load); const [session,setSession]=useState(JSON.parse(localStorage.getItem('liberteSession')||'null')); const [tab,setTab]=useState('home');
- const commit=n=>{setDb(n);save(n)};
+function App(){const [db,setDb]=useState(load); const [session,setSession]=useState(JSON.parse(localStorage.getItem('liberteSession')||'null')); const [tab,setTab]=useState('home'); const [sync,setSync]=useState('local');
+ useEffect(()=>{loadRemote().then(remote=>{if(remote){setDb(remote);save(remote);setSync('cloud')}else{setSync('local')}})},[]);
+ const commit=n=>{setDb(n);save(n);saveRemote(n);setSync('cloud')};
  if(!session) return <div style={cssVars(db.settings)}><Login db={db} commit={commit} setSession={setSession}/></div>;
  const customer=db.customers.find(c=>c.id===session.customerId); const card=db.loyalty[customer.id]||{totalStamps:0,availableRewards:0,usedRewards:0,lifetimeStamps:0};
- return <div className="app" style={cssVars(db.settings)}><Header db={db} customer={customer} setSession={setSession}/>{tab==='home'&&<HomeScreen db={db} customer={customer} card={card} setTab={setTab}/>} {tab==='qr'&&<QrScreen customer={customer} card={card} db={db}/>} {tab==='menu'&&<MenuScreen db={db}/>} {tab==='campaign'&&<CampaignScreen db={db}/>} {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}<Nav tab={tab} setTab={setTab} isAdmin={customer.isAdmin}/></div>
+ return <div className="app" style={cssVars(db.settings)}><Header db={db} customer={customer} setSession={setSession} sync={sync}/>{tab==='home'&&<HomeScreen db={db} customer={customer} card={card} setTab={setTab}/>} {tab==='qr'&&<QrScreen customer={customer} card={card} db={db}/>} {tab==='menu'&&<MenuScreen db={db}/>} {tab==='campaign'&&<CampaignScreen db={db}/>} {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}<Nav tab={tab} setTab={setTab} isAdmin={customer.isAdmin}/></div>
 }
 function BrandLogo({db,small=false}){return db.settings.logo?<img className={small?'brandLogo small':'brandLogo'} src={db.settings.logo}/>:<div className={small?'logo small':'logo'}>Lİ</div>}
 function Login({db,commit,setSession}){const [phone,setPhone]=useState(''); const [name,setName]=useState(''); const login=()=>{const ph=normalize(phone); if(ph.length<10) return alert('Telefonu 10 hane gir. Örn: 5058665406'); let n={...db,customers:[...db.customers],loyalty:{...db.loyalty}}; let c=n.customers.find(x=>x.phone===ph); if(!c){c={id:Date.now(),phone:ph,name:name||'Liberte Misafiri',isAdmin:false,createdAt:new Date().toLocaleString('tr-TR')}; n.customers.push(c); n.loyalty[c.id]={customerId:c.id,totalStamps:0,availableRewards:0,usedRewards:0,lifetimeStamps:0}; commit(n)} const s={customerId:c.id}; localStorage.setItem('liberteSession',JSON.stringify(s)); setSession(s)}; return <main className="login"><div className="brand"><BrandLogo db={db}/><h1>{db.settings.app_name}</h1><p>QR sadakat kartın, menü ve kampanyalar tek yerde.</p></div><div className="card"><label>Telefon numarası</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="05xx xxx xx xx" inputMode="tel"/><label>İsim / ünvan</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Adınız"/><button onClick={login}>Giriş Yap</button><small>Admin giriş: 05058665406</small></div></main>}
-function Header({db,customer,setSession}){return <header><div className="headBrand"><BrandLogo db={db} small/><div><b>{db.settings.app_name}</b><span>{customer.name}</span></div></div><button className="ghost" onClick={()=>{localStorage.removeItem('liberteSession');setSession(null)}}><LogOut size={18}/></button></header>}
+function Header({db,customer,setSession,sync}){return <header><div className="headBrand"><BrandLogo db={db} small/><div><b>{db.settings.app_name}</b><span>{customer.name} · {sync==='cloud'?'Bulut kayıt':'Yerel kayıt'}</span></div></div><button className="ghost" onClick={()=>{localStorage.removeItem('liberteSession');setSession(null)}}><LogOut size={18}/></button></header>}
 function HomeScreen({db,customer,card,setTab}){const progress=Math.round((card.totalStamps/db.settings.stamp_threshold)*100); return <section><div className="hero"><Crown/><h2>{db.settings.cafe_name}</h2><p>{db.settings.stamp_threshold} damga = {db.settings.reward_description}</p></div><div className="grid"><button onClick={()=>setTab('qr')} className="tile"><QrCode/> QR Kartım</button><button onClick={()=>setTab('menu')} className="tile"><Coffee/> Menü</button><button onClick={()=>setTab('campaign')} className="tile"><Bell/> Kampanyalar</button></div><div className="card"><h3>Sadakat Durumu</h3><div className="stampRow">{Array.from({length:db.settings.stamp_threshold}).map((_,i)=><span key={i} className={i<card.totalStamps?'stamp on':'stamp'}>☕</span>)}</div><div className="bar"><i style={{width:progress+'%'}}/></div><p>{card.totalStamps}/{db.settings.stamp_threshold} damga · {card.availableRewards} ödül hazır</p></div><Featured db={db}/></section>}
 function Featured({db}){return <div className="card"><h3>Öne Çıkanlar</h3>{db.items.filter(i=>i.featured).slice(0,5).map(i=><div className="item" key={i.id}><div><b>{i.name}</b><p>{i.description}</p></div><strong>{i.price}₺</strong></div>)}</div>}
 function QrScreen({customer,card,db}){const token=`LIBERTE:${customer.id}:${customer.phone}`;return <section><div className="card center"><h2>QR Sadakat Kartı</h2><div className="qr"><QRCodeCanvas value={token} size={210} bgColor="#ffffff" fgColor="#07110d"/></div><p>Kasada bu kodu göster.</p><h3>{card.totalStamps}/{db.settings.stamp_threshold} damga</h3><p>{card.availableRewards} kullanılabilir ödül</p></div></section>}
