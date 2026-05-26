@@ -1,15 +1,6 @@
-Liberte Club v9 - Resend Mail Onaylı Giriş
-
-Yükleme:
-1) ZIP'i çıkar.
-2) İçindeki tüm dosyaları GitHub liberte-club-app reposuna yükle.
-3) package-lock.json yükleme.
-4) Commit changes de. Vercel otomatik deploy eder.
-
-Vercel Environment Variables:
-DATABASE_URL = Neon connection string (zaten var)
-RESEND_API_KEY = Resend API key
-RESEND_FROM_EMAIL = Liberte Club <noreply@liberte.cafe>
-
-Not:
-Resend domain doğrulanmadan tüm müşterilere mail göndermek sınırlı olabilir. Gerçek kullanım için Resend'de liberte.cafe domainini doğrula ve DNS kayıtlarını İsimtescil'e ekle.
+Liberte Club v11 Fixed
+1) ZIP içindeki dosyaların tamamını GitHub deposuna yükle.
+2) package-lock.json yükleme.
+3) Commit changes de.
+4) Vercel otomatik deploy edecektir.
+Vercel env değişkenleri: DATABASE_URL, RESEND_API_KEY, RESEND_FROM_EMAIL, NEXT_PUBLIC_FIREBASE_VAPID_KEY. Gerçek push gönderimi için FIREBASE_SERVICE_ACCOUNT_JSON gerekir.

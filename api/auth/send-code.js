@@ -1,9 +1,7 @@
 import { neon } from '@neondatabase/serverless';
-
 function cleanPhone(v=''){return String(v).replace(/\D/g,'').replace(/^90/,'').replace(/^0/,'')}
 function validEmail(v=''){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase())}
 function makeCode(){return String(Math.floor(100000 + Math.random()*900000))}
-
 export default async function handler(req,res){
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');
@@ -18,19 +16,9 @@ export default async function handler(req,res){
     if(!validEmail(email)) return res.status(400).json({error:'Geçerli e-posta zorunlu'});
     if(!process.env.DATABASE_URL) return res.status(500).json({error:'DATABASE_URL eksik'});
     const sql=neon(process.env.DATABASE_URL);
-    await sql`CREATE TABLE IF NOT EXISTS email_codes (
-      id bigserial PRIMARY KEY,
-      email text NOT NULL,
-      phone text NOT NULL,
-      code text NOT NULL,
-      attempts int NOT NULL DEFAULT 0,
-      used boolean NOT NULL DEFAULT false,
-      expires_at timestamptz NOT NULL,
-      created_at timestamptz NOT NULL DEFAULT now()
-    )`;
+    await sql`CREATE TABLE IF NOT EXISTS email_codes (id bigserial PRIMARY KEY,email text NOT NULL,phone text NOT NULL,code text NOT NULL,attempts int NOT NULL DEFAULT 0,used boolean NOT NULL DEFAULT false,expires_at timestamptz NOT NULL,created_at timestamptz NOT NULL DEFAULT now())`;
     const code=makeCode();
     await sql`INSERT INTO email_codes (email, phone, code, expires_at) VALUES (${email}, ${phone}, ${code}, now() + interval '10 minutes')`;
-
     const apiKey=process.env.RESEND_API_KEY;
     const from=process.env.RESEND_FROM_EMAIL || 'Liberte Club <noreply@liberte.cafe>';
     const subject='Liberte Club giriş kodun';
