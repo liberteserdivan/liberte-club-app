@@ -1,0 +1,16 @@
+{
+  "name": "Liberte Club",
+  "short_name": "Liberte",
+  "description": "Liberte Gastro Cafe sadakat, menü ve kampanya uygulaması.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06110d",
+  "theme_color": "#06110d",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
