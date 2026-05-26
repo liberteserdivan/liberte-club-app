@@ -1,16 +1,24 @@
 {
-  "name": "Liberte Club",
-  "short_name": "Liberte",
-  "description": "Liberte Gastro Cafe sadakat, menü ve kampanya uygulaması.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#06110d",
-  "theme_color": "#06110d",
-  "icons": [
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
-  ]
+  "name": "liberte-club-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "qrcode.react": "latest",
+    "html5-qrcode": "latest",
+    "@neondatabase/serverless": "latest",
+    "firebase": "latest",
+    "firebase-admin": "latest"
+  },
+  "devDependencies": {}
 }
