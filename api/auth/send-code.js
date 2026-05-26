@@ -32,7 +32,7 @@ export default async function handler(req,res){
     await sql`INSERT INTO email_codes (email, phone, code, expires_at) VALUES (${email}, ${phone}, ${code}, now() + interval '10 minutes')`;
 
     const apiKey=process.env.RESEND_API_KEY;
-    const from=process.env.RESEND_FROM_EMAIL || 'Liberte Club <onboarding@resend.dev>';
+    const from=process.env.RESEND_FROM_EMAIL || 'Liberte Club <noreply@liberte.cafe>';
     const subject='Liberte Club giriş kodun';
     const html=`<div style="font-family:Arial,sans-serif;background:#06110d;color:#fff;padding:28px;border-radius:18px"><h2 style="color:#b9f5d0">Liberte Club</h2><p>Merhaba ${name},</p><p>Giriş kodun:</p><div style="font-size:34px;letter-spacing:8px;font-weight:800;color:#b9f5d0;margin:18px 0">${code}</div><p>Bu kod 10 dakika geçerlidir.</p><p style="opacity:.7;font-size:13px">Bu işlemi sen yapmadıysan bu maili yok sayabilirsin.</p></div>`;
     if(apiKey){
