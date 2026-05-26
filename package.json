@@ -12,7 +12,9 @@
     "lucide-react": "latest",
     "qrcode.react": "latest",
     "html5-qrcode": "latest",
-    "@neondatabase/serverless": "latest"
+    "@neondatabase/serverless": "latest",
+    "firebase": "latest",
+    "firebase-admin": "latest"
   },
   "devDependencies": {}
 }

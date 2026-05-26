@@ -25,3 +25,11 @@ nav{animation:navPop .45s ease both}@keyframes navPop{from{opacity:0;transform:t
 .inputIcon svg{color:var(--accent);opacity:.9;flex:0 0 auto}
 .infoText{border:1px solid rgba(185,245,208,.26);background:rgba(185,245,208,.09);color:#d8ffe8;border-radius:18px;padding:12px 14px;line-height:1.45;font-size:14px}
 button.full{width:100%;margin-top:10px}
+
+
+/* v10 push + premium mobile fixes */
+.pushPermission{display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,rgba(185,245,208,.18),rgba(255,255,255,.035));border-color:rgba(185,245,208,.28)}
+.pushPermission b{font-size:18px}.pushPermission p{margin:6px 0;color:rgba(255,255,255,.72)}.pushPermission button{width:auto;min-width:150px;white-space:nowrap}
+.pushAdmin textarea{min-height:120px}.quickTemplates{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 14px}.quickTemplates button{width:auto;padding:12px 16px;border-radius:18px;background:rgba(185,245,208,.12);color:white;border:1px solid rgba(185,245,208,.25)}
+.header button,.logoutBtn,.exitButton{position:relative;z-index:5;opacity:1!important;visibility:visible!important}
+@media(max-width:720px){.pushPermission{display:block}.pushPermission button{width:100%;margin-top:12px}.adminTabs{grid-template-columns:1fr 1fr}.brandLogo{max-width:90px}.header{padding-right:12px}.header .iconBtn,.header button{min-width:48px;min-height:48px;background:rgba(185,245,208,.16);border:1px solid rgba(185,245,208,.28);border-radius:18px}.premiumHero h2{font-size:28px}.storyStrip{overflow-x:auto;padding-bottom:8px}.storyButton{min-width:112px}}
