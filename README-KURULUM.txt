@@ -1,16 +1,15 @@
-Liberte Club v7 Deneme Paketi
+Liberte Club v9 - Resend Mail Onaylı Giriş
 
-Eklenenler:
-- Premium arka plan ve ana ekran animasyonu
-- Story baloncukları
-- Kasiyer modu
-- Ürün görseli dosya yükleme
-- Kampanya/bildirim yayınlama geliştirmesi
-- Menü kartlarında daha premium görünüm
+Yükleme:
+1) ZIP'i çıkar.
+2) İçindeki tüm dosyaları GitHub liberte-club-app reposuna yükle.
+3) package-lock.json yükleme.
+4) Commit changes de. Vercel otomatik deploy eder.
 
-Kurulum:
-1. ZIP'i aç.
-2. İçindeki tüm dosyaları GitHub reposundaki mevcut dosyaların üstüne yükle.
-3. package-lock.json yükleme.
-4. Commit changes de.
-5. Vercel otomatik deploy edecek.
+Vercel Environment Variables:
+DATABASE_URL = Neon connection string (zaten var)
+RESEND_API_KEY = Resend API key
+RESEND_FROM_EMAIL = Liberte Club <noreply@liberte.cafe>
+
+Not:
+Resend domain doğrulanmadan tüm müşterilere mail göndermek sınırlı olabilir. Gerçek kullanım için Resend'de liberte.cafe domainini doğrula ve DNS kayıtlarını İsimtescil'e ekle.

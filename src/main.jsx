@@ -1,13 +1,13 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {createRoot} from 'react-dom/client';
-import {QrCode, Coffee, Gift, Bell, ScanLine, Plus, Minus, LogOut, Crown, Home, Menu as MenuIcon, ShieldCheck, Users, Palette, Trash2, Save, Pencil, Image as ImageIcon, PackagePlus, ShoppingBag, Megaphone, Sparkles, Star, UploadCloud} from 'lucide-react';
+import {QrCode, Coffee, Gift, Bell, ScanLine, Plus, Minus, LogOut, Crown, Home, Menu as MenuIcon, ShieldCheck, Users, Palette, Trash2, Save, Pencil, Image as ImageIcon, PackagePlus, ShoppingBag, Megaphone, Sparkles, Star, UploadCloud, Mail, CheckCircle, KeyRound} from 'lucide-react';
 import {QRCodeCanvas} from 'qrcode.react';
 import {Html5Qrcode} from 'html5-qrcode';
 import './style.css';
 
 const seed = {
   settings:{stamp_threshold:10,reward_description:'1 Bedava İçecek',cafe_name:'Liberte Gastro Cafe',app_name:'Liberte Club',bg:'#06110d',card:'#102219',accent:'#b9f5d0',font:'Inter',logo:'',hero_title:'Bugünün Favorileri',hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',promo_text:'QR kartını göster, 10 damgada 1 içecek bizden.',cashier_pin:'5454'},
-  customers:[{id:1,phone:'5058665406',name:'Liberte Gastro',isAdmin:true,createdAt:new Date().toLocaleString('tr-TR')}],
+  customers:[{id:1,phone:'5058665406',name:'Liberte Gastro',email:'',isAdmin:true,createdAt:new Date().toLocaleString('tr-TR')}],
   loyalty:{1:{customerId:1,totalStamps:0,availableRewards:0,usedRewards:0,lifetimeStamps:0}},
   categories:[
     {id:1,name:'Sıcak İçecekler',description:'Özenle hazırlanmış sıcak içecekler'},
@@ -64,7 +64,61 @@ function App(){const [db,setDb]=useState(load); const [session,setSession]=useSt
  return <div className="app" style={cssVars(db.settings)}><Header db={db} customer={customer} setSession={setSession} sync={sync}/>{tab==='home'&&<HomeScreen db={db} customer={customer} card={card} setTab={setTab}/>} {tab==='qr'&&<QrScreen customer={customer} card={card} db={db}/>} {tab==='menu'&&<MenuScreen db={db}/>} {tab==='campaign'&&<CampaignScreen db={db}/>} {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}<Nav tab={tab} setTab={setTab} isAdmin={customer.isAdmin}/></div>
 }
 function BrandLogo({db,small=false}){return db.settings.logo?<img className={small?'brandLogo small':'brandLogo'} src={db.settings.logo}/>:<div className={small?'logo small':'logo'}><span className="logoScript">Liberte</span><em>Gastro Cafe</em></div>}
-function Login({db,commit,setSession}){const [phone,setPhone]=useState(''); const [name,setName]=useState(''); const login=()=>{const ph=normalize(phone); const nm=name.trim(); if(ph.length<10) return alert('Telefonu 10 hane gir. Örn: 5058665406'); if(nm.length<3) return alert('İsim soyisim zorunlu. Lütfen adını ve soyadını yaz.'); let n={...db,customers:[...db.customers],loyalty:{...db.loyalty}}; let c=n.customers.find(x=>x.phone===ph); if(!c){c={id:Date.now(),phone:ph,name:nm,isAdmin:false,createdAt:new Date().toLocaleString('tr-TR')}; n.customers.push(c); n.loyalty[c.id]={customerId:c.id,totalStamps:0,availableRewards:0,usedRewards:0,lifetimeStamps:0}; commit(n)} else if(!c.name||c.name==='Liberte Misafiri'){c.name=nm; commit(n)} const s={customerId:c.id}; localStorage.setItem('liberteSession',JSON.stringify(s)); setSession(s)}; return <main className="login premiumLogin"><div className="aurora one"></div><div className="aurora two"></div><div className="loginShell"><div className="brand"><BrandLogo db={db}/><p className="eyebrow">Liberte Gastro Cafe</p><h1>{db.settings.app_name}</h1><p>QR sadakat kartın, özel kampanyalar ve menü tek yerde.</p></div><div className="card loginCard"><label>Telefon numarası</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="05xx xxx xx xx" inputMode="tel"/><label>İsim soyisim <b className="req">zorunlu</b></label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Ad Soyad"/><button onClick={login}>Giriş Yap</button></div></div></main>}
+function Login({db,commit,setSession}){
+  const [phone,setPhone]=useState('');
+  const [name,setName]=useState('');
+  const [email,setEmail]=useState('');
+  const [code,setCode]=useState('');
+  const [step,setStep]=useState('form');
+  const [loading,setLoading]=useState(false);
+  const [info,setInfo]=useState('');
+  const validEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const ensureFields=()=>{
+    const ph=normalize(phone); const nm=name.trim(); const em=email.trim().toLowerCase();
+    if(ph.length<10){alert('Telefonu 10 hane gir. Örn: 5058665406'); return null}
+    if(nm.split(' ').filter(Boolean).length<2 || nm.length<5){alert('İsim soyisim zorunlu. Lütfen ad ve soyad yaz.'); return null}
+    if(!validEmail(em)){alert('Geçerli bir e-posta adresi gir.'); return null}
+    return {ph,nm,em};
+  };
+  const sendCode=async()=>{
+    const f=ensureFields(); if(!f) return;
+    setLoading(true); setInfo('');
+    try{
+      const r=await fetch('/api/auth/send-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:f.ph,name:f.nm,email:f.em})});
+      const j=await r.json();
+      if(!r.ok) throw new Error(j.error||'Kod gönderilemedi');
+      setStep('code');
+      setInfo(j.testCode?`Test kodu: ${j.testCode}`:'Onay kodunu e-posta adresine gönderdik. Gelen kutunu ve spam klasörünü kontrol et.');
+    }catch(e){alert(e.message||'E-posta kodu gönderilemedi. Resend ayarlarını kontrol et.')} finally{setLoading(false)}
+  };
+  const verifyAndLogin=async()=>{
+    const f=ensureFields(); if(!f) return;
+    if(code.replace(/\D/g,'').length!==6) return alert('6 haneli kodu gir.');
+    setLoading(true); setInfo('');
+    try{
+      const r=await fetch('/api/auth/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:f.ph,email:f.em,code:code.replace(/\D/g,'')})});
+      const j=await r.json();
+      if(!r.ok) throw new Error(j.error||'Kod doğrulanamadı');
+      let n={...db,customers:[...db.customers],loyalty:{...db.loyalty}};
+      let c=n.customers.find(x=>x.phone===f.ph || (x.email&&x.email===f.em));
+      if(!c){c={id:Date.now(),phone:f.ph,name:f.nm,email:f.em,isAdmin:false,createdAt:new Date().toLocaleString('tr-TR')}; n.customers.push(c); n.loyalty[c.id]={customerId:c.id,totalStamps:0,availableRewards:0,usedRewards:0,lifetimeStamps:0};}
+      else {c.phone=f.ph; c.name=f.nm; c.email=f.em;}
+      commit(n);
+      const sessionObj={customerId:c.id,emailVerified:true};
+      localStorage.setItem('liberteSession',JSON.stringify(sessionObj));
+      setSession(sessionObj);
+    }catch(e){alert(e.message||'Kod doğrulanamadı.')} finally{setLoading(false)}
+  };
+  return <main className="login premiumLogin"><div className="aurora one"></div><div className="aurora two"></div><div className="loginShell"><div className="brand"><BrandLogo db={db}/><p className="eyebrow">Liberte Gastro Cafe</p><h1>{db.settings.app_name}</h1><p>QR sadakat kartın, özel kampanyalar ve menü tek yerde.</p></div><div className="card loginCard emailLoginCard">
+    <label>Telefon numarası</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="05xx xxx xx xx" inputMode="tel" disabled={step==='code'}/>
+    <label>İsim soyisim <b className="req">zorunlu</b></label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Ad Soyad" disabled={step==='code'}/>
+    <label>E-posta <b className="req">onay zorunlu</b></label><div className="inputIcon"><Mail size={18}/><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="ornek@mail.com" inputMode="email" disabled={step==='code'}/></div>
+    {step==='code'&&<><label>Mail onay kodu</label><div className="inputIcon"><KeyRound size={18}/><input value={code} onChange={e=>setCode(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" maxLength={6}/></div></>}
+    {info&&<p className="infoText">{info}</p>}
+    {step==='form'?<button onClick={sendCode} disabled={loading}><Mail size={18}/> {loading?'Gönderiliyor...':'E-posta Kod Gönder'}</button>:<button onClick={verifyAndLogin} disabled={loading}><CheckCircle size={18}/> {loading?'Kontrol ediliyor...':'Kodu Onayla ve Giriş Yap'}</button>}
+    {step==='code'&&<button className="secondary full" onClick={()=>{setStep('form');setCode('');setInfo('')}} disabled={loading}>Bilgileri Düzenle</button>}
+  </div></div></main>
+}
 function Header({db,customer,setSession,sync}){return <header><div className="headBrand"><BrandLogo db={db} small/><div><b>{db.settings.app_name}</b><span>{customer.name} · {sync==='cloud'?'Bulut kayıt':'Yerel kayıt'}</span></div></div><button className="logoutBtn" aria-label="Çıkış yap" onClick={()=>{localStorage.removeItem('liberteSession');setSession(null)}}><LogOut size={18}/><span>Çıkış</span></button></header>}
 function HomeScreen({db,customer,card,setTab}){const progress=Math.round((card.totalStamps/db.settings.stamp_threshold)*100); return <section><div className="hero bannerGlow premiumHero"><div><p className="eyebrow">Liberte Club</p><h2>{db.settings.hero_title||db.settings.cafe_name}</h2><p>{db.settings.hero_subtitle||db.settings.promo_text}</p></div><Sparkles size={38}/></div><StoryStrip db={db} onPick={(id)=>{localStorage.setItem('liberteSelectedCategory',String(id));setTab('menu')}}/><div className="grid"><button onClick={()=>setTab('qr')} className="tile"><QrCode/> QR Kartım</button><button onClick={()=>setTab('menu')} className="tile"><Coffee/> Menü</button><button onClick={()=>setTab('campaign')} className="tile"><Bell/> Kampanyalar</button></div><div className="card stampCard"><div className="sectionHead"><h3>Sadakat Durumu</h3><span>{card.availableRewards} ödül</span></div><div className="stampRow">{Array.from({length:db.settings.stamp_threshold}).map((_,i)=><span key={i} className={i<card.totalStamps?'stamp on':'stamp'}>☕</span>)}</div><div className="bar"><i style={{width:progress+'%'}}/></div><p>{card.totalStamps}/{db.settings.stamp_threshold} damga · {db.settings.reward_description}</p></div><Featured db={db}/></section>}
 function iconForCategory(c){return c.icon||(/burger|smash/i.test(c.name)?'🍔':/magnolia|tatlı|pasta/i.test(c.name)?'🍓':/kahve|sıcak|coffee/i.test(c.name)?'☕':/soğuk|ice|içecek/i.test(c.name)?'🧊':/ödül|reward/i.test(c.name)?'🎁':'✨')}
