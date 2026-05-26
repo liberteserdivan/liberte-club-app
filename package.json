@@ -1,21 +1,21 @@
 {
   "name": "liberte-club-app",
-  "version": "12.0.0",
   "private": true,
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@neondatabase/serverless": "latest",
-    "firebase": "latest",
-    "lucide-react": "latest",
-    "qrcode.react": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "firebase": "^11.0.0",
+    "lucide-react": "^0.511.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
+  }
 }
