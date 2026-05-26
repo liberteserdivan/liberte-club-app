@@ -13,7 +13,7 @@
     "html5-qrcode": "latest",
     "@neondatabase/serverless": "latest",
     "firebase": "latest",
-    "firebase-admin": "latest"
+    "firebase-admin": "latest",
     "lucide-react": "latest"
   },
   "devDependencies": {}
