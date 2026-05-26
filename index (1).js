@@ -14,8 +14,7 @@
     "qrcode.react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "vite": "latest",
-    "lucide-react": "latest"
+    "vite": "latest"
   },
   "devDependencies": {}
 }
