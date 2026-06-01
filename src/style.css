@@ -522,4 +522,167 @@ nav{
   .app{
     max-width:430px !important;
   }
+}/* ===== LIBERTE V3 PREMIUM OVERRIDE ===== */
+
+:root{
+  --premium-bg:#f6f3ee;
+  --premium-card:#ffffff;
+  --premium-green:#153c33;
+  --premium-green-2:#1f5d4f;
+  --premium-gold:#c9a86a;
+  --premium-text:#132c26;
+}
+
+body{
+  background:var(--premium-bg)!important;
+}
+
+.app{
+  background:transparent!important;
+}
+
+.card,
+.product,
+.loginCard,
+.hero,
+.v2Hero{
+  background:var(--premium-card)!important;
+  box-shadow:
+    0 12px 40px rgba(0,0,0,.08)!important;
+  border:1px solid rgba(0,0,0,.05)!important;
+}
+
+.v2Hero{
+  padding:28px!important;
+}
+
+.v2Hero h2{
+  color:var(--premium-text)!important;
+  font-size:56px!important;
+  font-weight:800!important;
+}
+
+.v2Hero p{
+  color:#66746f!important;
+}
+
+.memberCard{
+  background:
+    linear-gradient(
+      135deg,
+      #14362f,
+      #1d5a4c,
+      #2c8d73
+    )!important;
+
+  border:none!important;
+
+  box-shadow:
+    0 18px 50px rgba(18,63,53,.28)!important;
+}
+
+.memberLevel{
+  background:rgba(255,255,255,.18)!important;
+  color:#fff!important;
+}
+
+.memberTop svg{
+  color:var(--premium-gold)!important;
+}
+
+.memberCard button{
+  background:#fff!important;
+  color:#173b33!important;
+  font-weight:700!important;
+}
+
+.quickActions .outline{
+  background:#fff!important;
+  color:#173b33!important;
+}
+
+.card b,
+.card h3,
+.card h2,
+.product b{
+  color:var(--premium-text)!important;
+}
+
+.card p,
+.product p{
+  color:#68736f!important;
+}
+
+.product{
+  border-radius:28px!important;
+}
+
+.product strong{
+  color:#1e7c61!important;
+  font-size:28px!important;
+  font-weight:800!important;
+}
+
+.visual{
+  border-radius:24px!important;
+}
+
+nav{
+  background:rgba(255,255,255,.92)!important;
+  backdrop-filter:blur(25px)!important;
+  border:1px solid rgba(0,0,0,.06)!important;
+}
+
+nav button{
+  color:#6b7772!important;
+}
+
+nav button.active{
+  background:
+    linear-gradient(
+      135deg,
+      #dff5eb,
+      #c7eedc
+    )!important;
+
+  color:#12392f!important;
+}
+
+.walletCard{
+  background:
+    linear-gradient(
+      135deg,
+      #14362f,
+      #1d5a4c,
+      #2c8d73
+    )!important;
+}
+
+.walletTop h2,
+.walletUser b{
+  color:#fff!important;
+}
+
+.walletQr{
+  background:#fff!important;
+}
+
+.logout{
+  background:
+    linear-gradient(
+      135deg,
+      #d8f4e7,
+      #8be1bf
+    )!important;
+
+  color:#12382f!important;
+}
+
+.quickLinks a{
+  background:#fff!important;
+  color:#173b33!important;
+}
+
+.stars button{
+  background:#d8f4e7!important;
 }
