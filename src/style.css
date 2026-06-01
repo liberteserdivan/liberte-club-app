@@ -508,4 +508,18 @@ nav{
 .walletQr canvas{
   width:205px !important;
   height:205px !important;
+}body{
+  display:block !important;
+}
+
+.app{
+  width:100% !important;
+  max-width:430px !important;
+  margin:0 auto !important;
+}
+
+@media(min-width:768px){
+  .app{
+    max-width:430px !important;
+  }
 }
