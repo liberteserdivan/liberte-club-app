@@ -331,11 +331,28 @@ function Login({db,commit,setSession}){
     if(!f)return;
 
     setLoading(true);
+    setInfo('');
 
     try{
-      localStorage.setItem('liberteTestCode','123456');
+      const r=await fetch('/api/auth/send-code',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          phone:f.ph,
+          name:f.nm,
+          email:f.em
+        })
+      });
+
+      const text=await r.text();
+      const j=text?JSON.parse(text):{};
+
+      if(!r.ok){
+        throw new Error(j.error||'Kod gönderilemedi');
+      }
+
       setStep('code');
-      setInfo('Local test kodu: 123456');
+      setInfo('Kod e-posta adresine gönderildi.');
     }catch(e){
       alert(e.message||'Kod gönderilemedi');
     }finally{
@@ -352,12 +369,32 @@ function Login({db,commit,setSession}){
       return;
     }
 
-    if(code==='123456'){
-      loginCustomer(f);
-      return;
-    }
+    setLoading(true);
 
-    alert('Local test için kod: 123456');
+    try{
+      const r=await fetch('/api/auth/verify-code',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          phone:f.ph,
+          email:f.em,
+          code
+        })
+      });
+
+      const text=await r.text();
+      const j=text?JSON.parse(text):{};
+
+      if(!r.ok){
+        throw new Error(j.error||'Kod doğrulanamadı');
+      }
+
+      loginCustomer(f);
+    }catch(e){
+      alert(e.message||'Kod doğrulanamadı');
+    }finally{
+      setLoading(false);
+    }
   }
 
   return <section className="loginPage">
@@ -383,6 +420,8 @@ function Login({db,commit,setSession}){
         <button disabled={loading} onClick={sendCode}>
           <Mail/> {loading?'Gönderiliyor...':'Mail Kod Gönder'}
         </button>
+
+        {info&&<p className="info">{info}</p>}
       </>:<>
         <label>Mail kodu</label>
         <input value={code} maxLength={6} onChange={e=>setCode(e.target.value)} placeholder="6 haneli kod"/>
@@ -400,7 +439,6 @@ function Login({db,commit,setSession}){
     </div>
   </section>;
 }
-
 function Header({db,customer,setSession,sync}){
   return <header>
     <div className="head">
