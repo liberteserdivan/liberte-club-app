@@ -1195,4 +1195,138 @@ header{
     padding-left:18px;
     padding-right:18px;
   }
+}/* HEADER FIX */
+header{
+  height:88px !important;
+  padding:12px 18px !important;
+  border-radius:0 0 24px 24px !important;
+}
+
+.app{
+  padding-top:96px !important;
+}
+
+.v4Hero{
+  padding-top:28px !important;
+}
+
+.adminHead,
+.qrPage,
+.menuHero,
+section{
+  scroll-margin-top:105px !important;
+}/* LIBERTE HEADER + MOBILE LAYOUT FIX */
+
+header{
+  position:fixed !important;
+  top:0 !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  width:min(430px,100%) !important;
+  height:84px !important;
+  padding:10px 14px !important;
+  margin:0 !important;
+  z-index:999 !important;
+  border-radius:0 0 24px 24px !important;
+  background:rgba(24,23,20,.92) !important;
+  backdrop-filter:blur(22px) !important;
+  -webkit-backdrop-filter:blur(22px) !important;
+  box-shadow:0 14px 28px rgba(0,0,0,.22) !important;
+}
+
+.head{
+  display:flex !important;
+  align-items:center !important;
+  gap:12px !important;
+  min-width:0 !important;
+}
+
+.head .logo.small,
+.head .brandLogo.small{
+  width:48px !important;
+  height:48px !important;
+  min-width:48px !important;
+  border-radius:16px !important;
+}
+
+.head b{
+  display:block !important;
+  color:#fff !important;
+  font-size:18px !important;
+  line-height:1.1 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  max-width:210px !important;
+}
+
+.head span{
+  display:block !important;
+  color:rgba(255,255,255,.72) !important;
+  font-size:12px !important;
+  line-height:1.2 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  max-width:220px !important;
+}
+
+.logout{
+  width:54px !important;
+  height:54px !important;
+  min-width:54px !important;
+  border-radius:18px !important;
+  padding:0 !important;
+  display:grid !important;
+  place-items:center !important;
+  background:#9be7c4 !important;
+  color:#10231d !important;
+}
+
+.logout span{
+  display:none !important;
+}
+
+.app{
+  padding-top:88px !important;
+}
+
+.v4Hero{
+  padding-top:24px !important;
+}
+
+.qrPage,
+.menuHero,
+.adminHead,
+.v4Home,
+section{
+  scroll-margin-top:100px !important;
+}
+
+/* Product image fix: URL text will no longer overflow if old data remains */
+.visual,
+.v4MiniVisual{
+  overflow:hidden !important;
+}
+
+.visual img,
+.v4MiniVisual img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  display:block !important;
+}
+
+@media(max-width:430px){
+  header{
+    width:100% !important;
+  }
+
+  .head b{
+    max-width:190px !important;
+  }
+
+  .head span{
+    max-width:200px !important;
+  }
 }

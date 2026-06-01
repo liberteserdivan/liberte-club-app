@@ -134,6 +134,15 @@ const money=n=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',ma
 const cssVars=s=>({'--bg':s.bg,'--card':s.card,'--accent':s.accent,fontFamily:`${s.font},Inter,system-ui,Arial`});
 const levelByStamps=n=>n>=90?'Black':n>=50?'Gold':n>=20?'Silver':'Bronze';
 
+
+function productImageSrc(item){
+  const direct=String(item?.imageUrl||'').trim();
+  if(direct)return direct;
+  const img=String(item?.image||'').trim();
+  if(/^https?:\/\//i.test(img)||img.startsWith('data:image/'))return img;
+  return '';
+}
+
 function fileToDataUrl(file){
   return new Promise((res,rej)=>{
     const r=new FileReader();
@@ -544,7 +553,7 @@ function HomeScreen({db,customer,card,commit,setTab}){
       <div className="v4ProductRail">
         {best.map(i=>
           <article className="v4MiniProduct" key={i.id}>
-            <div className="v4MiniVisual">{i.imageUrl?<img src={i.imageUrl}/>:<span>{i.image||'☕'}</span>}</div>
+            <div className="v4MiniVisual">{productImageSrc(i)?<img src={productImageSrc(i)}/>:<span>{i.image||'☕'}</span>}</div>
             <em>Yeni</em>
             <b>{i.name}</b>
           </article>
@@ -690,7 +699,7 @@ function PushPermission({customer,db,commit}){
 function Product({item}){
   return <article className="product">
     <div className="visual" style={{'--tone':item.tone||'#b9f5d0'}}>
-      {item.imageUrl?<img src={item.imageUrl}/>:<span>{item.image||'☕'}</span>}
+      {productImageSrc(item)?<img src={productImageSrc(item)}/>:<span>{item.image||'☕'}</span>}
     </div>
 
     <div>
