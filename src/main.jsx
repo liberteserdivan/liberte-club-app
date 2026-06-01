@@ -419,7 +419,7 @@ function Header({db,customer,setSession,sync}){
 
 function Nav({tab,setTab,admin}){
   const arr=[
-    ['home',Home,'Ana'],
+    ['home',Home,'Ana Sayfa'],
     ['menu',MenuIcon,'Menü'],
     ['qr',QrCode,'QR'],
     ['campaign',Gift,'Fırsat']
@@ -427,112 +427,121 @@ function Nav({tab,setTab,admin}){
 
   if(admin)arr.push(['admin',ShieldCheck,'Admin']);
 
-  return <nav>
+  return <nav className="liberteNav">
     {arr.map(([id,Icon,label])=>
       <button key={id} className={tab===id?'active':''} onClick={()=>setTab(id)}>
-        <Icon/><span>{label}</span>
+        <Icon/>
+        <span>{label}</span>
       </button>
     )}
   </nav>;
 }
 
 function HomeScreen({db,customer,card,commit,setTab}){
-  const[popup,setPopup]=useState(()=>!localStorage.getItem('libertePopupSeen'));
   const featured=db.items.filter(i=>i.featured).slice(0,6);
-  const best=db.items.filter(i=>i.best).slice(0,4);
+  const best=db.items.filter(i=>i.best).slice(0,5);
   const threshold=db.settings.stamp_threshold||10;
   const stamps=card.totalStamps||0;
-  const missing=threshold-stamps;
+  const rewards=card.availableRewards||0;
   const progress=Math.min(100,(stamps/threshold)*100);
+  const missing=Math.max(0,threshold-stamps);
   const level=card.level||levelByStamps(card.lifetimeStamps||0);
 
-  return <section>
-    <div className="hero cinematic v2Hero">
-      <div>
-        <small>Liberte Gastro Cafe</small>
-        <h2>Liberte Club</h2>
-        <p>QR sadakat kartın, özel kampanyaların ve premium Liberte ayrıcalıkların burada.</p>
-
-        <div className="memberCard">
-          <div className="memberTop">
-            <div>
-              <span>VIP Üyelik Kartı</span>
-              <b>{customer.name}</b>
-            </div>
-            <Crown/>
-          </div>
-
-          <div className="memberLevel">{level} MEMBER</div>
-
-          <div className="memberProgress">
-            <div className="progress">
-              <span style={{width:`${progress}%`}}></span>
-            </div>
-            <p>{stamps}/{threshold} damga · {missing<=0?'Ödül hazır':`${missing} damga kaldı`}</p>
-          </div>
-
-          <button onClick={()=>setTab('qr')}><QrCode/> QR Kartımı Aç</button>
+  return <section className="v4Home">
+    <div className="v4Hero">
+      <div className="v4Top">
+        <div>
+          <p>İyi akşamlar ☕</p>
+          <h1>{customer.name.split(' ')[0]||'Liberte'}</h1>
         </div>
-
-        <div className="quickActions">
-          <button className="outline" onClick={()=>window.open(googleReviewUrl,'_blank')}><Star/> Google Yorum</button>
-          <button className="outline" onClick={()=>window.open(instagramUrl,'_blank')}><Instagram/> Instagram</button>
-          <button className="outline" onClick={()=>setTab('campaign')}><Gift/> Kampanyalar</button>
-        </div>
+        <button className="v4Profile"><Crown/></button>
       </div>
 
-      <div className="heroBadge">
-        <Sparkles/>
-        <b>{level}</b>
-        <span>VIP Seviye</span>
+      <div className="v4Stats">
+        <div>
+          <span>Damga</span>
+          <b>{stamps}/{threshold}</b>
+          <small>{missing} damga kaldı</small>
+        </div>
+
+        <div className="v4Center">
+          <div className="v4Circle">
+            <Coffee/>
+          </div>
+          <b>{rewards}</b>
+          <small>ikram hakkı</small>
+        </div>
+
+        <div>
+          <span>Seviye</span>
+          <b>{level}</b>
+          <small>Club üyesi</small>
+        </div>
       </div>
     </div>
 
-    {popup&&db.settings.daily_popup&&<div className="modalShade">
-      <div className="modal">
-        <button className="x" onClick={()=>{
-          localStorage.setItem('libertePopupSeen','1');
-          setPopup(false);
-        }}>×</button>
-        <h2>Bugüne özel ✨</h2>
-        <p>{db.campaigns?.find(c=>c.active)?.body||db.settings.promo_text}</p>
-        <button onClick={()=>{
-          setPopup(false);
-          setTab('campaign');
-        }}>Fırsatı Gör</button>
+    <div className="v4Sheet">
+      <div className="v4Actions">
+        <button onClick={()=>setTab('qr')}><QrCode/> QR Kartım</button>
+        <button onClick={()=>setTab('menu')}><ShoppingBag/> Menüye Bak</button>
       </div>
-    </div>}
 
-    <div className="grid2">
-      <div className="card stamp">
+      <div className="v4MemberCard">
         <div>
-          <b>Sadakat Durumu</b>
-          <p>{missing<=1?'Ödüle çok yakınsın!':`${missing} damga sonra ödül`}</p>
+          <span>LIBERTE CLUB</span>
+          <h2>Sadakat Kartı</h2>
+          <p>{stamps}/{threshold} damga · {rewards} ödül</p>
         </div>
+        <Crown/>
         <div className="progress">
           <span style={{width:`${progress}%`}}></span>
         </div>
-        <strong>{stamps}/{threshold}</strong>
       </div>
 
-      <ReviewCard db={db} commit={commit} customer={customer}/>
+      <div className="v4SectionHead">
+        <h3>Bunları denedin mi?</h3>
+        <button onClick={()=>setTab('menu')}>Tümü →</button>
+      </div>
+
+      <div className="v4ProductRail">
+        {best.map(i=>
+          <article className="v4MiniProduct" key={i.id}>
+            <div className="v4MiniVisual">{i.imageUrl?<img src={i.imageUrl}/>:<span>{i.image||'☕'}</span>}</div>
+            <em>Yeni</em>
+            <b>{i.name}</b>
+          </article>
+        )}
+      </div>
+
+      <div className="v4SectionHead">
+        <h3>Sana özel</h3>
+        <button onClick={()=>setTab('campaign')}>Tümü →</button>
+      </div>
+
+      <div className="v4Campaigns">
+        <div className="v4Campaign dark">
+          <span>BUGÜNE ÖZEL</span>
+          <h3>Smash Menü + kahve fırsatı</h3>
+          <p>Liberte Club üyelerine özel.</p>
+          <button onClick={()=>setTab('campaign')}>Detayları Gör</button>
+        </div>
+
+        <div className="v4Campaign light">
+          <span>YORUM ÖDÜLÜ</span>
+          <h3>Google yorumuna bonus damga</h3>
+          <p>Deneyimini paylaş, ayrıcalık kazan.</p>
+          <button onClick={()=>window.open(googleReviewUrl,'_blank')}>Yorum Yap</button>
+        </div>
+      </div>
+
+      <div className="v4SectionHead">
+        <h3>Öne çıkanlar</h3>
+      </div>
+
+      <div className="v4List">
+        {featured.slice(0,4).map(i=><Product key={i.id} item={i}/>)}
+      </div>
     </div>
-
-    <PushPermission customer={customer} db={db} commit={commit}/>
-
-    <h3 className="sectionTitle">Hızlı Bağlantılar</h3>
-    <div className="quickLinks">
-      <a href={instagramUrl} target="_blank"><Instagram/> Instagram</a>
-      <a href={googleReviewUrl} target="_blank"><Star/> Google Yorum</a>
-      <a href={mapsUrl} target="_blank"><MapPin/> Yol Tarifi</a>
-      <a href={yemeksepetiUrl} target="_blank"><ShoppingBag/> Yemeksepeti</a>
-    </div>
-
-    <h3 className="sectionTitle">Bugün En Çok Satanlar</h3>
-    <div className="rail">{best.map(i=><Product key={i.id} item={i}/>)}</div>
-
-    <h3 className="sectionTitle">Öne Çıkanlar</h3>
-    <div className="productGrid">{featured.map(i=><Product key={i.id} item={i}/>)}</div>
   </section>;
 }
 
