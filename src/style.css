@@ -431,4 +431,81 @@ button{
     width:260px;
     height:260px;
   }
+}/* V2 FIX - MOBILE APP LOOK */
+
+.app{
+  max-width:430px !important;
+  margin:0 auto !important;
+  padding:14px 14px 105px !important;
+}
+
+header{
+  border-radius:0 0 26px 26px !important;
+  padding:10px 14px 14px !important;
+}
+
+.v2Hero{
+  padding:22px !important;
+  border-radius:32px !important;
+}
+
+.v2Hero h2{
+  font-size:38px !important;
+}
+
+.v2Hero p{
+  font-size:15px !important;
+  max-width:320px !important;
+}
+
+.memberCard{
+  padding:22px !important;
+  border-radius:30px !important;
+  margin-top:20px !important;
+}
+
+.memberTop b{
+  font-size:24px !important;
+}
+
+.quickActions{
+  grid-template-columns:1fr !important;
+}
+
+.grid2{
+  grid-template-columns:1fr !important;
+}
+
+.card{
+  border-radius:28px !important;
+  padding:20px !important;
+}
+
+.quickLinks{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+}
+
+.quickLinks a{
+  min-width:0 !important;
+  font-size:13px !important;
+}
+
+nav{
+  width:min(390px,calc(100% - 22px)) !important;
+}
+
+.walletCard{
+  width:100% !important;
+  min-height:560px !important;
+}
+
+.walletQr{
+  width:245px !important;
+  height:245px !important;
+}
+
+.walletQr canvas{
+  width:205px !important;
+  height:205px !important;
 }
