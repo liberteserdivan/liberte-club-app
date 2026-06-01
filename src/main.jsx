@@ -4,7 +4,7 @@ import{QRCodeCanvas}from'qrcode.react';
 import{Html5Qrcode}from'html5-qrcode';
 import{initializeApp}from'firebase/app';
 import{getMessaging,getToken,isSupported,onMessage}from'firebase/messaging';
-import{Bell,Crown,Gift,Home,Image as ImageIcon,Instagram,LogOut,Mail,MapPin,Menu as MenuIcon,Minus,Plus,QrCode,ScanLine,Send,ShieldCheck,ShoppingBag,Sparkles,Star,Trash2,UploadCloud}from'lucide-react';
+import{Bell,Coffee,Crown,Gift,Home,Image as ImageIcon,Instagram,LogOut,Mail,MapPin,Menu as MenuIcon,Minus,Plus,QrCode,ScanLine,Send,ShieldCheck,ShoppingBag,Sparkles,Star,Trash2,UploadCloud}from'lucide-react';
 import'./style.css';
 
 const firebaseConfig={apiKey:'AIzaSyCDWpSpPoEsMirO0Grbpbabaju7QALVERC',authDomain:'liberte-club.firebaseapp.com',projectId:'liberte-club',storageBucket:'liberte-club.firebasestorage.app',messagingSenderId:'605225271131',appId:'1:605225271131:web:d03f217cfd9445a193e47e',measurementId:'G-HRKRV78XGS'};
