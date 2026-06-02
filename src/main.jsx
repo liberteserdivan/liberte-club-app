@@ -79,6 +79,19 @@ const seed={
   checkIns:[],
   coupons:[{id:1,code:'LIBERTE10',title:'Hoş Geldin Kuponu',rewardType:'stamp',rewardValue:1,active:true,createdAt:new Date().toLocaleString('tr-TR')}],
   couponUses:[],
+  dailyClaims:[],
+  wheelSpins:[],
+  firstOrderBonuses:[],
+  customerNotes:{},
+  dailyCampaign:{id:1,title:'Bugünün Kampanyası',body:'2 Latte alana +1 bonus damga',active:true,rewardType:'stamp',rewardValue:1,emoji:'☕'},
+  wheelPrizes:[
+    {id:1,label:'+1 Damga',type:'stamp',value:1,weight:35},
+    {id:2,label:'+2 Damga',type:'stamp',value:2,weight:18},
+    {id:3,label:'1 İçecek Hakkı',type:'reward',value:1,weight:6},
+    {id:4,label:'Tatlı Molası',type:'message',value:0,weight:8},
+    {id:5,label:'Bugün Şanslı Gün',type:'stamp',value:3,weight:3},
+    {id:6,label:'Tekrar Dene',type:'message',value:0,weight:30}
+  ],
   campaigns:[
     {id:1,title:'Bugüne Özel',body:'Smash Menü + kahve fırsatını kaçırma.',active:true,emoji:'🔥'}
   ]
@@ -102,6 +115,12 @@ function mergeDb(x){
     checkIns:x.checkIns||[],
     coupons:x.coupons||seed.coupons,
     couponUses:x.couponUses||[],
+    dailyClaims:x.dailyClaims||[],
+    wheelSpins:x.wheelSpins||[],
+    firstOrderBonuses:x.firstOrderBonuses||[],
+    customerNotes:x.customerNotes||{},
+    dailyCampaign:{...seed.dailyCampaign,...(x.dailyCampaign||{})},
+    wheelPrizes:x.wheelPrizes||seed.wheelPrizes,
     campaigns:x.campaigns||seed.campaigns
   }:seed;
 }
@@ -190,6 +209,77 @@ function daysSince(dateText){
   const d=new Date(dateText);
   if(Number.isNaN(d.getTime()))return 999;
   return Math.floor((Date.now()-d.getTime())/(1000*60*60*24));
+}
+
+
+function localDayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function hasDailyClaim(db,customerId,type){
+  const day=localDayKey();
+  return (db.dailyClaims||[]).some(x=>x.customerId===customerId&&x.type===type&&x.day===day);
+}
+
+function claimDailyLoginReward(db,customerId){
+  const customer=db.customers.find(c=>c.id===customerId);
+  if(!customer)return db;
+  const day=localDayKey();
+  if(hasDailyClaim(db,customerId,'daily_login')){alert('Günlük giriş ödülünü bugün zaten aldın.');return db;}
+  const createdAt=new Date().toLocaleString('tr-TR');
+  let next=addStampToCustomer(db,customerId,1,'Günlük giriş ödülü');
+  return{...next,dailyClaims:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,type:'daily_login',day,createdAt},...(next.dailyClaims||[])]};
+}
+
+function claimFirstOrderBonus(db,customerId){
+  const customer=db.customers.find(c=>c.id===customerId);
+  if(!customer)return db;
+  if((db.firstOrderBonuses||[]).some(x=>x.customerId===customerId)){alert('İlk alışveriş bonusu bu üyelikte daha önce kullanıldı.');return db;}
+  const createdAt=new Date().toLocaleString('tr-TR');
+  let next=addStampToCustomer(db,customerId,3,'İlk alışveriş bonusu');
+  return{...next,firstOrderBonuses:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,createdAt},...(next.firstOrderBonuses||[])]};
+}
+
+function weightedPrize(prizes=[]){
+  const list=prizes.length?prizes:seed.wheelPrizes;
+  const total=list.reduce((a,p)=>a+Number(p.weight||1),0);
+  let r=Math.random()*total;
+  for(const p of list){
+    r-=Number(p.weight||1);
+    if(r<=0)return p;
+  }
+  return list[0];
+}
+
+function spinLuckyWheel(db,customerId){
+  const customer=db.customers.find(c=>c.id===customerId);
+  if(!customer)return db;
+  const day=localDayKey();
+  if((db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day)){alert('Şans çarkını bugün zaten çevirdin.');return db;}
+  const prize=weightedPrize(db.wheelPrizes);
+  const createdAt=new Date().toLocaleString('tr-TR');
+  let next={...db};
+  if(prize.type==='stamp')next=addStampToCustomer(next,customerId,Number(prize.value||1),'Şans çarkı');
+  if(prize.type==='reward'){
+    const current=next.loyalty[customerId]||loyaltyTemplate(customerId);
+    next={...next,loyalty:{...next.loyalty,[customerId]:{...current,availableRewards:(current.availableRewards||0)+Number(prize.value||1),updatedAt:createdAt}}};
+  }
+  return{
+    ...next,
+    wheelSpins:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,day,prize:prize.label,type:prize.type,value:prize.value,createdAt},...(next.wheelSpins||[])],
+    history:[{id:Date.now()+2,customerId,name:customer.name,phone:customer.phone,type:'wheel_spin',count:Number(prize.value||0),source:`Şans çarkı: ${prize.label}`,createdAt},...(next.history||[])]
+  };
+}
+
+function vipBenefits(level='Bronze'){
+  const map={
+    Bronze:['Damga toplama','Google yorum bonusu','Günlük giriş ödülü'],
+    Silver:['Bronze avantajları','Ayda özel kampanya','Doğum günü önceliği'],
+    Gold:['Silver avantajları','VIP kampanya erişimi','Haftalık şans çarkı bonusları'],
+    Black:['Gold avantajları','Özel ikram günleri','Premium Club ayrıcalıkları']
+  };
+  return map[level]||map.Bronze;
 }
 
 
@@ -810,6 +900,9 @@ function CustomerHistoryCard({db,customer}){
     google_review_bonus:'Google yorum bonusu',
     register:'Kayıt oluşturuldu',
     referral_bonus:'Referans bonusu',
+    wheel_spin:'Şans çarkı',
+    daily_login:'Günlük giriş ödülü',
+    first_order_bonus:'İlk sipariş bonusu',
     login:'Giriş yapıldı'
   }[h.type]||h.source||'İşlem');
 
@@ -968,6 +1061,8 @@ function HomeScreen({db,customer,card,commit,setTab}){
         <button onClick={()=>setTab('menu')}><ShoppingBag/> Menüye Bak</button>
       </div>
 
+      <DailyCampaignCard db={db} setTab={setTab}/>
+
       <div className="v4MemberCard">
         <div>
           <span>LIBERTE CLUB</span>
@@ -998,6 +1093,11 @@ function HomeScreen({db,customer,card,commit,setTab}){
       <ReferralCard db={db} customer={customer}/>
 
       <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
+
+      <DailyRewardCard db={db} customer={customer} commit={commit}/>
+      <FirstOrderBonusCard db={db} customer={customer} commit={commit}/>
+      <LuckyWheelCard db={db} customer={customer} commit={commit}/>
+      <VipBenefitsCard db={db} customer={customer}/>
 
       <CustomerHistoryCard db={db} customer={customer}/>
 
@@ -1281,6 +1381,69 @@ function ClubStatusCard({db,customer}){
   </div>;
 }
 
+function DailyCampaignCard({db,setTab}){
+  const c=db.dailyCampaign||seed.dailyCampaign;
+  if(c.active===false)return null;
+  return <div className="dailyCampaignCard">
+    <div className="dailyCampaignBadge">{c.emoji||'🔥'}</div>
+    <div>
+      <span>GÜNÜN KAMPANYASI</span>
+      <h3>{c.title}</h3>
+      <p>{c.body}</p>
+    </div>
+    <button onClick={()=>setTab&&setTab('campaign')}>Detay</button>
+  </div>;
+}
+
+function DailyRewardCard({db,customer,commit}){
+  const claimed=hasDailyClaim(db,customer.id,'daily_login');
+  return <div className="rewardActionCard">
+    <div>
+      <span>GÜNLÜK GİRİŞ</span>
+      <h3>Bugün uygulamaya geldin</h3>
+      <p>{claimed?'Bugünün +1 damga ödülü alındı.':'Her gün giriş yap, +1 damga kazan.'}</p>
+    </div>
+    <button className={claimed?'ghost':'goldBtn'} onClick={()=>commit(claimDailyLoginReward(db,customer.id))}>{claimed?'Alındı':'+1 Damga'}</button>
+  </div>;
+}
+
+function FirstOrderBonusCard({db,customer,commit}){
+  const claimed=(db.firstOrderBonuses||[]).some(x=>x.customerId===customer.id);
+  return <div className="rewardActionCard firstOrder">
+    <div>
+      <span>İLK SİPARİŞ</span>
+      <h3>İlk alışveriş bonusu</h3>
+      <p>{claimed?'Bu üyelikte ilk sipariş bonusu kullanıldı.':'İlk siparişinde +3 damga kazan.'}</p>
+    </div>
+    <button className={claimed?'ghost':'goldBtn'} onClick={()=>commit(claimFirstOrderBonus(db,customer.id))}>{claimed?'Kullanıldı':'+3 Damga'}</button>
+  </div>;
+}
+
+function LuckyWheelCard({db,customer,commit}){
+  const last=(db.wheelSpins||[]).find(x=>x.customerId===customer.id&&x.day===localDayKey());
+  return <div className="luckyWheelCard">
+    <div className="wheelVisual"><Sparkles/><span>🎁</span></div>
+    <div>
+      <span>ŞANS ÇARKI</span>
+      <h3>Günde 1 kez çevir</h3>
+      <p>{last?`Bugünkü ödülün: ${last.prize}`:'Damga, ikram veya sürpriz kazan.'}</p>
+      <button className={last?'ghost':'goldBtn'} onClick={()=>commit(spinLuckyWheel(db,customer.id))}>{last?'Bugün çevrildi':'Şansımı Dene'}</button>
+    </div>
+  </div>;
+}
+
+function VipBenefitsCard({db,customer}){
+  const l=db.loyalty[customer.id]||loyaltyTemplate(customer.id);
+  const level=l.level||levelByStamps(l.lifetimeStamps||0);
+  return <div className="card vipBenefitsCard">
+    <div className="clubTop"><div><span>VIP SEVİYE</span><b>{level} Club</b></div><Crown/></div>
+    <div className="vipBenefitList">
+      {vipBenefits(level).map(x=><div key={x}><ShieldCheck/><span>{x}</span></div>)}
+    </div>
+  </div>;
+}
+
+
 function CampaignScreen({db,customer,commit}){
   return <section className="campaignPage">
     <div className="pageHero">
@@ -1288,6 +1451,12 @@ function CampaignScreen({db,customer,commit}){
       <h2>Kampanyalar</h2>
       <p>Üyelere özel fırsatlar ve bonus damga avantajları.</p>
     </div>
+
+    <DailyCampaignCard db={db}/>
+    <DailyRewardCard db={db} customer={customer} commit={commit}/>
+    <FirstOrderBonusCard db={db} customer={customer} commit={commit}/>
+    <LuckyWheelCard db={db} customer={customer} commit={commit}/>
+    <VipBenefitsCard db={db} customer={customer}/>
 
     <ReferralCard db={db} customer={customer}/>
 
@@ -1331,6 +1500,7 @@ function AdminScreen({db,commit}){
         ['push','Push'],
         ['growth','Büyüme'],
         ['club','Club'],
+        ['game','V14'],
         ['users','Kullanıcı'],
         ['history','Geçmiş']
       ].map(x=>
@@ -1348,6 +1518,7 @@ function AdminScreen({db,commit}){
     {tab==='push'&&<PushAdmin db={db} commit={commit}/>}
     {tab==='growth'&&<GrowthAdmin db={db} commit={commit}/>}
     {tab==='club'&&<ClubAdmin db={db} commit={commit}/>}
+    {tab==='game'&&<GameAdmin db={db} commit={commit}/>}
     {tab==='users'&&<UsersAdmin db={db} commit={commit}/>}
     {tab==='history'&&<HistoryAdmin db={db}/>}
   </section>;
@@ -1786,6 +1957,69 @@ function ClubAdmin({db,commit}){
   </div>;
 }
 
+function GameAdmin({db,commit}){
+  const c=db.dailyCampaign||seed.dailyCampaign;
+  const[form,setForm]=useState({title:c.title||'',body:c.body||'',emoji:c.emoji||'🔥',active:c.active!==false});
+  const[prizes,setPrizes]=useState(db.wheelPrizes||seed.wheelPrizes);
+
+  function saveCampaign(){
+    commit({...db,dailyCampaign:{...c,...form,updatedAt:new Date().toLocaleString('tr-TR')}});
+  }
+
+  function savePrizes(){
+    commit({...db,wheelPrizes:prizes.map((p,i)=>({...p,id:p.id||Date.now()+i,weight:Number(p.weight||1),value:Number(p.value||0)}))});
+  }
+
+  return <div className="gameAdmin">
+    <div className="card analyticsHero">
+      <span>V14 OYUNLAŞTIRMA</span>
+      <h3>Günün kampanyası, şans çarkı ve bonuslar</h3>
+      <p>Müşteriyi uygulamaya geri getiren gelir artırıcı sistemleri buradan yönet.</p>
+    </div>
+
+    <div className="analyticsGrid">
+      <div className="metricCard"><span>Günlük Ödül</span><b>{(db.dailyClaims||[]).length}</b><small>Toplam giriş ödülü</small></div>
+      <div className="metricCard"><span>Çark</span><b>{(db.wheelSpins||[]).length}</b><small>Toplam çevirme</small></div>
+      <div className="metricCard"><span>İlk Sipariş</span><b>{(db.firstOrderBonuses||[]).length}</b><small>Bonus kullanılan</small></div>
+      <div className="metricCard"><span>Aktif Kampanya</span><b>{form.active?'Açık':'Kapalı'}</b><small>Günün kampanyası</small></div>
+    </div>
+
+    <div className="card">
+      <h3>Günün Kampanyası</h3>
+      <label>Emoji</label>
+      <input value={form.emoji} onChange={e=>setForm({...form,emoji:e.target.value})}/>
+      <label>Başlık</label>
+      <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+      <label>Açıklama</label>
+      <textarea value={form.body} onChange={e=>setForm({...form,body:e.target.value})}/>
+      <label className="adminToggle"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/><span>Kampanya aktif</span></label>
+      <button onClick={saveCampaign}><ShieldCheck/> Kampanyayı Kaydet</button>
+    </div>
+
+    <div className="card">
+      <h3>Şans Çarkı Ödülleri</h3>
+      {prizes.map((p,i)=><div className="prizeEdit" key={p.id||i}>
+        <input value={p.label} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,label:e.target.value}:x))}/>
+        <select value={p.type} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,type:e.target.value}:x))}>
+          <option value="stamp">Damga</option>
+          <option value="reward">İkram</option>
+          <option value="message">Mesaj</option>
+        </select>
+        <input type="number" value={p.value} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,value:e.target.value}:x))}/>
+        <input type="number" value={p.weight} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,weight:e.target.value}:x))}/>
+      </div>)}
+      <button className="ghost" onClick={()=>setPrizes([...prizes,{id:Date.now(),label:'+1 Damga',type:'stamp',value:1,weight:10}])}><Plus/> Ödül Ekle</button>
+      <button onClick={savePrizes}><ShieldCheck/> Çarkı Kaydet</button>
+    </div>
+
+    <div className="card">
+      <h3>Son V14 Hareketleri</h3>
+      {[...(db.wheelSpins||[]),...(db.dailyClaims||[]),...(db.firstOrderBonuses||[])].slice(0,12).map(x=><div className="historyMini" key={`${x.id}-${x.type||'bonus'}`}><div><b>{x.name}</b><p>{x.prize||x.type||'İlk sipariş bonusu'} · {x.createdAt}</p></div><strong>{x.day||'V14'}</strong></div>)}
+    </div>
+  </div>;
+}
+
+
 function PushAdmin({db,commit}){
   const[title,setTitle]=useState('Liberte Club');
   const[body,setBody]=useState('Bugüne özel kampanya seni bekliyor.');
@@ -1856,7 +2090,7 @@ function PushAdmin({db,commit}){
 
 function UsersAdmin({db,commit}){
   const[editing,setEditing]=useState(null);
-  const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false});
+  const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false,note:''});
   const[message,setMessage]=useState('');
 
   const customers=db.customers||[];
@@ -1869,7 +2103,8 @@ function UsersAdmin({db,commit}){
       phone:c.phone||'',
       email:c.email||'',
       birthDate:c.birthDate||'',
-      isAdmin:!!c.isAdmin
+      isAdmin:!!c.isAdmin,
+      note:(db.customerNotes||{})[c.id]||''
     });
   }
 
@@ -1912,6 +2147,7 @@ function UsersAdmin({db,commit}){
         isAdmin:!!form.isAdmin
       }:x),
       pushSubscriptions:(db.pushSubscriptions||[]).map(x=>x.customerId===c.id?{...x,name:cleanName,phone:cleanPhone}:x),
+      customerNotes:{...(db.customerNotes||{}),[c.id]:form.note||''},
       history:[
         {id:Date.now(),customerId:c.id,name:cleanName,phone:cleanPhone,type:'customer_edit',count:0,source:'Admin kullanıcı düzenleme',createdAt},
         ...(db.history||[])
@@ -1983,6 +2219,7 @@ function UsersAdmin({db,commit}){
             <p>{c.phone} · {c.email||'mail yok'} · {c.birthDate||'doğum tarihi yok'} · {l.level||'Bronze'}</p>
             <p>Referans kodu: <b>{getReferralCode(c)}</b></p>
             <small>{l.totalStamps||0} damga · {l.availableRewards||0} kullanılabilir hak · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
+            {(db.customerNotes||{})[c.id]&&<p className="customerNote">Not: {(db.customerNotes||{})[c.id]}</p>}
           </div>
 
           <div className="userActions wide">
@@ -2007,6 +2244,9 @@ function UsersAdmin({db,commit}){
 
             <label>Doğum Tarihi</label>
             <input type="date" value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/>
+
+            <label>Müşteri Notu</label>
+            <textarea value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="Örn: Şekersiz latte seviyor"/>
 
             <label className="adminToggle">
               <input type="checkbox" checked={form.isAdmin} onChange={e=>setForm({...form,isAdmin:e.target.checked})}/>
@@ -2040,6 +2280,9 @@ function HistoryAdmin({db}){
     customer_delete:'Kullanıcı silindi',
     check_in:'Check-in',
     coupon_use:'Kupon kullanıldı',
+    wheel_spin:'Şans çarkı',
+    daily_login:'Günlük giriş ödülü',
+    first_order_bonus:'İlk sipariş bonusu',
     login:'Giriş yapıldı'
   }[t]||t);
 

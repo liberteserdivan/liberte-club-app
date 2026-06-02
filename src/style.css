@@ -627,3 +627,183 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
    ========================= */
 .couponUseCard,.clubStatusCard{background:linear-gradient(145deg,#fff,#f7efe2)!important;border:1px solid rgba(201,169,106,.26)!important}
 .couponRow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.couponRow input{margin:0!important;text-transform:uppercase}.clubTop{display:flex;justify-content:space-between;align-items:center}.clubTop span{display:block;color:#b48b43;font-size:12px;font-weight:900;letter-spacing:.14em}.clubTop b{display:block;font-size:38px;color:#102f27}.clubTop svg{color:#c8a96a;width:38px;height:38px}.badgeGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}.badgePill{padding:14px;border-radius:20px;background:#12372e;color:white;display:grid;gap:4px}.badgePill strong{font-size:24px}.badgePill span{font-weight:900}.badgePill small{color:rgba(255,255,255,.72)}.clubAdmin .historyMini button{width:auto!important;min-width:86px}.clubAdmin select{margin-bottom:13px!important}@media(max-width:430px){.couponRow{grid-template-columns:1fr}.badgeGrid{grid-template-columns:1fr}}
+
+/* =========================
+   LIBERTE CLUB V14 GAMIFICATION + REVENUE
+   ========================= */
+.dailyCampaignCard,
+.rewardActionCard,
+.luckyWheelCard{
+  position:relative;
+  overflow:hidden;
+  margin:16px 0;
+  padding:20px;
+  border-radius:30px;
+  background:linear-gradient(135deg,#0b2f26,#174b3a 58%,#223f35);
+  color:#fff;
+  box-shadow:0 18px 42px rgba(11,47,38,.18);
+  border:1px solid rgba(216,194,157,.24);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.dailyCampaignCard:before,
+.luckyWheelCard:before{
+  content:"";
+  position:absolute;
+  inset:-40% -20% auto auto;
+  width:260px;
+  height:260px;
+  border-radius:999px;
+  background:radial-gradient(circle,rgba(216,194,157,.25),transparent 60%);
+  pointer-events:none;
+}
+.dailyCampaignCard span,
+.rewardActionCard span,
+.luckyWheelCard span,
+.vipBenefitsCard span{
+  color:#d8c29d;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.13em;
+}
+.dailyCampaignCard h3,
+.rewardActionCard h3,
+.luckyWheelCard h3{
+  margin:7px 0 6px;
+  color:#fff!important;
+  font-size:22px;
+  line-height:1.1;
+}
+.dailyCampaignCard p,
+.rewardActionCard p,
+.luckyWheelCard p{
+  margin:0;
+  color:rgba(255,255,255,.78)!important;
+  font-weight:700;
+  line-height:1.35;
+}
+.dailyCampaignCard button,
+.rewardActionCard button,
+.luckyWheelCard button{
+  min-width:max-content;
+  box-shadow:none!important;
+}
+.dailyCampaignBadge{
+  width:58px;
+  height:58px;
+  min-width:58px;
+  border-radius:22px;
+  background:rgba(255,255,255,.12);
+  display:grid;
+  place-items:center;
+  font-size:30px;
+  border:1px solid rgba(255,255,255,.14);
+}
+.rewardActionCard{
+  background:#fff;
+  color:#10231d;
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 12px 28px rgba(0,0,0,.07);
+}
+.rewardActionCard span{color:#a78345;}
+.rewardActionCard h3{color:#10231d!important;}
+.rewardActionCard p{color:#68736f!important;}
+.rewardActionCard.firstOrder{
+  background:linear-gradient(135deg,#fffaf0,#ffffff);
+  border-color:rgba(216,194,157,.38);
+}
+.luckyWheelCard{
+  align-items:stretch;
+}
+.wheelVisual{
+  width:96px;
+  min-width:96px;
+  border-radius:28px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.14);
+  position:relative;
+}
+.wheelVisual svg{
+  position:absolute;
+  top:14px;
+  right:14px;
+  color:#d8c29d;
+}
+.wheelVisual span{
+  font-size:44px;
+  letter-spacing:0;
+}
+.vipBenefitsCard{
+  background:#fff!important;
+  border:1px solid rgba(0,0,0,.06)!important;
+}
+.vipBenefitList{
+  display:grid;
+  gap:10px;
+  margin-top:16px;
+}
+.vipBenefitList div{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px;
+  border-radius:18px;
+  background:#f8f4ec;
+  color:#183b32;
+  font-weight:800;
+}
+.vipBenefitList svg{
+  width:18px;
+  color:#b49357;
+}
+.gameAdmin .analyticsHero{
+  background:linear-gradient(135deg,#0b2f26,#174b3a)!important;
+  color:#fff!important;
+}
+.gameAdmin .analyticsHero h3,
+.gameAdmin .analyticsHero p{
+  color:#fff!important;
+}
+.prizeEdit{
+  display:grid;
+  grid-template-columns:1.3fr .8fr .55fr .55fr;
+  gap:8px;
+  align-items:center;
+  margin-bottom:10px;
+}
+.prizeEdit input,
+.prizeEdit select{
+  margin:0!important;
+}
+.customerNote{
+  margin:10px 0 0!important;
+  padding:10px 12px;
+  border-radius:16px;
+  background:#f8f4ec;
+  color:#4d4a42!important;
+  font-weight:800;
+}
+@media(max-width:430px){
+  .dailyCampaignCard,
+  .rewardActionCard,
+  .luckyWheelCard{
+    display:block;
+  }
+  .dailyCampaignCard button,
+  .rewardActionCard button,
+  .luckyWheelCard button{
+    width:100%;
+    margin-top:14px;
+  }
+  .dailyCampaignBadge,
+  .wheelVisual{
+    margin-bottom:14px;
+  }
+  .prizeEdit{
+    grid-template-columns:1fr;
+  }
+}
