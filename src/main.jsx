@@ -152,11 +152,8 @@ function fileToDataUrl(file){
   });
 }
 
-function addStampToCustomer(db,id,count=1,source='Admin'){
-  const customer=db.customers.find(c=>c.id===id);
-  if(!customer)return db;
-
-  const current=db.loyalty[id]||{
+function loyaltyTemplate(id){
+  return{
     customerId:id,
     totalStamps:0,
     availableRewards:0,
@@ -164,17 +161,28 @@ function addStampToCustomer(db,id,count=1,source='Admin'){
     lifetimeStamps:0,
     level:'Bronze'
   };
+}
 
-  let total=Math.max(0,(current.totalStamps||0)+count);
-  let rewards=current.availableRewards||0;
+function addStampToCustomer(db,id,count=1,source='Admin'){
+  const customer=db.customers.find(c=>c.id===id);
+  if(!customer)return db;
+
+  const current=db.loyalty[id]||loyaltyTemplate(id);
   const threshold=db.settings.stamp_threshold||10;
+  const oldTotal=current.totalStamps||0;
+  const oldRewards=current.availableRewards||0;
+  const oldLifetime=current.lifetimeStamps||0;
+
+  let total=Math.max(0,oldTotal+count);
+  let rewards=oldRewards;
 
   while(total>=threshold){
     total-=threshold;
     rewards+=1;
   }
 
-  const lifetime=Math.max(0,(current.lifetimeStamps||0)+Math.max(count,0));
+  const lifetime=Math.max(0,oldLifetime+Math.max(count,0));
+  const createdAt=new Date().toLocaleString('tr-TR');
 
   return{
     ...db,
@@ -185,7 +193,8 @@ function addStampToCustomer(db,id,count=1,source='Admin'){
         totalStamps:total,
         availableRewards:rewards,
         lifetimeStamps:lifetime,
-        level:levelByStamps(lifetime)
+        level:levelByStamps(lifetime),
+        updatedAt:createdAt
       }
     },
     history:[
@@ -193,10 +202,58 @@ function addStampToCustomer(db,id,count=1,source='Admin'){
         id:Date.now(),
         customerId:id,
         name:customer.name,
-        type:count>=0?'stamp':'remove',
+        phone:customer.phone,
+        type:count>=0?'stamp_add':'stamp_remove',
         count,
+        before:{totalStamps:oldTotal,availableRewards:oldRewards,lifetimeStamps:oldLifetime},
+        after:{totalStamps:total,availableRewards:rewards,lifetimeStamps:lifetime},
         source,
-        createdAt:new Date().toLocaleString('tr-TR')
+        createdAt
+      },
+      ...(db.history||[])
+    ]
+  };
+}
+
+function redeemRewardForCustomer(db,id,source='Admin'){
+  const customer=db.customers.find(c=>c.id===id);
+  if(!customer)return db;
+
+  const current=db.loyalty[id]||loyaltyTemplate(id);
+  const rewards=current.availableRewards||0;
+
+  if(rewards<=0){
+    alert('Bu müşterinin kullanılabilir ikram hakkı yok.');
+    return db;
+  }
+
+  const createdAt=new Date().toLocaleString('tr-TR');
+  const next={
+    ...current,
+    availableRewards:rewards-1,
+    usedRewards:(current.usedRewards||0)+1,
+    updatedAt:createdAt
+  };
+
+  return{
+    ...db,
+    loyalty:{
+      ...db.loyalty,
+      [id]:next
+    },
+    history:[
+      {
+        id:Date.now(),
+        customerId:id,
+        name:customer.name,
+        phone:customer.phone,
+        type:'reward_redeem',
+        count:1,
+        reward:db.settings.reward_description||'1 Bedava İçecek',
+        before:{availableRewards:rewards,usedRewards:current.usedRewards||0},
+        after:{availableRewards:next.availableRewards,usedRewards:next.usedRewards},
+        source,
+        createdAt
       },
       ...(db.history||[])
     ]
@@ -265,6 +322,7 @@ function App(){
 }
 
 function Login({db,commit,setSession}){
+  const[authMode,setAuthMode]=useState('login');
   const[phone,setPhone]=useState('');
   const[name,setName]=useState('');
   const[email,setEmail]=useState('');
@@ -272,8 +330,11 @@ function Login({db,commit,setSession}){
   const[step,setStep]=useState('form');
   const[loading,setLoading]=useState(false);
   const[info,setInfo]=useState('');
+  const[pending,setPending]=useState(null);
 
   const valid=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const findByPhone=ph=>(db.customers||[]).find(x=>x.phone===ph);
+  const findByEmail=em=>(db.customers||[]).find(x=>String(x.email||'').toLowerCase()===em);
 
   const fields=()=>{
     const ph=norm(phone);
@@ -285,69 +346,81 @@ function Login({db,commit,setSession}){
       return null;
     }
 
-    if(nm.split(' ').filter(Boolean).length<2){
-      alert('İsim soyisim zorunlu.');
+    if(!valid(em)){
+      alert('Geçerli e-posta gir.');
       return null;
     }
 
-    if(!valid(em)){
-      alert('Geçerli e-posta gir.');
+    if(authMode==='register'&&nm.split(' ').filter(Boolean).length<2){
+      alert('Kayıt için isim soyisim zorunlu.');
       return null;
     }
 
     return{ph,nm,em};
   };
 
-  function loginCustomer(f){
-    let next=mergeDb(db);
-    let c=next.customers.find(x=>x.phone===f.ph);
+  function createCustomer(f){
+    const next=mergeDb(db);
+    const c={
+      id:Date.now(),
+      phone:f.ph,
+      name:f.nm,
+      email:f.em,
+      isAdmin:f.ph==='5058665406',
+      createdAt:new Date().toLocaleString('tr-TR'),
+      lastVisit:null,
+      birthDate:''
+    };
 
-    if(c){
-      c.name=f.nm;
-      c.email=f.em;
-    }else{
-      c={
-        id:Date.now(),
-        phone:f.ph,
-        name:f.nm,
-        email:f.em,
-        isAdmin:f.ph==='5058665406',
-        createdAt:new Date().toLocaleString('tr-TR')
-      };
-
-      next.customers=[...next.customers,c];
-
-      next.loyalty={
-        ...next.loyalty,
-        [c.id]:{
-          customerId:c.id,
-          totalStamps:0,
-          availableRewards:0,
-          usedRewards:0,
-          lifetimeStamps:0,
-          level:'Bronze'
-        }
-      };
-    }
+    next.customers=[...next.customers,c];
+    next.loyalty={...next.loyalty,[c.id]:loyaltyTemplate(c.id)};
+    next.history=[
+      {id:Date.now()+1,customerId:c.id,name:c.name,phone:c.phone,type:'register',count:0,source:'Kullanıcı kayıt',createdAt:new Date().toLocaleString('tr-TR')},
+      ...(next.history||[])
+    ];
 
     commit(next);
     setSession({customerId:c.id});
+  }
+
+  function loginExisting(customer){
+    setSession({customerId:customer.id});
   }
 
   async function sendCode(){
     const f=fields();
     if(!f)return;
 
+    const byPhone=findByPhone(f.ph);
+    const byEmail=findByEmail(f.em);
+
+    if(authMode==='register'){
+      if(byPhone||byEmail){
+        alert('Bu telefon veya e-posta ile kayıt var. Lütfen Giriş Yap ekranını kullan.');
+        return;
+      }
+    }else{
+      if(!byPhone){
+        alert('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.');
+        return;
+      }
+      if(String(byPhone.email||'').toLowerCase()!==f.em){
+        alert('Telefon ve e-posta eşleşmiyor. Kayıtlı e-posta adresini gir.');
+        return;
+      }
+    }
+
     setLoading(true);
     setInfo('');
 
     try{
+      const sendName=authMode==='login'?(byPhone?.name||'Liberte Club'):f.nm;
       const r=await fetch('/api/auth/send-code',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           phone:f.ph,
-          name:f.nm,
+          name:sendName,
           email:f.em
         })
       });
@@ -359,6 +432,7 @@ function Login({db,commit,setSession}){
         throw new Error(j.error||'Kod gönderilemedi');
       }
 
+      setPending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName});
       setStep('code');
       setInfo('Kod e-posta adresine gönderildi.');
     }catch(e){
@@ -369,7 +443,7 @@ function Login({db,commit,setSession}){
   }
 
   async function verify(){
-    const f=fields();
+    const f=pending||fields();
     if(!f)return;
 
     if(code.replace(/\D/g,'').length!==6){
@@ -397,12 +471,26 @@ function Login({db,commit,setSession}){
         throw new Error(j.error||'Kod doğrulanamadı');
       }
 
-      loginCustomer(f);
+      if(f.mode==='register'){
+        createCustomer(f);
+      }else{
+        const c=(db.customers||[]).find(x=>x.id===f.customerId)||findByPhone(f.ph);
+        if(!c)throw new Error('Kullanıcı bulunamadı.');
+        loginExisting(c);
+      }
     }catch(e){
       alert(e.message||'Kod doğrulanamadı');
     }finally{
       setLoading(false);
     }
+  }
+
+  function switchMode(mode){
+    setAuthMode(mode);
+    setStep('form');
+    setCode('');
+    setInfo('');
+    setPending(null);
   }
 
   return <section className="loginPage">
@@ -412,15 +500,22 @@ function Login({db,commit,setSession}){
     <div className="loginCard">
       <Brand db={db}/>
 
-      <h1>{db.settings.app_name}</h1>
-      <p>QR sadakat kartı, özel kampanyalar ve Liberte ayrıcalıkları.</p>
+      <h1>{authMode==='login'?'Giriş Yap':'Kayıt Ol'}</h1>
+      <p>{authMode==='login'?'Kayıtlı Liberte Club hesabına e-posta kodu ile giriş yap.':'QR sadakat kartı, özel kampanyalar ve Liberte ayrıcalıkları için kayıt ol.'}</p>
+
+      <div className="authSwitch">
+        <button type="button" className={authMode==='login'?'active':''} onClick={()=>switchMode('login')}>Giriş Yap</button>
+        <button type="button" className={authMode==='register'?'active':''} onClick={()=>switchMode('register')}>Kayıt Ol</button>
+      </div>
 
       {step==='form'?<>
         <label>Telefon</label>
         <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0505 866 54 06"/>
 
-        <label>İsim Soyisim <em>*</em></label>
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Ad Soyad"/>
+        {authMode==='register'&&<>
+          <label>İsim Soyisim <em>*</em></label>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Ad Soyad"/>
+        </>}
 
         <label>E-posta <em>*</em></label>
         <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="mail@ornek.com"/>
@@ -429,13 +524,15 @@ function Login({db,commit,setSession}){
           <Mail/> {loading?'Gönderiliyor...':'Mail Kod Gönder'}
         </button>
 
+        {authMode==='login'&&<p className="loginHint">Henüz hesabın yoksa Kayıt Ol sekmesine geç.</p>}
+        {authMode==='register'&&<p className="loginHint">Zaten hesabın varsa Giriş Yap sekmesini kullan.</p>}
         {info&&<p className="info">{info}</p>}
       </>:<>
         <label>Mail kodu</label>
         <input value={code} maxLength={6} onChange={e=>setCode(e.target.value)} placeholder="6 haneli kod"/>
 
         <button disabled={loading} onClick={verify}>
-          <ShieldCheck/> {loading?'Kontrol ediliyor...':'Giriş Yap'}
+          <ShieldCheck/> {loading?'Kontrol ediliyor...':'Devam Et'}
         </button>
 
         <button className="ghost" onClick={()=>setStep('form')}>
@@ -447,6 +544,7 @@ function Login({db,commit,setSession}){
     </div>
   </section>;
 }
+
 function Header({db,customer,setSession,sync}){
   return <header>
     <div className="head">
@@ -851,7 +949,8 @@ function AdminScreen({db,commit}){
         ['cats','Kategori'],
         ['design','Tasarım'],
         ['push','Push'],
-        ['users','Kullanıcı']
+        ['users','Kullanıcı'],
+        ['history','Geçmiş']
       ].map(x=>
         <button className={tab===x[0]?'on':''} onClick={()=>setTab(x[0])} key={x[0]}>
           {x[1]}
@@ -865,6 +964,7 @@ function AdminScreen({db,commit}){
     {tab==='design'&&<DesignAdmin db={db} commit={commit}/>}
     {tab==='push'&&<PushAdmin db={db} commit={commit}/>}
     {tab==='users'&&<UsersAdmin db={db} commit={commit}/>}
+    {tab==='history'&&<HistoryAdmin db={db}/>}
   </section>;
 }
 
@@ -913,22 +1013,52 @@ function ScanPanel({db,commit}){
 
   function add(){
     if(!found)return;
-    commit(addStampToCustomer(db,found.id,1,'QR kamera'));
-    setMsg('+1 damga eklendi.');
+    const next=addStampToCustomer(db,found.id,1,'QR kamera');
+    commit(next);
+    setMsg('+1 damga sisteme kaydedildi.');
   }
+
+  function remove(){
+    if(!found)return;
+    const next=addStampToCustomer(db,found.id,-1,'QR düzeltme');
+    commit(next);
+    setMsg('1 damga silindi ve sisteme kaydedildi.');
+  }
+
+  function redeem(){
+    if(!found)return;
+    const ok=confirm(`${found.name} için 1 ikram hakkı kullanılsın mı?`);
+    if(!ok)return;
+    const next=redeemRewardForCustomer(db,found.id,'QR kasiyer');
+    commit(next);
+    setMsg('İkram hakkı kullanıldı ve sisteme kaydedildi.');
+  }
+
+  const l=found?(db.loyalty[found.id]||loyaltyTemplate(found.id)):null;
+  const threshold=db.settings.stamp_threshold||10;
 
   return <div className="card">
     <button onClick={start}><ScanLine/> Kamera ile QR Okut</button>
     {active&&<div id="reader"></div>}
-    <p className="info">{msg}</p>
+    <p className="info">{msg||'Müşteri QR kodunu okut. Damga ve ikram işlemleri bulut sisteme kaydedilir.'}</p>
 
-    {found&&<div className="found">
-      <b>{found.name}</b>
-      <span>{found.phone}</span>
-      <button onClick={add}><Plus/> +1 Damga</button>
-      <button className="ghost" onClick={()=>commit(addStampToCustomer(db,found.id,-1,'Düzeltme'))}>
-        <Minus/> Damga Sil
-      </button>
+    {found&&<div className="found rewardBox">
+      <div>
+        <b>{found.name}</b>
+        <span>{found.phone} · {found.email||'mail yok'}</span>
+      </div>
+
+      <div className="adminStats">
+        <div><span>Damga</span><b>{l.totalStamps||0}/{threshold}</b></div>
+        <div><span>Hak</span><b>{l.availableRewards||0}</b></div>
+        <div><span>Kullanılan</span><b>{l.usedRewards||0}</b></div>
+      </div>
+
+      <div className="adminActions">
+        <button onClick={add}><Plus/> +1 Damga</button>
+        <button className="ghost" onClick={remove}><Minus/> Damga Sil</button>
+        <button className="goldBtn" onClick={redeem}><Gift/> Hak Kullandır</button>
+      </div>
     </div>}
   </div>;
 }
@@ -1137,22 +1267,66 @@ function PushAdmin({db,commit}){
 }
 
 function UsersAdmin({db,commit}){
+  function add(c){
+    commit(addStampToCustomer(db,c.id,1,'Admin manuel'));
+  }
+
+  function remove(c){
+    commit(addStampToCustomer(db,c.id,-1,'Admin düzeltme'));
+  }
+
+  function redeem(c){
+    const ok=confirm(`${c.name} için 1 ikram hakkı kullanılsın mı?`);
+    if(!ok)return;
+    commit(redeemRewardForCustomer(db,c.id,'Admin manuel'));
+  }
+
   return <div className="list">
     {db.customers.map(c=>{
-      const l=db.loyalty[c.id]||{};
+      const l=db.loyalty[c.id]||loyaltyTemplate(c.id);
 
       return <div className="card user" key={c.id}>
         <div>
           <b>{c.name}</b>
           <p>{c.phone} · {c.email||'mail yok'} · {l.level||'Bronze'}</p>
-          <small>{l.totalStamps||0} damga · {l.availableRewards||0} ödül · lifetime {l.lifetimeStamps||0}</small>
+          <small>{l.totalStamps||0} damga · {l.availableRewards||0} kullanılabilir hak · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
         </div>
 
-        <button onClick={()=>commit(addStampToCustomer(db,c.id,1,'Manuel'))}>
-          <Plus/> Damga
-        </button>
+        <div className="userActions">
+          <button onClick={()=>add(c)}><Plus/> Damga</button>
+          <button className="ghost" onClick={()=>remove(c)}><Minus/> Sil</button>
+          <button className="goldBtn" onClick={()=>redeem(c)}><Gift/> Hak Kullan</button>
+        </div>
       </div>;
     })}
+  </div>;
+}
+
+function HistoryAdmin({db}){
+  const rows=(db.history||[]).slice(0,80);
+  const label=t=>({
+    stamp_add:'Damga eklendi',
+    stamp_remove:'Damga silindi',
+    reward_redeem:'Hak kullanıldı',
+    register:'Kayıt oluşturuldu'
+  }[t]||t);
+
+  return <div className="list">
+    <div className="card">
+      <h3>Sistem Geçmişi</h3>
+      <p>Damga, hak kullanımı ve kayıt işlemleri burada tutulur.</p>
+    </div>
+
+    {rows.length?rows.map(h=>
+      <div className="card historyRow" key={h.id}>
+        <div>
+          <b>{label(h.type)}</b>
+          <p>{h.name||'Müşteri'} · {h.phone||''}</p>
+          <small>{h.createdAt} · {h.source||'Sistem'}</small>
+        </div>
+        <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count}</strong>
+      </div>
+    ):<div className="empty">Henüz işlem geçmişi yok.</div>}
   </div>;
 }
 
