@@ -152,3 +152,78 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
     grid-template-columns:1fr;
   }
 }
+
+/* =========================
+   LIBERTE V7 PREMIUM ALERTS + FORM POLISH
+   ========================= */
+.noticeBackdrop{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:rgba(9,18,15,.54);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.noticeModal{
+  width:min(360px,100%);
+  padding:26px;
+  border-radius:32px;
+  background:linear-gradient(180deg,#fffdf8,#f7efe2);
+  color:#0b2f26;
+  border:1px solid rgba(216,194,157,.55);
+  box-shadow:0 28px 80px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.9);
+  text-align:left;
+  animation:noticeIn .22s ease-out;
+}
+@keyframes noticeIn{
+  from{opacity:0;transform:translateY(16px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.noticeIcon{
+  width:58px;
+  height:58px;
+  display:grid;
+  place-items:center;
+  border-radius:20px;
+  color:#d8c29d;
+  background:linear-gradient(135deg,#0b2f26,#174b3a);
+  box-shadow:0 14px 30px rgba(11,47,38,.22);
+  margin-bottom:18px;
+}
+.noticeIcon svg{width:26px;height:26px}
+.noticeModal h3{
+  margin:0 0 8px;
+  font-size:25px;
+  letter-spacing:-.5px;
+  color:#0b2f26!important;
+}
+.noticeModal p{
+  margin:0 0 22px;
+  color:#596861!important;
+  font-size:16px;
+  line-height:1.45;
+  font-weight:700;
+}
+.noticeModal button{
+  width:100%;
+  height:54px;
+  border-radius:18px!important;
+  background:linear-gradient(135deg,#0b2f26,#174b3a)!important;
+  color:#fff!important;
+  box-shadow:0 14px 30px rgba(11,47,38,.22)!important;
+}
+.noticeModal.info .noticeIcon{
+  color:#0b2f26;
+  background:linear-gradient(135deg,#d8c29d,#f3dfb2);
+}
+.loginCard input{
+  font-size:17px!important;
+}
+.loginHint{
+  text-align:center;
+  font-size:14px!important;
+  color:#607069!important;
+}
