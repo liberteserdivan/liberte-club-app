@@ -621,3 +621,9 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
     font-size:26px;
   }
 }
+
+/* =========================
+   LIBERTE CLUB V13 PREMIUM CLUB
+   ========================= */
+.couponUseCard,.clubStatusCard{background:linear-gradient(145deg,#fff,#f7efe2)!important;border:1px solid rgba(201,169,106,.26)!important}
+.couponRow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.couponRow input{margin:0!important;text-transform:uppercase}.clubTop{display:flex;justify-content:space-between;align-items:center}.clubTop span{display:block;color:#b48b43;font-size:12px;font-weight:900;letter-spacing:.14em}.clubTop b{display:block;font-size:38px;color:#102f27}.clubTop svg{color:#c8a96a;width:38px;height:38px}.badgeGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}.badgePill{padding:14px;border-radius:20px;background:#12372e;color:white;display:grid;gap:4px}.badgePill strong{font-size:24px}.badgePill span{font-weight:900}.badgePill small{color:rgba(255,255,255,.72)}.clubAdmin .historyMini button{width:auto!important;min-width:86px}.clubAdmin select{margin-bottom:13px!important}@media(max-width:430px){.couponRow{grid-template-columns:1fr}.badgeGrid{grid-template-columns:1fr}}

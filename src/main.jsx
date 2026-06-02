@@ -76,6 +76,9 @@ const seed={
   pushSubscriptions:[],
   referrals:[],
   automationLog:[],
+  checkIns:[],
+  coupons:[{id:1,code:'LIBERTE10',title:'Hoş Geldin Kuponu',rewardType:'stamp',rewardValue:1,active:true,createdAt:new Date().toLocaleString('tr-TR')}],
+  couponUses:[],
   campaigns:[
     {id:1,title:'Bugüne Özel',body:'Smash Menü + kahve fırsatını kaçırma.',active:true,emoji:'🔥'}
   ]
@@ -96,6 +99,9 @@ function mergeDb(x){
     pushSubscriptions:x.pushSubscriptions||[],
     referrals:x.referrals||[],
     automationLog:x.automationLog||[],
+    checkIns:x.checkIns||[],
+    coupons:x.coupons||seed.coupons,
+    couponUses:x.couponUses||[],
     campaigns:x.campaigns||seed.campaigns
   }:seed;
 }
@@ -265,6 +271,56 @@ function addStampToCustomer(db,id,count=1,source='Admin'){
       ...(db.history||[])
     ]
   };
+}
+
+
+function calculateCoins(l){
+  return Math.max(0,Math.floor((l?.lifetimeStamps||0)*10 + (l?.usedRewards||0)*50));
+}
+
+function customerBadges(customer,loyalty,db){
+  const h=(db.history||[]).filter(x=>x.customerId===customer.id);
+  const badges=[];
+  const lifetime=loyalty?.lifetimeStamps||0;
+  if(lifetime>=5)badges.push({emoji:'☕',title:'Kahve Yolcusu',desc:'5+ damga'});
+  if(lifetime>=20)badges.push({emoji:'⭐',title:'Sadık Üye',desc:'20+ damga'});
+  if(lifetime>=50)badges.push({emoji:'👑',title:'Gold Club',desc:'50+ damga'});
+  if((loyalty?.usedRewards||0)>=1)badges.push({emoji:'🎁',title:'Ödül Avcısı',desc:'İlk ikramını kullandı'});
+  if(h.some(x=>x.type==='google_review_bonus'))badges.push({emoji:'💬',title:'Yorum Elçisi',desc:'Google yorumu'});
+  if((db.referrals||[]).some(x=>x.referrerId===customer.id))badges.push({emoji:'🤝',title:'Davetçi',desc:'Arkadaş daveti'});
+  return badges.length?badges:[{emoji:'🌿',title:'Yeni Üye',desc:'Liberte Club'}];
+}
+
+function checkInCustomer(db,customerId,source='QR Check-in'){
+  const customer=db.customers.find(c=>c.id===customerId);
+  if(!customer)return db;
+  const today=new Date().toLocaleDateString('tr-TR');
+  const already=(db.checkIns||[]).some(x=>x.customerId===customerId&&String(x.date)===today);
+  if(already){alert('Bu müşteri bugün zaten check-in yaptı.');return db;}
+  const createdAt=new Date().toLocaleString('tr-TR');
+  let next={...db,customers:db.customers.map(c=>c.id===customerId?{...c,lastVisit:createdAt}:c),checkIns:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,date:today,createdAt,source},...(db.checkIns||[])],history:[{id:Date.now()+1,customerId,name:customer.name,phone:customer.phone,type:'check_in',count:0,source,createdAt},...(db.history||[])]};
+  const visits=(next.checkIns||[]).filter(x=>x.customerId===customerId).length;
+  if(visits>0&&visits%5===0)next=addStampToCustomer(next,customerId,1,'5 ziyaret bonusu');
+  return next;
+}
+
+function applyCouponToCustomer(db,customerId,rawCode){
+  const code=String(rawCode||'').trim().toUpperCase();
+  if(!code){alert('Kupon kodu gir.');return db;}
+  const customer=db.customers.find(c=>c.id===customerId);
+  const coupon=(db.coupons||[]).find(c=>String(c.code||'').toUpperCase()===code&&c.active!==false);
+  if(!customer||!coupon){alert('Kupon bulunamadı veya pasif.');return db;}
+  const used=(db.couponUses||[]).some(x=>x.customerId===customerId&&String(x.code||'').toUpperCase()===code);
+  if(used){alert('Bu kupon daha önce kullanılmış.');return db;}
+  const createdAt=new Date().toLocaleString('tr-TR');
+  let next={...db,couponUses:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,code,title:coupon.title,createdAt},...(db.couponUses||[])],history:[{id:Date.now()+1,customerId,name:customer.name,phone:customer.phone,type:'coupon_use',count:Number(coupon.rewardValue||0),source:`Kupon ${code}`,createdAt},...(db.history||[])]};
+  if(coupon.rewardType==='reward'){
+    const current=next.loyalty[customerId]||loyaltyTemplate(customerId);
+    next={...next,loyalty:{...next.loyalty,[customerId]:{...current,availableRewards:(current.availableRewards||0)+Number(coupon.rewardValue||1)}}};
+  }else{
+    next=addStampToCustomer(next,customerId,Number(coupon.rewardValue||1),`Kupon ${code}`);
+  }
+  return next;
 }
 
 function redeemRewardForCustomer(db,id,source='Admin'){
@@ -1200,6 +1256,31 @@ function QrScreen({db,customer,card}){
   </section>;
 }
 
+
+function CouponUseCard({db,customer,commit}){
+  const[code,setCode]=useState('');
+  return <div className="card couponUseCard">
+    <b>Kupon Kodun Var mı?</b>
+    <p>Kodunu gir, damga veya ikram hakkını hesabına yükle.</p>
+    <div className="couponRow">
+      <input placeholder="LIBERTE20" value={code} onChange={e=>setCode(e.target.value.toUpperCase())}/>
+      <button onClick={()=>{commit(applyCouponToCustomer(db,customer.id,code));setCode('');}}>Kullan</button>
+    </div>
+  </div>;
+}
+
+function ClubStatusCard({db,customer}){
+  const l=db.loyalty[customer.id]||loyaltyTemplate(customer.id);
+  const badges=customerBadges(customer,l,db);
+  return <div className="card clubStatusCard">
+    <div className="clubTop"><div><span>LIBERTE COIN</span><b>{calculateCoins(l)}</b></div><Crown/></div>
+    <p>Rozetlerin ve coinlerin Liberte Club seviyeni güçlendirir.</p>
+    <div className="badgeGrid">
+      {badges.map(b=><div className="badgePill" key={b.title}><strong>{b.emoji}</strong><span>{b.title}</span><small>{b.desc}</small></div>)}
+    </div>
+  </div>;
+}
+
 function CampaignScreen({db,customer,commit}){
   return <section className="campaignPage">
     <div className="pageHero">
@@ -1211,6 +1292,8 @@ function CampaignScreen({db,customer,commit}){
     <ReferralCard db={db} customer={customer}/>
 
     <GoogleReviewBonusCard db={db} customer={customer} commit={commit} compact/>
+    <CouponUseCard db={db} customer={customer} commit={commit}/>
+    <ClubStatusCard db={db} customer={customer}/>
 
     {(db.campaigns||[]).map(c=>
       <div className="card campaign" key={c.id}>
@@ -1247,6 +1330,7 @@ function AdminScreen({db,commit}){
         ['design','Tasarım'],
         ['push','Push'],
         ['growth','Büyüme'],
+        ['club','Club'],
         ['users','Kullanıcı'],
         ['history','Geçmiş']
       ].map(x=>
@@ -1263,6 +1347,7 @@ function AdminScreen({db,commit}){
     {tab==='design'&&<DesignAdmin db={db} commit={commit}/>}
     {tab==='push'&&<PushAdmin db={db} commit={commit}/>}
     {tab==='growth'&&<GrowthAdmin db={db} commit={commit}/>}
+    {tab==='club'&&<ClubAdmin db={db} commit={commit}/>}
     {tab==='users'&&<UsersAdmin db={db} commit={commit}/>}
     {tab==='history'&&<HistoryAdmin db={db}/>}
   </section>;
@@ -1438,6 +1523,7 @@ function ScanPanel({db,commit}){
         <button onClick={add}><Plus/> +1 Damga</button>
         <button className="ghost" onClick={remove}><Minus/> Damga Sil</button>
         <button className="goldBtn" onClick={redeem}><Gift/> Hak Kullandır</button>
+        <button className="ghost" onClick={()=>{commit(checkInCustomer(db,found.id,'Admin QR check-in'));setMsg('Check-in kaydedildi.')}}><QrCode/> Check-in</button>
       </div>
     </div>}
   </div>;
@@ -1636,6 +1722,66 @@ function GrowthAdmin({db,commit}){
     <div className="card">
       <h3>Bugün Doğum Günü Olanlar</h3>
       {todayBirthdays.length?todayBirthdays.map(c=><div className="historyMini" key={c.id}><div><b>{c.name}</b><p>{c.phone} · {c.email}</p></div><strong>🎂</strong></div>):<p className="emptySmall">Bugün doğum günü olan üye yok.</p>}
+    </div>
+  </div>;
+}
+
+
+function ClubAdmin({db,commit}){
+  const[code,setCode]=useState('');
+  const[title,setTitle]=useState('Bonus Damga');
+  const[value,setValue]=useState(1);
+  const[type,setType]=useState('stamp');
+
+  function createCoupon(){
+    const clean=String(code||'').trim().toUpperCase();
+    if(clean.length<3)return alert('Kupon kodu en az 3 karakter olmalı.');
+    if((db.coupons||[]).some(c=>String(c.code||'').toUpperCase()===clean))return alert('Bu kupon kodu zaten var.');
+    commit({...db,coupons:[{id:Date.now(),code:clean,title,rewardType:type,rewardValue:Number(value||1),active:true,createdAt:new Date().toLocaleString('tr-TR')},...(db.coupons||[])]});
+    setCode('');
+  }
+
+  function toggleCoupon(id){
+    commit({...db,coupons:(db.coupons||[]).map(c=>c.id===id?{...c,active:!c.active}:c)});
+  }
+
+  return <div className="clubAdmin">
+    <div className="card analyticsHero">
+      <span>V13 PREMIUM CLUB</span>
+      <h3>Kupon, Check-in, Rozet ve Coin</h3>
+      <p>Premium üyelik mekaniklerini buradan yönet.</p>
+    </div>
+
+    <div className="analyticsGrid">
+      <div className="metricCard"><span>Check-in</span><b>{(db.checkIns||[]).length}</b><small>Toplam ziyaret kaydı</small></div>
+      <div className="metricCard"><span>Kupon</span><b>{(db.coupons||[]).length}</b><small>Tanımlı kod</small></div>
+      <div className="metricCard"><span>Kupon Kullanımı</span><b>{(db.couponUses||[]).length}</b><small>Toplam kullanım</small></div>
+      <div className="metricCard"><span>Toplam Coin</span><b>{Object.values(db.loyalty||{}).reduce((a,l)=>a+calculateCoins(l),0)}</b><small>Üye coin değeri</small></div>
+    </div>
+
+    <div className="card">
+      <h3>Kupon Oluştur</h3>
+      <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
+      <input placeholder="Kupon başlığı" value={title} onChange={e=>setTitle(e.target.value)}/>
+      <select value={type} onChange={e=>setType(e.target.value)}>
+        <option value="stamp">Damga ver</option>
+        <option value="reward">İkram hakkı ver</option>
+      </select>
+      <input type="number" min="1" value={value} onChange={e=>setValue(e.target.value)}/>
+      <button onClick={createCoupon}><Plus/> Kupon Oluştur</button>
+    </div>
+
+    <div className="card">
+      <h3>Kuponlar</h3>
+      {(db.coupons||[]).map(c=><div className="historyMini" key={c.id}>
+        <div><b>{c.code}</b><p>{c.title} · {c.rewardType==='reward'?'İkram':'Damga'} +{c.rewardValue}</p></div>
+        <button className={c.active?'ghost':'danger'} onClick={()=>toggleCoupon(c.id)}>{c.active?'Aktif':'Pasif'}</button>
+      </div>)}
+    </div>
+
+    <div className="card">
+      <h3>Son Check-inler</h3>
+      {(db.checkIns||[]).slice(0,10).map(x=><div className="historyMini" key={x.id}><div><b>{x.name}</b><p>{x.date} · {x.phone}</p></div><strong>QR</strong></div>)}
     </div>
   </div>;
 }
@@ -1892,6 +2038,8 @@ function HistoryAdmin({db}){
     google_review_bonus:'Google yorum bonusu',
     customer_edit:'Kullanıcı düzenlendi',
     customer_delete:'Kullanıcı silindi',
+    check_in:'Check-in',
+    coupon_use:'Kupon kullanıldı',
     login:'Giriş yapıldı'
   }[t]||t);
 
