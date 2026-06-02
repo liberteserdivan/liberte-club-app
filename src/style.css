@@ -302,3 +302,64 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
   min-height:58px;
   color:#0b2f26!important;
 }
+
+/* =========================
+   V10 USER ADMIN MANAGEMENT
+   ========================= */
+.userAdminIntro h3{
+  margin:0 0 8px!important;
+  color:#0B2F26!important;
+}
+.userAdminIntro p{
+  margin:0!important;
+}
+.user.editing{
+  display:block!important;
+}
+.userActions.wide{
+  grid-template-columns:repeat(2,1fr);
+  margin-top:14px;
+}
+.userActions.wide button:last-child{
+  grid-column:1 / -1;
+}
+.userEditForm{
+  width:100%;
+}
+.userEditForm h3{
+  margin:0 0 14px!important;
+  color:#0B2F26!important;
+}
+.adminToggle{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:12px 14px!important;
+  border-radius:18px!important;
+  background:rgba(11,47,38,.06)!important;
+  color:#0B2F26!important;
+  margin:4px 0 14px!important;
+}
+.adminToggle input{
+  width:auto!important;
+  margin:0!important;
+  accent-color:#0B2F26;
+}
+.adminToggle span{
+  font-size:13px;
+  font-weight:900;
+}
+.editActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media(max-width:430px){
+  .userActions.wide,
+  .editActions{
+    grid-template-columns:1fr;
+  }
+  .userActions.wide button:last-child{
+    grid-column:auto;
+  }
+}

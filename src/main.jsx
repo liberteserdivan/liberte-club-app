@@ -437,6 +437,13 @@ function Login({db,commit,setSession}){
 
   function createCustomer(f){
     const next=mergeDb(db);
+    const duplicatePhone=(next.customers||[]).some(x=>x.phone===f.ph);
+    const duplicateEmail=(next.customers||[]).some(x=>String(x.email||'').toLowerCase()===f.em);
+    if(duplicatePhone||duplicateEmail){
+      notify('Bu telefon veya e-posta ile zaten kayıt var. Lütfen Giriş Yap ekranını kullan.','info');
+      return;
+    }
+
     const c={
       id:Date.now(),
       phone:f.ph,
@@ -1408,6 +1415,102 @@ function PushAdmin({db,commit}){
 }
 
 function UsersAdmin({db,commit}){
+  const[editing,setEditing]=useState(null);
+  const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false});
+  const[message,setMessage]=useState('');
+
+  const customers=db.customers||[];
+
+  function beginEdit(c){
+    setMessage('');
+    setEditing(c.id);
+    setForm({
+      name:c.name||'',
+      phone:c.phone||'',
+      email:c.email||'',
+      birthDate:c.birthDate||'',
+      isAdmin:!!c.isAdmin
+    });
+  }
+
+  function cancelEdit(){
+    setEditing(null);
+    setMessage('');
+  }
+
+  function duplicateCheck(id,phone,email){
+    const cleanPhone=norm(phone);
+    const cleanEmail=String(email||'').trim().toLowerCase();
+    const phoneOwner=customers.find(x=>x.id!==id&&x.phone===cleanPhone);
+    const emailOwner=customers.find(x=>x.id!==id&&String(x.email||'').toLowerCase()===cleanEmail);
+    if(phoneOwner)return 'Bu telefon numarası başka bir kullanıcıda kayıtlı.';
+    if(emailOwner)return 'Bu e-posta adresi başka bir kullanıcıda kayıtlı.';
+    return '';
+  }
+
+  function saveEdit(c){
+    const cleanPhone=norm(form.phone);
+    const cleanEmail=String(form.email||'').trim().toLowerCase();
+    const cleanName=String(form.name||'').trim();
+
+    if(cleanPhone.length<10){setMessage('Telefon numarası 10 hane olmalı.');return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)){setMessage('Geçerli bir e-posta adresi gir.');return;}
+    if(cleanName.split(' ').filter(Boolean).length<2){setMessage('İsim soyisim zorunlu.');return;}
+
+    const duplicate=duplicateCheck(c.id,cleanPhone,cleanEmail);
+    if(duplicate){setMessage(duplicate);return;}
+
+    const createdAt=new Date().toLocaleString('tr-TR');
+    const next={
+      ...db,
+      customers:customers.map(x=>x.id===c.id?{
+        ...x,
+        name:cleanName,
+        phone:cleanPhone,
+        email:cleanEmail,
+        birthDate:form.birthDate||'',
+        isAdmin:!!form.isAdmin
+      }:x),
+      pushSubscriptions:(db.pushSubscriptions||[]).map(x=>x.customerId===c.id?{...x,name:cleanName,phone:cleanPhone}:x),
+      history:[
+        {id:Date.now(),customerId:c.id,name:cleanName,phone:cleanPhone,type:'customer_edit',count:0,source:'Admin kullanıcı düzenleme',createdAt},
+        ...(db.history||[])
+      ]
+    };
+
+    commit(next);
+    setEditing(null);
+    setMessage('Kullanıcı bilgileri güncellendi.');
+  }
+
+  function deleteUser(c){
+    if(c.isAdmin){
+      const adminCount=customers.filter(x=>x.isAdmin).length;
+      if(adminCount<=1){setMessage('Son admin kullanıcı silinemez.');return;}
+    }
+
+    const ok=confirm(`${c.name} kullanıcısı silinsin mi? Bu işlem damga ve ödül kayıtlarını da kaldırır.`);
+    if(!ok)return;
+
+    const loyalty={...(db.loyalty||{})};
+    delete loyalty[c.id];
+    const createdAt=new Date().toLocaleString('tr-TR');
+
+    commit({
+      ...db,
+      customers:customers.filter(x=>x.id!==c.id),
+      loyalty,
+      pushSubscriptions:(db.pushSubscriptions||[]).filter(x=>x.customerId!==c.id),
+      history:[
+        {id:Date.now(),customerId:c.id,name:c.name,phone:c.phone,type:'customer_delete',count:0,source:'Admin kullanıcı silme',createdAt},
+        ...(db.history||[]).filter(x=>x.customerId!==c.id)
+      ]
+    });
+
+    setEditing(null);
+    setMessage('Kullanıcı silindi.');
+  }
+
   function add(c){
     commit(addStampToCustomer(db,c.id,1,'Admin manuel'));
   }
@@ -1423,21 +1526,58 @@ function UsersAdmin({db,commit}){
   }
 
   return <div className="list">
-    {db.customers.map(c=>{
+    <div className="card userAdminIntro">
+      <h3>Kullanıcı Yönetimi</h3>
+      <p>Telefon ve e-posta tekil tutulur. Aynı numara veya aynı mail ikinci kez kullanılamaz.</p>
+      {message&&<p className="info">{message}</p>}
+    </div>
+
+    {customers.map(c=>{
       const l=db.loyalty[c.id]||loyaltyTemplate(c.id);
+      const isEdit=editing===c.id;
 
-      return <div className="card user" key={c.id}>
-        <div>
-          <b>{c.name}</b>
-          <p>{c.phone} · {c.email||'mail yok'} · {l.level||'Bronze'}</p>
-          <small>{l.totalStamps||0} damga · {l.availableRewards||0} kullanılabilir hak · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
-        </div>
+      return <div className={isEdit?'card user editing':'card user'} key={c.id}>
+        {!isEdit? <>
+          <div>
+            <b>{c.name}</b>
+            <p>{c.phone} · {c.email||'mail yok'} · {c.birthDate||'doğum tarihi yok'} · {l.level||'Bronze'}</p>
+            <small>{l.totalStamps||0} damga · {l.availableRewards||0} kullanılabilir hak · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
+          </div>
 
-        <div className="userActions">
-          <button onClick={()=>add(c)}><Plus/> Damga</button>
-          <button className="ghost" onClick={()=>remove(c)}><Minus/> Sil</button>
-          <button className="goldBtn" onClick={()=>redeem(c)}><Gift/> Hak Kullan</button>
-        </div>
+          <div className="userActions wide">
+            <button onClick={()=>add(c)}><Plus/> Damga</button>
+            <button className="ghost" onClick={()=>remove(c)}><Minus/> Sil</button>
+            <button className="goldBtn" onClick={()=>redeem(c)}><Gift/> Hak Kullan</button>
+            <button className="ghost" onClick={()=>beginEdit(c)}>Düzenle</button>
+            <button className="danger" onClick={()=>deleteUser(c)}><Trash2/> Kullanıcı Sil</button>
+          </div>
+        </> : <>
+          <div className="userEditForm">
+            <h3>Kullanıcı Düzenle</h3>
+
+            <label>İsim Soyisim</label>
+            <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
+
+            <label>Telefon</label>
+            <input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} inputMode="tel"/>
+
+            <label>E-posta</label>
+            <input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} inputMode="email"/>
+
+            <label>Doğum Tarihi</label>
+            <input type="date" value={form.birthDate} onChange={e=>setForm({...form,birthDate:e.target.value})}/>
+
+            <label className="adminToggle">
+              <input type="checkbox" checked={form.isAdmin} onChange={e=>setForm({...form,isAdmin:e.target.checked})}/>
+              <span>Admin yetkisi ver</span>
+            </label>
+
+            <div className="editActions">
+              <button onClick={()=>saveEdit(c)}><ShieldCheck/> Kaydet</button>
+              <button className="ghost" onClick={cancelEdit}>Vazgeç</button>
+            </div>
+          </div>
+        </>}
       </div>;
     })}
   </div>;
@@ -1451,7 +1591,9 @@ function HistoryAdmin({db}){
     reward_redeem:'Hak kullanıldı',
     birthday_reward:'Doğum günü hediyesi',
     welcome_bonus:'Hoş geldin bonusu',
-    register:'Kayıt oluşturuldu'
+    register:'Kayıt oluşturuldu',
+    customer_edit:'Kullanıcı düzenlendi',
+    customer_delete:'Kullanıcı silindi'
   }[t]||t);
 
   return <div className="list">
