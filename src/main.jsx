@@ -531,6 +531,22 @@ function App(){
   const[db,commit,sync]=useCommit(load());
   const[session,setSession]=useState(()=>JSON.parse(localStorage.getItem('liberteSession')||'null'));
   const[tab,setTab]=useState('home');
+  const[installPrompt,setInstallPrompt]=useState(null);
+
+  useEffect(()=>{
+    const handler=e=>{
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt',handler);
+    return()=>window.removeEventListener('beforeinstallprompt',handler);
+  },[]);
+
+  useEffect(()=>{
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(()=>{});
+    }
+  },[]);
 
   useEffect(()=>{
     if(session)localStorage.setItem('liberteSession',JSON.stringify(session));
@@ -561,12 +577,13 @@ function App(){
 
   return <main className="app" style={cssVars(db.settings)}>
     {tab==='home'&&<Header db={db} customer={customer} setSession={setSession} sync={sync}/>}
-    {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab}/>}
+    {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>}
     {tab==='menu'&&<MenuScreen db={db}/>}
     {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
     {tab==='campaign'&&<CampaignScreen db={db} customer={customer} commit={commit}/>}
     {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}
 
+    <OfflineNotice/>
     <Nav tab={tab} setTab={setTab} admin={customer.isAdmin}/>
   </main>;
 }
@@ -1010,7 +1027,51 @@ function GoogleReviewBonusCard({db,customer,commit,compact=false}){
   </div>;
 }
 
-function HomeScreen({db,customer,card,commit,setTab}){
+
+function InstallAppCard({installPrompt,setInstallPrompt}){
+  const[isStandalone,setIsStandalone]=useState(false);
+
+  useEffect(()=>{
+    const standalone=window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone;
+    setIsStandalone(Boolean(standalone));
+  },[]);
+
+  async function install(){
+    if(installPrompt){
+      installPrompt.prompt();
+      await installPrompt.userChoice.catch(()=>{});
+      setInstallPrompt(null);
+      return;
+    }
+    alert('iPhone kullanıyorsan Safari paylaş menüsünden "Ana Ekrana Ekle" seçeneğini kullanabilirsin.');
+  }
+
+  if(isStandalone)return null;
+
+  return <div className="installCard">
+    <div>
+      <span>UYGULAMA GİBİ KULLAN</span>
+      <b>Liberte Club ana ekranında dursun</b>
+      <p>QR kartına, kampanyalara ve ödüllerine tek dokunuşla ulaş.</p>
+    </div>
+    <button onClick={install}>Ana Ekrana Ekle</button>
+  </div>;
+}
+
+function OfflineNotice(){
+  const[online,setOnline]=useState(typeof navigator==='undefined'?true:navigator.onLine);
+  useEffect(()=>{
+    const on=()=>setOnline(true);
+    const off=()=>setOnline(false);
+    window.addEventListener('online',on);
+    window.addEventListener('offline',off);
+    return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
+  },[]);
+  if(online)return null;
+  return <div className="offlineToast">Bağlantı yok. Liberte Club yerel kayıtla çalışmaya devam ediyor.</div>;
+}
+
+function HomeScreen({db,customer,card,commit,setTab,installPrompt,setInstallPrompt}){
   const featured=db.items.filter(i=>i.featured).slice(0,6);
   const best=db.items.filter(i=>i.best).slice(0,5);
   const threshold=db.settings.stamp_threshold||10;
@@ -1060,6 +1121,8 @@ function HomeScreen({db,customer,card,commit,setTab}){
         <button onClick={()=>setTab('qr')}><QrCode/> QR Kartım</button>
         <button onClick={()=>setTab('menu')}><ShoppingBag/> Menüye Bak</button>
       </div>
+
+      <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>
 
       <DailyCampaignCard db={db} setTab={setTab}/>
 

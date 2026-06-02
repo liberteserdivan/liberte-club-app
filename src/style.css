@@ -807,3 +807,72 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
     grid-template-columns:1fr;
   }
 }
+
+/* =========================
+   LIBERTE CLUB V15 PWA APP READY
+   ========================= */
+.installCard{
+  margin:0 0 18px;
+  padding:20px;
+  border-radius:28px;
+  color:white;
+  background:
+    radial-gradient(circle at 90% 0%,rgba(216,194,157,.26),transparent 28%),
+    linear-gradient(135deg,#0B2F26,#16473A);
+  box-shadow:0 16px 38px rgba(11,47,38,.22);
+  display:grid;
+  gap:16px;
+  border:1px solid rgba(216,194,157,.18);
+}
+.installCard span{
+  display:block;
+  color:#D8C29D;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.installCard b{
+  display:block;
+  margin-top:8px;
+  color:white!important;
+  font-size:22px;
+  letter-spacing:-.4px;
+}
+.installCard p{
+  margin:8px 0 0;
+  color:rgba(255,255,255,.74)!important;
+  line-height:1.45;
+}
+.installCard button{
+  width:100%;
+  height:54px;
+  border-radius:18px!important;
+  background:#D8C29D!important;
+  color:#0B2F26!important;
+  box-shadow:none!important;
+}
+.offlineToast{
+  position:fixed;
+  left:50%;
+  bottom:112px;
+  transform:translateX(-50%);
+  width:min(390px,calc(100% - 24px));
+  padding:14px 16px;
+  z-index:120;
+  border-radius:18px;
+  background:#0B2F26;
+  color:#FBF6EE;
+  box-shadow:0 16px 40px rgba(0,0,0,.28);
+  border:1px solid rgba(216,194,157,.25);
+  font-size:13px;
+  font-weight:800;
+  text-align:center;
+}
+@supports(padding:max(0px)){
+  .app{
+    padding-bottom:max(110px,calc(110px + env(safe-area-inset-bottom)))!important;
+  }
+  .liberteNav{
+    bottom:max(14px,env(safe-area-inset-bottom))!important;
+  }
+}
