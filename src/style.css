@@ -363,3 +363,162 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
     grid-column:auto;
   }
 }
+
+/* =========================
+   V11 BUSINESS CORE
+   ========================= */
+.analyticsPage{
+  display:grid;
+  gap:14px;
+}
+.analyticsHero{
+  background:
+    radial-gradient(circle at 90% 0%,rgba(216,194,157,.24),transparent 30%),
+    linear-gradient(135deg,#0B2F26,#174B3A)!important;
+  color:white!important;
+}
+.analyticsHero span{
+  color:#D8C29D;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.analyticsHero h3{
+  margin:8px 0 8px!important;
+  color:white!important;
+  font-size:28px!important;
+}
+.analyticsHero p{
+  color:rgba(255,255,255,.78)!important;
+}
+.analyticsGrid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+.metricCard{
+  min-height:124px;
+  padding:18px 14px;
+  border-radius:24px;
+  background:#fff;
+  border:1px solid rgba(11,47,38,.07);
+  box-shadow:0 12px 26px rgba(0,0,0,.06);
+}
+.metricCard span{
+  display:block;
+  color:#7a7160;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.metricCard b{
+  display:block;
+  margin-top:8px;
+  color:#0B2F26;
+  font-size:34px;
+  line-height:1;
+}
+.metricCard small{
+  display:block;
+  margin-top:8px;
+  color:#7b8580;
+  font-weight:700;
+}
+.topMembers h3,
+.customerHistory h3{
+  margin:0 0 12px!important;
+  color:#0B2F26!important;
+}
+.topMember{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid rgba(11,47,38,.07);
+}
+.topMember:last-child{
+  border-bottom:0;
+}
+.topMember>span{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:#0B2F26;
+  color:#D8C29D;
+  font-weight:900;
+}
+.topMember b{
+  color:#0B2F26!important;
+}
+.topMember p{
+  margin:4px 0 0!important;
+  color:#727d78!important;
+  font-size:13px!important;
+}
+.customerHistory{
+  margin-bottom:18px!important;
+}
+.historyTitle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+.historyTitle span{
+  color:#B9955C;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.historyMini{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid rgba(11,47,38,.07);
+}
+.historyMini:last-child{
+  border-bottom:0;
+}
+.historyMini b{
+  color:#0B2F26!important;
+  font-size:15px!important;
+}
+.historyMini p{
+  margin:4px 0 0!important;
+  color:#77827d!important;
+  font-size:12px!important;
+}
+.historyMini strong{
+  min-width:46px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:15px;
+  background:#0B2F26;
+  color:#D8C29D;
+  font-size:14px;
+}
+.emptySmall{
+  padding:14px;
+  border-radius:18px;
+  background:rgba(11,47,38,.05);
+  color:#69756f!important;
+  font-weight:700;
+}
+@media(max-width:430px){
+  .analyticsGrid{
+    grid-template-columns:1fr 1fr;
+  }
+  .metricCard{
+    min-height:112px;
+    padding:15px 12px;
+  }
+  .metricCard b{
+    font-size:28px;
+  }
+}

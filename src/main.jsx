@@ -679,6 +679,48 @@ function Nav({tab,setTab,admin}){
 }
 
 
+
+function CustomerHistoryCard({db,customer}){
+  const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,5);
+
+  const label=h=>({
+    stamp_add:'Damga eklendi',
+    stamp_remove:'Damga silindi',
+    reward_redeem:'İkram kullanıldı',
+    birthday_reward:'Doğum günü hediyesi',
+    welcome_bonus:'Hoş geldin bonusu',
+    google_review_bonus:'Google yorum bonusu',
+    register:'Kayıt oluşturuldu'
+  }[h.type]||h.source||'İşlem');
+
+  const badge=h=>{
+    if(h.type==='reward_redeem')return 'Hak';
+    if(h.type==='birthday_reward')return '+1';
+    if(h.type==='google_review_bonus')return '+3';
+    if(h.count>0)return `+${h.count}`;
+    return h.count||'•';
+  };
+
+  return <div className="customerHistory card">
+    <div className="historyTitle">
+      <div>
+        <span>HESAP HAREKETLERİ</span>
+        <h3>Son İşlemler</h3>
+      </div>
+    </div>
+
+    {rows.length?rows.map(h=>
+      <div className="historyMini" key={h.id}>
+        <div>
+          <b>{label(h)}</b>
+          <p>{h.createdAt} · {h.source||'Liberte Club'}</p>
+        </div>
+        <strong>{badge(h)}</strong>
+      </div>
+    ):<p className="emptySmall">Henüz işlem geçmişi yok. İlk damganı kasada QR ile alabilirsin.</p>}
+  </div>;
+}
+
 function GoogleReviewBonusCard({db,customer,commit,compact=false}){
   const already=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='google_review_bonus');
 
@@ -798,6 +840,8 @@ function HomeScreen({db,customer,card,commit,setTab}){
       </div>
 
       <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
+
+      <CustomerHistoryCard db={db} customer={customer}/>
 
       <div className="v4SectionHead">
         <h3>Bunları denedin mi?</h3>
@@ -1082,7 +1126,7 @@ function CampaignScreen({db,customer,commit}){
 }
 
 function AdminScreen({db,commit}){
-  const[tab,setTab]=useState('scan');
+  const[tab,setTab]=useState('dashboard');
 
   return <section>
     <div className="adminHead">
@@ -1092,6 +1136,7 @@ function AdminScreen({db,commit}){
 
     <div className="adminTabs">
       {[
+        ['dashboard','Analiz'],
         ['scan','QR'],
         ['items','Ürün'],
         ['cats','Kategori'],
@@ -1106,6 +1151,7 @@ function AdminScreen({db,commit}){
       )}
     </div>
 
+    {tab==='dashboard'&&<AnalyticsAdmin db={db} commit={commit}/>}
     {tab==='scan'&&<ScanPanel db={db} commit={commit}/>}
     {tab==='items'&&<ItemAdmin db={db} commit={commit}/>}
     {tab==='cats'&&<CategoryAdmin db={db} commit={commit}/>}
@@ -1114,6 +1160,86 @@ function AdminScreen({db,commit}){
     {tab==='users'&&<UsersAdmin db={db} commit={commit}/>}
     {tab==='history'&&<HistoryAdmin db={db}/>}
   </section>;
+}
+
+
+function AnalyticsAdmin({db,commit}){
+  const customers=db.customers||[];
+  const loyalty=db.loyalty||{};
+  const history=db.history||[];
+  const now=new Date();
+  const monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  const totalStamps=Object.values(loyalty).reduce((a,l)=>a+(l.lifetimeStamps||0),0);
+  const activeRewards=Object.values(loyalty).reduce((a,l)=>a+(l.availableRewards||0),0);
+  const usedRewards=Object.values(loyalty).reduce((a,l)=>a+(l.usedRewards||0),0);
+  const pushCount=(db.pushSubscriptions||[]).length;
+  const monthEvents=history.filter(h=>String(h.createdAt||'').includes(monthKey)||String(h.createdAt||'').includes(now.toLocaleDateString('tr-TR').split('.').slice(1).join('.'))).length;
+  const birthdayCount=customers.filter(c=>c.birthDate).length;
+  const googleBonusCount=history.filter(h=>h.type==='google_review_bonus').length;
+  const today=new Date().toLocaleDateString('tr-TR');
+  const todayEvents=history.filter(h=>String(h.createdAt||'').startsWith(today)).length;
+  const topCustomers=[...customers]
+    .map(c=>({c,l:loyalty[c.id]||loyaltyTemplate(c.id)}))
+    .sort((a,b)=>(b.l.lifetimeStamps||0)-(a.l.lifetimeStamps||0))
+    .slice(0,5);
+
+  function exportData(){
+    const payload={customers:db.customers,loyalty:db.loyalty,history:db.history,exportedAt:new Date().toISOString()};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='liberte-club-yedek.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return <div className="analyticsPage">
+    <div className="analyticsHero card">
+      <span>LIBERTE CLUB</span>
+      <h3>İşletme Özeti</h3>
+      <p>Damga, ikram hakkı, müşteri ve işlem hareketlerini buradan takip et.</p>
+      <button className="ghost" onClick={exportData}><ShieldCheck/> Yedek İndir</button>
+    </div>
+
+    <div className="analyticsGrid">
+      <div className="metricCard"><span>Toplam Üye</span><b>{customers.length}</b><small>Kayıtlı müşteri</small></div>
+      <div className="metricCard"><span>Toplam Damga</span><b>{totalStamps}</b><small>Lifetime verilen</small></div>
+      <div className="metricCard"><span>Aktif Hak</span><b>{activeRewards}</b><small>Kullanılabilir ikram</small></div>
+      <div className="metricCard"><span>Kullanılan Hak</span><b>{usedRewards}</b><small>Kullandırılan ikram</small></div>
+      <div className="metricCard"><span>Bugün İşlem</span><b>{todayEvents}</b><small>Günlük hareket</small></div>
+      <div className="metricCard"><span>Push Cihaz</span><b>{pushCount}</b><small>Bildirim izni</small></div>
+      <div className="metricCard"><span>Doğum Tarihi</span><b>{birthdayCount}</b><small>Profilde kayıtlı</small></div>
+      <div className="metricCard"><span>Google Bonus</span><b>{googleBonusCount}</b><small>Yorum kampanyası</small></div>
+    </div>
+
+    <div className="card topMembers">
+      <h3>En Sadık Üyeler</h3>
+      {topCustomers.length?topCustomers.map(({c,l},i)=>
+        <div className="topMember" key={c.id}>
+          <span>{i+1}</span>
+          <div>
+            <b>{c.name}</b>
+            <p>{l.level||'Bronze'} · {l.lifetimeStamps||0} toplam damga · {l.availableRewards||0} hak</p>
+          </div>
+        </div>
+      ):<div className="empty">Henüz müşteri yok.</div>}
+    </div>
+
+    <div className="card">
+      <h3>Son İşlemler</h3>
+      {(history||[]).slice(0,6).map(h=>
+        <div className="historyMini" key={h.id}>
+          <div>
+            <b>{h.name||'Müşteri'}</b>
+            <p>{h.type} · {h.createdAt}</p>
+          </div>
+          <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count||'•'}</strong>
+        </div>
+      )}
+    </div>
+  </div>;
 }
 
 function ScanPanel({db,commit}){
@@ -1592,6 +1718,7 @@ function HistoryAdmin({db}){
     birthday_reward:'Doğum günü hediyesi',
     welcome_bonus:'Hoş geldin bonusu',
     register:'Kayıt oluşturuldu',
+    google_review_bonus:'Google yorum bonusu',
     customer_edit:'Kullanıcı düzenlendi',
     customer_delete:'Kullanıcı silindi'
   }[t]||t);
