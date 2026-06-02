@@ -300,6 +300,12 @@ function App(){
     else localStorage.removeItem('liberteSession');
   },[session]);
 
+  useEffect(()=>{
+    const refreshMs=5*60*1000;
+    const t=setTimeout(()=>window.location.reload(),refreshMs);
+    return()=>clearTimeout(t);
+  },[]);
+
   if(!session){
     return <main style={cssVars(db.settings)}>
       <Login db={db} commit={commit} setSession={setSession}/>
@@ -314,7 +320,7 @@ function App(){
     {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab}/>}
     {tab==='menu'&&<MenuScreen db={db}/>}
     {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
-    {tab==='campaign'&&<CampaignScreen db={db}/>}
+    {tab==='campaign'&&<CampaignScreen db={db} customer={customer} commit={commit}/>}
     {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}
 
     <Nav tab={tab} setTab={setTab} admin={customer.isAdmin}/>
@@ -331,7 +337,9 @@ function Login({db,commit,setSession}){
   const[loading,setLoading]=useState(false);
   const[info,setInfo]=useState('');
   const[pending,setPending]=useState(null);
+  const[notice,setNotice]=useState(null);
 
+  const notify=(message,type='warning')=>setNotice({message,type});
   const valid=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   const findByPhone=ph=>(db.customers||[]).find(x=>x.phone===ph);
   const findByEmail=em=>(db.customers||[]).find(x=>String(x.email||'').toLowerCase()===em);
@@ -342,17 +350,17 @@ function Login({db,commit,setSession}){
     const em=email.trim().toLowerCase();
 
     if(ph.length<10){
-      alert('Telefonu 10 hane gir.');
+      notify('Telefon numaranı 10 hane olarak gir.');
       return null;
     }
 
     if(!valid(em)){
-      alert('Geçerli e-posta gir.');
+      notify('Geçerli bir e-posta adresi gir.');
       return null;
     }
 
     if(authMode==='register'&&nm.split(' ').filter(Boolean).length<2){
-      alert('Kayıt için isim soyisim zorunlu.');
+      notify('Kayıt için isim soyisim zorunlu.');
       return null;
     }
 
@@ -396,16 +404,16 @@ function Login({db,commit,setSession}){
 
     if(authMode==='register'){
       if(byPhone||byEmail){
-        alert('Bu telefon veya e-posta ile kayıt var. Lütfen Giriş Yap ekranını kullan.');
+        notify('Bu telefon veya e-posta ile kayıt var. Lütfen Giriş Yap ekranını kullan.','info');
         return;
       }
     }else{
       if(!byPhone){
-        alert('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.');
+        notify('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.','info');
         return;
       }
       if(String(byPhone.email||'').toLowerCase()!==f.em){
-        alert('Telefon ve e-posta eşleşmiyor. Kayıtlı e-posta adresini gir.');
+        notify('Telefon ve e-posta eşleşmiyor. Kayıtlı e-posta adresini gir.');
         return;
       }
     }
@@ -436,7 +444,7 @@ function Login({db,commit,setSession}){
       setStep('code');
       setInfo('Kod e-posta adresine gönderildi.');
     }catch(e){
-      alert(e.message||'Kod gönderilemedi');
+      notify(e.message||'Kod gönderilemedi');
     }finally{
       setLoading(false);
     }
@@ -447,7 +455,7 @@ function Login({db,commit,setSession}){
     if(!f)return;
 
     if(code.replace(/\D/g,'').length!==6){
-      alert('6 haneli kodu gir.');
+      notify('6 haneli doğrulama kodunu gir.');
       return;
     }
 
@@ -479,7 +487,7 @@ function Login({db,commit,setSession}){
         loginExisting(c);
       }
     }catch(e){
-      alert(e.message||'Kod doğrulanamadı');
+      notify(e.message||'Kod doğrulanamadı');
     }finally{
       setLoading(false);
     }
@@ -510,7 +518,7 @@ function Login({db,commit,setSession}){
 
       {step==='form'?<>
         <label>Telefon</label>
-        <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0505 866 54 06"/>
+        <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel"/>
 
         {authMode==='register'&&<>
           <label>İsim Soyisim <em>*</em></label>
@@ -518,7 +526,7 @@ function Login({db,commit,setSession}){
         </>}
 
         <label>E-posta <em>*</em></label>
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="mail@ornek.com"/>
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email"/>
 
         <button disabled={loading} onClick={sendCode}>
           <Mail/> {loading?'Gönderiliyor...':'Mail Kod Gönder'}
@@ -542,6 +550,15 @@ function Login({db,commit,setSession}){
         {info&&<p className="info">{info}</p>}
       </>}
     </div>
+
+    {notice&&<div className="noticeBackdrop" onClick={()=>setNotice(null)}>
+      <div className={`noticeModal ${notice.type}`} onClick={e=>e.stopPropagation()}>
+        <div className="noticeIcon"><ShieldCheck/></div>
+        <h3>{notice.type==='info'?'Bilgilendirme':'Kontrol Edelim'}</h3>
+        <p>{notice.message}</p>
+        <button onClick={()=>setNotice(null)}>Tamam</button>
+      </div>
+    </div>}
   </section>;
 }
 
@@ -581,6 +598,47 @@ function Nav({tab,setTab,admin}){
   </nav>;
 }
 
+
+function GoogleReviewBonusCard({db,customer,commit,compact=false}){
+  const already=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='google_review_bonus');
+
+  function claim(){
+    window.open(googleReviewUrl,'_blank');
+    if(already)return;
+
+    const next=addStampToCustomer(db,customer.id,3,'Google yorum bonusu');
+    const createdAt=new Date().toLocaleString('tr-TR');
+
+    commit({
+      ...next,
+      history:[
+        {
+          id:Date.now()+7,
+          customerId:customer.id,
+          name:customer.name,
+          phone:customer.phone,
+          type:'google_review_bonus',
+          count:3,
+          source:'Google yorum yönlendirme',
+          createdAt
+        },
+        ...(next.history||[])
+      ]
+    });
+  }
+
+  return <div className={compact?'reviewBonusCard compact':'reviewBonusCard'}>
+    <div className="reviewBonusGlow"></div>
+    <div className="reviewBonusIcon"><Star fill="currentColor"/></div>
+    <div className="reviewBonusText">
+      <span>GOOGLE YORUM BONUSU</span>
+      <h3>Google yorumla 3 damga kazan</h3>
+      <p>{already?'Bu üyelik için yorum bonusu daha önce işlendi. Yine de yorum sayfasına gidebilirsin.':'Yorum sayfasına yönlen, 3 bonus damga hesabına hemen işlensin.'}</p>
+    </div>
+    <button className={already?'ghost':'goldBtn'} onClick={claim}>{already?'Yoruma Git':'3 Damga Kazan'}</button>
+  </div>;
+}
+
 function HomeScreen({db,customer,card,commit,setTab}){
   const featured=db.items.filter(i=>i.featured).slice(0,6);
   const best=db.items.filter(i=>i.best).slice(0,5);
@@ -590,6 +648,8 @@ function HomeScreen({db,customer,card,commit,setTab}){
   const progress=Math.min(100,(stamps/threshold)*100);
   const missing=Math.max(0,threshold-stamps);
   const level=card.level||levelByStamps(card.lifetimeStamps||0);
+
+
 
   return <section className="v4Home">
     <div className="v4Hero">
@@ -657,6 +717,8 @@ function HomeScreen({db,customer,card,commit,setTab}){
         </div>
       </div>
 
+      <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
+
       <div className="v4SectionHead">
         <h3>Bunları denedin mi?</h3>
         <button onClick={()=>setTab('menu')}>Tümü →</button>
@@ -687,9 +749,9 @@ function HomeScreen({db,customer,card,commit,setTab}){
 
         <div className="v4Campaign light">
           <span>YORUM ÖDÜLÜ</span>
-          <h3>Google yorumuna bonus damga</h3>
-          <p>Deneyimini paylaş, ayrıcalık kazan.</p>
-          <button onClick={()=>window.open(googleReviewUrl,'_blank')}>Yorum Yap</button>
+          <h3>3 damga bonus</h3>
+          <p>Bonus kartı artık ana sayfada görünür şekilde yer alıyor.</p>
+          <button onClick={()=>setTab('campaign')}>Bonusu Gör</button>
         </div>
       </div>
 
@@ -912,9 +974,15 @@ function QrScreen({db,customer,card}){
   </section>;
 }
 
-function CampaignScreen({db}){
-  return <section>
-    <h2>Kampanyalar</h2>
+function CampaignScreen({db,customer,commit}){
+  return <section className="campaignPage">
+    <div className="pageHero">
+      <span>LIBERTE CLUB</span>
+      <h2>Kampanyalar</h2>
+      <p>Üyelere özel fırsatlar ve bonus damga avantajları.</p>
+    </div>
+
+    <GoogleReviewBonusCard db={db} customer={customer} commit={commit} compact/>
 
     {(db.campaigns||[]).map(c=>
       <div className="card campaign" key={c.id}>
