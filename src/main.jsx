@@ -253,8 +253,7 @@ function App(){
   const card=db.loyalty[customer.id]||{};
 
   return <main className="app" style={cssVars(db.settings)}>
-    <Header db={db} customer={customer} setSession={setSession} sync={sync}/>
-
+    {tab==='home'&&<Header db={db} customer={customer} setSession={setSession} sync={sync}/>}
     {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab}/>}
     {tab==='menu'&&<MenuScreen db={db}/>}
     {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
@@ -543,6 +542,21 @@ function HomeScreen({db,customer,card,commit,setTab}){
         <div className="progress">
           <span style={{width:`${progress}%`}}></span>
         </div>
+
+        <div className="memberBottom">
+          <div>
+            <span>SEVİYE</span>
+            <b>{level}</b>
+          </div>
+          <div>
+            <span>ÖDÜL</span>
+            <b>{rewards}</b>
+          </div>
+          <div>
+            <span>TOPLAM</span>
+            <b>{card.lifetimeStamps||0}</b>
+          </div>
+        </div>
       </div>
 
       <div className="v4SectionHead">
@@ -765,6 +779,21 @@ function QrScreen({db,customer,card}){
       <div className="walletUser">
         <b>{customer.name}</b>
         <span>{level} MEMBER</span>
+      </div>
+
+      <div className="walletMeta">
+        <div>
+          <span>ÜYE NO</span>
+          <b>LC-{customer.id}</b>
+        </div>
+        <div>
+          <span>SEVİYE</span>
+          <b>{level}</b>
+        </div>
+        <div>
+          <span>TOPLAM</span>
+          <b>{card.lifetimeStamps||0}</b>
+        </div>
       </div>
 
       <div className="walletQr">
