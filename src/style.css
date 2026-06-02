@@ -1068,3 +1068,30 @@ header{
     font-size:16px!important;
   }
 }
+
+/* =========================
+   LIBERTE V16 FINAL IN-APP CORE
+   ========================= */
+.rewardsCenter,.fullHistory,.notificationCenter{position:relative;overflow:hidden}
+.centerHead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.centerHead span{display:block;color:#c8a96a;font-weight:900;font-size:12px;letter-spacing:.14em}
+.centerHead h3{margin:6px 0 0;color:#0b2f26;font-size:24px;line-height:1.1}
+.centerHead svg{width:34px;height:34px;color:#0b2f26;opacity:.78}
+.rewardLine,.historyLine,.notifyLine{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid rgba(11,47,38,.08)}
+.rewardLine b,.historyLine b,.notifyLine b{color:#0b2f26;font-size:16px}
+.rewardLine p,.historyLine p,.notifyLine p{margin:5px 0 0;color:#6b756f;font-size:13px;line-height:1.35}
+.rewardLine strong,.historyLine strong{min-width:46px;height:46px;border-radius:16px;background:#e1f6eb;color:#0b2f26;display:grid;place-items:center;font-size:18px;font-weight:1000}
+.notifyLine{display:block}
+.notifyLine small{display:block;margin-top:7px;color:#9a9f99;font-weight:800;font-size:12px}
+.reviewRequest{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.customerCardAdmin{display:grid;gap:14px}
+.customerDetailCard{padding:24px;border-radius:34px;color:white;background:radial-gradient(circle at 85% 0%,rgba(216,194,157,.22),transparent 30%),linear-gradient(135deg,#0B2F26,#16473A);box-shadow:0 18px 44px rgba(11,47,38,.22)}
+.customerDetailCard span{color:#d8c29d;font-size:12px;font-weight:1000;letter-spacing:.14em}
+.customerDetailCard h2{margin:8px 0 5px;font-size:34px;color:white;letter-spacing:-1px}
+.customerDetailCard p{color:rgba(255,255,255,.78)}
+.detailStats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}
+.detailStats div{padding:13px 10px;border-radius:18px;background:rgba(255,255,255,.10);text-align:center}
+.detailStats b{display:block;margin-top:5px;color:white;font-size:20px}
+.customerNote.big{padding:14px;border-radius:18px;background:rgba(255,255,255,.10);color:white!important;font-weight:800}
+.emptySmall{color:#6b756f!important;font-weight:800;line-height:1.45}
+@media(max-width:430px){.reviewRequest{display:block}.reviewRequest .userActions{margin-top:12px}.detailStats{grid-template-columns:repeat(2,1fr)}.customerDetailCard h2{font-size:30px}.centerHead h3{font-size:22px}}

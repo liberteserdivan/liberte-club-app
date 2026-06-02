@@ -988,31 +988,31 @@ function ReferralCard({db,customer}){
 }
 
 function GoogleReviewBonusCard({db,customer,commit,compact=false}){
-  const already=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='google_review_bonus');
+  const requests=db.googleReviewRequests||[];
+  const approved=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='google_review_bonus');
+  const pending=requests.some(r=>r.customerId===customer.id&&r.status==='pending');
 
-  function claim(){
-    window.open(googleReviewUrl,'_blank');
-    if(already)return;
-
-    const next=addStampToCustomer(db,customer.id,3,'Google yorum bonusu');
+  function requestBonus(){
+    window.open(googleReviewUrl,'_blank','noopener,noreferrer');
+    if(approved){alert('Google yorum bonusun daha önce işlendi.');return;}
+    if(pending){alert('Yorum talebin admin onayı bekliyor.');return;}
     const createdAt=new Date().toLocaleString('tr-TR');
-
     commit({
-      ...next,
+      ...db,
+      googleReviewRequests:[
+        {id:Date.now(),customerId:customer.id,name:customer.name,phone:customer.phone,email:customer.email,status:'pending',createdAt},
+        ...requests
+      ],
+      notifications:[
+        {id:Date.now()+1,customerId:customer.id,title:'Google yorum talebi alındı',body:'Yorum bonusun admin onayından sonra hesabına işlenecek.',createdAt},
+        ...(db.notifications||[])
+      ],
       history:[
-        {
-          id:Date.now()+7,
-          customerId:customer.id,
-          name:customer.name,
-          phone:customer.phone,
-          type:'google_review_bonus',
-          count:3,
-          source:'Google yorum yönlendirme',
-          createdAt
-        },
-        ...(next.history||[])
+        {id:Date.now()+2,customerId:customer.id,name:customer.name,phone:customer.phone,type:'google_review_request',count:0,source:'Google yorum onay talebi',createdAt},
+        ...(db.history||[])
       ]
     });
+    alert('Yorum sayfası açıldı. Yorumu tamamladıktan sonra talebin admin onayına düştü.');
   }
 
   return <div className={compact?'reviewBonusCard compact':'reviewBonusCard'}>
@@ -1021,12 +1021,11 @@ function GoogleReviewBonusCard({db,customer,commit,compact=false}){
     <div className="reviewBonusText">
       <span>GOOGLE YORUM BONUSU</span>
       <h3>Google yorumla 3 damga kazan</h3>
-      <p>{already?'Bu üyelik için yorum bonusu daha önce işlendi. Yine de yorum sayfasına gidebilirsin.':'Yorum sayfasına yönlen, 3 bonus damga hesabına hemen işlensin.'}</p>
+      <p>{approved?'Bu üyelik için yorum bonusu işlendi.':pending?'Talebin admin onayı bekliyor.':'Yorum sayfasına git, sonra admin onayıyla +3 damga hesabına işlensin.'}</p>
     </div>
-    <button className={already?'ghost':'goldBtn'} onClick={claim}>{already?'Yoruma Git':'3 Damga Kazan'}</button>
+    <button className={approved||pending?'ghost':'goldBtn'} onClick={requestBonus}>{approved?'Yoruma Git':pending?'Onay Bekliyor':'Yorum Yap'}</button>
   </div>;
 }
-
 
 function InstallAppCard({installPrompt,setInstallPrompt}){
   const[isStandalone,setIsStandalone]=useState(false);
@@ -1156,6 +1155,9 @@ function HomeScreen({db,customer,card,commit,setTab,installPrompt,setInstallProm
       <ReferralCard db={db} customer={customer}/>
 
       <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
+
+      <RewardsCenterCard db={db} customer={customer} card={card} commit={commit}/>
+      <NotificationCenterCard db={db} customer={customer}/>
 
       <DailyRewardCard db={db} customer={customer} commit={commit}/>
       <FirstOrderBonusCard db={db} customer={customer} commit={commit}/>
@@ -1507,6 +1509,104 @@ function VipBenefitsCard({db,customer}){
 }
 
 
+
+function RewardsCenterCard({db,customer,card,commit}){
+  const rewards=card?.availableRewards||0;
+  const birthday=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='birthday_reward');
+  const rewardName=db.settings?.reward_description||'1 Bedava İçecek';
+  const rows=[
+    {title:rewardName,count:rewards,desc:'Kasada QR göstererek admin tarafından kullandırılır.'},
+    {title:'Doğum günü hediyesi',count:birthday?1:0,desc:'Doğum gününde hesabına tanımlanan özel ikram.'}
+  ].filter(x=>x.count>0);
+  return <div className="rewardsCenter card">
+    <div className="centerHead">
+      <div><span>ÖDÜL MERKEZİ</span><h3>Kazandığım Ödüller</h3></div>
+      <Gift/>
+    </div>
+    {rows.length?rows.map((r,i)=><div className="rewardLine" key={i}>
+      <div><b>{r.title}</b><p>{r.desc}</p></div><strong>{r.count}</strong>
+    </div>):<p className="emptySmall">Henüz kullanılabilir ödülün yok. Damga biriktirmeye devam et.</p>}
+  </div>;
+}
+
+function FullHistoryCard({db,customer}){
+  const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,30);
+  const label=t=>({
+    stamp_add:'Damga eklendi',stamp_remove:'Damga silindi',reward_redeem:'İkram kullanıldı',birthday_reward:'Doğum günü hediyesi',welcome_bonus:'Hoş geldin bonusu',google_review_bonus:'Google yorum bonusu',google_review_request:'Yorum onay talebi',referral_bonus:'Referans bonusu',wheel_spin:'Şans çarkı',daily_login:'Günlük giriş ödülü',first_order_bonus:'İlk sipariş bonusu',check_in:'Check-in',coupon_use:'Kupon kullanıldı',login:'Giriş yapıldı'
+  }[t]||t);
+  return <div className="fullHistory card">
+    <div className="centerHead"><div><span>İŞLEM GEÇMİŞİ</span><h3>Damga ve Hak Hareketleri</h3></div><ShieldCheck/></div>
+    {rows.length?rows.map(h=><div className="historyLine" key={h.id}>
+      <div><b>{label(h.type)}</b><p>{h.createdAt} · {h.source||'Liberte Club'}</p></div>
+      <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count||'•'}</strong>
+    </div>):<p className="emptySmall">Henüz işlem geçmişi yok.</p>}
+  </div>;
+}
+
+function NotificationCenterCard({db,customer}){
+  const rows=(db.notifications||[]).filter(n=>!n.customerId||n.customerId===customer.id).slice(0,20);
+  return <div className="notificationCenter card">
+    <div className="centerHead"><div><span>BİLDİRİM MERKEZİ</span><h3>Duyurular ve Hatırlatmalar</h3></div><Bell/></div>
+    {rows.length?rows.map(n=><div className="notifyLine" key={n.id}>
+      <b>{n.title}</b><p>{n.body}</p><small>{n.createdAt}</small>
+    </div>):<p className="emptySmall">Henüz bildirim yok.</p>}
+  </div>;
+}
+
+function ReviewApprovalAdmin({db,commit}){
+  const rows=(db.googleReviewRequests||[]).filter(r=>r.status==='pending');
+  function approve(r){
+    const createdAt=new Date().toLocaleString('tr-TR');
+    let next=addStampToCustomer(db,r.customerId,3,'Admin Google yorum onayı');
+    next={
+      ...next,
+      googleReviewRequests:(next.googleReviewRequests||db.googleReviewRequests||[]).map(x=>x.id===r.id?{...x,status:'approved',approvedAt:createdAt}:x),
+      notifications:[
+        {id:Date.now()+10,customerId:r.customerId,title:'Google yorum bonusun onaylandı',body:'+3 damga hesabına işlendi. Teşekkür ederiz.',createdAt},
+        ...(next.notifications||[])
+      ],
+      history:[
+        {id:Date.now()+11,customerId:r.customerId,name:r.name,phone:r.phone,type:'google_review_bonus',count:3,source:'Admin Google yorum onayı',createdAt},
+        ...(next.history||[])
+      ]
+    };
+    commit(next);
+  }
+  function reject(r){
+    const createdAt=new Date().toLocaleString('tr-TR');
+    commit({...db,googleReviewRequests:(db.googleReviewRequests||[]).map(x=>x.id===r.id?{...x,status:'rejected',rejectedAt:createdAt}:x),notifications:[{id:Date.now(),customerId:r.customerId,title:'Google yorum talebi kapatıldı',body:'Yorum bonus talebin admin tarafından kapatıldı.',createdAt},...(db.notifications||[])]});
+  }
+  return <div className="list">
+    <div className="card"><h3>Google Yorum Onayları</h3><p>Kullanıcı yorum sayfasına yönlendikten sonra talep buraya düşer. Onaylayınca +3 damga işlenir.</p></div>
+    {rows.length?rows.map(r=><div className="card reviewRequest" key={r.id}>
+      <div><b>{r.name}</b><p>{r.phone} · {r.email}</p><small>{r.createdAt}</small></div>
+      <div className="userActions wide"><button className="goldBtn" onClick={()=>approve(r)}><Plus/> +3 Onayla</button><button className="ghost" onClick={()=>reject(r)}>Reddet</button></div>
+    </div>):<div className="empty">Bekleyen Google yorum talebi yok.</div>}
+  </div>;
+}
+
+function CustomerCardsAdmin({db,commit}){
+  const[first,setFirst]=useState((db.customers||[])[0]?.id||'');
+  const customer=(db.customers||[]).find(c=>String(c.id)===String(first));
+  const l=customer?(db.loyalty[customer.id]||loyaltyTemplate(customer.id)):null;
+  if(!customer)return <div className="empty">Müşteri bulunamadı.</div>;
+  const history=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,10);
+  const notes=(db.customerNotes||{})[customer.id]||'';
+  return <div className="customerCardAdmin">
+    <div className="card">
+      <h3>Müşteri Kartı</h3>
+      <select value={first} onChange={e=>setFirst(e.target.value)}>{(db.customers||[]).map(c=><option key={c.id} value={c.id}>{c.name} · {c.phone}</option>)}</select>
+    </div>
+    <div className="customerDetailCard">
+      <div><span>ÜYE</span><h2>{customer.name}</h2><p>{customer.phone} · {customer.email||'mail yok'}</p></div>
+      <div className="detailStats"><div><span>Damga</span><b>{l.totalStamps||0}</b></div><div><span>Hak</span><b>{l.availableRewards||0}</b></div><div><span>Seviye</span><b>{l.level||'Bronze'}</b></div><div><span>Coin</span><b>{calculateCoins(l)}</b></div></div>
+      {notes&&<p className="customerNote big">Not: {notes}</p>}
+      <div className="adminActions"><button onClick={()=>commit(addStampToCustomer(db,customer.id,1,'Müşteri kartı'))}><Plus/> Damga</button><button className="goldBtn" onClick={()=>commit(redeemRewardForCustomer(db,customer.id,'Müşteri kartı'))}><Gift/> Hak Kullan</button><button className="ghost" onClick={()=>commit(checkInCustomer(db,customer.id,'Müşteri kartı'))}><QrCode/> Check-in</button></div>
+    </div>
+    <div className="card"><h3>Son Hareketler</h3>{history.length?history.map(h=><div className="historyMini" key={h.id}><div><b>{h.type}</b><p>{h.createdAt} · {h.source}</p></div><strong>{h.count>0?`+${h.count}`:h.count||'•'}</strong></div>):<p className="emptySmall">Geçmiş yok.</p>}</div>
+  </div>;
+}
+
 function CampaignScreen({db,customer,commit}){
   return <section className="campaignPage">
     <div className="pageHero">
@@ -1524,6 +1624,9 @@ function CampaignScreen({db,customer,commit}){
     <ReferralCard db={db} customer={customer}/>
 
     <GoogleReviewBonusCard db={db} customer={customer} commit={commit} compact/>
+    <RewardsCenterCard db={db} customer={customer} card={db.loyalty[customer.id]||loyaltyTemplate(customer.id)} commit={commit}/>
+    <FullHistoryCard db={db} customer={customer}/>
+    <NotificationCenterCard db={db} customer={customer}/>
     <CouponUseCard db={db} customer={customer} commit={commit}/>
     <ClubStatusCard db={db} customer={customer}/>
 
@@ -1556,6 +1659,8 @@ function AdminScreen({db,commit}){
     <div className="adminTabs">
       {[
         ['dashboard','Analiz'],
+        ['cards','Kart'],
+        ['review','Yorum'],
         ['scan','QR'],
         ['items','Ürün'],
         ['cats','Kategori'],
@@ -1574,6 +1679,8 @@ function AdminScreen({db,commit}){
     </div>
 
     {tab==='dashboard'&&<AnalyticsAdmin db={db} commit={commit}/>}
+    {tab==='cards'&&<CustomerCardsAdmin db={db} commit={commit}/>}
+    {tab==='review'&&<ReviewApprovalAdmin db={db} commit={commit}/>}
     {tab==='scan'&&<ScanPanel db={db} commit={commit}/>}
     {tab==='items'&&<ItemAdmin db={db} commit={commit}/>}
     {tab==='cats'&&<CategoryAdmin db={db} commit={commit}/>}
