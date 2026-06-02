@@ -264,3 +264,41 @@ header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,
 .pageHero p{margin:0;color:rgba(255,255,255,.76);}
 .campaignPage{padding:14px 18px 130px;}
 @media(max-width:430px){.reviewBonusCard{padding:18px;border-radius:28px}.reviewBonusText h3{font-size:21px}.campaignPage{padding-left:14px;padding-right:14px}}
+
+/* =========================
+   V9 - TIME GREETING + BIRTHDAY
+   ========================= */
+.timeBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  margin-top:12px;
+  padding:9px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(216,194,157,.22);
+  color:#fff;
+  backdrop-filter:blur(18px);
+}
+.timeBadge span{
+  color:#d8c29d!important;
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+.timeBadge em{
+  color:rgba(255,255,255,.78);
+  font-size:12px;
+  font-style:normal;
+  font-weight:800;
+}
+.loginHint.mini{
+  margin:-6px 0 12px;
+  text-align:left;
+  font-size:12px!important;
+  color:#7a8a83!important;
+}
+.loginCard input[type="date"]{
+  min-height:58px;
+  color:#0b2f26!important;
+}

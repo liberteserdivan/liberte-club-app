@@ -133,6 +133,27 @@ const norm=p=>String(p||'').replace(/\D/g,'').replace(/^90/,'').replace(/^0/,'')
 const money=n=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:0}).format(Number(n||0));
 const cssVars=s=>({'--bg':s.bg,'--card':s.card,'--accent':s.accent,fontFamily:`${s.font},Inter,system-ui,Arial`});
 const levelByStamps=n=>n>=90?'Black':n>=50?'Gold':n>=20?'Silver':'Bronze';
+const todayKey=()=>new Date().toISOString().slice(0,10);
+const birthdayKey=()=>{
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+function getGreeting(){
+  const d=new Date();
+  const h=d.getHours();
+  const time=d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  if(h>=5&&h<12)return{label:'Günaydın',emoji:'☀️',time,tone:'Sabah kahvesi zamanı'};
+  if(h>=12&&h<17)return{label:'İyi günler',emoji:'☕',time,tone:'Günün en güzel molası'};
+  if(h>=17&&h<22)return{label:'İyi akşamlar',emoji:'🌙',time,tone:'Akşam keyfi Liberte’de'};
+  return{label:'İyi geceler',emoji:'✨',time,tone:'Geceye tatlı bir mola'};
+}
+function isBirthdayToday(birthDate){
+  if(!birthDate)return false;
+  const parts=String(birthDate).split('-');
+  if(parts.length<3)return false;
+  const d=new Date();
+  return Number(parts[1])===d.getMonth()+1&&Number(parts[2])===d.getDate();
+}
 
 
 function productImageSrc(item){
@@ -260,6 +281,45 @@ function redeemRewardForCustomer(db,id,source='Admin'){
   };
 }
 
+function applyBirthdayReward(db,id){
+  const customer=db.customers.find(c=>c.id===id);
+  if(!customer||!isBirthdayToday(customer.birthDate))return db;
+
+  const year=new Date().getFullYear();
+  const already=(db.history||[]).some(h=>h.customerId===id&&h.type==='birthday_reward'&&h.year===year);
+  if(already)return db;
+
+  const current=db.loyalty[id]||loyaltyTemplate(id);
+  const createdAt=new Date().toLocaleString('tr-TR');
+
+  return{
+    ...db,
+    loyalty:{
+      ...db.loyalty,
+      [id]:{
+        ...current,
+        availableRewards:(current.availableRewards||0)+1,
+        updatedAt:createdAt
+      }
+    },
+    history:[
+      {
+        id:Date.now()+91,
+        customerId:id,
+        name:customer.name,
+        phone:customer.phone,
+        type:'birthday_reward',
+        count:1,
+        reward:'Doğum günü ikramı',
+        source:'Doğum günü otomatik hediye',
+        year,
+        createdAt
+      },
+      ...(db.history||[])
+    ]
+  };
+}
+
 function useCommit(initial){
   const[db,setDb]=useState(initial);
   const[mode,setMode]=useState('local');
@@ -306,13 +366,20 @@ function App(){
     return()=>clearTimeout(t);
   },[]);
 
+  const customer=session?(db.customers.find(c=>c.id===session.customerId)||db.customers[0]):null;
+
+  useEffect(()=>{
+    if(!customer?.id)return;
+    const next=applyBirthdayReward(db,customer.id);
+    if(next!==db)commit(next);
+  },[customer?.id,customer?.birthDate]);
+
   if(!session){
     return <main style={cssVars(db.settings)}>
       <Login db={db} commit={commit} setSession={setSession}/>
     </main>;
   }
 
-  const customer=db.customers.find(c=>c.id===session.customerId)||db.customers[0];
   const card=db.loyalty[customer.id]||{};
 
   return <main className="app" style={cssVars(db.settings)}>
@@ -332,6 +399,7 @@ function Login({db,commit,setSession}){
   const[phone,setPhone]=useState('');
   const[name,setName]=useState('');
   const[email,setEmail]=useState('');
+  const[birthDate,setBirthDate]=useState('');
   const[code,setCode]=useState('');
   const[step,setStep]=useState('form');
   const[loading,setLoading]=useState(false);
@@ -364,7 +432,7 @@ function Login({db,commit,setSession}){
       return null;
     }
 
-    return{ph,nm,em};
+    return{ph,nm,em,birthDate};
   };
 
   function createCustomer(f){
@@ -377,17 +445,19 @@ function Login({db,commit,setSession}){
       isAdmin:f.ph==='5058665406',
       createdAt:new Date().toLocaleString('tr-TR'),
       lastVisit:null,
-      birthDate:''
+      birthDate:f.birthDate||''
     };
 
     next.customers=[...next.customers,c];
     next.loyalty={...next.loyalty,[c.id]:loyaltyTemplate(c.id)};
-    next.history=[
+    const withBonus=addStampToCustomer(next,c.id,2,'Yeni üye hoş geldin bonusu');
+    withBonus.history=[
+      {id:Date.now()+2,customerId:c.id,name:c.name,phone:c.phone,type:'welcome_bonus',count:2,source:'Yeni üyelik hediyesi',createdAt:new Date().toLocaleString('tr-TR')},
       {id:Date.now()+1,customerId:c.id,name:c.name,phone:c.phone,type:'register',count:0,source:'Kullanıcı kayıt',createdAt:new Date().toLocaleString('tr-TR')},
-      ...(next.history||[])
+      ...(withBonus.history||[])
     ];
 
-    commit(next);
+    commit(withBonus);
     setSession({customerId:c.id});
   }
 
@@ -523,6 +593,9 @@ function Login({db,commit,setSession}){
         {authMode==='register'&&<>
           <label>İsim Soyisim <em>*</em></label>
           <input value={name} onChange={e=>setName(e.target.value)} placeholder="Ad Soyad"/>
+          <label>Doğum Tarihi</label>
+          <input value={birthDate} onChange={e=>setBirthDate(e.target.value)} type="date"/>
+          <p className="loginHint mini">Doğum gününde 1 içecek ikramı hesabına tanımlanır.</p>
         </>}
 
         <label>E-posta <em>*</em></label>
@@ -648,15 +721,15 @@ function HomeScreen({db,customer,card,commit,setTab}){
   const progress=Math.min(100,(stamps/threshold)*100);
   const missing=Math.max(0,threshold-stamps);
   const level=card.level||levelByStamps(card.lifetimeStamps||0);
-
-
+  const greeting=getGreeting();
 
   return <section className="v4Home">
     <div className="v4Hero">
       <div className="v4Top">
         <div>
-          <p>İyi akşamlar ☕</p>
+          <p>{greeting.label} {greeting.emoji}</p>
           <h1>{customer.name.split(' ')[0]||'Liberte'}</h1>
+          <div className="timeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
         </div>
         <button className="v4Profile"><Crown/></button>
       </div>
@@ -1376,6 +1449,8 @@ function HistoryAdmin({db}){
     stamp_add:'Damga eklendi',
     stamp_remove:'Damga silindi',
     reward_redeem:'Hak kullanıldı',
+    birthday_reward:'Doğum günü hediyesi',
+    welcome_bonus:'Hoş geldin bonusu',
     register:'Kayıt oluşturuldu'
   }[t]||t);
 
