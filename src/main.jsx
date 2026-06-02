@@ -74,6 +74,8 @@ const seed={
   history:[],
   feedback:[],
   pushSubscriptions:[],
+  referrals:[],
+  automationLog:[],
   campaigns:[
     {id:1,title:'Bugüne Özel',body:'Smash Menü + kahve fırsatını kaçırma.',active:true,emoji:'🔥'}
   ]
@@ -92,6 +94,8 @@ function mergeDb(x){
     history:x.history||[],
     feedback:x.feedback||[],
     pushSubscriptions:x.pushSubscriptions||[],
+    referrals:x.referrals||[],
+    automationLog:x.automationLog||[],
     campaigns:x.campaigns||seed.campaigns
   }:seed;
 }
@@ -153,6 +157,33 @@ function isBirthdayToday(birthDate){
   if(parts.length<3)return false;
   const d=new Date();
   return Number(parts[1])===d.getMonth()+1&&Number(parts[2])===d.getDate();
+}
+
+function makeReferralCode(name='',phone='',id=''){
+  const base=String(name||'LIBERTE')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]/g,'')
+    .toUpperCase()
+    .slice(0,6)||'LIBERTE';
+  const tail=String(phone||id||Date.now()).replace(/\D/g,'').slice(-4)||String(id).slice(-4);
+  return `${base}${tail}`;
+}
+
+function getReferralCode(customer){
+  return customer?.referralCode||makeReferralCode(customer?.name,customer?.phone,customer?.id);
+}
+
+function findReferrerByCode(db,code){
+  const clean=String(code||'').trim().toUpperCase().replace(/\s/g,'');
+  if(!clean)return null;
+  return (db.customers||[]).find(c=>getReferralCode(c)===clean)||null;
+}
+
+function daysSince(dateText){
+  if(!dateText)return 999;
+  const d=new Date(dateText);
+  if(Number.isNaN(d.getTime()))return 999;
+  return Math.floor((Date.now()-d.getTime())/(1000*60*60*24));
 }
 
 
@@ -400,6 +431,7 @@ function Login({db,commit,setSession}){
   const[name,setName]=useState('');
   const[email,setEmail]=useState('');
   const[birthDate,setBirthDate]=useState('');
+  const[referralCode,setReferralCode]=useState('');
   const[code,setCode]=useState('');
   const[step,setStep]=useState('form');
   const[loading,setLoading]=useState(false);
@@ -432,7 +464,7 @@ function Login({db,commit,setSession}){
       return null;
     }
 
-    return{ph,nm,em,birthDate};
+    return{ph,nm,em,birthDate,referralCode:referralCode.trim().toUpperCase().replace(/\s/g,'')};
   };
 
   function createCustomer(f){
@@ -444,6 +476,7 @@ function Login({db,commit,setSession}){
       return;
     }
 
+    const referrer=findReferrerByCode(next,f.referralCode);
     const c={
       id:Date.now(),
       phone:f.ph,
@@ -451,16 +484,32 @@ function Login({db,commit,setSession}){
       email:f.em,
       isAdmin:f.ph==='5058665406',
       createdAt:new Date().toLocaleString('tr-TR'),
-      lastVisit:null,
-      birthDate:f.birthDate||''
+      lastVisit:new Date().toISOString(),
+      birthDate:f.birthDate||'',
+      referralCode:makeReferralCode(f.nm,f.ph,Date.now()),
+      referredBy:referrer?.id||null
     };
+
+    if(f.referralCode&&referrer?.phone===f.ph){
+      notify('Kendi referans kodunla kayıt oluşturamazsın.','info');
+      return;
+    }
 
     next.customers=[...next.customers,c];
     next.loyalty={...next.loyalty,[c.id]:loyaltyTemplate(c.id)};
-    const withBonus=addStampToCustomer(next,c.id,2,'Yeni üye hoş geldin bonusu');
+    let withBonus=addStampToCustomer(next,c.id,2,'Yeni üye hoş geldin bonusu');
+
+    if(referrer){
+      withBonus=addStampToCustomer(withBonus,c.id,2,'Referans kayıt bonusu');
+      withBonus=addStampToCustomer(withBonus,referrer.id,2,`${c.name} referans kaydı`);
+      withBonus.referrals=[
+        {id:Date.now()+15,referrerId:referrer.id,referrerName:referrer.name,newCustomerId:c.id,newCustomerName:c.name,code:getReferralCode(referrer),bonus:2,createdAt:new Date().toLocaleString('tr-TR')},
+        ...(withBonus.referrals||[])
+      ];
+    }
+
     withBonus.history=[
-      {id:Date.now()+2,customerId:c.id,name:c.name,phone:c.phone,type:'welcome_bonus',count:2,source:'Yeni üyelik hediyesi',createdAt:new Date().toLocaleString('tr-TR')},
-      {id:Date.now()+1,customerId:c.id,name:c.name,phone:c.phone,type:'register',count:0,source:'Kullanıcı kayıt',createdAt:new Date().toLocaleString('tr-TR')},
+      {id:Date.now()+3,customerId:c.id,name:c.name,phone:c.phone,type:'register',count:0,source:referrer?`Referanslı kayıt: ${referrer.name}`:'Kullanıcı kayıt',createdAt:new Date().toLocaleString('tr-TR')},
       ...(withBonus.history||[])
     ];
 
@@ -469,6 +518,15 @@ function Login({db,commit,setSession}){
   }
 
   function loginExisting(customer){
+    const createdAt=new Date().toLocaleString('tr-TR');
+    commit({
+      ...db,
+      customers:(db.customers||[]).map(c=>c.id===customer.id?{...c,lastVisit:new Date().toISOString()}:c),
+      history:[
+        {id:Date.now()+44,customerId:customer.id,name:customer.name,phone:customer.phone,type:'login',count:0,source:'Kullanıcı giriş',createdAt},
+        ...(db.history||[])
+      ]
+    });
     setSession({customerId:customer.id});
   }
 
@@ -603,6 +661,10 @@ function Login({db,commit,setSession}){
           <label>Doğum Tarihi</label>
           <input value={birthDate} onChange={e=>setBirthDate(e.target.value)} type="date"/>
           <p className="loginHint mini">Doğum gününde 1 içecek ikramı hesabına tanımlanır.</p>
+
+          <label>Referans Kodu</label>
+          <input value={referralCode} onChange={e=>setReferralCode(e.target.value.toUpperCase())} placeholder="Varsa davet kodun"/>
+          <p className="loginHint mini">Referans koduyla kayıt olursan sen de davet eden de +2 damga kazanır.</p>
         </>}
 
         <label>E-posta <em>*</em></label>
@@ -690,7 +752,9 @@ function CustomerHistoryCard({db,customer}){
     birthday_reward:'Doğum günü hediyesi',
     welcome_bonus:'Hoş geldin bonusu',
     google_review_bonus:'Google yorum bonusu',
-    register:'Kayıt oluşturuldu'
+    register:'Kayıt oluşturuldu',
+    referral_bonus:'Referans bonusu',
+    login:'Giriş yapıldı'
   }[h.type]||h.source||'İşlem');
 
   const badge=h=>{
@@ -718,6 +782,42 @@ function CustomerHistoryCard({db,customer}){
         <strong>{badge(h)}</strong>
       </div>
     ):<p className="emptySmall">Henüz işlem geçmişi yok. İlk damganı kasada QR ile alabilirsin.</p>}
+  </div>;
+}
+
+
+function ReferralCard({db,customer}){
+  const code=getReferralCode(customer);
+  const invited=(db.referrals||[]).filter(r=>r.referrerId===customer.id).length;
+  const shareText=`Liberte Club'a katıl, kayıt olurken ${code} kodunu kullan. İkimiz de +2 damga kazanalım.`;
+
+  async function copy(){
+    try{await navigator.clipboard.writeText(code);alert('Referans kodun kopyalandı.');}
+    catch{alert(`Referans kodun: ${code}`);}
+  }
+
+  async function share(){
+    if(navigator.share){
+      try{await navigator.share({title:'Liberte Club Davet',text:shareText,url:'https://app.liberte.cafe'});return;}catch{}
+    }
+    copy();
+  }
+
+  return <div className="referralCard">
+    <div>
+      <span>ARKADAŞINI DAVET ET</span>
+      <h3>+2 damga sen, +2 damga arkadaşın</h3>
+      <p>Kayıtta bu kod kullanıldığında bonus damgalar otomatik işlenir.</p>
+    </div>
+    <div className="referralCodeBox">
+      <small>Davet Kodun</small>
+      <b>{code}</b>
+      <em>{invited} davet</em>
+    </div>
+    <div className="referralActions">
+      <button className="goldBtn" onClick={share}>Davet Et</button>
+      <button className="ghost" onClick={copy}>Kodu Kopyala</button>
+    </div>
   </div>;
 }
 
@@ -838,6 +938,8 @@ function HomeScreen({db,customer,card,commit,setTab}){
           </div>
         </div>
       </div>
+
+      <ReferralCard db={db} customer={customer}/>
 
       <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
 
@@ -1106,6 +1208,8 @@ function CampaignScreen({db,customer,commit}){
       <p>Üyelere özel fırsatlar ve bonus damga avantajları.</p>
     </div>
 
+    <ReferralCard db={db} customer={customer}/>
+
     <GoogleReviewBonusCard db={db} customer={customer} commit={commit} compact/>
 
     {(db.campaigns||[]).map(c=>
@@ -1142,6 +1246,7 @@ function AdminScreen({db,commit}){
         ['cats','Kategori'],
         ['design','Tasarım'],
         ['push','Push'],
+        ['growth','Büyüme'],
         ['users','Kullanıcı'],
         ['history','Geçmiş']
       ].map(x=>
@@ -1157,6 +1262,7 @@ function AdminScreen({db,commit}){
     {tab==='cats'&&<CategoryAdmin db={db} commit={commit}/>}
     {tab==='design'&&<DesignAdmin db={db} commit={commit}/>}
     {tab==='push'&&<PushAdmin db={db} commit={commit}/>}
+    {tab==='growth'&&<GrowthAdmin db={db} commit={commit}/>}
     {tab==='users'&&<UsersAdmin db={db} commit={commit}/>}
     {tab==='history'&&<HistoryAdmin db={db}/>}
   </section>;
@@ -1477,6 +1583,63 @@ function DesignAdmin({db,commit}){
   </div>;
 }
 
+function GrowthAdmin({db,commit}){
+  const customers=db.customers||[];
+  const referrals=db.referrals||[];
+  const todayBirthdays=customers.filter(c=>isBirthdayToday(c.birthDate));
+  const inactive=customers.filter(c=>!c.isAdmin&&daysSince(c.lastVisit||c.createdAt)>=7);
+  const topRefs=[...customers].map(c=>({c,count:referrals.filter(r=>r.referrerId===c.id).length,code:getReferralCode(c)})).sort((a,b)=>b.count-a.count).slice(0,10);
+  const[note,setNote]=useState('');
+
+  function sendLocalCampaign(kind){
+    const createdAt=new Date().toLocaleString('tr-TR');
+    const title=kind==='birthday'?'Doğum günü üyeleri':'Seni özledik kampanyası';
+    const body=kind==='birthday'?'Bugün doğum günü olan üyelere ikram hatırlatması.':'7 gündür gelmeyen üyeler için geri çağırma kampanyası.';
+    commit({
+      ...db,
+      notifications:[{id:Date.now(),title,body,createdAt},...(db.notifications||[])],
+      automationLog:[{id:Date.now()+1,kind,title,body,count:kind==='birthday'?todayBirthdays.length:inactive.length,createdAt},...(db.automationLog||[])]
+    });
+    setNote(`${title} kaydedildi. Hedef üye: ${kind==='birthday'?todayBirthdays.length:inactive.length}`);
+  }
+
+  return <div className="growthPage">
+    <div className="card analyticsHero">
+      <span>V12 GROWTH</span>
+      <h3>Büyüme Sistemi</h3>
+      <p>Referans, doğum günü ve geri çağırma kampanyalarını buradan takip et.</p>
+      {note&&<p className="info">{note}</p>}
+    </div>
+
+    <div className="analyticsGrid">
+      <div className="metricCard"><span>Referanslı Kayıt</span><b>{referrals.length}</b><small>Toplam davet</small></div>
+      <div className="metricCard"><span>Bugün Doğum Günü</span><b>{todayBirthdays.length}</b><small>İkram hedefi</small></div>
+      <div className="metricCard"><span>7+ Gün Gelmeyen</span><b>{inactive.length}</b><small>Geri çağırma</small></div>
+      <div className="metricCard"><span>Push Cihaz</span><b>{(db.pushSubscriptions||[]).length}</b><small>Kayıtlı token</small></div>
+    </div>
+
+    <div className="card growthActions">
+      <h3>Otomasyon Kısayolları</h3>
+      <button onClick={()=>sendLocalCampaign('birthday')}><Gift/> Doğum Günü Kampanyası Kaydet</button>
+      <button className="goldBtn" onClick={()=>sendLocalCampaign('inactive')}><Bell/> Seni Özledik Kampanyası Kaydet</button>
+      <p>Bu kayıtlar uygulama içi bildirimlere eklenir. Gerçek push için Push sekmesinden gönderim yapabilirsin.</p>
+    </div>
+
+    <div className="card">
+      <h3>Referans Liderleri</h3>
+      {topRefs.map(x=><div className="historyMini" key={x.c.id}>
+        <div><b>{x.c.name}</b><p>{x.code} · {x.c.phone}</p></div>
+        <strong>{x.count}</strong>
+      </div>)}
+    </div>
+
+    <div className="card">
+      <h3>Bugün Doğum Günü Olanlar</h3>
+      {todayBirthdays.length?todayBirthdays.map(c=><div className="historyMini" key={c.id}><div><b>{c.name}</b><p>{c.phone} · {c.email}</p></div><strong>🎂</strong></div>):<p className="emptySmall">Bugün doğum günü olan üye yok.</p>}
+    </div>
+  </div>;
+}
+
 function PushAdmin({db,commit}){
   const[title,setTitle]=useState('Liberte Club');
   const[body,setBody]=useState('Bugüne özel kampanya seni bekliyor.');
@@ -1528,8 +1691,13 @@ function PushAdmin({db,commit}){
 
       <button onClick={()=>{
         setTitle('Seni özledik ☕');
-        setBody('Liberte’ye gel, bugün ekstra damga kazan.');
+        setBody('7 gündür görüşemedik. Bugün Liberte’ye gel, ekstra damga kazan.');
       }}>Seni özledik</button>
+
+      <button onClick={()=>{
+        setTitle('Doğum günün kutlu olsun 🎂');
+        setBody('Liberte’den doğum gününe özel 1 içecek ikramın hesabında.');
+      }}>Doğum Günü</button>
     </div>
 
     <button onClick={send}><Send/> Gönder</button>
@@ -1667,6 +1835,7 @@ function UsersAdmin({db,commit}){
           <div>
             <b>{c.name}</b>
             <p>{c.phone} · {c.email||'mail yok'} · {c.birthDate||'doğum tarihi yok'} · {l.level||'Bronze'}</p>
+            <p>Referans kodu: <b>{getReferralCode(c)}</b></p>
             <small>{l.totalStamps||0} damga · {l.availableRewards||0} kullanılabilir hak · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
           </div>
 
@@ -1718,9 +1887,12 @@ function HistoryAdmin({db}){
     birthday_reward:'Doğum günü hediyesi',
     welcome_bonus:'Hoş geldin bonusu',
     register:'Kayıt oluşturuldu',
+    referral_bonus:'Referans bonusu',
+    login:'Giriş yapıldı',
     google_review_bonus:'Google yorum bonusu',
     customer_edit:'Kullanıcı düzenlendi',
-    customer_delete:'Kullanıcı silindi'
+    customer_delete:'Kullanıcı silindi',
+    login:'Giriş yapıldı'
   }[t]||t);
 
   return <div className="list">
