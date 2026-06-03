@@ -1072,7 +1072,17 @@ function OfflineNotice(){
   return <div className="offlineToast">Bağlantı yok. Liberte Club yerel kayıtla çalışmaya devam ediyor.</div>;
 }
 
+function HomeQuickDock({setTab,onWheel,wheelDone}){
+  return <nav className="homeQuickDock" aria-label="Hızlı erişim">
+    <button type="button" onClick={()=>setTab('qr')}><QrCode/><span>QR Kart</span></button>
+    <button type="button" onClick={()=>setTab('menu')}><ShoppingBag/><span>Menü</span></button>
+    <button type="button" className={`wheelHub${wheelDone?' done':''}`} onClick={onWheel}><Sparkles/><span>Çark</span></button>
+    <button type="button" onClick={()=>setTab('campaign')}><Gift/><span>Fırsat</span></button>
+  </nav>;
+}
+
 function HomeScreen({db,customer,card,commit,setTab,setSession,sync,installPrompt,setInstallPrompt}){
+  const wheelRef=useRef(null);
   const featured=db.items.filter(i=>i.featured).slice(0,6);
   const best=db.items.filter(i=>i.best).slice(0,5);
   const threshold=db.settings.stamp_threshold||10;
@@ -1082,135 +1092,132 @@ function HomeScreen({db,customer,card,commit,setTab,setSession,sync,installPromp
   const missing=Math.max(0,threshold-stamps);
   const level=card.level||levelByStamps(card.lifetimeStamps||0);
   const greeting=getGreeting();
+  const wheelDone=!!(db.wheelSpins||[]).find(x=>x.customerId===customer.id&&x.day===localDayKey());
 
-  return <section className="v4Home">
-    <div className="v4Hero">
+  // Çark dock'tan tetiklenir; çevrildiyse kart bölümüne kaydırır
+  function handleWheelDock(){
+    if(wheelDone){
+      wheelRef.current?.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+    commit(spinLuckyWheel(db,customer.id));
+  }
+
+  return <section className="v4Home homePro">
+    <div className="homeHeroPro">
       <Header db={db} customer={customer} setSession={setSession} sync={sync}/>
-      <div className="v4Top">
+      <div className="homeWelcome">
         <div>
-          <p>{greeting.label} {greeting.emoji}</p>
+          <p className="homeGreet">{greeting.label} {greeting.emoji}</p>
           <h1>{customer.name.split(' ')[0]||'Liberte'}</h1>
-          <div className="timeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
+          <div className="homeTimeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
         </div>
-        <button className="v4Profile"><Crown/></button>
+        <div className="homeLevelPill"><Crown/><span>{level}</span></div>
       </div>
 
-      <div className="v4Stats">
-        <div>
-          <span>Damga</span>
-          <b>{stamps}/{threshold}</b>
-          <small>{missing} damga kaldı</small>
-        </div>
+      <div className="homeLoyaltyStrip">
+        <div><small>Damga</small><b>{stamps}<span>/{threshold}</span></b><em>{missing} kaldı</em></div>
+        <div className="homeLoyaltyMain"><Coffee/><b>{rewards}</b><em>ikram hakkı</em></div>
+        <div><small>Toplam</small><b>{card.lifetimeStamps||0}</b><em>lifetime</em></div>
+      </div>
 
-        <div className="v4Center">
-          <div className="v4Circle">
-            <Coffee/>
-          </div>
-          <b>{rewards}</b>
-          <small>ikram hakkı</small>
-        </div>
-
-        <div>
-          <span>Seviye</span>
-          <b>{level}</b>
-          <small>Club üyesi</small>
-        </div>
+      <div className="homeHeroProgress" aria-hidden="true">
+        <span style={{width:`${progress}%`}}/>
       </div>
     </div>
 
-    <div className="v4Sheet">
-      <div className="v4Actions">
-        <button onClick={()=>setTab('qr')}><QrCode/> QR Kartım</button>
-        <button onClick={()=>setTab('menu')}><ShoppingBag/> Menüye Bak</button>
-      </div>
+    <HomeQuickDock setTab={setTab} onWheel={handleWheelDock} wheelDone={wheelDone}/>
 
+    <div className="homeBody">
       <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>
 
-      <DailyCampaignCard db={db} setTab={setTab}/>
-
-      <div className="v4MemberCard">
-        <div>
-          <span>LIBERTE CLUB</span>
-          <h2>Sadakat Kartı</h2>
-          <p>{stamps}/{threshold} damga · {rewards} ödül</p>
-        </div>
-        <Crown/>
-        <div className="progress">
-          <span style={{width:`${progress}%`}}></span>
-        </div>
-
-        <div className="memberBottom">
+      <div className="homeSection">
+        <p className="homeSectionLabel">Sadakat kartın</p>
+        <div className="v4MemberCard homeWalletCard">
           <div>
-            <span>SEVİYE</span>
-            <b>{level}</b>
+            <span>LIBERTE CLUB</span>
+            <h2>Sadakat Kartı</h2>
+            <p>{stamps}/{threshold} damga · {rewards} ödül · {db.settings.reward_description||'1 Bedava İçecek'}</p>
           </div>
-          <div>
-            <span>ÖDÜL</span>
-            <b>{rewards}</b>
-          </div>
-          <div>
-            <span>TOPLAM</span>
-            <b>{card.lifetimeStamps||0}</b>
+          <Crown/>
+          <div className="progress"><span style={{width:`${progress}%`}}/></div>
+          <div className="memberBottom">
+            <div><span>SEVİYE</span><b>{level}</b></div>
+            <div><span>ÖDÜL</span><b>{rewards}</b></div>
+            <div><span>TOPLAM</span><b>{card.lifetimeStamps||0}</b></div>
           </div>
         </div>
-      </div>
-
-      <ReferralCard db={db} customer={customer}/>
-
-      <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
-
-      <RewardsCenterCard db={db} customer={customer} card={card} commit={commit}/>
-      <NotificationCenterCard db={db} customer={customer}/>
-
-      <DailyRewardCard db={db} customer={customer} commit={commit}/>
-      <FirstOrderBonusCard db={db} customer={customer} commit={commit}/>
-      <LuckyWheelCard db={db} customer={customer} commit={commit}/>
-      <VipBenefitsCard db={db} customer={customer}/>
-
-      <CustomerHistoryCard db={db} customer={customer}/>
-
-      <div className="v4SectionHead">
-        <h3>Bunları denedin mi?</h3>
-        <button onClick={()=>setTab('menu')}>Tümü →</button>
-      </div>
-
-      <div className="v4ProductRail">
-        {best.map(i=>
-          <article className="v4MiniProduct" key={i.id}>
-            <div className="v4MiniVisual">{productImageSrc(i)?<img src={productImageSrc(i)}/>:<span>{i.image||'☕'}</span>}</div>
-            <em>Yeni</em>
-            <b>{i.name}</b>
-          </article>
-        )}
-      </div>
-
-      <div className="v4SectionHead">
-        <h3>Sana özel</h3>
-        <button onClick={()=>setTab('campaign')}>Tümü →</button>
-      </div>
-
-      <div className="v4Campaigns">
-        <div className="v4Campaign dark">
-          <span>BUGÜNE ÖZEL</span>
-          <h3>Smash Menü + kahve fırsatı</h3>
-          <p>Liberte Club üyelerine özel.</p>
-          <button onClick={()=>setTab('campaign')}>Detayları Gör</button>
-        </div>
-
-        <div className="v4Campaign light">
-          <span>YORUM ÖDÜLÜ</span>
-          <h3>3 damga bonus</h3>
-          <p>Bonus kartı artık ana sayfada görünür şekilde yer alıyor.</p>
-          <button onClick={()=>setTab('campaign')}>Bonusu Gör</button>
+        <div className="homePrimaryActions">
+          <button type="button" className="homePrimaryBtn" onClick={()=>setTab('qr')}><QrCode/> Kasada Göster</button>
+          <button type="button" className="homePrimaryBtn ghost" onClick={()=>setTab('menu')}><ShoppingBag/> Menüyü Gör</button>
         </div>
       </div>
 
-      <div className="v4SectionHead">
-        <h3>Öne çıkanlar</h3>
+      <div className="homeSection">
+        <p className="homeSectionLabel">Bugünün fırsatları</p>
+        <DailyCampaignCard db={db} setTab={setTab}/>
+        <div className="homeRewardStack">
+          <DailyRewardCard db={db} customer={customer} commit={commit}/>
+          <FirstOrderBonusCard db={db} customer={customer} commit={commit}/>
+        </div>
       </div>
 
-      <div className="v4List">
-        {featured.slice(0,4).map(i=><Product key={i.id} item={i}/>)}
+      <div className="homeSection">
+        <p className="homeSectionLabel">Ödüller & avantajlar</p>
+        <RewardsCenterCard db={db} customer={customer} card={card} commit={commit}/>
+        <GoogleReviewBonusCard db={db} customer={customer} commit={commit}/>
+        <div ref={wheelRef} id="lucky-wheel" className="homeWheelAnchor">
+          <LuckyWheelCard db={db} customer={customer} commit={commit}/>
+        </div>
+        <VipBenefitsCard db={db} customer={customer}/>
+      </div>
+
+      <div className="homeSection">
+        <p className="homeSectionLabel">Hesabım</p>
+        <ReferralCard db={db} customer={customer}/>
+        <CustomerHistoryCard db={db} customer={customer}/>
+        <NotificationCenterCard db={db} customer={customer}/>
+      </div>
+
+      <div className="homeSection">
+        <p className="homeSectionLabel">Keşfet</p>
+        <div className="homeSubHead">
+          <h3>Bunları denedin mi?</h3>
+          <button type="button" className="homeLinkBtn" onClick={()=>setTab('menu')}>Tümü →</button>
+        </div>
+        <div className="v4ProductRail homeProductRail">
+          {best.map(i=>
+            <article className="v4MiniProduct" key={i.id}>
+              <div className="v4MiniVisual">{productImageSrc(i)?<img src={productImageSrc(i)} alt=""/>:<span>{i.image||'☕'}</span>}</div>
+              <em>Yeni</em>
+              <b>{i.name}</b>
+            </article>
+          )}
+        </div>
+
+        <div className="homeSubHead">
+          <h3>Sana özel</h3>
+          <button type="button" className="homeLinkBtn" onClick={()=>setTab('campaign')}>Tümü →</button>
+        </div>
+        <div className="v4Campaigns homeCampaignRail">
+          <div className="v4Campaign dark">
+            <span>BUGÜNE ÖZEL</span>
+            <h3>Smash Menü + kahve fırsatı</h3>
+            <p>Liberte Club üyelerine özel.</p>
+            <button type="button" onClick={()=>setTab('campaign')}>Detayları Gör</button>
+          </div>
+          <div className="v4Campaign light">
+            <span>YORUM ÖDÜLÜ</span>
+            <h3>3 damga bonus</h3>
+            <p>Google yorumunla ekstra damga kazan.</p>
+            <button type="button" onClick={()=>setTab('campaign')}>Bonusu Gör</button>
+          </div>
+        </div>
+
+        <div className="homeSubHead"><h3>Öne çıkanlar</h3></div>
+        <div className="v4List homeFeaturedList">
+          {featured.slice(0,4).map(i=><Product key={i.id} item={i}/>)}
+        </div>
       </div>
     </div>
   </section>;
