@@ -136,43 +136,59 @@ function ScanPanel({db,commit}){
   const[active,setActive]=useState(false);
   const[found,setFound]=useState(null);
   const[msg,setMsg]=useState('');
+  const[success,setSuccess]=useState(false);
   const scanner=useRef(null);
 
   useEffect(()=>()=>{try{scanner.current?.stop()}catch{}},[]);
 
+  async function stopScanner(){
+    try{await scanner.current?.stop()}catch{}
+    scanner.current=null;
+    setActive(false);
+  }
+
   async function start(){
+    setFound(null);
+    setSuccess(false);
     setMsg('Kamera açılıyor...');
     setActive(true);
 
     setTimeout(async()=>{
       try{
         scanner.current=new Html5Qrcode('reader');
-
         await scanner.current.start(
           {facingMode:'environment'},
-          {fps:10,qrbox:240},
+          {fps:12,qrbox:{width:240,height:240}},
           txt=>{
             try{
               const data=JSON.parse(txt);
               const c=db.customers.find(x=>String(x.id)===String(data.id)||x.phone===data.phone);
-
               if(c){
                 setFound(c);
-                setMsg('Müşteri bulundu.');
-                scanner.current.stop();
-                setActive(false);
+                setSuccess(true);
+                setMsg('Müşteri bulundu!');
+                stopScanner();
               }else{
                 setMsg('Müşteri bulunamadı.');
               }
             }catch{
-              setMsg('QR okunamadı. Geçerli Liberte QR kodu okut.');
+              setMsg('Geçerli Liberte QR kodu okut.');
             }
           }
         );
       }catch(e){
         setMsg('Kamera açılamadı: '+e.message);
+        setActive(false);
       }
     },100);
+  }
+
+  async function rescan(){
+    await stopScanner();
+    setFound(null);
+    setSuccess(false);
+    setMsg('');
+    start();
   }
 
   function add(){
@@ -201,15 +217,34 @@ function ScanPanel({db,commit}){
   const l=found?(db.loyalty[found.id]||loyaltyTemplate(found.id)):null;
   const threshold=db.settings.stamp_threshold||10;
 
-  return <div className="card">
-    <button onClick={start}><ScanLine/> Kamera ile QR Okut</button>
-    {active&&<div id="reader"></div>}
-    <p className="info">{msg||'Müşteri QR kodunu okut. Damga ve ikram işlemleri bulut sisteme kaydedilir.'}</p>
-
-    {found&&<div className="found rewardBox">
+  return <div className="card scanPanelCard">
+    <div className="scanPanelHead">
       <div>
-        <b>{found.name}</b>
-        <span>{found.phone} · {found.email||'mail yok'}</span>
+        <span>KASİYER</span>
+        <h3>QR Okuyucu</h3>
+      </div>
+      {!active&&!found&&<button type="button" className="goldBtn scanStartBtn" onClick={start}><ScanLine size={18}/> Kamera Aç</button>}
+      {(active||found)&&<button type="button" className="ghost scanRescanBtn" onClick={rescan}><ScanLine size={16}/> Yeniden Tara</button>}
+    </div>
+
+    {active&&<div className="scannerFrame">
+      <div id="reader" />
+      <div className="scannerOverlay" aria-hidden="true">
+        <span className="scannerCorner tl" /><span className="scannerCorner tr" />
+        <span className="scannerCorner bl" /><span className="scannerCorner br" />
+        <span className="scannerLine" />
+      </div>
+    </div>}
+
+    <p className={`scanMsg${success?' isSuccess':''}`}>{msg||'Müşteri QR kodunu okut. Damga ve ikram işlemleri sisteme kaydedilir.'}</p>
+
+    {found&&<div className={`found rewardBox scanFoundCard${success?' scanFoundPop':''}`}>
+      <div className="scanFoundTop">
+        <div>
+          <b>{found.name}</b>
+          <span>{found.phone} · {found.email||'mail yok'}</span>
+        </div>
+        <span className="scanFoundBadge">LC-{found.id}</span>
       </div>
 
       <div className="adminStats">

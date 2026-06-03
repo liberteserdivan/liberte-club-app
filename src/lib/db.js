@@ -206,14 +206,57 @@ export function hasDailyClaim(db,customerId,type){
   return (db.dailyClaims||[]).some(x=>x.customerId===customerId&&x.type===type&&x.day===day);
 }
 
+// Ardışık günlük giriş serisini hesaplar
+export function getCustomerStreak(db,customerId){
+  const days=new Set(
+    (db.dailyClaims||[])
+      .filter(x=>x.customerId===customerId&&x.type==='daily_login')
+      .map(x=>x.day)
+  );
+  if(!days.size)return 0;
+  let streak=0;
+  const cursor=new Date();
+  const today=localDayKey();
+  if(!days.has(today))cursor.setDate(cursor.getDate()-1);
+  while(true){
+    const key=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
+    if(!days.has(key))break;
+    streak++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return streak;
+}
+
+// Ana sayfa günlük görev listesini üretir
+export function getDailyTasks(db,customerId){
+  const day=localDayKey();
+  const threshold=db.settings?.stamp_threshold||10;
+  const card=db.loyalty[customerId]||loyaltyTemplate(customerId);
+  const stamps=card.totalStamps||0;
+  const dailyDone=hasDailyClaim(db,customerId,'daily_login');
+  const wheelDone=(db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day);
+  const firstDone=(db.firstOrderBonuses||[]).some(x=>x.customerId===customerId);
+  return[
+    {id:'daily',label:'Günlük ödül',desc:dailyDone?'Alındı ✓':'+1 damga al',done:dailyDone,tab:'wheel',icon:'sun'},
+    {id:'wheel',label:'Şans çarkı',desc:wheelDone?'Bugün çevrildi':'Günde 1 çevir',done:wheelDone,tab:'wheel',icon:'sparkles'},
+    {id:'stamps',label:'Damga hedefi',desc:`${stamps}/${threshold} damga`,done:stamps>=threshold,tab:'qr',icon:'coffee',progress:Math.min(100,(stamps/threshold)*100)},
+    {id:'first',label:'İlk sipariş',desc:firstDone?'Kullanıldı':'+3 damga bonus',done:firstDone,tab:'wheel',icon:'gift'}
+  ];
+}
+
 export function claimDailyLoginReward(db,customerId){
   const customer=db.customers.find(c=>c.id===customerId);
   if(!customer)return db;
   const day=localDayKey();
   if(hasDailyClaim(db,customerId,'daily_login')){alert('Günlük giriş ödülünü bugün zaten aldın.');return db;}
   const createdAt=new Date().toLocaleString('tr-TR');
+  const prevStreak=getCustomerStreak(db,customerId);
   let next=addStampToCustomer(db,customerId,1,'Günlük giriş ödülü');
-  return{...next,dailyClaims:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,type:'daily_login',day,createdAt},...(next.dailyClaims||[])]};
+  next={...next,dailyClaims:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,type:'daily_login',day,createdAt},...(next.dailyClaims||[])]};
+  const newStreak=prevStreak+1;
+  if(newStreak===3)next=addStampToCustomer(next,customerId,1,'3 gün seri bonusu');
+  if(newStreak===7)next=addStampToCustomer(next,customerId,2,'7 gün seri bonusu');
+  return next;
 }
 
 export function claimFirstOrderBonus(db,customerId){

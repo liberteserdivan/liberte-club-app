@@ -2,6 +2,7 @@ import { Coffee, Crown, Gift, QrCode, ShoppingBag, Sparkles } from 'lucide-react
 import Header from '../components/Header.jsx';
 import { getGreeting, levelByStamps, productImageSrc } from '../lib/db.js';
 import { DailyCampaignCard, InstallAppCard, Product } from '../components/Cards.jsx';
+import DailyTasksStrip from '../components/DailyTasksStrip.jsx';
 
 // Ana sayfa — özet kart ve keşif; tüm içerik tek ekranda değil
 export default function HomePage({
@@ -38,6 +39,8 @@ export default function HomePage({
 
     <div className="homeBody">
       <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />
+
+      <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
 
       <div className="homeSection">
         <p className="homeSectionLabel">Sadakat kartın</p>
