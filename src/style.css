@@ -962,7 +962,7 @@ header{
   height:76px!important;
   padding:7px!important;
   border-radius:28px!important;
-  grid-template-columns:repeat(5,1fr)!important;
+  grid-template-columns:repeat(var(--nav-cols,5),1fr)!important;
   z-index:110!important;
 }
 
@@ -978,11 +978,23 @@ header{
   height:21px!important;
 }
 
-.liberteNav button:nth-child(3){
+.liberteNav button:nth-child(3),
+.liberteNav button.nav-qr{
   width:66px!important;
   height:66px!important;
   transform:translateY(-15px)!important;
   border-radius:999px!important;
+  background:linear-gradient(135deg,var(--forest),#1B5A49)!important;
+  color:#fff!important;
+  box-shadow:0 12px 28px rgba(11,47,38,.28)!important;
+}
+
+.liberteNav button.nav-qr.active{
+  color:var(--mint)!important;
+}
+
+.liberteNav button.wheel-done{
+  opacity:.72;
 }
 
 /* Liste sonlari nav altinda kaybolmasin */
@@ -1258,60 +1270,65 @@ header{
   transition:width .4s ease;
 }
 
-/* Navbar tarzı hızlı erişim — çark ortada */
-.homeQuickDock{
-  position:relative;
-  z-index:5;
-  width:min(392px,calc(100% - 28px));
-  margin:-22px auto 0;
-  padding:7px;
+.pageShell{
+  padding:calc(22px + env(safe-area-inset-top)) 18px calc(150px + env(safe-area-inset-bottom));
+}
+
+.pageHero{
+  margin-bottom:20px;
+  padding:24px 22px;
   border-radius:28px;
-  background:rgba(255,253,248,.96);
-  border:1px solid rgba(11,47,38,.08);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  box-shadow:0 16px 40px rgba(11,47,38,.12);
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:6px;
-}
-
-.homeQuickDock button{
-  height:62px;
-  border-radius:20px;
-  padding:0;
-  display:grid;
-  place-items:center;
-  gap:3px;
-  background:transparent;
-  color:#6B7570;
-  box-shadow:none;
-  font-size:10px;
-  font-weight:850;
-  transition:background .18s ease,color .18s ease,transform .18s ease;
-}
-
-.homeQuickDock button svg{width:21px;height:21px}
-
-.homeQuickDock button:active{transform:scale(.97)}
-
-.homeQuickDock button.wheelHub{
-  transform:translateY(-14px);
-  width:66px;
-  height:66px;
-  margin:auto;
-  border-radius:999px;
-  background:linear-gradient(145deg,var(--forest),var(--forest-3));
   color:#fff;
-  box-shadow:0 12px 28px rgba(11,47,38,.28);
-  border:2px solid rgba(216,194,157,.45);
+  background:linear-gradient(145deg,var(--forest),#174B3A);
 }
 
-.homeQuickDock button.wheelHub.done{
-  background:linear-gradient(145deg,#3a4a44,#2a3834);
-  border-color:rgba(255,255,255,.15);
-  color:var(--mint);
+.pageHero span{
+  color:var(--gold);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.14em;
 }
+
+.pageHero h2{
+  margin:8px 0 6px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:28px;
+}
+
+.pageHero p{
+  margin:0;
+  color:rgba(255,255,255,.75);
+  line-height:1.45;
+}
+
+.homeHubGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+.homeHubTile{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  gap:6px!important;
+  height:auto!important;
+  padding:16px!important;
+  border-radius:20px!important;
+  background:#fff!important;
+  color:var(--forest)!important;
+  border:1px solid var(--line)!important;
+  box-shadow:0 8px 22px rgba(11,47,38,.06)!important;
+  text-align:left!important;
+}
+
+.homeHubTile svg{width:22px!important;height:22px!important;color:var(--forest-3)!important}
+.homeHubTile b{font-size:15px!important}
+.homeHubTile span{font-size:12px!important;color:var(--muted)!important;font-weight:700!important}
+
+/* Eski hizli erisim dock kaldirildi */
+.homeQuickDock{display:none!important}
 
 .homeBody{
   padding:8px 18px calc(150px + env(safe-area-inset-bottom));
@@ -1435,6 +1452,5 @@ header{
 @media(max-width:430px){
   .homeWelcome h1{font-size:32px}
   .homeLoyaltyStrip b{font-size:22px}
-  .homeQuickDock{width:calc(100% - 24px)}
   .homeBody{padding-left:16px;padding-right:16px}
 }
