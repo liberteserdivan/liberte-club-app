@@ -2,7 +2,7 @@ import { DailyRewardCard, FirstOrderBonusCard, LuckyWheelCard } from '../compone
 
 // Şans çarkı ve günlük oyun ödülleri
 export default function WheelPage({ db, customer, commit }) {
-  return <section className="pageShell wheelPage">
+  return <section className="pageShell wheelPage wheelPageEnter">
     <div className="pageHero">
       <span>LIBERTE CLUB</span>
       <h2>Şans Çarkı</h2>

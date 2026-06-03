@@ -236,12 +236,12 @@ export function weightedPrize(prizes=[]){
   return list[0];
 }
 
-export function spinLuckyWheel(db,customerId){
+// Önceden seçilen ödülü veritabanına işler (animasyon sonrası kullanılır)
+export function applyWheelPrize(db,customerId,prize){
   const customer=db.customers.find(c=>c.id===customerId);
-  if(!customer)return db;
+  if(!customer||!prize)return db;
   const day=localDayKey();
-  if((db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day)){alert('Şans çarkını bugün zaten çevirdin.');return db;}
-  const prize=weightedPrize(db.wheelPrizes);
+  if((db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day))return db;
   const createdAt=new Date().toLocaleString('tr-TR');
   let next={...db};
   if(prize.type==='stamp')next=addStampToCustomer(next,customerId,Number(prize.value||1),'Şans çarkı');
@@ -254,6 +254,14 @@ export function spinLuckyWheel(db,customerId){
     wheelSpins:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,day,prize:prize.label,type:prize.type,value:prize.value,createdAt},...(next.wheelSpins||[])],
     history:[{id:Date.now()+2,customerId,name:customer.name,phone:customer.phone,type:'wheel_spin',count:Number(prize.value||0),source:`Şans çarkı: ${prize.label}`,createdAt},...(next.history||[])]
   };
+}
+
+export function spinLuckyWheel(db,customerId){
+  const customer=db.customers.find(c=>c.id===customerId);
+  if(!customer)return db;
+  const day=localDayKey();
+  if((db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day)){alert('Şans çarkını bugün zaten çevirdin.');return db;}
+  return applyWheelPrize(db,customerId,weightedPrize(db.wheelPrizes));
 }
 
 export function vipBenefits(level='Bronze'){

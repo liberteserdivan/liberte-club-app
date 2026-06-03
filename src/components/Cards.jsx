@@ -3,7 +3,8 @@ import{initializeApp}from'firebase/app';
 import{getMessaging,getToken,isSupported,onMessage}from'firebase/messaging';
 import{Bell,Coffee,Crown,Gift,Plus,QrCode,Send,ShieldCheck,Sparkles,Star}from'lucide-react';
 import{firebaseConfig,googleReviewUrl}from'../lib/constants.js';
-import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,spinLuckyWheel,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
+import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
+import AnimatedWheel from './AnimatedWheel.jsx';
 
 export function CustomerHistoryCard({db,customer}){
   const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,5);
@@ -356,16 +357,7 @@ export function FirstOrderBonusCard({db,customer,commit}){
 }
 
 export function LuckyWheelCard({db,customer,commit}){
-  const last=(db.wheelSpins||[]).find(x=>x.customerId===customer.id&&x.day===localDayKey());
-  return <div className="luckyWheelCard">
-    <div className="wheelVisual"><Sparkles/><span>🎁</span></div>
-    <div>
-      <span>ŞANS ÇARKI</span>
-      <h3>Günde 1 kez çevir</h3>
-      <p>{last?`Bugünkü ödülün: ${last.prize}`:'Damga, ikram veya sürpriz kazan.'}</p>
-      <button className={last?'ghost':'goldBtn'} onClick={()=>commit(spinLuckyWheel(db,customer.id))}>{last?'Bugün çevrildi':'Şansımı Dene'}</button>
-    </div>
-  </div>;
+  return <AnimatedWheel db={db} customer={customer} commit={commit} />;
 }
 
 export function VipBenefitsCard({db,customer}){
