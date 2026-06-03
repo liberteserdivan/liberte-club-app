@@ -575,24 +575,26 @@ function App(){
 
   const card=db.loyalty[customer.id]||{};
 
-  return <main className="app" style={cssVars(db.settings)}>
+  return <>
     {tab==='home'&&<Header db={db} customer={customer} setSession={setSession} sync={sync}/>}
-    {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>}
-    {tab==='menu'&&<MenuScreen db={db}/>}
-    {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
-    {tab==='campaign'&&<CampaignScreen db={db} customer={customer} commit={commit}/>}
-    {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}
+    <main className="app" style={cssVars(db.settings)}>
+      {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>}
+      {tab==='menu'&&<MenuScreen db={db}/>}
+      {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
+      {tab==='campaign'&&<CampaignScreen db={db} customer={customer} commit={commit}/>}
+      {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}
 
-    <OfflineNotice/>
-    <Nav tab={tab} setTab={setTab} admin={customer.isAdmin}/>
-  </main>;
+      <OfflineNotice/>
+      <Nav tab={tab} setTab={setTab} admin={customer.isAdmin}/>
+    </main>
+  </>;
 }
 
 function Login({db,commit,setSession}){
   const[authMode,setAuthMode]=useState('login');
-  const[phone,setPhone]=useState('');
-  const[name,setName]=useState('');
-  const[email,setEmail]=useState('');
+ const[phone,setPhone]=useState(()=>localStorage.getItem('liberteLastPhone')||'');
+const[name,setName]=useState('');
+const[email,setEmail]=useState(()=>localStorage.getItem('liberteLastEmail')||'');
   const[birthDate,setBirthDate]=useState('');
   const[referralCode,setReferralCode]=useState('');
   const[code,setCode]=useState('');
@@ -690,7 +692,10 @@ function Login({db,commit,setSession}){
         ...(db.history||[])
       ]
     });
-    setSession({customerId:customer.id});
+   localStorage.setItem('liberteLastPhone',customer.phone||'');
+localStorage.setItem('liberteLastEmail',customer.email||'');
+
+setSession({customerId:customer.id});
   }
 
   async function sendCode(){

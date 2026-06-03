@@ -899,8 +899,11 @@ body{
   overflow-x:hidden!important;
 }
 
-/* Home ust profil karti artik durum cubugunun altinda kalir */
+/* Header viewport'a sabitlenir; .app overflow icinde kalinca kaydirma ile birlikte iner */
 header{
+  position:fixed!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
   top:calc(env(safe-area-inset-top) + 8px)!important;
   width:min(406px,calc(100% - 24px))!important;
   height:74px!important;

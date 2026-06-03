@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@neondatabase/serverless": "^1.1.0",
     "firebase": "^11.0.0",
     "html5-qrcode": "^2.3.8",
