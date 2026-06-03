@@ -575,19 +575,16 @@ function App(){
 
   const card=db.loyalty[customer.id]||{};
 
-  return <>
-    {tab==='home'&&<Header db={db} customer={customer} setSession={setSession} sync={sync}/>}
-    <main className="app" style={cssVars(db.settings)}>
-      {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>}
-      {tab==='menu'&&<MenuScreen db={db}/>}
-      {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
-      {tab==='campaign'&&<CampaignScreen db={db} customer={customer} commit={commit}/>}
-      {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}
+  return <main className="app" style={cssVars(db.settings)}>
+    {tab==='home'&&<HomeScreen db={db} customer={customer} card={card} commit={commit} setTab={setTab} setSession={setSession} sync={sync} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt}/>}
+    {tab==='menu'&&<MenuScreen db={db}/>}
+    {tab==='qr'&&<QrScreen db={db} customer={customer} card={card}/>}
+    {tab==='campaign'&&<CampaignScreen db={db} customer={customer} commit={commit}/>}
+    {tab==='admin'&&customer.isAdmin&&<AdminScreen db={db} commit={commit}/>}
 
-      <OfflineNotice/>
-      <Nav tab={tab} setTab={setTab} admin={customer.isAdmin}/>
-    </main>
-  </>;
+    <OfflineNotice/>
+    <Nav tab={tab} setTab={setTab} admin={customer.isAdmin}/>
+  </main>;
 }
 
 function Login({db,commit,setSession}){
@@ -1075,7 +1072,7 @@ function OfflineNotice(){
   return <div className="offlineToast">Bağlantı yok. Liberte Club yerel kayıtla çalışmaya devam ediyor.</div>;
 }
 
-function HomeScreen({db,customer,card,commit,setTab,installPrompt,setInstallPrompt}){
+function HomeScreen({db,customer,card,commit,setTab,setSession,sync,installPrompt,setInstallPrompt}){
   const featured=db.items.filter(i=>i.featured).slice(0,6);
   const best=db.items.filter(i=>i.best).slice(0,5);
   const threshold=db.settings.stamp_threshold||10;
@@ -1088,6 +1085,7 @@ function HomeScreen({db,customer,card,commit,setTab,installPrompt,setInstallProm
 
   return <section className="v4Home">
     <div className="v4Hero">
+      <Header db={db} customer={customer} setSession={setSession} sync={sync}/>
       <div className="v4Top">
         <div>
           <p>{greeting.label} {greeting.emoji}</p>

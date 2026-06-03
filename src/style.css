@@ -32,7 +32,7 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
 
 .app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;padding:0 0 calc(116px + env(safe-area-inset-bottom));background:var(--cream);position:relative;overflow-x:hidden}.app:before{content:"";position:fixed;inset:0;z-index:-1;background:#11100D}.app>section:not(.v4Home){padding:22px 18px 130px}
 
-header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(430px,100%);height:86px;padding:12px 16px calc(12px + env(safe-area-inset-top));z-index:40;display:flex;align-items:center;justify-content:space-between;background:rgba(17,16,13,.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:0 0 28px 28px;box-shadow:0 18px 42px rgba(0,0,0,.24)}.head{display:flex;align-items:center;gap:12px;min-width:0}.head b{display:block;color:#fff;font-size:18px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:214px}.head span{display:block;color:rgba(255,255,255,.70);font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.logout{width:54px;height:54px;min-width:54px;border-radius:18px;padding:0;background:var(--mint);color:#10231D;box-shadow:none}.logout span{display:none}
+header{position:relative;top:0;left:auto;transform:none;width:min(430px,100%);height:86px;padding:12px 16px;margin:0 auto 16px;z-index:1;display:flex;align-items:center;justify-content:space-between;background:rgba(17,16,13,.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:28px;box-shadow:0 18px 42px rgba(0,0,0,.24)}.head{display:flex;align-items:center;gap:12px;min-width:0}.head b{display:block;color:#fff;font-size:18px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:214px}.head span{display:block;color:rgba(255,255,255,.70);font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.logout{width:54px;height:54px;min-width:54px;border-radius:18px;padding:0;background:var(--mint);color:#10231D;box-shadow:none}.logout span{display:none}
 .logo{width:86px;height:86px;border-radius:28px;background:#fff;border:1px solid rgba(11,47,38,.08);display:grid;place-items:center;color:var(--forest);box-shadow:var(--soft-shadow)}.logo b{font-family:Georgia,serif;font-size:54px;line-height:.8}.logo span{font-family:Georgia,serif;font-size:16px;margin-top:-22px}.logo.small,.brandLogo.small{width:48px;height:48px;min-width:48px;border-radius:16px;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.18)}.logo.small b{font-size:28px}.logo.small span{display:none}.brandLogo{width:86px;height:86px;border-radius:28px;object-fit:contain;background:#fff;padding:8px}
 
 .loginPage{min-height:100vh;display:grid;place-items:start center;padding:34px 22px 70px;position:relative;overflow:hidden;background:radial-gradient(circle at 12% 6%,rgba(159,220,199,.35),transparent 32%),radial-gradient(circle at 92% 90%,rgba(216,194,157,.28),transparent 32%),var(--cream)}.orb{position:absolute;border-radius:999px;filter:blur(20px);opacity:.55}.orb.one{width:210px;height:210px;background:var(--mint);left:-70px;top:90px}.orb.two{width:250px;height:250px;background:var(--gold);right:-120px;bottom:60px;opacity:.22}.loginCard{width:min(430px,100%);padding:28px;border:1px solid rgba(255,255,255,.85);border-radius:34px;background:rgba(255,253,248,.78);backdrop-filter:blur(26px);box-shadow:0 30px 80px rgba(11,47,38,.14),inset 0 1px 0 rgba(255,255,255,.9)}.loginCard h1{font-size:48px;letter-spacing:-2px;line-height:1;margin:22px 0 12px;color:var(--forest)}.loginCard p{color:var(--muted);line-height:1.45}.loginCard button{width:100%;margin-top:4px}.loginCard .ghost{margin-top:10px}
@@ -899,17 +899,18 @@ body{
   overflow-x:hidden!important;
 }
 
-/* Header viewport'a sabitlenir; .app overflow icinde kalinca kaydirma ile birlikte iner */
+/* Header sayfa ile birlikte kayar */
 header{
-  position:fixed!important;
-  left:50%!important;
-  transform:translateX(-50%)!important;
-  top:calc(env(safe-area-inset-top) + 8px)!important;
+  position:relative!important;
+  left:auto!important;
+  transform:none!important;
+  top:auto!important;
   width:min(406px,calc(100% - 24px))!important;
   height:74px!important;
+  margin:0 auto 12px!important;
   padding:10px 12px!important;
   border-radius:28px!important;
-  z-index:90!important;
+  z-index:1!important;
 }
 
 .head .logo.small,
@@ -939,7 +940,7 @@ header{
 
 /* Header home hero'nun ustune binmesin */
 .v4Hero{
-  padding-top:calc(116px + env(safe-area-inset-top))!important;
+  padding-top:calc(12px + env(safe-area-inset-top))!important;
 }
 
 /* Header olmayan sayfalarda iPhone status bar hero ile cakismasin */
