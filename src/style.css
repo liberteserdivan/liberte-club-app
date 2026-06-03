@@ -2006,3 +2006,309 @@ header{
   font-weight:900;
   white-space:nowrap;
 }
+
+/* —— Premium admin panel —— */
+.adminPage{
+  padding-top:calc(12px + env(safe-area-inset-top));
+}
+.adminPremiumHero{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:18px;
+  padding:22px 20px;
+  border-radius:28px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(216,194,157,.22),transparent 42%),
+    linear-gradient(145deg,#0B2F26,#174B3A 58%,#1F6A57);
+  border:1px solid rgba(216,194,157,.2);
+  box-shadow:0 22px 50px rgba(11,47,38,.28);
+}
+.adminHeroBrand{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.adminHeroBrand span{
+  display:block;
+  color:#D8C29D;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.adminHeroBrand h2{
+  margin:6px 0 4px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:26px;
+  letter-spacing:-.4px;
+  color:#fff;
+}
+.adminHeroBrand p{
+  margin:0;
+  color:rgba(255,255,255,.72);
+  font-size:13px;
+  font-weight:700;
+}
+.adminHeroBadge{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(216,194,157,.35);
+  color:#D8C29D;
+  font-size:11px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.brandLogo.admin,
+.brandFallback.admin{
+  width:64px!important;
+  height:64px!important;
+  min-width:64px!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.95)!important;
+  border:1px solid rgba(216,194,157,.4)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.2)!important;
+  object-fit:contain;
+  padding:8px;
+}
+.brandFallback.admin{
+  display:grid!important;
+  place-items:center;
+  color:#0B2F26!important;
+}
+.brandFallback.admin b{
+  font-family:Georgia,serif;
+  font-size:32px;
+  line-height:1;
+}
+.brandFallback.admin span{
+  display:none;
+}
+.adminNavPills{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:18px;
+}
+.adminNavPills button{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  height:58px!important;
+  padding:8px 6px!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  color:#5a6560!important;
+  border:1px solid rgba(11,47,38,.08)!important;
+  box-shadow:0 6px 18px rgba(11,47,38,.05)!important;
+  font-size:11px!important;
+  font-weight:850!important;
+}
+.adminNavPills button.on{
+  background:linear-gradient(145deg,#0B2F26,#174B3A)!important;
+  color:#fff!important;
+  border-color:transparent!important;
+  box-shadow:0 12px 28px rgba(11,47,38,.22)!important;
+}
+.adminNavPills button.on svg{
+  color:#D8C29D;
+}
+.adminContent,
+.adminStack{
+  display:grid;
+  gap:14px;
+}
+.adminSectionCard{
+  border-radius:24px!important;
+  border:1px solid rgba(11,47,38,.07)!important;
+  box-shadow:0 10px 28px rgba(11,47,38,.06)!important;
+}
+.adminSectionHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:16px;
+}
+.adminSectionHead span{
+  display:block;
+  color:#B9945E;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.adminSectionHead h3{
+  margin:4px 0 0!important;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:20px!important;
+  color:#0B2F26!important;
+  letter-spacing:-.3px;
+}
+.adminExportBtn{
+  display:flex!important;
+  align-items:center;
+  gap:6px;
+  height:38px!important;
+  padding:0 14px!important;
+  font-size:12px!important;
+}
+.adminMetricsCompact .metricCard{
+  min-height:100px;
+  padding:14px 12px;
+}
+.adminMetricsCompact .metricCard b{
+  font-size:28px;
+}
+.deviceCountBadge{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 12px;
+  border-radius:999px;
+  background:#ECFFF6;
+  color:#1D6A55;
+  font-size:12px;
+  font-weight:900;
+}
+.pushHint{
+  margin:-8px 0 14px!important;
+  font-size:13px!important;
+  color:#69756f!important;
+}
+.pushPreview{
+  margin-bottom:16px;
+  padding:16px;
+  border-radius:18px;
+  background:linear-gradient(145deg,#f7fbf8,#ecfdf5);
+  border:1px solid rgba(31,106,85,.12);
+}
+.pushPreview span{
+  display:block;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.12em;
+  color:#B9945E;
+  margin-bottom:6px;
+}
+.pushPreview b{
+  display:block;
+  color:#0B2F26!important;
+  font-size:16px!important;
+}
+.pushPreview p{
+  margin:6px 0 0!important;
+  color:#596861!important;
+  font-size:14px!important;
+}
+.pushTemplates{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:12px 0 16px;
+}
+.pushTemplates button{
+  height:36px!important;
+  padding:0 12px!important;
+  font-size:12px!important;
+  border-radius:12px!important;
+}
+.pushSendBtn{
+  width:100%;
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+.deviceRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid rgba(11,47,38,.07);
+}
+.deviceRow:last-child{
+  border-bottom:0;
+}
+.deviceRow b{
+  color:#0B2F26!important;
+  font-size:15px!important;
+}
+.deviceRow p{
+  margin:4px 0 0!important;
+  font-size:12px!important;
+  color:#77827d!important;
+}
+.deviceRemoveBtn{
+  width:36px!important;
+  height:36px!important;
+  padding:0!important;
+  min-width:36px!important;
+}
+.designLogoPreview{
+  width:100%;
+  max-width:200px;
+  aspect-ratio:1;
+  margin:0 auto 16px;
+  border-radius:22px;
+  background:#fff;
+  border:1px dashed rgba(11,47,38,.15);
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  padding:16px;
+}
+.designLogoPreview img{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+}
+.designLogoFallback{
+  display:grid;
+  place-items:center;
+  color:#0B2F26;
+  text-align:center;
+}
+.designLogoFallback b{
+  font-family:Georgia,serif;
+  font-size:48px;
+  line-height:1;
+}
+.designLogoFallback span{
+  font-family:Georgia,serif;
+  font-size:14px;
+  margin-top:-12px;
+}
+.designColorRow{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin:12px 0;
+}
+.designColorRow label{
+  font-size:11px;
+}
+.couponList{
+  margin-top:16px;
+  border-top:1px solid rgba(11,47,38,.07);
+  padding-top:8px;
+}
+@media(min-width:500px){
+  .adminNavPills{
+    grid-template-columns:repeat(6,1fr);
+  }
+  .adminNavPills button{
+    height:52px!important;
+    flex-direction:row!important;
+    font-size:12px!important;
+  }
+}

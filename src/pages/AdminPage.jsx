@@ -1,78 +1,106 @@
 import React,{useEffect,useRef,useState}from'react';
 import{Html5Qrcode}from'html5-qrcode';
-import{Gift,Image as ImageIcon,Instagram,Mail,MapPin,Minus,Plus,QrCode,ScanLine,Send,ShieldCheck,Sparkles,Star,Trash2,UploadCloud}from'lucide-react';
-import{mapsUrl,instagramUrl,yemeksepetiUrl}from'../lib/constants.js';
-import{addStampToCustomer,applyBirthdayReward,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemRewardForCustomer,seed,spinLuckyWheel,vipBenefits,calculateCoins,customerBadges,productImageSrc,getReferralCode}from'../lib/db.js';
-import{CustomerCardsAdmin,ReviewApprovalAdmin,LuckyWheelCard,DailyRewardCard,FirstOrderBonusCard,GoogleReviewBonusCard,ReferralCard,RewardsCenterCard,VipBenefitsCard,Product}from'../components/Cards.jsx';
+import{Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,QrCode,ScanLine,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
+import Brand from '../components/Brand.jsx';
+import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemRewardForCustomer,seed,getReferralCode}from'../lib/db.js';
+import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
+
+const ADMIN_TABS=[
+  {id:'overview',label:'Özet',Icon:LayoutDashboard},
+  {id:'kasa',label:'Kasa',Icon:ScanLine},
+  {id:'menu',label:'Menü',Icon:UtensilsCrossed},
+  {id:'kampanya',label:'Kampanya',Icon:Megaphone},
+  {id:'uyeler',label:'Üyeler',Icon:Users},
+  {id:'ayarlar',label:'Ayarlar',Icon:Settings}
+];
 
 export default function AdminPage({db,commit}){
-  const[tab,setTab]=useState('dashboard');
+  const[tab,setTab]=useState('overview');
+  const deviceCount=(db.pushSubscriptions||[]).length;
 
-  return <section>
-    <div className="adminHead">
-      <h2>Admin Panel</h2>
-      <span>{db.customers.length} müşteri</span>
+  return <section className="pageShell adminPage">
+    <div className="adminPremiumHero">
+      <div className="adminHeroBrand">
+        <Brand db={db} admin />
+        <div>
+          <span>{db.settings.cafe_name||'Liberte Gastro Cafe'}</span>
+          <h2>Yönetim Paneli</h2>
+          <p>{db.customers.length} üye · {deviceCount} bildirim cihazı</p>
+        </div>
+      </div>
+      <div className="adminHeroBadge"><ShieldCheck size={16}/> Admin</div>
     </div>
 
-    <div className="adminTabs">
-      {[
-        ['dashboard','Analiz'],
-        ['cards','Kart'],
-        ['review','Yorum'],
-        ['scan','QR'],
-        ['items','Ürün'],
-        ['cats','Kategori'],
-        ['design','Tasarım'],
-        ['push','Push'],
-        ['growth','Büyüme'],
-        ['club','Club'],
-        ['game','V14'],
-        ['users','Kullanıcı'],
-        ['history','Geçmiş']
-      ].map(x=>
-        <button className={tab===x[0]?'on':''} onClick={()=>setTab(x[0])} key={x[0]}>
-          {x[1]}
+    <div className="adminNavPills">
+      {ADMIN_TABS.map(({id,label,Icon})=>
+        <button type="button" key={id} className={tab===id?'on':''} onClick={()=>setTab(id)}>
+          <Icon size={17}/><span>{label}</span>
         </button>
       )}
     </div>
 
-    {tab==='dashboard'&&<AnalyticsAdmin db={db} commit={commit}/>}
-    {tab==='cards'&&<CustomerCardsAdmin db={db} commit={commit}/>}
-    {tab==='review'&&<ReviewApprovalAdmin db={db} commit={commit}/>}
-    {tab==='scan'&&<ScanPanel db={db} commit={commit}/>}
-    {tab==='items'&&<ItemAdmin db={db} commit={commit}/>}
-    {tab==='cats'&&<CategoryAdmin db={db} commit={commit}/>}
-    {tab==='design'&&<DesignAdmin db={db} commit={commit}/>}
-    {tab==='push'&&<PushAdmin db={db} commit={commit}/>}
-    {tab==='growth'&&<GrowthAdmin db={db} commit={commit}/>}
-    {tab==='club'&&<ClubAdmin db={db} commit={commit}/>}
-    {tab==='game'&&<GameAdmin db={db} commit={commit}/>}
-    {tab==='users'&&<UsersAdmin db={db} commit={commit}/>}
-    {tab==='history'&&<HistoryAdmin db={db}/>}
+    <div className="adminContent">
+      {tab==='overview'&&<OverviewAdmin db={db}/>}
+      {tab==='kasa'&&<ScanPanel db={db} commit={commit}/>}
+      {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
+      {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
+      {tab==='uyeler'&&<MembersAdmin db={db} commit={commit}/>}
+      {tab==='ayarlar'&&<SettingsAdmin db={db} commit={commit}/>}
+    </div>
   </section>;
 }
 
+function MenuAdmin({db,commit}){
+  return <div className="adminStack">
+    <CategoryAdmin db={db} commit={commit}/>
+    <ItemAdmin db={db} commit={commit}/>
+  </div>;
+}
 
-function AnalyticsAdmin({db,commit}){
+function KampanyaAdmin({db,commit}){
+  return <div className="adminStack">
+    <NotificationAdmin db={db} commit={commit}/>
+    <GameAdmin db={db} commit={commit}/>
+  </div>;
+}
+
+function MembersAdmin({db,commit}){
+  return <div className="adminStack">
+    <ReviewApprovalAdmin db={db} commit={commit}/>
+    <UsersAdmin db={db} commit={commit}/>
+  </div>;
+}
+
+function SettingsAdmin({db,commit}){
+  return <div className="adminStack">
+    <DesignAdmin db={db} commit={commit}/>
+    <CouponsAdmin db={db} commit={commit}/>
+  </div>;
+}
+function OverviewAdmin({db}){
   const customers=db.customers||[];
   const loyalty=db.loyalty||{};
   const history=db.history||[];
-  const now=new Date();
-  const monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
   const totalStamps=Object.values(loyalty).reduce((a,l)=>a+(l.lifetimeStamps||0),0);
   const activeRewards=Object.values(loyalty).reduce((a,l)=>a+(l.availableRewards||0),0);
-  const usedRewards=Object.values(loyalty).reduce((a,l)=>a+(l.usedRewards||0),0);
   const pushCount=(db.pushSubscriptions||[]).length;
-  const monthEvents=history.filter(h=>String(h.createdAt||'').includes(monthKey)||String(h.createdAt||'').includes(now.toLocaleDateString('tr-TR').split('.').slice(1).join('.'))).length;
-  const birthdayCount=customers.filter(c=>c.birthDate).length;
-  const googleBonusCount=history.filter(h=>h.type==='google_review_bonus').length;
   const today=new Date().toLocaleDateString('tr-TR');
   const todayEvents=history.filter(h=>String(h.createdAt||'').startsWith(today)).length;
   const topCustomers=[...customers]
     .map(c=>({c,l:loyalty[c.id]||loyaltyTemplate(c.id)}))
     .sort((a,b)=>(b.l.lifetimeStamps||0)-(a.l.lifetimeStamps||0))
     .slice(0,5);
+
+  const historyLabel=t=>({
+    stamp_add:'Damga eklendi',
+    stamp_remove:'Damga silindi',
+    reward_redeem:'Hak kullanıldı',
+    wheel_spin:'Şans çarkı',
+    daily_login:'Günlük ödül',
+    check_in:'Check-in',
+    google_review_bonus:'Google bonusu',
+    customer_edit:'Üye düzenlendi'
+  }[t]||t);
 
   function exportData(){
     const payload={customers:db.customers,loyalty:db.loyalty,history:db.history,exportedAt:new Date().toISOString()};
@@ -86,48 +114,45 @@ function AnalyticsAdmin({db,commit}){
   }
 
   return <div className="analyticsPage">
-    <div className="analyticsHero card">
-      <span>LIBERTE CLUB</span>
-      <h3>İşletme Özeti</h3>
-      <p>Damga, ikram hakkı, müşteri ve işlem hareketlerini buradan takip et.</p>
-      <button className="ghost" onClick={exportData}><ShieldCheck/> Yedek İndir</button>
+    <div className="adminSectionHead">
+      <div><span>ÖZET</span><h3>İşletme durumu</h3></div>
+      <button type="button" className="ghost adminExportBtn" onClick={exportData}><ShieldCheck size={16}/> Yedek</button>
     </div>
 
-    <div className="analyticsGrid">
-      <div className="metricCard"><span>Toplam Üye</span><b>{customers.length}</b><small>Kayıtlı müşteri</small></div>
-      <div className="metricCard"><span>Toplam Damga</span><b>{totalStamps}</b><small>Lifetime verilen</small></div>
-      <div className="metricCard"><span>Aktif Hak</span><b>{activeRewards}</b><small>Kullanılabilir ikram</small></div>
-      <div className="metricCard"><span>Kullanılan Hak</span><b>{usedRewards}</b><small>Kullandırılan ikram</small></div>
-      <div className="metricCard"><span>Bugün İşlem</span><b>{todayEvents}</b><small>Günlük hareket</small></div>
-      <div className="metricCard"><span>Push Cihaz</span><b>{pushCount}</b><small>Bildirim izni</small></div>
-      <div className="metricCard"><span>Doğum Tarihi</span><b>{birthdayCount}</b><small>Profilde kayıtlı</small></div>
-      <div className="metricCard"><span>Google Bonus</span><b>{googleBonusCount}</b><small>Yorum kampanyası</small></div>
+    <div className="analyticsGrid adminMetricsCompact">
+      <div className="metricCard"><span>Üye</span><b>{customers.length}</b><small>Kayıtlı</small></div>
+      <div className="metricCard"><span>Damga</span><b>{totalStamps}</b><small>Toplam</small></div>
+      <div className="metricCard"><span>Aktif Hak</span><b>{activeRewards}</b><small>İkram</small></div>
+      <div className="metricCard"><span>Bugün</span><b>{todayEvents}</b><small>İşlem</small></div>
+      <div className="metricCard"><span>Cihaz</span><b>{pushCount}</b><small>Bildirim</small></div>
+      <div className="metricCard"><span>Çark</span><b>{(db.wheelSpins||[]).length}</b><small>Çevirme</small></div>
     </div>
 
-    <div className="card topMembers">
-      <h3>En Sadık Üyeler</h3>
+    <div className="card topMembers adminSectionCard">
+      <h3>En sadık üyeler</h3>
       {topCustomers.length?topCustomers.map(({c,l},i)=>
         <div className="topMember" key={c.id}>
           <span>{i+1}</span>
           <div>
             <b>{c.name}</b>
-            <p>{l.level||'Bronze'} · {l.lifetimeStamps||0} toplam damga · {l.availableRewards||0} hak</p>
+            <p>{l.level||'Bronze'} · {l.lifetimeStamps||0} damga · {l.availableRewards||0} hak</p>
           </div>
         </div>
       ):<div className="empty">Henüz müşteri yok.</div>}
     </div>
 
-    <div className="card">
-      <h3>Son İşlemler</h3>
-      {(history||[]).slice(0,6).map(h=>
+    <div className="card adminSectionCard">
+      <h3>Son işlemler</h3>
+      {(history||[]).slice(0,15).map(h=>
         <div className="historyMini" key={h.id}>
           <div>
-            <b>{h.name||'Müşteri'}</b>
-            <p>{h.type} · {h.createdAt}</p>
+            <b>{historyLabel(h.type)}</b>
+            <p>{h.name||'Müşteri'} · {h.createdAt}</p>
           </div>
           <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count||'•'}</strong>
         </div>
       )}
+      {!history.length&&<div className="empty">Henüz işlem yok.</div>}
     </div>
   </div>;
 }
@@ -375,23 +400,25 @@ function DesignAdmin({db,commit}){
     commit({...db,settings:{...s,...p}});
   }
 
-  return <div className="card">
-    <h3>Tasarım</h3>
+  return <div className="card adminSectionCard designAdminCard">
+    <div className="adminSectionHead"><div><span>MARKA</span><h3>Tasarım & logo</h3></div></div>
 
-    <label>Logo</label>
+    <div className="designLogoPreview">
+      {s.logo
+        ? <img src={s.logo} alt="Liberte logo"/>
+        : <div className="designLogoFallback"><b>L</b><span>Liberte</span></div>}
+    </div>
+
     <label className="file">
-      <ImageIcon/> Logo Yükle
+      <ImageIcon/> Logo yükle
       <input type="file" accept="image/*" onChange={logo}/>
     </label>
 
-    <label>Arka plan</label>
-    <input type="color" value={s.bg} onChange={e=>set({bg:e.target.value})}/>
+    <label>Uygulama adı</label>
+    <input value={s.app_name||''} onChange={e=>set({app_name:e.target.value})}/>
 
-    <label>Kart rengi</label>
-    <input type="color" value={s.card} onChange={e=>set({card:e.target.value})}/>
-
-    <label>Vurgu rengi</label>
-    <input type="color" value={s.accent} onChange={e=>set({accent:e.target.value})}/>
+    <label>Kafe adı</label>
+    <input value={s.cafe_name||''} onChange={e=>set({cafe_name:e.target.value})}/>
 
     <label>Ana başlık</label>
     <input value={s.hero_title} onChange={e=>set({hero_title:e.target.value})}/>
@@ -399,69 +426,17 @@ function DesignAdmin({db,commit}){
     <label>Kampanya metni</label>
     <textarea value={s.promo_text} onChange={e=>set({promo_text:e.target.value})}/>
 
-    <button onClick={()=>set({logo:''})}>Logoyu Kaldır</button>
+    <div className="designColorRow">
+      <div><label>Arka plan</label><input type="color" value={s.bg} onChange={e=>set({bg:e.target.value})}/></div>
+      <div><label>Kart</label><input type="color" value={s.card} onChange={e=>set({card:e.target.value})}/></div>
+      <div><label>Vurgu</label><input type="color" value={s.accent} onChange={e=>set({accent:e.target.value})}/></div>
+    </div>
+
+    {s.logo&&<button type="button" className="ghost" onClick={()=>set({logo:''})}>Logoyu kaldır</button>}
   </div>;
 }
 
-function GrowthAdmin({db,commit}){
-  const customers=db.customers||[];
-  const referrals=db.referrals||[];
-  const todayBirthdays=customers.filter(c=>isBirthdayToday(c.birthDate));
-  const inactive=customers.filter(c=>!c.isAdmin&&daysSince(c.lastVisit||c.createdAt)>=7);
-  const topRefs=[...customers].map(c=>({c,count:referrals.filter(r=>r.referrerId===c.id).length,code:getReferralCode(c)})).sort((a,b)=>b.count-a.count).slice(0,10);
-  const[note,setNote]=useState('');
-
-  function sendLocalCampaign(kind){
-    const createdAt=new Date().toLocaleString('tr-TR');
-    const title=kind==='birthday'?'Doğum günü üyeleri':'Seni özledik kampanyası';
-    const body=kind==='birthday'?'Bugün doğum günü olan üyelere ikram hatırlatması.':'7 gündür gelmeyen üyeler için geri çağırma kampanyası.';
-    commit({
-      ...db,
-      notifications:[{id:Date.now(),title,body,createdAt},...(db.notifications||[])],
-      automationLog:[{id:Date.now()+1,kind,title,body,count:kind==='birthday'?todayBirthdays.length:inactive.length,createdAt},...(db.automationLog||[])]
-    });
-    setNote(`${title} kaydedildi. Hedef üye: ${kind==='birthday'?todayBirthdays.length:inactive.length}`);
-  }
-
-  return <div className="growthPage">
-    <div className="card analyticsHero">
-      <span>V12 GROWTH</span>
-      <h3>Büyüme Sistemi</h3>
-      <p>Referans, doğum günü ve geri çağırma kampanyalarını buradan takip et.</p>
-      {note&&<p className="info">{note}</p>}
-    </div>
-
-    <div className="analyticsGrid">
-      <div className="metricCard"><span>Referanslı Kayıt</span><b>{referrals.length}</b><small>Toplam davet</small></div>
-      <div className="metricCard"><span>Bugün Doğum Günü</span><b>{todayBirthdays.length}</b><small>İkram hedefi</small></div>
-      <div className="metricCard"><span>7+ Gün Gelmeyen</span><b>{inactive.length}</b><small>Geri çağırma</small></div>
-      <div className="metricCard"><span>Push Cihaz</span><b>{(db.pushSubscriptions||[]).length}</b><small>Kayıtlı token</small></div>
-    </div>
-
-    <div className="card growthActions">
-      <h3>Otomasyon Kısayolları</h3>
-      <button onClick={()=>sendLocalCampaign('birthday')}><Gift/> Doğum Günü Kampanyası Kaydet</button>
-      <button className="goldBtn" onClick={()=>sendLocalCampaign('inactive')}><Bell/> Seni Özledik Kampanyası Kaydet</button>
-      <p>Bu kayıtlar uygulama içi bildirimlere eklenir. Gerçek push için Push sekmesinden gönderim yapabilirsin.</p>
-    </div>
-
-    <div className="card">
-      <h3>Referans Liderleri</h3>
-      {topRefs.map(x=><div className="historyMini" key={x.c.id}>
-        <div><b>{x.c.name}</b><p>{x.code} · {x.c.phone}</p></div>
-        <strong>{x.count}</strong>
-      </div>)}
-    </div>
-
-    <div className="card">
-      <h3>Bugün Doğum Günü Olanlar</h3>
-      {todayBirthdays.length?todayBirthdays.map(c=><div className="historyMini" key={c.id}><div><b>{c.name}</b><p>{c.phone} · {c.email}</p></div><strong>🎂</strong></div>):<p className="emptySmall">Bugün doğum günü olan üye yok.</p>}
-    </div>
-  </div>;
-}
-
-
-function ClubAdmin({db,commit}){
+function CouponsAdmin({db,commit}){
   const[code,setCode]=useState('');
   const[title,setTitle]=useState('Bonus Damga');
   const[value,setValue]=useState(1);
@@ -479,43 +454,23 @@ function ClubAdmin({db,commit}){
     commit({...db,coupons:(db.coupons||[]).map(c=>c.id===id?{...c,active:!c.active}:c)});
   }
 
-  return <div className="clubAdmin">
-    <div className="card analyticsHero">
-      <span>V13 PREMIUM CLUB</span>
-      <h3>Kupon, Check-in, Rozet ve Coin</h3>
-      <p>Premium üyelik mekaniklerini buradan yönet.</p>
-    </div>
+  return <div className="card adminSectionCard">
+    <div className="adminSectionHead"><div><span>KUPON</span><h3>Promosyon kodları</h3></div></div>
 
-    <div className="analyticsGrid">
-      <div className="metricCard"><span>Check-in</span><b>{(db.checkIns||[]).length}</b><small>Toplam ziyaret kaydı</small></div>
-      <div className="metricCard"><span>Kupon</span><b>{(db.coupons||[]).length}</b><small>Tanımlı kod</small></div>
-      <div className="metricCard"><span>Kupon Kullanımı</span><b>{(db.couponUses||[]).length}</b><small>Toplam kullanım</small></div>
-      <div className="metricCard"><span>Toplam Coin</span><b>{Object.values(db.loyalty||{}).reduce((a,l)=>a+calculateCoins(l),0)}</b><small>Üye coin değeri</small></div>
-    </div>
+    <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
+    <input placeholder="Kupon başlığı" value={title} onChange={e=>setTitle(e.target.value)}/>
+    <select value={type} onChange={e=>setType(e.target.value)}>
+      <option value="stamp">Damga ver</option>
+      <option value="reward">İkram hakkı ver</option>
+    </select>
+    <input type="number" min="1" value={value} onChange={e=>setValue(e.target.value)}/>
+    <button type="button" onClick={createCoupon}><Plus/> Kupon oluştur</button>
 
-    <div className="card">
-      <h3>Kupon Oluştur</h3>
-      <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
-      <input placeholder="Kupon başlığı" value={title} onChange={e=>setTitle(e.target.value)}/>
-      <select value={type} onChange={e=>setType(e.target.value)}>
-        <option value="stamp">Damga ver</option>
-        <option value="reward">İkram hakkı ver</option>
-      </select>
-      <input type="number" min="1" value={value} onChange={e=>setValue(e.target.value)}/>
-      <button onClick={createCoupon}><Plus/> Kupon Oluştur</button>
-    </div>
-
-    <div className="card">
-      <h3>Kuponlar</h3>
+    <div className="couponList">
       {(db.coupons||[]).map(c=><div className="historyMini" key={c.id}>
         <div><b>{c.code}</b><p>{c.title} · {c.rewardType==='reward'?'İkram':'Damga'} +{c.rewardValue}</p></div>
-        <button className={c.active?'ghost':'danger'} onClick={()=>toggleCoupon(c.id)}>{c.active?'Aktif':'Pasif'}</button>
+        <button type="button" className={c.active?'ghost':'danger'} onClick={()=>toggleCoupon(c.id)}>{c.active?'Aktif':'Pasif'}</button>
       </div>)}
-    </div>
-
-    <div className="card">
-      <h3>Son Check-inler</h3>
-      {(db.checkIns||[]).slice(0,10).map(x=><div className="historyMini" key={x.id}><div><b>{x.name}</b><p>{x.date} · {x.phone}</p></div><strong>QR</strong></div>)}
     </div>
   </div>;
 }
@@ -533,22 +488,9 @@ function GameAdmin({db,commit}){
     commit({...db,wheelPrizes:prizes.map((p,i)=>({...p,id:p.id||Date.now()+i,weight:Number(p.weight||1),value:Number(p.value||0)}))});
   }
 
-  return <div className="gameAdmin">
-    <div className="card analyticsHero">
-      <span>V14 OYUNLAŞTIRMA</span>
-      <h3>Günün kampanyası, şans çarkı ve bonuslar</h3>
-      <p>Müşteriyi uygulamaya geri getiren gelir artırıcı sistemleri buradan yönet.</p>
-    </div>
-
-    <div className="analyticsGrid">
-      <div className="metricCard"><span>Günlük Ödül</span><b>{(db.dailyClaims||[]).length}</b><small>Toplam giriş ödülü</small></div>
-      <div className="metricCard"><span>Çark</span><b>{(db.wheelSpins||[]).length}</b><small>Toplam çevirme</small></div>
-      <div className="metricCard"><span>İlk Sipariş</span><b>{(db.firstOrderBonuses||[]).length}</b><small>Bonus kullanılan</small></div>
-      <div className="metricCard"><span>Aktif Kampanya</span><b>{form.active?'Açık':'Kapalı'}</b><small>Günün kampanyası</small></div>
-    </div>
-
-    <div className="card">
-      <h3>Günün Kampanyası</h3>
+  return <div className="gameAdmin adminStack">
+    <div className="card adminSectionCard">
+      <div className="adminSectionHead"><div><span>KAMPANYA</span><h3>Günün kampanyası</h3></div></div>
       <label>Emoji</label>
       <input value={form.emoji} onChange={e=>setForm({...form,emoji:e.target.value})}/>
       <label>Başlık</label>
@@ -556,11 +498,11 @@ function GameAdmin({db,commit}){
       <label>Açıklama</label>
       <textarea value={form.body} onChange={e=>setForm({...form,body:e.target.value})}/>
       <label className="adminToggle"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/><span>Kampanya aktif</span></label>
-      <button onClick={saveCampaign}><ShieldCheck/> Kampanyayı Kaydet</button>
+      <button type="button" onClick={saveCampaign}><ShieldCheck/> Kaydet</button>
     </div>
 
-    <div className="card">
-      <h3>Şans Çarkı Ödülleri</h3>
+    <div className="card adminSectionCard">
+      <div className="adminSectionHead"><div><span>ÇARK</span><h3>Şans çarkı ödülleri</h3></div></div>
       {prizes.map((p,i)=><div className="prizeEdit" key={p.id||i}>
         <input value={p.label} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,label:e.target.value}:x))}/>
         <select value={p.type} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,type:e.target.value}:x))}>
@@ -571,35 +513,48 @@ function GameAdmin({db,commit}){
         <input type="number" value={p.value} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,value:e.target.value}:x))}/>
         <input type="number" value={p.weight} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,weight:e.target.value}:x))}/>
       </div>)}
-      <button className="ghost" onClick={()=>setPrizes([...prizes,{id:Date.now(),label:'+1 Damga',type:'stamp',value:1,weight:10}])}><Plus/> Ödül Ekle</button>
-      <button onClick={savePrizes}><ShieldCheck/> Çarkı Kaydet</button>
-    </div>
-
-    <div className="card">
-      <h3>Son V14 Hareketleri</h3>
-      {[...(db.wheelSpins||[]),...(db.dailyClaims||[]),...(db.firstOrderBonuses||[])].slice(0,12).map(x=><div className="historyMini" key={`${x.id}-${x.type||'bonus'}`}><div><b>{x.name}</b><p>{x.prize||x.type||'İlk sipariş bonusu'} · {x.createdAt}</p></div><strong>{x.day||'V14'}</strong></div>)}
+      <button type="button" className="ghost" onClick={()=>setPrizes([...prizes,{id:Date.now(),label:'+1 Damga',type:'stamp',value:1,weight:10}])}><Plus/> Ödül ekle</button>
+      <button type="button" onClick={savePrizes}><ShieldCheck/> Çarkı kaydet</button>
     </div>
   </div>;
 }
 
 
-function PushAdmin({db,commit}){
+function NotificationAdmin({db,commit}){
   const[title,setTitle]=useState('Liberte Club');
   const[body,setBody]=useState('Bugüne özel kampanya seni bekliyor.');
-  const[note,setNote]=useState('');
+  const[status,setStatus]=useState('');
+  const[sending,setSending]=useState(false);
+  const devices=db.pushSubscriptions||[];
+  const pushLog=db.pushLog||[];
 
-  async function send(){
-    const tokens=(db.pushSubscriptions||[]).map(x=>x.token);
+  const templates=[
+    {label:'Smash',title:'Smash zamanı 🍔',body:'Bugüne özel Smash Menü seni bekliyor.'},
+    {label:'Tatlı',title:'Tatlı molası 🍓',body:'Magnolia ve kahve ikilisiyle gününü güzelleştir.'},
+    {label:'Seni özledik',title:'Seni özledik ☕',body:'Liberte\'ye gel, ekstra damga kazan.'},
+    {label:'Doğum günü',title:'Doğum günün kutlu olsun 🎂',body:'Doğum gününe özel 1 içecek ikramın hesabında.'},
+    {label:'Çark',title:'Şans çarkın hazır 🎡',body:'Bugün çarkı çevirmedin — sürpriz ödül seni bekliyor.'}
+  ];
 
-    const n={
+  async function sendPush(){
+    if(!title.trim()||!body.trim())return alert('Başlık ve mesaj zorunlu.');
+    setSending(true);
+    setStatus('Gönderiliyor...');
+    const tokens=devices.map(x=>x.token).filter(Boolean);
+    const createdAt=new Date().toLocaleString('tr-TR');
+    const logId=Date.now();
+    let next={
       ...db,
-      notifications:[
-        {id:Date.now(),title,body,createdAt:new Date().toLocaleString('tr-TR')},
-        ...(db.notifications||[])
-      ]
+      notifications:[{id:logId,title,body,createdAt},...(db.notifications||[])],
+      pushLog:[{id:logId,title,body,deviceCount:devices.length,sent:0,failed:0,note:'',createdAt},...pushLog].slice(0,30)
     };
+    commit(next);
 
-    commit(n);
+    if(!tokens.length){
+      setStatus('Kayıtlı cihaz yok. Bildirim uygulama içi kaydedildi.');
+      setSending(false);
+      return;
+    }
 
     try{
       const r=await fetch('/api/push/send',{
@@ -607,47 +562,75 @@ function PushAdmin({db,commit}){
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({tokens,title,body})
       });
-
       const j=await r.json();
-      setNote(j.note||`${j.sent||0} cihaza gönderildi.`);
+      const note=j.note||`${j.sent||0} cihaza iletildi${j.failed?`, ${j.failed} başarısız`:''}.`;
+      setStatus(note);
+      commit({
+        ...next,
+        pushLog:next.pushLog.map(x=>x.id===logId?{...x,sent:j.sent||0,failed:j.failed||0,note}:x)
+      });
     }catch{
-      setNote('Uygulama içi bildirim kaydedildi.');
+      setStatus('Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.');
     }
+    setSending(false);
   }
 
-  return <div className="card">
-    <h3>Push Bildirim</h3>
+  function removeDevice(id,token){
+    if(!confirm('Bu cihaz listeden kaldırılsın mı?'))return;
+    commit({...db,pushSubscriptions:devices.filter(x=>x.id!==id&&x.token!==token)});
+  }
 
-    <input value={title} onChange={e=>setTitle(e.target.value)}/>
-    <textarea value={body} onChange={e=>setBody(e.target.value)}/>
+  return <div className="notificationAdmin">
+    <div className="card adminSectionCard pushComposer">
+      <div className="adminSectionHead">
+        <div><span>BİLDİRİM</span><h3>Kurulu cihazlara gönder</h3></div>
+        <span className="deviceCountBadge"><Smartphone size={14}/> {devices.length} cihaz</span>
+      </div>
+      <p className="pushHint">Uygulamayı yükleyip bildirim izni veren üyelere anlık push gönderilir.</p>
 
-    <div className="templates">
-      <button onClick={()=>{
-        setTitle('Smash zamanı 🍔');
-        setBody('Bugüne özel Smash Menü seni bekliyor.');
-      }}>Smash</button>
+      <div className="pushPreview">
+        <span>Önizleme</span>
+        <b>{title||'Başlık'}</b>
+        <p>{body||'Mesaj içeriği'}</p>
+      </div>
 
-      <button onClick={()=>{
-        setTitle('Tatlı molası 🍓');
-        setBody('Magnolia ve kahve ikilisiyle gününü güzelleştir.');
-      }}>Tatlı</button>
+      <label>Başlık</label>
+      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Bildirim başlığı"/>
 
-      <button onClick={()=>{
-        setTitle('Seni özledik ☕');
-        setBody('7 gündür görüşemedik. Bugün Liberte’ye gel, ekstra damga kazan.');
-      }}>Seni özledik</button>
+      <label>Mesaj</label>
+      <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Bildirim metni" rows={3}/>
 
-      <button onClick={()=>{
-        setTitle('Doğum günün kutlu olsun 🎂');
-        setBody('Liberte’den doğum gününe özel 1 içecek ikramın hesabında.');
-      }}>Doğum Günü</button>
+      <div className="pushTemplates">
+        {templates.map(t=>
+          <button type="button" key={t.label} className="ghost" onClick={()=>{setTitle(t.title);setBody(t.body);}}>{t.label}</button>
+        )}
+      </div>
+
+      <button type="button" className="goldBtn pushSendBtn" onClick={sendPush} disabled={sending}>
+        <Send size={18}/> {sending?'Gönderiliyor...':'Tüm cihazlara gönder'}
+      </button>
+      {status&&<p className={`scanMsg${status.includes('iletildi')||status.includes('cihaza')?' isSuccess':''}`}>{status}</p>}
     </div>
 
-    <button onClick={send}><Send/> Gönder</button>
+    <div className="card adminSectionCard">
+      <div className="adminSectionHead"><div><span>CİHAZLAR</span><h3>Kayıtlı bildirim cihazları</h3></div></div>
+      {devices.length?devices.map(d=>
+        <div className="deviceRow" key={d.id||d.token}>
+          <div><b>{d.name||'Üye'}</b><p>{d.phone||'—'} · {d.createdAt||'Tarih yok'}</p></div>
+          <button type="button" className="ghost deviceRemoveBtn" onClick={()=>removeDevice(d.id,d.token)} aria-label="Kaldır"><Trash2 size={14}/></button>
+        </div>
+      ):<p className="emptySmall">Henüz bildirim izni veren cihaz yok. Üyeler uygulamada &quot;Bildirim Aç&quot; butonuna basmalı.</p>}
+    </div>
 
-    {note&&<p className="info">{note}</p>}
-
-    <h4>Kayıtlı cihazlar: {(db.pushSubscriptions||[]).length}</h4>
+    {pushLog.length>0&&<div className="card adminSectionCard">
+      <div className="adminSectionHead"><div><span>GEÇMİŞ</span><h3>Son gönderimler</h3></div></div>
+      {pushLog.slice(0,8).map(p=>
+        <div className="historyMini" key={p.id}>
+          <div><b>{p.title}</b><p>{p.createdAt} · {p.sent||0}/{p.deviceCount||0} cihaz{p.note?` · ${p.note}`:''}</p></div>
+          <strong>{p.sent||0}</strong>
+        </div>
+      )}
+    </div>}
   </div>;
 }
 
@@ -824,45 +807,5 @@ function UsersAdmin({db,commit}){
         </>}
       </div>;
     })}
-  </div>;
-}
-
-function HistoryAdmin({db}){
-  const rows=(db.history||[]).slice(0,80);
-  const label=t=>({
-    stamp_add:'Damga eklendi',
-    stamp_remove:'Damga silindi',
-    reward_redeem:'Hak kullanıldı',
-    birthday_reward:'Doğum günü hediyesi',
-    welcome_bonus:'Hoş geldin bonusu',
-    register:'Kayıt oluşturuldu',
-    referral_bonus:'Referans bonusu',
-    login:'Giriş yapıldı',
-    google_review_bonus:'Google yorum bonusu',
-    customer_edit:'Kullanıcı düzenlendi',
-    customer_delete:'Kullanıcı silindi',
-    check_in:'Check-in',
-    coupon_use:'Kupon kullanıldı',
-    wheel_spin:'Şans çarkı',
-    daily_login:'Günlük giriş ödülü',
-    first_order_bonus:'İlk sipariş bonusu'
-  }[t]||t);
-
-  return <div className="list">
-    <div className="card">
-      <h3>Sistem Geçmişi</h3>
-      <p>Damga, hak kullanımı ve kayıt işlemleri burada tutulur.</p>
-    </div>
-
-    {rows.length?rows.map(h=>
-      <div className="card historyRow" key={h.id}>
-        <div>
-          <b>{label(h.type)}</b>
-          <p>{h.name||'Müşteri'} · {h.phone||''}</p>
-          <small>{h.createdAt} · {h.source||'Sistem'}</small>
-        </div>
-        <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count}</strong>
-      </div>
-    ):<div className="empty">Henüz işlem geçmişi yok.</div>}
   </div>;
 }
