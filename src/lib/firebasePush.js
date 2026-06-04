@@ -25,12 +25,34 @@ export function getVapidKey() {
   return envOrDefault('VITE_FIREBASE_VAPID_KEY', '');
 }
 
+// Build-time yoksa sunucudan VAPID al
+let cachedVapidKey = '';
+
+export async function resolveVapidKey() {
+  const fromBuild = getVapidKey();
+  if (fromBuild) return fromBuild;
+  if (cachedVapidKey) return cachedVapidKey;
+
+  try {
+    const response = await fetch('/api/config/push');
+    if (response.ok) {
+      const data = await response.json();
+      cachedVapidKey = String(data.vapidKey || '').trim();
+      return cachedVapidKey;
+    }
+  } catch {
+    // Sunucu yanıt vermezse sessizce devam et
+  }
+
+  return '';
+}
+
 // Push hata mesajını kullanıcı dostu metne çevir
 function mapPushError(error) {
   const message = error?.message || String(error || '');
 
-  if (error?.message === 'VAPID_MISSING' || !getVapidKey()) {
-    return 'Push yapılandırması eksik. Vercel\'de VITE_FIREBASE_VAPID_KEY tanımlanmalı.';
+  if (error?.message === 'VAPID_MISSING') {
+    return 'Push henüz yapılandırılmadı. Vercel ortam değişkenlerine FIREBASE_VAPID_PUBLIC_KEY ekleyin (Firebase → Cloud Messaging → Web Push).';
   }
 
   if (message.includes('API key not valid') || message.includes('INVALID_ARGUMENT')) {
@@ -62,7 +84,7 @@ export async function enablePush(customer, db, commit) {
     throw new Error('Bu tarayıcı web push desteklemiyor.');
   }
 
-  const vapidKey = getVapidKey();
+  const vapidKey = await resolveVapidKey();
   if (!vapidKey) {
     throw new Error('VAPID_MISSING');
   }

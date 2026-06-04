@@ -1,6 +1,26 @@
 import { useState } from 'react';
 import { DEFAULT_LOGO } from '../lib/constants.js';
 
+// Logo kutusu — arka plan görseli ile tam doldurma
+function BrandLogoBox({ className, logoSrc, cafe, onFail, children }) {
+  return (
+    <div
+      className={`${className} hasLogo`}
+      style={{ '--brand-logo': `url("${String(logoSrc).replace(/"/g, '')}")` }}
+      role="img"
+      aria-label={cafe}
+    >
+      <img
+        className="brandMarkProbe"
+        src={logoSrc}
+        alt=""
+        onError={onFail}
+      />
+      {children}
+    </div>
+  );
+}
+
 // Kafe marka logosu veya varsayılan L monogramı
 export default function Brand({ db, small = false, admin = false, header = false, login = false }) {
   const cafe = db.settings?.cafe_name || 'Liberte Gastro Cafe';
@@ -14,33 +34,47 @@ export default function Brand({ db, small = false, admin = false, header = false
     </div>
   );
 
-  const image = showLogo && (
-    <img
-      className="brandMarkImg"
-      src={logoSrc}
-      alt={cafe}
-      onError={() => setImgFailed(true)}
-    />
-  );
-
   if (login) {
-    return (
-      <div className={`brandMark login${showLogo ? ' hasLogo' : ''}`}>
-        {image || monogram}
-      </div>
-    );
+    if (showLogo) {
+      return (
+        <BrandLogoBox
+          className="brandMark login"
+          logoSrc={logoSrc}
+          cafe={cafe}
+          onFail={() => setImgFailed(true)}
+        />
+      );
+    }
+    return <div className="brandMark login">{monogram}</div>;
   }
 
   if (header || admin) {
+    if (showLogo) {
+      return (
+        <BrandLogoBox
+          className={`brandMark${header ? ' header' : ' admin'}`}
+          logoSrc={logoSrc}
+          cafe={cafe}
+          onFail={() => setImgFailed(true)}
+        />
+      );
+    }
     return (
-      <div className={`brandMark${header ? ' header' : ' admin'}${showLogo ? ' hasLogo' : ''}`}>
-        {image || monogram}
+      <div className={`brandMark${header ? ' header' : ' admin'}`}>
+        {monogram}
       </div>
     );
   }
 
   if (showLogo) {
-    return <img className={small ? 'brandLogo small' : 'brandLogo'} src={logoSrc} alt={cafe} onError={() => setImgFailed(true)} />;
+    return (
+      <img
+        className={small ? 'brandLogo small' : 'brandLogo'}
+        src={logoSrc}
+        alt={cafe}
+        onError={() => setImgFailed(true)}
+      />
+    );
   }
 
   return (
