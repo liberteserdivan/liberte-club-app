@@ -1569,20 +1569,20 @@ header{
   place-items:center;
 }
 
-/* Bardak halka ortasında — küçük ve dengeli */
+/* Bardak halka ortasında — halka boyutuna göre orantılı */
 .loyaltyRingCenter .loyaltyCupStatic{
   position:absolute;
-  top:50%;
+  top:40%;
   left:50%;
-  width:52px;
-  height:62px;
-  transform:translate(-50%, calc(-50% - 10px));
+  width:36%;
+  height:40%;
+  transform:translate(-50%, -50%);
   z-index:2;
 }
 
 .loyaltyRingCenter .loyaltyCupStatic img{
-  object-position:center center;
-  filter:drop-shadow(0 6px 14px rgba(0,0,0,.24));
+  object-position:center bottom;
+  filter:drop-shadow(0 5px 12px rgba(0,0,0,.22));
 }
 
 /* Yavaş 3D dönüş — CUP_SPIN_ENABLED ile açılır */
@@ -1693,13 +1693,15 @@ header{
 
 .loyaltyRingCount{
   position:absolute;
-  bottom:10px;
+  bottom:8%;
   left:50%;
   transform:translateX(-50%);
-  font-size:14px;
+  font-size:clamp(11px, 3.2vw, 14px);
   font-weight:800;
   color:rgba(255,255,255,.78);
   letter-spacing:.02em;
+  z-index:3;
+  line-height:1;
 }
 
 .loyaltyRingBadge{
@@ -2107,11 +2109,15 @@ header{
   box-shadow:0 8px 22px rgba(11,47,38,.06)!important;
 }
 
-@media(max-width:430px){
+@media(max-width:480px){
   .homeWelcome h1{font-size:32px}
-  .loyaltyRingBalance strong{font-size:28px}
-  .loyaltyRingCenter{width:118px;height:118px}
-  .loyaltyRingCenter .loyaltyCupStatic{width:46px;height:54px;transform:translate(-50%, calc(-50% - 8px))}
+  .loyaltyRingBoard{gap:8px}
+  .loyaltyRingBalance strong{font-size:26px}
+  .loyaltyRingLabel{font-size:10px}
+  .loyaltyRingSide em{font-size:11px}
+  .loyaltyRingCenter{width:112px;height:112px;flex-shrink:0}
+  .loyaltyRingCenter .loyaltyCupStatic{top:38%;width:32%;height:36%}
+  .loyaltyRingCount{bottom:6%;font-size:11px}
   .loyaltyRingMark{width:52px;height:52px}
   .loyaltyCupModel{width:108px;height:118px}
   .loyaltyCupScene{width:108px;height:118px}
