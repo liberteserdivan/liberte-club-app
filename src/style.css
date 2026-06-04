@@ -2122,6 +2122,27 @@ header{
   .loyaltyCupModel{width:108px;height:118px}
   .loyaltyCupScene{width:108px;height:118px}
   .homeBody{padding-left:16px;padding-right:16px}
+  /* Header logosu — mobil Safari hizalama */
+  .brandMark.header{
+    width:52px;
+    height:52px;
+    min-width:52px;
+    flex-shrink:0;
+  }
+  .brandMark.header.hasLogo{
+    padding:6px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+  .brandMark.header.hasLogo .brandMarkImg{
+    width:auto!important;
+    height:auto!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+  }
 }
 
 /* —— Günlük görevler şeridi —— */
@@ -2743,13 +2764,19 @@ header{
 .brandMark.admin.hasLogo{
   background:#fff;
   border:2px solid rgba(216,194,157,.55);
-  padding:3px;
+  padding:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .brandMark.header.hasLogo .brandMarkImg,
 .brandMark.admin.hasLogo .brandMarkImg{
-  padding:2px;
-  border-radius:50%;
-  object-fit:cover;
+  width:100%;
+  height:100%;
+  padding:0;
+  border-radius:0;
+  object-fit:contain;
+  object-position:center center;
 }
 .brandMark.login{
   width:112px;
@@ -2771,7 +2798,14 @@ header{
   display:grid;
 }
 .brandMark.admin{width:64px;height:64px;min-width:64px;border-radius:18px}
-.brandMarkImg{width:100%;height:100%;object-fit:contain;padding:7px;display:block}
+.brandMarkImg{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center center;
+  padding:0;
+  display:block;
+}
 .brandMonogram{display:grid;place-items:center;width:100%;height:100%}
 .brandMonogram b{font-family:var(--font-display);font-size:30px;line-height:1;color:var(--forest);font-weight:700}
 .brandMark.header .brandMonogram b{font-size:28px}
@@ -3920,21 +3954,31 @@ header{
   padding-bottom:0!important;
 }
 
-/* Header logosu — kırpma ve görünürlük */
+/* Header logosu — ortalanmış, kırpılmadan */
 .brandMark.header,
 .brandMark.admin{
   background:#fff!important;
   border:2px solid rgba(216,194,157,.65)!important;
   box-shadow:0 6px 18px rgba(0,0,0,.18)!important;
+  overflow:hidden;
+}
+
+.brandMark.header.hasLogo,
+.brandMark.admin.hasLogo{
+  padding:7px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
 }
 
 .brandMark.header.hasLogo .brandMarkImg,
 .brandMark.admin.hasLogo .brandMarkImg{
-  border-radius:12px!important;
-  object-fit:contain!important;
-  padding:4px!important;
   width:100%!important;
   height:100%!important;
+  padding:0!important;
+  border-radius:0!important;
+  object-fit:contain!important;
+  object-position:center center!important;
 }
 
 .homePro .appHeader .brandMark.header{
