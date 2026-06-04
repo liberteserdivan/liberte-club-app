@@ -1,16 +1,5 @@
 import { readVapidKeyFromEnv } from '../lib/vapid.js';
-
-// Service account proje kimliğini oku
-function readAdminProjectId() {
-  try {
-    const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '').trim();
-    if (!raw) return '';
-    const parsed = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
-    return String(parsed.project_id || '').trim();
-  } catch {
-    return 'geçersiz';
-  }
-}
+import { parseServiceAccount } from '../lib/serviceAccount.js';
 
 // Push kurulum durumunu kontrol et — gizli anahtar döndürmez
 export default async function handler(req, res) {
@@ -20,7 +9,8 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const vapidKey = readVapidKeyFromEnv();
-  const adminProjectId = readAdminProjectId();
+  const serviceAccount = parseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  const adminProjectId = serviceAccount?.project_id || (process.env.FIREBASE_SERVICE_ACCOUNT_JSON ? 'geçersiz' : 'yok');
   const adminReady = adminProjectId === 'liberte-club';
 
   return res.status(200).json({

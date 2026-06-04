@@ -20,6 +20,7 @@
     "@capacitor/core": "^8.3.4",
     "@neondatabase/serverless": "^1.1.0",
     "firebase": "^11.0.0",
+    "firebase-admin": "^13.10.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.511.0",
     "qrcode.react": "^4.2.0",
