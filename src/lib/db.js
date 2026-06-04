@@ -1,7 +1,21 @@
+import{
+  STAMP_CATEGORIES,
+  STAMP_SLOT_COUNT,
+  applyCategoryThresholds,
+  countTotalRewards,
+  countTotalStamps,
+  emptyCategoryStamps,
+  emptyCategoryRewards,
+  normalizeCategoryRewards,
+  normalizeCategoryStamps,
+  stampCardProgress,
+  stampsRemaining
+}from './loyaltyStamps.js';
+
 export const seed={
   settings:{
-    stamp_threshold:10,
-    reward_description:'1 Bedava İçecek',
+    stamp_threshold:7,
+    reward_description:'Kategori ikramı',
     cafe_name:'Liberte Gastro Cafe',
     app_name:'Liberte Club',
     bg:'#f7fbf8',
@@ -11,7 +25,7 @@ export const seed={
     logo:'/liberte-logo.png?v=4',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
-    promo_text:'QR kartını göster, 10 damgada 1 içecek bizden.',
+    promo_text:'Tatlı ve kahve 7 damgada, burger 12 damgada ikram kazan.',
     cashier_pin:'5454',
     review_popup:true,
     daily_popup:true,
@@ -33,6 +47,8 @@ export const seed={
     1:{
       customerId:1,
       totalStamps:0,
+      categoryStamps:emptyCategoryStamps(),
+      categoryRewards:emptyCategoryRewards(),
       availableRewards:0,
       usedRewards:0,
       lifetimeStamps:0,
@@ -245,17 +261,18 @@ export function getCustomerStreak(db,customerId){
 // Ana sayfa günlük görev listesini üretir
 export function getDailyTasks(db,customerId){
   const day=localDayKey();
-  const threshold=db.settings?.stamp_threshold||10;
   const card=db.loyalty[customerId]||loyaltyTemplate(customerId);
-  const stamps=card.totalStamps||0;
+  const categoryStamps=normalizeCategoryStamps(card);
+  const totalStamps=countTotalStamps(categoryStamps);
   const dailyDone=hasDailyClaim(db,customerId,'daily_login');
   const wheelDone=(db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day);
   const firstDone=(db.firstOrderBonuses||[]).some(x=>x.customerId===customerId);
+  const nearestRemaining=stampsRemaining(categoryStamps);
   return[
-    {id:'daily',label:'Günlük ödül',desc:dailyDone?'Alındı ✓':'+1 damga al',done:dailyDone,tab:'wheel',icon:'sun'},
+    {id:'daily',label:'Günlük ödül',desc:dailyDone?'Alındı ✓':'+1 kahve damgası',done:dailyDone,tab:'wheel',icon:'sun'},
     {id:'wheel',label:'Şans çarkı',desc:wheelDone?'Bugün çevrildi':'Günde 1 çevir',done:wheelDone,tab:'wheel',icon:'sparkles'},
-    {id:'stamps',label:'Damga hedefi',desc:`${stamps}/${threshold} damga`,done:stamps>=threshold,tab:'qr',icon:'coffee',progress:Math.min(100,(stamps/threshold)*100)},
-    {id:'first',label:'İlk sipariş',desc:firstDone?'Kullanıldı':'+3 damga bonus',done:firstDone,tab:'wheel',icon:'gift'}
+    {id:'stamps',label:'Damga kartı',desc:nearestRemaining===0?'İkram hazır!':`Sonraki ikrama ${nearestRemaining} damga`,done:nearestRemaining===0,tab:'qr',icon:'coffee',progress:stampCardProgress(categoryStamps)},
+    {id:'first',label:'İlk sipariş',desc:firstDone?'Kullanıldı':'+3 kahve damgası',done:firstDone,tab:'wheel',icon:'gift'}
   ];
 }
 
@@ -302,10 +319,12 @@ export function applyWheelPrize(db,customerId,prize){
   if((db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day))return db;
   const createdAt=new Date().toLocaleString('tr-TR');
   let next={...db};
-  if(prize.type==='stamp')next=addStampToCustomer(next,customerId,Number(prize.value||1),'Şans çarkı');
+  if(prize.type==='stamp')next=addCategoryStampToCustomer(next,customerId,'coffee',Number(prize.value||1),'Şans çarkı');
   if(prize.type==='reward'){
     const current=next.loyalty[customerId]||loyaltyTemplate(customerId);
-    next={...next,loyalty:{...next.loyalty,[customerId]:{...current,availableRewards:(current.availableRewards||0)+Number(prize.value||1),updatedAt:createdAt}}};
+    const categoryRewards=normalizeCategoryRewards(current);
+    categoryRewards.coffee=(categoryRewards.coffee||0)+Number(prize.value||1);
+    next={...next,loyalty:{...next.loyalty,[customerId]:{...current,categoryRewards,availableRewards:countTotalRewards(categoryRewards),updatedAt:createdAt}}};
   }
   return{
     ...next,
@@ -354,6 +373,8 @@ export function loyaltyTemplate(id){
   return{
     customerId:id,
     totalStamps:0,
+    categoryStamps:emptyCategoryStamps(),
+    categoryRewards:emptyCategoryRewards(),
     availableRewards:0,
     usedRewards:0,
     lifetimeStamps:0,
@@ -361,26 +382,37 @@ export function loyaltyTemplate(id){
   };
 }
 
-export function addStampToCustomer(db,id,count=1,source='Admin'){
+// Belirli kategoriye damga ekler veya çıkarır
+export function addCategoryStampToCustomer(db,id,category,count=1,source='Admin'){
   const customer=db.customers.find(c=>c.id===id);
   if(!customer)return db;
 
+  const valid=STAMP_CATEGORIES.some(cat=>cat.id===category);
+  if(!valid)return db;
+
+  const steps=Math.abs(Math.trunc(count));
+  if(!steps)return db;
+
+  const sign=count>=0?1:-1;
   const current=db.loyalty[id]||loyaltyTemplate(id);
-  const threshold=db.settings.stamp_threshold||10;
-  const oldTotal=current.totalStamps||0;
-  const oldRewards=current.availableRewards||0;
+  const oldStamps=normalizeCategoryStamps(current);
+  const oldRewards=normalizeCategoryRewards(current);
   const oldLifetime=current.lifetimeStamps||0;
+  const nextStamps={...oldStamps};
+  const nextRewards={...oldRewards};
 
-  let total=Math.max(0,oldTotal+count);
-  let rewards=oldRewards;
-
-  while(total>=threshold){
-    total-=threshold;
-    rewards+=1;
+  if(sign>0){
+    nextStamps[category]=(nextStamps[category]||0)+steps;
+  }else{
+    nextStamps[category]=Math.max(0,(nextStamps[category]||0)-steps);
   }
 
-  const lifetime=Math.max(0,oldLifetime+Math.max(count,0));
+  const thresholded=applyCategoryThresholds(nextStamps,nextRewards);
+  const totalStamps=countTotalStamps(thresholded.categoryStamps);
+  const availableRewards=countTotalRewards(thresholded.categoryRewards);
+  const lifetime=Math.max(0,oldLifetime+(sign>0?steps:0));
   const createdAt=new Date().toLocaleString('tr-TR');
+  const catLabel=STAMP_CATEGORIES.find(cat=>cat.id===category)?.label||category;
 
   return{
     ...db,
@@ -388,8 +420,10 @@ export function addStampToCustomer(db,id,count=1,source='Admin'){
       ...db.loyalty,
       [id]:{
         ...current,
-        totalStamps:total,
-        availableRewards:rewards,
+        totalStamps,
+        categoryStamps:thresholded.categoryStamps,
+        categoryRewards:thresholded.categoryRewards,
+        availableRewards,
         lifetimeStamps:lifetime,
         level:levelByStamps(lifetime),
         updatedAt:createdAt
@@ -401,16 +435,22 @@ export function addStampToCustomer(db,id,count=1,source='Admin'){
         customerId:id,
         name:customer.name,
         phone:customer.phone,
-        type:count>=0?'stamp_add':'stamp_remove',
-        count,
-        before:{totalStamps:oldTotal,availableRewards:oldRewards,lifetimeStamps:oldLifetime},
-        after:{totalStamps:total,availableRewards:rewards,lifetimeStamps:lifetime},
+        type:sign>0?'stamp_add':'stamp_remove',
+        count:steps,
+        category,
+        categoryLabel:catLabel,
+        before:{categoryStamps:oldStamps,categoryRewards:oldRewards,lifetimeStamps:oldLifetime},
+        after:{categoryStamps:thresholded.categoryStamps,categoryRewards:thresholded.categoryRewards,lifetimeStamps:lifetime},
         source,
         createdAt
       },
       ...(db.history||[])
     ]
   };
+}
+
+export function addStampToCustomer(db,id,count=1,source='Admin'){
+  return addCategoryStampToCustomer(db,id,'coffee',count,source);
 }
 
 
@@ -456,29 +496,39 @@ export function applyCouponToCustomer(db,customerId,rawCode){
   let next={...db,couponUses:[{id:Date.now(),customerId,name:customer.name,phone:customer.phone,code,title:coupon.title,createdAt},...(db.couponUses||[])],history:[{id:Date.now()+1,customerId,name:customer.name,phone:customer.phone,type:'coupon_use',count:Number(coupon.rewardValue||0),source:`Kupon ${code}`,createdAt},...(db.history||[])]};
   if(coupon.rewardType==='reward'){
     const current=next.loyalty[customerId]||loyaltyTemplate(customerId);
-    next={...next,loyalty:{...next.loyalty,[customerId]:{...current,availableRewards:(current.availableRewards||0)+Number(coupon.rewardValue||1)}}};
+    const categoryRewards=normalizeCategoryRewards(current);
+    categoryRewards.coffee=(categoryRewards.coffee||0)+Number(coupon.rewardValue||1);
+    next={...next,loyalty:{...next.loyalty,[customerId]:{...current,categoryRewards,availableRewards:countTotalRewards(categoryRewards)}}};
   }else{
-    next=addStampToCustomer(next,customerId,Number(coupon.rewardValue||1),`Kupon ${code}`);
+    next=addCategoryStampToCustomer(next,customerId,'coffee',Number(coupon.rewardValue||1),`Kupon ${code}`);
   }
   return next;
 }
 
-export function redeemRewardForCustomer(db,id,source='Admin'){
+export function redeemCategoryRewardForCustomer(db,id,category,source='Admin'){
   const customer=db.customers.find(c=>c.id===id);
   if(!customer)return db;
 
-  const current=db.loyalty[id]||loyaltyTemplate(id);
-  const rewards=current.availableRewards||0;
+  const valid=STAMP_CATEGORIES.some(cat=>cat.id===category);
+  if(!valid)return db;
 
-  if(rewards<=0){
-    alert('Bu müşterinin kullanılabilir ikram hakkı yok.');
+  const current=db.loyalty[id]||loyaltyTemplate(id);
+  const categoryRewards=normalizeCategoryRewards(current);
+  const count=categoryRewards[category]||0;
+  const catLabel=STAMP_CATEGORIES.find(cat=>cat.id===category)?.label||category;
+
+  if(count<=0){
+    alert(`Bu müşterinin kullanılabilir ${catLabel.toLowerCase()} ikram hakkı yok.`);
     return db;
   }
 
+  categoryRewards[category]=count-1;
+  const availableRewards=countTotalRewards(categoryRewards);
   const createdAt=new Date().toLocaleString('tr-TR');
   const next={
     ...current,
-    availableRewards:rewards-1,
+    categoryRewards,
+    availableRewards,
     usedRewards:(current.usedRewards||0)+1,
     updatedAt:createdAt
   };
@@ -497,15 +547,21 @@ export function redeemRewardForCustomer(db,id,source='Admin'){
         phone:customer.phone,
         type:'reward_redeem',
         count:1,
-        reward:db.settings.reward_description||'1 Bedava İçecek',
-        before:{availableRewards:rewards,usedRewards:current.usedRewards||0},
-        after:{availableRewards:next.availableRewards,usedRewards:next.usedRewards},
+        category,
+        categoryLabel:catLabel,
+        reward:STAMP_CATEGORIES.find(cat=>cat.id===category)?.rewardLabel||'İkram',
+        before:{categoryRewards:normalizeCategoryRewards(current),availableRewards:current.availableRewards||0,usedRewards:current.usedRewards||0},
+        after:{categoryRewards,availableRewards,usedRewards:next.usedRewards},
         source,
         createdAt
       },
       ...(db.history||[])
     ]
   };
+}
+
+export function redeemRewardForCustomer(db,id,source='Admin',category='coffee'){
+  return redeemCategoryRewardForCustomer(db,id,category,source);
 }
 
 export function applyBirthdayReward(db,id){
@@ -517,6 +573,8 @@ export function applyBirthdayReward(db,id){
   if(already)return db;
 
   const current=db.loyalty[id]||loyaltyTemplate(id);
+  const categoryRewards=normalizeCategoryRewards(current);
+  categoryRewards.coffee=(categoryRewards.coffee||0)+1;
   const createdAt=new Date().toLocaleString('tr-TR');
 
   return{
@@ -525,7 +583,8 @@ export function applyBirthdayReward(db,id){
       ...db.loyalty,
       [id]:{
         ...current,
-        availableRewards:(current.availableRewards||0)+1,
+        categoryRewards,
+        availableRewards:countTotalRewards(categoryRewards),
         updatedAt:createdAt
       }
     },
@@ -546,3 +605,16 @@ export function applyBirthdayReward(db,id){
     ]
   };
 }
+
+export {
+  STAMP_CATEGORIES,
+  STAMP_SLOT_COUNT,
+  countTotalRewards,
+  countTotalStamps,
+  normalizeCategoryRewards,
+  normalizeCategoryStamps,
+  stampCardProgress,
+  stampsRemaining,
+  getStampRulesText,
+  categoryProgress
+} from './loyaltyStamps.js';

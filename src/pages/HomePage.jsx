@@ -1,9 +1,9 @@
 import { Crown, Gift, QrCode, ShoppingBag, Sparkles } from 'lucide-react';
 import Header from '../components/Header.jsx';
-import LoyaltyRing from '../components/LoyaltyRing.jsx';
+import LoyaltyTripleStamps from '../components/LoyaltyTripleStamps.jsx';
 import LiberteMarkIcon from '../components/LiberteMarkIcon.jsx';
 import FeaturedSlider from '../components/FeaturedSlider.jsx';
-import { getGreeting, levelByStamps } from '../lib/db.js';
+import { getGreeting, levelByStamps, stampCardProgress, countTotalStamps, countTotalRewards, normalizeCategoryStamps, normalizeCategoryRewards, getStampRulesText } from '../lib/db.js';
 import { DailyCampaignCard, InstallAppCard, PushWelcomeBanner } from '../components/Cards.jsx';
 import DailyTasksStrip from '../components/DailyTasksStrip.jsx';
 
@@ -13,10 +13,11 @@ export default function HomePage({
   installPrompt, setInstallPrompt
 }) {
   const featured = db.items.filter((i) => i.best || i.featured).slice(0, 8);
-  const threshold = db.settings.stamp_threshold || 10;
-  const stamps = card.totalStamps || 0;
-  const rewards = card.availableRewards || 0;
-  const progress = Math.min(100, (stamps / threshold) * 100);
+  const categoryStamps = normalizeCategoryStamps(card);
+  const categoryRewards = normalizeCategoryRewards(card);
+  const totalStamps = countTotalStamps(categoryStamps);
+  const rewards = countTotalRewards(categoryRewards);
+  const progress = stampCardProgress(categoryStamps);
   const level = card.level || levelByStamps(card.lifetimeStamps || 0);
   const greeting = getGreeting();
 
@@ -36,12 +37,7 @@ export default function HomePage({
         </div>
         <div className="homeLevelPill"><Crown /><span>{level}</span></div>
       </div>
-      <LoyaltyRing
-        stamps={stamps}
-        threshold={threshold}
-        rewards={rewards}
-        level={level}
-      />
+      <LoyaltyTripleStamps card={card} level={level} />
     </div>
 
     <div className="homeBody">
@@ -56,7 +52,8 @@ export default function HomePage({
           <div>
             <span>LIBERTE CLUB</span>
             <h2>Sadakat Kartı</h2>
-            <p>{stamps}/{threshold} damga · {rewards} ödül · {db.settings.reward_description || '1 Bedava İçecek'}</p>
+            <p>{totalStamps} aktif damga · {rewards} ikram hakkı</p>
+            <small className="homeWalletRules">{getStampRulesText()}</small>
           </div>
           <Crown />
           <div className="progress"><span style={{ width: `${progress}%` }} /></div>

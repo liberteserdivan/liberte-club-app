@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Crown } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { levelByStamps } from '../lib/db.js';
+import {
+  STAMP_CATEGORIES,
+  levelByStamps,
+  countTotalRewards,
+  countTotalStamps,
+  getStampRulesText,
+  normalizeCategoryRewards,
+  normalizeCategoryStamps,
+  stampCardProgress,
+  stampsRemaining
+} from '../lib/db.js';
 
 // Kasada gösterilecek QR sadakat kartı
 export default function QrPage({ db, customer, card }) {
   const [entered, setEntered] = useState(false);
   const value = JSON.stringify({ type: 'liberte-customer', id: customer.id, phone: customer.phone });
-  const threshold = db.settings.stamp_threshold || 10;
-  const stamps = card.totalStamps || 0;
-  const rewards = card.availableRewards || 0;
-  const remaining = Math.max(0, threshold - stamps);
-  const progress = Math.min(100, (stamps / threshold) * 100);
+  const categoryStamps = normalizeCategoryStamps(card);
+  const categoryRewards = normalizeCategoryRewards(card);
+  const totalStamps = countTotalStamps(categoryStamps);
+  const rewards = countTotalRewards(categoryRewards);
+  const remaining = stampsRemaining(categoryStamps);
+  const progress = stampCardProgress(categoryStamps);
   const level = card.level || levelByStamps(card.lifetimeStamps || 0);
 
   useEffect(() => {
@@ -44,17 +55,30 @@ export default function QrPage({ db, customer, card }) {
 
           <div className="qrPassMeta">
             <div><span>Üye No</span><b>LC-{customer.id}</b></div>
-            <div><span>Damga</span><b>{stamps}/{threshold}</b></div>
-            <div><span>Ödül</span><b>{rewards}</b></div>
+            <div><span>Damga</span><b>{totalStamps}</b></div>
+            <div><span>İkram</span><b>{rewards}</b></div>
+          </div>
+
+          <div className="qrPassCategoryGrid">
+            {STAMP_CATEGORIES.map((cat) => (
+              <div key={cat.id}>
+                <span>{cat.shortLabel}</span>
+                <b>{categoryStamps[cat.id] || 0}/{cat.threshold}</b>
+                <em>{categoryRewards[cat.id] || 0} ikram</em>
+              </div>
+            ))}
           </div>
 
           <div className="qrPassProgress">
             <div className="progress"><span style={{ width: `${progress}%` }} /></div>
             <p>
-              {remaining === 0
-                ? 'Ödül hazır! Kasada QR ile kullanabilirsin.'
-                : `${db.settings.reward_description || '1 Bedava İçecek'} hedefine ${remaining} damga kaldı`}
+              {rewards > 0
+                ? 'Kullanılabilir ikram hakkın var. Kasada QR ile kullan.'
+                : remaining === 0
+                  ? 'Damga eşiği doldu, ikram hesabına işlendi.'
+                  : `En yakın ikrama ${remaining} damga kaldı`}
             </p>
+            <small>{getStampRulesText()}</small>
           </div>
 
           <p className="qrPassTip">Ekran parlaklığını açık tut, kasada birkaç saniye göster.</p>

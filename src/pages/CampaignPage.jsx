@@ -11,7 +11,7 @@ import {
   VipBenefitsCard
 } from '../components/Cards.jsx';
 import PremiumSection from '../components/PremiumSection.jsx';
-import { levelByStamps, loyaltyTemplate } from '../lib/db.js';
+import { levelByStamps, loyaltyTemplate, countTotalRewards, countTotalStamps, normalizeCategoryRewards, normalizeCategoryStamps, getStampRulesText } from '../lib/db.js';
 
 // Aktif kampanya listesini döndür
 function activeCampaigns(db) {
@@ -21,9 +21,10 @@ function activeCampaigns(db) {
 // Kampanyalar — menü ile uyumlu premium düzen
 export default function CampaignPage({ db, customer, commit }) {
   const card = db.loyalty[customer.id] || loyaltyTemplate(customer.id);
-  const threshold = db.settings?.stamp_threshold || 10;
-  const stamps = card.totalStamps || 0;
-  const rewards = card.availableRewards || 0;
+  const categoryStamps = normalizeCategoryStamps(card);
+  const categoryRewards = normalizeCategoryRewards(card);
+  const totalStamps = countTotalStamps(categoryStamps);
+  const rewards = countTotalRewards(categoryRewards);
   const level = card.level || levelByStamps(card.lifetimeStamps || 0);
   const campaigns = activeCampaigns(db);
 
@@ -36,19 +37,19 @@ export default function CampaignPage({ db, customer, commit }) {
 
         <div className="campaignProStats">
           <div>
-            <strong>{stamps}</strong>
+            <strong>{totalStamps}</strong>
             <span>Damga</span>
-            <em>/{threshold}</em>
           </div>
           <div>
             <strong>{rewards}</strong>
-            <span>Ödül</span>
+            <span>İkram</span>
           </div>
           <div>
             <strong><Crown aria-hidden="true" /></strong>
             <span>{level}</span>
           </div>
         </div>
+        <p className="campaignProRules">{getStampRulesText()}</p>
       </div>
 
       {campaigns.length > 0 && (

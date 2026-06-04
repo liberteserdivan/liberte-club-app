@@ -29,9 +29,13 @@ export default function Nav({ tab, setTab, admin, wheelDone }) {
             id === 'wheel' && wheelDone ? 'wheel-done' : ''
           ].filter(Boolean).join(' ')}
           onClick={() => setTab(id)}
+          aria-label={label}
+          aria-current={tab === id ? 'page' : undefined}
         >
-          <Icon />
-          <span>{label}</span>
+          <span className="navIconWrap" aria-hidden="true">
+            <Icon strokeWidth={id === 'qr' ? 2.2 : 2} />
+          </span>
+          {id !== 'qr' && <span>{label}</span>}
         </button>
       ))}
     </nav>

@@ -2,7 +2,8 @@ import React,{useEffect,useRef,useState}from'react';
 import{Html5Qrcode}from'html5-qrcode';
 import{Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,QrCode,ScanLine,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
-import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemRewardForCustomer,seed,getReferralCode}from'../lib/db.js';
+import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
+import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,checkInCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,countTotalRewards,countTotalStamps,normalizeCategoryRewards,normalizeCategoryStamps,STAMP_CATEGORIES}from'../lib/db.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
 
@@ -196,10 +197,13 @@ function UserManageOverview({db,commit,onManageUsers}){
     />
     {filtered.length?filtered.map(c=>{
       const l=loyalty[c.id]||loyaltyTemplate(c.id);
+      const stamps=normalizeCategoryStamps(l);
+      const totalStamps=countTotalStamps(stamps);
+      const rewards=countTotalRewards(normalizeCategoryRewards(l));
       return <div className="historyMini userManageRow" key={c.id}>
         <div>
           <b>{c.name}</b>
-          <p>{c.phone} · {c.email||'mail yok'} · {l.totalStamps||0} damga · {l.availableRewards||0} hak</p>
+          <p>{c.phone} · {c.email||'mail yok'} · {totalStamps} damga · {rewards} ikram</p>
         </div>
         <div className="userManageRowActions">
           <button type="button" className="ghost" onClick={()=>addStamp(c)}><Plus size={14}/></button>
@@ -269,31 +273,35 @@ function ScanPanel({db,commit}){
     start();
   }
 
-  function add(){
+  function addCategory(category){
     if(!found)return;
-    const next=addStampToCustomer(db,found.id,1,'QR kamera');
+    const next=addCategoryStampToCustomer(db,found.id,category,1,'QR kamera');
     commit(next);
-    setMsg('+1 damga sisteme kaydedildi.');
+    setMsg(`${STAMP_CATEGORIES.find(c=>c.id===category)?.label||category} damgası eklendi.`);
   }
 
-  function remove(){
+  function removeCategory(category){
     if(!found)return;
-    const next=addStampToCustomer(db,found.id,-1,'QR düzeltme');
+    const next=addCategoryStampToCustomer(db,found.id,category,-1,'QR düzeltme');
     commit(next);
-    setMsg('1 damga silindi ve sisteme kaydedildi.');
+    setMsg(`${STAMP_CATEGORIES.find(c=>c.id===category)?.label||category} damgası silindi.`);
   }
 
-  function redeem(){
+  function redeemCategory(category){
     if(!found)return;
-    const ok=confirm(`${found.name} için 1 ikram hakkı kullanılsın mı?`);
+    const catLabel=STAMP_CATEGORIES.find(c=>c.id===category)?.label||category;
+    const ok=confirm(`${found.name} için 1 ${catLabel.toLowerCase()} ikramı kullanılsın mı?`);
     if(!ok)return;
-    const next=redeemRewardForCustomer(db,found.id,'QR kasiyer');
+    const next=redeemCategoryRewardForCustomer(db,found.id,category,'QR kasiyer');
     commit(next);
-    setMsg('İkram hakkı kullanıldı ve sisteme kaydedildi.');
+    setMsg(`${catLabel} ikramı kullanıldı.`);
   }
 
   const l=found?(db.loyalty[found.id]||loyaltyTemplate(found.id)):null;
-  const threshold=db.settings.stamp_threshold||10;
+  const categoryStamps=l?normalizeCategoryStamps(l):null;
+  const categoryRewards=l?normalizeCategoryRewards(l):null;
+  const totalStamps=categoryStamps?countTotalStamps(categoryStamps):0;
+  const totalRewards=categoryRewards?countTotalRewards(categoryRewards):0;
 
   return <div className="card scanPanelCard">
     <div className="scanPanelHead">
@@ -314,7 +322,9 @@ function ScanPanel({db,commit}){
       </div>
     </div>}
 
-    <p className={`scanMsg${success?' isSuccess':''}`}>{msg||'Müşteri QR kodunu okut. Damga ve ikram işlemleri sisteme kaydedilir.'}</p>
+    <p className={`scanMsg${success?' isSuccess':''}`}>
+      {msg || '1) Müşteri QR gösterir  2) Kasiyer aldığı kategoriye damga basar  3) Eşik dolunca ikram hakkı oluşur'}
+    </p>
 
     {found&&<div className={`found rewardBox scanFoundCard${success?' scanFoundPop':''}`}>
       <div className="scanFoundTop">
@@ -326,15 +336,21 @@ function ScanPanel({db,commit}){
       </div>
 
       <div className="adminStats">
-        <div><span>Damga</span><b>{l.totalStamps||0}/{threshold}</b></div>
-        <div><span>Hak</span><b>{l.availableRewards||0}</b></div>
+        <div><span>Damga</span><b>{totalStamps}</b></div>
+        <div><span>İkram</span><b>{totalRewards}</b></div>
         <div><span>Kullanılan</span><b>{l.usedRewards||0}</b></div>
       </div>
 
+      <StampCategoryPanel
+        mode="cashier"
+        categoryStamps={categoryStamps}
+        categoryRewards={categoryRewards}
+        onAdd={addCategory}
+        onRemove={removeCategory}
+        onRedeem={redeemCategory}
+      />
+
       <div className="adminActions">
-        <button onClick={add}><Plus/> +1 Damga</button>
-        <button className="ghost" onClick={remove}><Minus/> Damga Sil</button>
-        <button className="goldBtn" onClick={redeem}><Gift/> Hak Kullandır</button>
         <button className="ghost" onClick={()=>{commit(checkInCustomer(db,found.id,'Admin QR check-in'));setMsg('Check-in kaydedildi.')}}><QrCode/> Check-in</button>
       </div>
     </div>}
@@ -807,18 +823,19 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
     setMessage('Kullanıcı silindi.');
   }
 
-  function add(c){
-    commit(addStampToCustomer(db,c.id,1,'Admin manuel'));
+  function addCategory(c,category){
+    commit(addCategoryStampToCustomer(db,c.id,category,1,'Admin manuel'));
   }
 
-  function remove(c){
-    commit(addStampToCustomer(db,c.id,-1,'Admin düzeltme'));
+  function removeCategory(c,category){
+    commit(addCategoryStampToCustomer(db,c.id,category,-1,'Admin düzeltme'));
   }
 
-  function redeem(c){
-    const ok=confirm(`${c.name} için 1 ikram hakkı kullanılsın mı?`);
+  function redeemCategory(c,category){
+    const catLabel=STAMP_CATEGORIES.find(x=>x.id===category)?.label||category;
+    const ok=confirm(`${c.name} için 1 ${catLabel.toLowerCase()} ikramı kullanılsın mı?`);
     if(!ok)return;
-    commit(redeemRewardForCustomer(db,c.id,'Admin manuel'));
+    commit(redeemCategoryRewardForCustomer(db,c.id,category,'Admin manuel'));
   }
 
   return <div className="list">
@@ -830,6 +847,10 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
 
     {customers.map(c=>{
       const l=db.loyalty[c.id]||loyaltyTemplate(c.id);
+      const categoryStamps=normalizeCategoryStamps(l);
+      const categoryRewards=normalizeCategoryRewards(l);
+      const totalStamps=countTotalStamps(categoryStamps);
+      const totalRewards=countTotalRewards(categoryRewards);
       const isEdit=editing===c.id;
 
       return <div className={isEdit?'card user editing':'card user'} key={c.id}>
@@ -838,14 +859,20 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
             <b>{c.name}</b>
             <p>{c.phone} · {c.email||'mail yok'} · {c.birthDate||'doğum tarihi yok'} · {l.level||'Bronze'}</p>
             <p>Referans kodu: <b>{getReferralCode(c)}</b></p>
-            <small>{l.totalStamps||0} damga · {l.availableRewards||0} kullanılabilir hak · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
+            <small>{totalStamps} damga · {totalRewards} ikram · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
             {(db.customerNotes||{})[c.id]&&<p className="customerNote">Not: {(db.customerNotes||{})[c.id]}</p>}
           </div>
 
+          <StampCategoryPanel
+            mode="admin"
+            categoryStamps={categoryStamps}
+            categoryRewards={categoryRewards}
+            onAdd={(category)=>addCategory(c,category)}
+            onRemove={(category)=>removeCategory(c,category)}
+            onRedeem={(category)=>redeemCategory(c,category)}
+          />
+
           <div className="userActions wide">
-            <button onClick={()=>add(c)}><Plus/> Damga</button>
-            <button className="ghost" onClick={()=>remove(c)}><Minus/> Sil</button>
-            <button className="goldBtn" onClick={()=>redeem(c)}><Gift/> Hak Kullan</button>
             <button className="ghost" onClick={()=>beginEdit(c)}>Düzenle</button>
             <button className="danger" onClick={()=>deleteUser(c)}><Trash2/> Kullanıcı Sil</button>
           </div>
