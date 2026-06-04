@@ -1,8 +1,47 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey } from './constants.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 
-// Service worker — Vercel rewrite ile runtime config
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=8';
+// Service worker — cache kırma
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=9';
+export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
+
+// Tarayıcı bildirimi göster
+export function showPushNotification(payload) {
+  if (Notification.permission !== 'granted') return;
+
+  const title = payload?.notification?.title || payload?.data?.title || 'Liberte Club';
+  const body = payload?.notification?.body || payload?.data?.body || 'Yeni bildirim';
+
+  new Notification(title, {
+    body,
+    icon: `${PUSH_SITE_ORIGIN}/liberte-logo.png`,
+    badge: `${PUSH_SITE_ORIGIN}/liberte-logo.png`,
+    tag: 'liberte-club-push',
+    data: payload?.data || {}
+  });
+}
+
+let foregroundListenerAttached = false;
+
+// Uygulama açıkken gelen push mesajlarını dinle
+export async function startPushForegroundListener() {
+  if (!import.meta.env.PROD) return;
+  if (Notification.permission !== 'granted') return;
+  if (foregroundListenerAttached) return;
+
+  const { initializeApp, getApps } = await import('firebase/app');
+  const { getMessaging, onMessage, isSupported } = await import('firebase/messaging');
+
+  if (!(await isSupported())) return;
+
+  patchFirebaseReferrer();
+  const config = await resolveFirebaseConfig();
+  const app = getApps().length ? getApps()[0] : initializeApp(config);
+  const messaging = getMessaging(app);
+
+  onMessage(messaging, showPushNotification);
+  foregroundListenerAttached = true;
+}
 
 // Eski firebase SW kayıtlarını temizle
 async function resetFirebaseServiceWorker() {
@@ -203,12 +242,8 @@ export async function enablePush(customer, db, commit) {
     });
   }
 
-  onMessage(messaging, (payload) => {
-    new Notification(payload.notification?.title || 'Liberte Club', {
-      body: payload.notification?.body || 'Yeni bildirim',
-      icon: '/liberte-logo.png'
-    });
-  });
+  onMessage(messaging, showPushNotification);
+  foregroundListenerAttached = true;
 
   return token;
 }

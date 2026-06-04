@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { applyBirthdayReward, cssVars, isWheelUnlimited, load, localDayKey } from './lib/db.js';
 import { readSession } from './lib/session.js';
+import { FIREBASE_SW_URL, startPushForegroundListener } from './lib/firebasePush.js';
 import { useCommit } from './hooks/useCommit.js';
 import Nav from './components/Nav.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
@@ -27,11 +28,11 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // Push bildirimi yalnızca production'da kaydet — dev'de SW sorun çıkarabilir
+  // Push service worker + ön plan dinleyici
   useEffect(() => {
-    if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(() => {});
-    }
+    if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register(FIREBASE_SW_URL).catch(() => {});
+    startPushForegroundListener().catch(() => {});
   }, []);
 
   useEffect(() => {

@@ -36,12 +36,14 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'Liberte Club';
-  const body = payload.notification?.body || 'Yeni bir bildirimin var.';
+  const title = payload.notification?.title || payload.data?.title || 'Liberte Club';
+  const body = payload.notification?.body || payload.data?.body || 'Yeni bir bildirimin var.';
+  const icon = 'https://app.liberte.cafe/liberte-logo.png';
   self.registration.showNotification(title, {
     body,
-    icon: '/liberte-logo.png',
-    badge: '/liberte-logo.png',
+    icon,
+    badge: icon,
+    tag: 'liberte-club-push',
     data: payload.data || {}
   });
 });

@@ -1,11 +1,23 @@
 import admin from 'firebase-admin';
 import { parseServiceAccount, validateServiceAccount } from '../lib/serviceAccount.js';
 
+const SITE_ORIGIN = 'https://app.liberte.cafe';
+
 // Firebase Admin SDK başlat
 function getAdmin(serviceAccount) {
   if (admin.apps.length) return admin;
   admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   return admin;
+}
+
+// FCM hata kodlarını özetle
+function summarizeFailures(responses) {
+  return responses
+    .filter((row) => !row.success)
+    .map((row) => row.error?.code || row.error?.message)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(', ');
 }
 
 export default async function handler(req, res) {
@@ -35,17 +47,39 @@ export default async function handler(req, res) {
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
       notification: { title, body: message },
+      data: {
+        title,
+        body: message,
+        url: SITE_ORIGIN
+      },
       webpush: {
-        notification: { icon: '/liberte-logo.png', badge: '/liberte-logo.png' },
-        fcmOptions: { link: 'https://app.liberte.cafe' }
+        headers: {
+          Urgency: 'high',
+          TTL: '86400'
+        },
+        notification: {
+          title,
+          body: message,
+          icon: `${SITE_ORIGIN}/liberte-logo.png`,
+          badge: `${SITE_ORIGIN}/liberte-logo.png`
+        },
+        fcmOptions: { link: SITE_ORIGIN }
       }
     });
 
+    const failures = summarizeFailures(result.responses);
+    let note = `${result.successCount} cihaza iletildi`;
+    if (result.failureCount) note += `, ${result.failureCount} başarısız`;
+    if (failures) note += ` (${failures})`;
+    if (result.successCount > 0) {
+      note += '. Görünmüyorsa uygulamayı arka plana alın veya Bildirimleri yeniden açın.';
+    }
+
     return res.status(200).json({
-      ok: true,
+      ok: result.successCount > 0,
       sent: result.successCount,
       failed: result.failureCount,
-      note: `${result.successCount} cihaza iletildi${result.failureCount ? `, ${result.failureCount} başarısız` : ''}.`
+      note
     });
   } catch (error) {
     return res.status(500).json({
