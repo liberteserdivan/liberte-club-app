@@ -1,4 +1,19 @@
-import { firebaseConfig as defaultConfig } from './constants.js';
+import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey } from './constants.js';
+import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
+
+// Service worker sürümü — cache kırma
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=6';
+
+// Eski firebase SW kayıtlarını temizle
+async function resetFirebaseServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(
+    registrations
+      .filter((reg) => reg.active?.scriptURL?.includes('firebase-messaging-sw'))
+      .map((reg) => reg.unregister())
+  );
+}
 
 // Ortam değişkeni varsa kullan, boş string ile varsayılanı ezme
 function envOrDefault(key, fallback) {
@@ -22,29 +37,38 @@ export function getFirebaseConfig() {
 
 // Web push VAPID anahtarını döndür
 export function getVapidKey() {
-  return envOrDefault('VITE_FIREBASE_VAPID_KEY', '');
+  return envOrDefault('VITE_FIREBASE_VAPID_KEY', defaultVapidKey || '');
 }
 
-// Build-time yoksa sunucudan VAPID al
+// Build-time yoksa sunucudan VAPID al — geçersiz build değeri API'yi ezmesin
 let cachedVapidKey = '';
 
 export async function resolveVapidKey() {
   const fromBuild = getVapidKey();
-  if (fromBuild) return fromBuild;
-  if (cachedVapidKey) return cachedVapidKey;
+  if (isValidVapidPublicKey(fromBuild)) return fromBuild;
+  if (cachedVapidKey && isValidVapidPublicKey(cachedVapidKey)) return cachedVapidKey;
 
   try {
     const response = await fetch('/api/config/push');
     if (response.ok) {
       const data = await response.json();
       cachedVapidKey = String(data.vapidKey || '').trim();
-      return cachedVapidKey;
+      if (isValidVapidPublicKey(cachedVapidKey)) return cachedVapidKey;
     }
   } catch {
     // Sunucu yanıt vermezse sessizce devam et
   }
 
+  if (isValidVapidPublicKey(defaultVapidKey)) return defaultVapidKey.trim();
+
   return '';
+}
+
+// VAPID public key formatını doğrula
+function isValidVapidPublicKey(key) {
+  const normalized = String(key || '').trim().replace(/\s+/g, '');
+  if (normalized.length < 80 || normalized.length > 200) return false;
+  return /^[A-Za-z0-9_-]+$/.test(normalized);
 }
 
 // Push hata mesajını kullanıcı dostu metne çevir
@@ -55,8 +79,16 @@ function mapPushError(error) {
     return 'Push henüz yapılandırılmadı. Vercel ortam değişkenlerine FIREBASE_VAPID_PUBLIC_KEY ekleyin (Firebase → Cloud Messaging → Web Push).';
   }
 
-  if (message.includes('API key not valid') || message.includes('INVALID_ARGUMENT')) {
-    return 'Firebase API anahtarı reddedildi. Google Cloud Console\'da API key kısıtlamalarına https://app.liberte.cafe/* ve https://*.vercel.app/* ekleyin.';
+  if (error?.message === 'VAPID_INVALID') {
+    return 'VAPID anahtarı eksik veya hatalı. Firebase\'den public key\'in tamamını kopyalayıp Vercel\'de güncelleyin (~88 karakter, B ile başlar).';
+  }
+
+  if (message.includes('applicationServerKey is not valid')) {
+    return 'VAPID anahtarı geçersiz veya eksik. Firebase\'den public key\'in tamamını (~88 karakter) Vercel\'de FIREBASE_VAPID_PUBLIC_KEY olarak güncelleyin.';
+  }
+
+  if (message.includes('API key not valid') || message.includes('INVALID_ARGUMENT') || message.includes('PERMISSION_DENIED')) {
+    return 'Firebase API anahtarı reddedildi. Google Cloud\'da Browser key → Application restrictions → None yapın (API restrictions Firebase API\'lerinde kalabilir). Siteyi Chrome\'da açın, WhatsApp içi tarayıcıda denemeyin.';
   }
 
   if (message.includes('installations') || message.includes('request-failed')) {
@@ -88,6 +120,9 @@ export async function enablePush(customer, db, commit) {
   if (!vapidKey) {
     throw new Error('VAPID_MISSING');
   }
+  if (!isValidVapidPublicKey(vapidKey)) {
+    throw new Error('VAPID_INVALID');
+  }
 
   let permission = Notification.permission;
   if (permission !== 'granted') {
@@ -102,7 +137,12 @@ export async function enablePush(customer, db, commit) {
     throw new Error('Firebase API anahtarı bulunamadı.');
   }
 
-  const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  // HTTP referrer kısıtlı API key ile Firebase Installations için
+  patchFirebaseReferrer();
+  await resetFirebaseServiceWorker();
+
+  const registration = await navigator.serviceWorker.register(FIREBASE_SW_URL);
+  await registration.update();
   await navigator.serviceWorker.ready;
 
   const app = getApps().length ? getApps()[0] : initializeApp(config);

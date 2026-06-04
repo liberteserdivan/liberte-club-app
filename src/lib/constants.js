@@ -8,6 +8,10 @@ export const firebaseConfig = {
   measurementId: 'G-HRKRV78XGS'
 };
 
+// Web Push VAPID public key — Firebase Console → Cloud Messaging → Web Push
+// Vercel'de FIREBASE_VAPID_PUBLIC_KEY olarak da tanımlanabilir
+export const firebaseVapidKey = '';
+
 export const googleReviewUrl = 'https://g.page/r/CY8uWX2mwBgIEBM/review';
 export const instagramUrl = 'https://www.instagram.com/gastroliberte';
 export const yemeksepetiUrl = 'https://www.yemeksepeti.com/restaurant/x9yt/liberte-gastro-cafe';
