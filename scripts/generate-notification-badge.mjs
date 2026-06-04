@@ -1,18 +1,31 @@
-import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const size = 96;
+const padding = 10;
 
-// Android durum çubuğu — yalnızca logo mürekkebi beyaz siluet, arka plan şeffaf
+// liberte-logo.png → Android badge (beyaz siluet, şeffaf arka plan)
 async function buildNotificationBadge() {
   const source = join(root, 'public', 'liberte-logo.png');
   const dest = join(root, 'public', 'notification-badge.png');
 
-  const { data, info } = await sharp(source)
-    .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  const trimmed = await sharp(source)
+    .trim({ threshold: 14 })
+    .png()
+    .toBuffer();
+
+  const inner = size - padding * 2;
+  const { data, info } = await sharp(trimmed)
+    .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .extend({
+      top: padding,
+      bottom: padding,
+      left: padding,
+      right: padding,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    })
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -25,18 +38,14 @@ async function buildNotificationBadge() {
     const b = data[i + 2];
     const a = data[i + 3];
 
-    if (a < 16) {
+    if (a < 12) {
       out[i + 3] = 0;
       continue;
     }
 
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const saturation = max === 0 ? 0 : (max - min) / max;
-    const isWhiteBg = r > 228 && g > 228 && b > 228;
-    const isLogoInk = !isWhiteBg && (saturation > 0.07 || max < 210);
-
-    if (isLogoInk) {
+    // Logo mürekkebi: beyaz arka plan hariç tüm pikseller (yaprak, yazı, çember)
+    const isWhiteBg = r > 232 && g > 232 && b > 232;
+    if (!isWhiteBg) {
       out[i] = 255;
       out[i + 1] = 255;
       out[i + 2] = 255;
@@ -57,7 +66,7 @@ async function buildNotificationBadge() {
     if (check.data[i] > 0) ink += 1;
   }
 
-  console.log(`notification-badge.png güncellendi (siluet %${Math.round((ink / total) * 100)}).`);
+  console.log(`notification-badge.png = liberte-logo silueti (%${Math.round((ink / total) * 100)} doluluk).`);
 }
 
 buildNotificationBadge().catch((error) => {
