@@ -18,3 +18,6 @@ export const DEFAULT_LOGO = '/liberte-logo.png';
 
 // Uygulama için optimize edilmiş 3D bardak GLB
 export const CUP_MODEL = '/Liberte_Cup_3D_App_Fixed.glb?v=3';
+
+// 3D model yerine statik logo kullan (daha stabil)
+export const CUP_USE_3D = false;

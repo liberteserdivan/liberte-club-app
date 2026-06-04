@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CUP_MODEL, DEFAULT_LOGO } from '../lib/constants.js';
+import { CUP_MODEL, CUP_USE_3D, DEFAULT_LOGO } from '../lib/constants.js';
 
 const VIEWER_SCRIPT = 'https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js';
 
@@ -25,13 +25,22 @@ function loadModelViewer() {
   });
 }
 
-// Dokulu GLB bardak — halka ortasında döner
+// Statik bardak görseli — 3D yüklenemezse veya kapalıysa
+function StaticCup() {
+  return (
+    <div className="loyaltyCupStatic" aria-hidden="true">
+      <img src={DEFAULT_LOGO} alt="" />
+    </div>
+  );
+}
+
+// GLB bardak — halka ortasında döner
 export default function LoyaltyCup3d() {
   const hostRef = useRef(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(!CUP_USE_3D);
 
   useEffect(() => {
-    if (failed) return;
+    if (!CUP_USE_3D || failed) return;
 
     const host = hostRef.current;
     if (!host) return;
@@ -43,7 +52,7 @@ export default function LoyaltyCup3d() {
       try {
         await Promise.race([
           loadModelViewer(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
         ]);
       } catch {
         if (!cancelled) setFailed(true);
@@ -56,24 +65,13 @@ export default function LoyaltyCup3d() {
       viewer.className = 'loyaltyCupModel';
       viewer.alt = '';
       viewer.src = CUP_MODEL;
-
       viewer.setAttribute('auto-rotate', '');
       viewer.setAttribute('rotation-per-second', '28deg');
       viewer.setAttribute('camera-orbit', '22deg 78deg 110%');
-      viewer.setAttribute('min-camera-orbit', 'auto 62deg 95%');
-      viewer.setAttribute('max-camera-orbit', 'auto 92deg 140%');
-      viewer.setAttribute('field-of-view', '22deg');
       viewer.setAttribute('interaction-prompt', 'none');
       viewer.setAttribute('disable-zoom', '');
-      viewer.setAttribute('touch-action', 'none');
-      viewer.setAttribute('tone-mapping', 'commerce');
-      viewer.setAttribute('exposure', '1.15');
-      viewer.setAttribute('shadow-intensity', '0.85');
-      viewer.setAttribute('environment-image', 'neutral');
       viewer.setAttribute('loading', 'eager');
-      viewer.setAttribute('reveal', 'auto');
       viewer.setAttribute('aria-hidden', 'true');
-
       viewer.addEventListener('error', () => setFailed(true));
       hostRef.current.appendChild(viewer);
     }
@@ -86,13 +84,7 @@ export default function LoyaltyCup3d() {
     };
   }, [failed]);
 
-  if (failed) {
-    return (
-      <div className="loyaltyRingMark" aria-hidden="true">
-        <img src={DEFAULT_LOGO} alt="" />
-      </div>
-    );
-  }
+  if (failed) return <StaticCup />;
 
   return <div className="loyaltyCupScene" ref={hostRef} aria-hidden="true" />;
 }

@@ -72,6 +72,7 @@ export default function CampaignPage({ db, customer, commit }) {
       )}
 
       <div className="campaignProBody">
+        <PushWelcomeBanner db={db} customer={customer} commit={commit} />
         <DailyCampaignCard db={db} setTab={null} />
         <RewardsCenterCard db={db} customer={customer} card={card} commit={commit} />
 

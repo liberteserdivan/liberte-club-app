@@ -3,6 +3,7 @@ import{Html5Qrcode}from'html5-qrcode';
 import{Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,QrCode,ScanLine,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemRewardForCustomer,seed,getReferralCode}from'../lib/db.js';
+import{dispatchPush}from'../lib/pushDispatch.js';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
 
 const ADMIN_TABS=[
@@ -479,13 +480,34 @@ function GameAdmin({db,commit}){
   const c=db.dailyCampaign||seed.dailyCampaign;
   const[form,setForm]=useState({title:c.title||'',body:c.body||'',emoji:c.emoji||'🔥',active:c.active!==false});
   const[prizes,setPrizes]=useState(db.wheelPrizes||seed.wheelPrizes);
+  const[notifyOnSave,setNotifyOnSave]=useState(false);
+  const[campaigns,setCampaigns]=useState(db.campaigns||seed.campaigns);
+  const[campaignNotify,setCampaignNotify]=useState(false);
 
-  function saveCampaign(){
-    commit({...db,dailyCampaign:{...c,...form,updatedAt:new Date().toLocaleString('tr-TR')}});
+  async function saveCampaign(){
+    const next={...db,dailyCampaign:{...c,...form,updatedAt:new Date().toLocaleString('tr-TR')}};
+    commit(next);
+    if(notifyOnSave&&form.active){
+      const title=`${form.emoji||'🔥'} ${form.title||'Yeni kampanya'}`;
+      const result=await dispatchPush(next,commit,{title,body:form.body||'Liberte Club fırsatını kaçırma.'});
+      alert(result.note);
+    }
   }
 
   function savePrizes(){
     commit({...db,wheelPrizes:prizes.map((p,i)=>({...p,id:p.id||Date.now()+i,weight:Number(p.weight||1),value:Number(p.value||0)}))});
+  }
+
+  async function saveCampaigns(){
+    const next={...db,campaigns:campaigns.map((x,i)=>({...x,id:x.id||Date.now()+i}))};
+    commit(next);
+    const active=campaigns.filter(x=>x.active!==false);
+    if(campaignNotify&&active.length){
+      const latest=active[active.length-1];
+      const title=`${latest.emoji||'🎁'} ${latest.title||'Yeni kampanya'}`;
+      const result=await dispatchPush(next,commit,{title,body:latest.body||'Liberte Club\'da yeni fırsat var.'});
+      alert(result.note);
+    }
   }
 
   return <div className="gameAdmin adminStack">
@@ -498,7 +520,21 @@ function GameAdmin({db,commit}){
       <label>Açıklama</label>
       <textarea value={form.body} onChange={e=>setForm({...form,body:e.target.value})}/>
       <label className="adminToggle"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/><span>Kampanya aktif</span></label>
+      <label className="adminToggle"><input type="checkbox" checked={notifyOnSave} onChange={e=>setNotifyOnSave(e.target.checked)}/><span>Kaydedince push bildirimi gönder</span></label>
       <button type="button" onClick={saveCampaign}><ShieldCheck/> Kaydet</button>
+    </div>
+
+    <div className="card adminSectionCard">
+      <div className="adminSectionHead"><div><span>LİSTE</span><h3>Uygulama kampanyaları</h3></div></div>
+      {campaigns.map((item,i)=><div className="prizeEdit" key={item.id||i}>
+        <input value={item.emoji||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,emoji:e.target.value}:x))} placeholder="Emoji"/>
+        <input value={item.title||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,title:e.target.value}:x))} placeholder="Başlık"/>
+        <input value={item.body||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,body:e.target.value}:x))} placeholder="Açıklama"/>
+        <label className="adminToggle inline"><input type="checkbox" checked={item.active!==false} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,active:e.target.checked}:x))}/><span>Aktif</span></label>
+      </div>)}
+      <button type="button" className="ghost" onClick={()=>setCampaigns([...campaigns,{id:Date.now(),title:'Yeni kampanya',body:'Detayları uygulamada gör.',active:true,emoji:'🎁'}])}><Plus/> Kampanya ekle</button>
+      <label className="adminToggle"><input type="checkbox" checked={campaignNotify} onChange={e=>setCampaignNotify(e.target.checked)}/><span>Kaydedince üyelere bildir</span></label>
+      <button type="button" onClick={saveCampaigns}><Send/> Kampanyaları kaydet</button>
     </div>
 
     <div className="card adminSectionCard">
@@ -540,38 +576,8 @@ function NotificationAdmin({db,commit}){
     if(!title.trim()||!body.trim())return alert('Başlık ve mesaj zorunlu.');
     setSending(true);
     setStatus('Gönderiliyor...');
-    const tokens=devices.map(x=>x.token).filter(Boolean);
-    const createdAt=new Date().toLocaleString('tr-TR');
-    const logId=Date.now();
-    let next={
-      ...db,
-      notifications:[{id:logId,title,body,createdAt},...(db.notifications||[])],
-      pushLog:[{id:logId,title,body,deviceCount:devices.length,sent:0,failed:0,note:'',createdAt},...pushLog].slice(0,30)
-    };
-    commit(next);
-
-    if(!tokens.length){
-      setStatus('Kayıtlı cihaz yok. Bildirim uygulama içi kaydedildi.');
-      setSending(false);
-      return;
-    }
-
-    try{
-      const r=await fetch('/api/push/send',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({tokens,title,body})
-      });
-      const j=await r.json();
-      const note=j.note||`${j.sent||0} cihaza iletildi${j.failed?`, ${j.failed} başarısız`:''}.`;
-      setStatus(note);
-      commit({
-        ...next,
-        pushLog:next.pushLog.map(x=>x.id===logId?{...x,sent:j.sent||0,failed:j.failed||0,note}:x)
-      });
-    }catch{
-      setStatus('Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.');
-    }
+    const result=await dispatchPush(db,commit,{title,body});
+    setStatus(result.note);
     setSending(false);
   }
 

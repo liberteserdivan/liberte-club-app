@@ -1,9 +1,21 @@
 import { money, productImageSrc } from '../lib/db.js';
 
 // Menü sayfası premium ürün kartı
-export default function MenuProductCard({ item }) {
+export default function MenuProductCard({ item, onSelect }) {
   return (
-    <article className="menuProductCard" style={{ '--tone': item.tone || '#b9f5d0' }}>
+    <article
+      className="menuProductCard"
+      style={{ '--tone': item.tone || '#b9f5d0' }}
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect?.(item)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect?.(item);
+        }
+      }}
+    >
       <div className="menuProductVisual">
         {productImageSrc(item)
           ? <img src={productImageSrc(item)} alt="" />

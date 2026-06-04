@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import MenuProductCard from '../components/MenuProductCard.jsx';
+import MenuProductDetailModal from '../components/MenuProductDetailModal.jsx';
 
 // Ürün listesini arama metnine göre filtrele
 function filterByQuery(items, query) {
@@ -15,6 +16,7 @@ function filterByQuery(items, query) {
 export default function MenuPage({ db }) {
   const [cat, setCat] = useState('all');
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(null);
 
   const cats = db.categories || [];
   const allItems = db.items || [];
@@ -91,7 +93,7 @@ export default function MenuPage({ db }) {
           </div>
           <div className="menuProFeaturedRail">
             {featured.map((item) => (
-              <MenuProductCard key={`f-${item.id}`} item={item} />
+              <MenuProductCard key={`f-${item.id}`} item={item} onSelect={setSelected} />
             ))}
           </div>
         </div>
@@ -105,7 +107,7 @@ export default function MenuPage({ db }) {
           </div>
           {category.description && <p className="menuProSectionDesc">{category.description}</p>}
           <div className="menuProGrid">
-            {items.map((item) => <MenuProductCard key={item.id} item={item} />)}
+            {items.map((item) => <MenuProductCard key={item.id} item={item} onSelect={setSelected} />)}
           </div>
         </div>
       )) : (
@@ -128,10 +130,13 @@ export default function MenuPage({ db }) {
           )}
           <div className="menuProGrid">
             {visibleItems.length
-              ? visibleItems.map((item) => <MenuProductCard key={item.id} item={item} />)
+              ? visibleItems.map((item) => <MenuProductCard key={item.id} item={item} onSelect={setSelected} />)
               : <div className="empty menuProEmpty">Aradığın ürün bulunamadı.</div>}
           </div>
         </div>
+      )}
+      {selected && (
+        <MenuProductDetailModal item={selected} onClose={() => setSelected(null)} />
       )}
     </section>
   );

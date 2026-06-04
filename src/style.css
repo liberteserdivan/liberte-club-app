@@ -1399,19 +1399,6 @@ header{
   overflow:hidden;
 }
 
-.homeHeroPro::after{
-  content:'';
-  position:absolute;
-  right:-18%;
-  top:42%;
-  width:min(72vw,320px);
-  height:min(72vw,320px);
-  background:url('/liberte-logo.png') center/contain no-repeat;
-  opacity:.06;
-  pointer-events:none;
-  transform:translateY(-50%);
-}
-
 .homePro header,
 .homePro .appHeader{
   margin:0 auto 18px!important;
@@ -3304,6 +3291,374 @@ header{
 
 @media (min-width:900px){
   .campaignPro{
+    max-width:720px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+}
+
+/* =========================
+   QR — PREMIUM TASARIM
+   ========================= */
+.qrPro{
+  background:var(--cream);
+  min-height:100svh;
+  margin:-22px -18px 0;
+  padding:0 0 calc(130px + env(safe-area-inset-bottom));
+}
+
+.qrProHero{
+  padding:calc(18px + env(safe-area-inset-top)) 20px 22px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 90% 10%,rgba(216,194,157,.24),transparent 32%),
+    radial-gradient(circle at 8% 85%,rgba(159,220,199,.14),transparent 30%),
+    linear-gradient(168deg,#11100D 0%,var(--forest) 58%,#071B16 100%);
+  border-radius:0 0 34px 34px;
+}
+
+.qrProEyebrow{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(216,194,157,.35);
+  color:var(--gold);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:12px;
+}
+
+.qrProHero h1{
+  margin:0 0 8px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:var(--font-display);
+  font-size:clamp(26px,6.5vw,34px);
+  line-height:1.05;
+  letter-spacing:-.03em;
+  color:#fff;
+}
+
+.qrProHero h1 svg{
+  width:28px;
+  height:28px;
+  color:var(--gold);
+  flex-shrink:0;
+}
+
+.qrProHero p{
+  margin:0 0 18px;
+  color:rgba(255,255,255,.78);
+  font-size:14px;
+  line-height:1.45;
+  max-width:34ch;
+}
+
+.qrProStats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.qrProStats div{
+  padding:12px 10px;
+  border-radius:18px;
+  background:rgba(255,253,248,.12);
+  border:1px solid rgba(216,194,157,.28);
+  text-align:center;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+
+.qrProStats strong{
+  display:block;
+  font-family:var(--font-display);
+  font-size:22px;
+  line-height:1;
+  color:#fff;
+  margin-bottom:4px;
+}
+
+.qrProStats strong svg{
+  width:22px;
+  height:22px;
+  color:var(--gold);
+  margin:0 auto;
+}
+
+.qrProStats span{
+  display:block;
+  font-size:11px;
+  font-weight:800;
+  color:rgba(255,255,255,.82);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.qrProStats em{
+  font-style:normal;
+  font-size:11px;
+  font-weight:700;
+  color:rgba(255,255,255,.5);
+}
+
+.qrProBody{
+  padding:18px 18px 0;
+}
+
+.qrProBody .walletCard{
+  margin:0;
+  min-height:auto;
+}
+
+/* =========================
+   ŞANS ÇARKI — PREMIUM
+   ========================= */
+.wheelPro{
+  background:var(--cream);
+  min-height:100svh;
+  margin:-22px -18px 0;
+  padding:0 0 calc(130px + env(safe-area-inset-bottom));
+}
+
+.wheelProHero{
+  padding:calc(18px + env(safe-area-inset-top)) 20px 22px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 12% 88%,rgba(159,220,199,.16),transparent 30%),
+    radial-gradient(circle at 88% 12%,rgba(216,194,157,.26),transparent 34%),
+    linear-gradient(168deg,#11100D 0%,#1a3d32 52%,#071B16 100%);
+  border-radius:0 0 34px 34px;
+}
+
+.wheelProEyebrow{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(216,194,157,.35);
+  color:var(--gold);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:12px;
+}
+
+.wheelProHero h1{
+  margin:0 0 8px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:var(--font-display);
+  font-size:clamp(28px,7vw,36px);
+  line-height:1.05;
+  letter-spacing:-.03em;
+  color:#fff;
+}
+
+.wheelProHero h1 svg{
+  width:26px;
+  height:26px;
+  color:var(--gold);
+}
+
+.wheelProHero p{
+  margin:0;
+  color:rgba(255,255,255,.78);
+  font-size:14px;
+  line-height:1.45;
+  max-width:34ch;
+}
+
+.wheelProBody{
+  padding:16px 18px 0;
+  display:grid;
+  gap:14px;
+}
+
+.wheelProBody .wheelStage{
+  margin-bottom:0;
+}
+
+.wheelProBody .rewardActionCard{
+  border-radius:24px!important;
+  box-shadow:0 12px 28px rgba(11,47,38,.07)!important;
+}
+
+/* Menü ürün detay modalı */
+.menuProductCard{
+  cursor:pointer;
+}
+
+.menuDetailBackdrop{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  background:rgba(11,47,38,.55);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  display:grid;
+  place-items:end center;
+  padding:18px 18px calc(24px + env(safe-area-inset-bottom));
+  animation:menuDetailFade .22s ease both;
+}
+
+@keyframes menuDetailFade{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+.menuDetailModal{
+  width:min(100%,420px);
+  max-height:min(88svh,720px);
+  overflow:auto;
+  border-radius:28px 28px 24px 24px;
+  background:#fff;
+  box-shadow:0 24px 60px rgba(11,47,38,.28);
+  position:relative;
+  animation:menuDetailSlide .28s cubic-bezier(.22,1,.36,1) both;
+}
+
+@keyframes menuDetailSlide{
+  from{opacity:0;transform:translateY(24px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.menuDetailClose{
+  position:absolute;
+  top:14px;
+  right:14px;
+  z-index:2;
+  width:40px;
+  height:40px;
+  border-radius:999px;
+  border:0;
+  background:rgba(11,47,38,.72);
+  color:#fff;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+}
+
+.menuDetailVisual{
+  position:relative;
+  min-height:220px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 30% 18%,rgba(255,255,255,.5),transparent 34%),
+    linear-gradient(145deg,var(--tone),#F4EBDD);
+}
+
+.menuDetailVisual span{
+  font-size:72px;
+}
+
+.menuDetailVisual img{
+  width:100%;
+  min-height:220px;
+  object-fit:cover;
+}
+
+.menuDetailBody{
+  padding:18px 18px 22px;
+}
+
+.menuDetailTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.menuDetailTop h2{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:24px;
+  color:var(--forest);
+  letter-spacing:-.03em;
+}
+
+.menuDetailTop strong{
+  font-size:20px;
+  font-weight:900;
+  color:var(--gold-2);
+  white-space:nowrap;
+}
+
+.menuDetailBody p{
+  margin:0 0 18px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.menuDetailActions{
+  display:grid;
+  gap:10px;
+}
+
+.menuDetailActions .goldBtn{
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-decoration:none;
+}
+
+.menuDetailGhost{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:12px 16px;
+  border-radius:16px;
+  border:1px solid rgba(11,47,38,.1);
+  background:#fff;
+  color:var(--forest);
+  font:inherit;
+  font-size:14px;
+  font-weight:800;
+  text-decoration:none;
+}
+
+/* Statik sadakat bardağı */
+.loyaltyCupStatic{
+  width:88px;
+  height:96px;
+  display:grid;
+  place-items:center;
+  animation:loyaltyCupFloat 4s ease-in-out infinite;
+}
+
+.loyaltyCupStatic img{
+  width:72px;
+  height:72px;
+  object-fit:contain;
+  filter:drop-shadow(0 8px 16px rgba(0,0,0,.2));
+}
+
+@keyframes loyaltyCupFloat{
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  50%{transform:translateY(-4px) rotate(2deg)}
+}
+
+.adminToggle.inline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin:0;
+}
+
+@media (min-width:900px){
+  .qrPro,.wheelPro{
     max-width:720px;
     margin-left:auto;
     margin-right:auto;

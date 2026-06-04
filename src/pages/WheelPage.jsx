@@ -1,15 +1,21 @@
+import { Sparkles } from 'lucide-react';
 import { DailyRewardCard, FirstOrderBonusCard, LuckyWheelCard } from '../components/Cards.jsx';
 
-// Şans çarkı ve günlük oyun ödülleri
+// Şans çarkı — premium hero ve oyun kartları
 export default function WheelPage({ db, customer, commit }) {
-  return <section className="pageShell wheelPage wheelPageEnter">
-    <div className="pageHero">
-      <span>LIBERTE CLUB</span>
-      <h2>Şans Çarkı</h2>
-      <p>Günde bir kez çevir; damga, ikram veya sürpriz kazan.</p>
-    </div>
-    <LuckyWheelCard db={db} customer={customer} commit={commit} />
-    <DailyRewardCard db={db} customer={customer} commit={commit} />
-    <FirstOrderBonusCard db={db} customer={customer} commit={commit} />
-  </section>;
+  return (
+    <section className="wheelPro wheelPageEnter">
+      <div className="wheelProHero">
+        <span className="wheelProEyebrow">Liberte Club</span>
+        <h1><Sparkles aria-hidden="true" /> Şans Çarkı</h1>
+        <p>Günde bir kez çevir; damga, ikram veya sürpriz kazan.</p>
+      </div>
+
+      <div className="wheelProBody">
+        <LuckyWheelCard db={db} customer={customer} commit={commit} />
+        <DailyRewardCard db={db} customer={customer} commit={commit} />
+        <FirstOrderBonusCard db={db} customer={customer} commit={commit} />
+      </div>
+    </section>
+  );
 }
