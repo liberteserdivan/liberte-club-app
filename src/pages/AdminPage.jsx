@@ -17,7 +17,13 @@ const ADMIN_TABS=[
 
 export default function AdminPage({db,commit}){
   const[tab,setTab]=useState('overview');
+  const[focusUserId,setFocusUserId]=useState(null);
   const deviceCount=(db.pushSubscriptions||[]).length;
+
+  function openUserManage(userId=null){
+    if(userId)setFocusUserId(userId);
+    setTab('uyeler');
+  }
 
   return <section className="pageShell adminPage">
     <div className="adminPremiumHero">
@@ -41,11 +47,11 @@ export default function AdminPage({db,commit}){
     </div>
 
     <div className="adminContent">
-      {tab==='overview'&&<OverviewAdmin db={db}/>}
+      {tab==='overview'&&<OverviewAdmin db={db} commit={commit} onManageUsers={openUserManage}/>}
       {tab==='kasa'&&<ScanPanel db={db} commit={commit}/>}
       {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
       {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
-      {tab==='uyeler'&&<MembersAdmin db={db} commit={commit}/>}
+      {tab==='uyeler'&&<MembersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={()=>setFocusUserId(null)}/>}
       {tab==='ayarlar'&&<SettingsAdmin db={db} commit={commit}/>}
     </div>
   </section>;
@@ -65,10 +71,10 @@ function KampanyaAdmin({db,commit}){
   </div>;
 }
 
-function MembersAdmin({db,commit}){
+function MembersAdmin({db,commit,focusUserId,onFocusHandled}){
   return <div className="adminStack">
     <ReviewApprovalAdmin db={db} commit={commit}/>
-    <UsersAdmin db={db} commit={commit}/>
+    <UsersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={onFocusHandled}/>
   </div>;
 }
 
@@ -78,7 +84,7 @@ function SettingsAdmin({db,commit}){
     <CouponsAdmin db={db} commit={commit}/>
   </div>;
 }
-function OverviewAdmin({db}){
+function OverviewAdmin({db,commit,onManageUsers}){
   const customers=db.customers||[];
   const loyalty=db.loyalty||{};
   const history=db.history||[];
@@ -129,6 +135,8 @@ function OverviewAdmin({db}){
       <div className="metricCard"><span>Çark</span><b>{(db.wheelSpins||[]).length}</b><small>Çevirme</small></div>
     </div>
 
+    <UserManageOverview db={db} commit={commit} onManageUsers={onManageUsers}/>
+
     <div className="card topMembers adminSectionCard">
       <h3>En sadık üyeler</h3>
       {topCustomers.length?topCustomers.map(({c,l},i)=>
@@ -155,6 +163,50 @@ function OverviewAdmin({db}){
       )}
       {!history.length&&<div className="empty">Henüz işlem yok.</div>}
     </div>
+  </div>;
+}
+
+// Özet ekranında hızlı kullanıcı yönetimi
+function UserManageOverview({db,commit,onManageUsers}){
+  const[query,setQuery]=useState('');
+  const customers=db.customers||[];
+  const loyalty=db.loyalty||{};
+  const needle=query.trim().toLowerCase();
+  const filtered=customers.filter(c=>{
+    if(!needle)return true;
+    return String(c.name||'').toLowerCase().includes(needle)
+      ||String(c.phone||'').includes(needle)
+      ||String(c.email||'').toLowerCase().includes(needle);
+  }).slice(0,8);
+
+  function addStamp(c){
+    commit(addStampToCustomer(db,c.id,1,'Admin özet'));
+  }
+
+  return <div className="card adminSectionCard userManageOverview">
+    <div className="adminSectionHead">
+      <div><span>ÜYELER</span><h3>Kullanıcı yönetimi</h3></div>
+      <button type="button" className="ghost adminExportBtn" onClick={()=>onManageUsers()}><Users size={16}/> Tümünü yönet</button>
+    </div>
+    <p className="pushHint">Telefon ve e-posta tekil tutulur. Arama yapıp hızlı işlem alabilir veya tam listeye geçebilirsin.</p>
+    <input
+      placeholder="İsim, telefon veya e-posta ara"
+      value={query}
+      onChange={e=>setQuery(e.target.value)}
+    />
+    {filtered.length?filtered.map(c=>{
+      const l=loyalty[c.id]||loyaltyTemplate(c.id);
+      return <div className="historyMini userManageRow" key={c.id}>
+        <div>
+          <b>{c.name}</b>
+          <p>{c.phone} · {c.email||'mail yok'} · {l.totalStamps||0} damga · {l.availableRewards||0} hak</p>
+        </div>
+        <div className="userManageRowActions">
+          <button type="button" className="ghost" onClick={()=>addStamp(c)}><Plus size={14}/></button>
+          <button type="button" onClick={()=>onManageUsers(c.id)}>Düzenle</button>
+        </div>
+      </div>;
+    }):<div className="empty">Eşleşen kullanıcı yok.</div>}
   </div>;
 }
 
@@ -647,7 +699,7 @@ function NotificationAdmin({db,commit}){
   </div>;
 }
 
-function UsersAdmin({db,commit}){
+function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
   const[editing,setEditing]=useState(null);
   const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false,note:''});
   const[message,setMessage]=useState('');
@@ -666,6 +718,15 @@ function UsersAdmin({db,commit}){
       note:(db.customerNotes||{})[c.id]||''
     });
   }
+
+  useEffect(()=>{
+    if(!focusUserId)return;
+    const target=customers.find(c=>c.id===focusUserId);
+    if(target){
+      beginEdit(target);
+      onFocusHandled?.();
+    }
+  },[focusUserId]);
 
   function cancelEdit(){
     setEditing(null);

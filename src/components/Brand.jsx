@@ -25,7 +25,7 @@ export default function Brand({ db, small = false, admin = false, header = false
 
   if (login) {
     return (
-      <div className="brandMark login">
+      <div className={`brandMark login${showLogo ? ' hasLogo' : ''}`}>
         {image || monogram}
       </div>
     );

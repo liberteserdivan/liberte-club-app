@@ -2,7 +2,7 @@ import React,{useState}from'react';
 import { Mail, ShieldCheck } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
-import{findReferrerByCode,loyaltyTemplate,makeReferralCode,norm}from'../lib/db.js';
+import{addStampToCustomer,findReferrerByCode,getReferralCode,loyaltyTemplate,makeReferralCode,mergeDb,norm}from'../lib/db.js';
 
 export default function Login({db,commit,setSession}){
   const[authMode,setAuthMode]=useState('login');
@@ -171,7 +171,8 @@ setSession({customerId:customer.id});
         body:JSON.stringify({
           phone:f.ph,
           name:sendName,
-          email:f.em
+          email:f.em,
+          purpose:authMode
         })
       });
 
@@ -200,7 +201,8 @@ setSession({customerId:customer.id});
     const f=pending||fields();
     if(!f)return;
 
-    if(code.replace(/\D/g,'').length!==6){
+    const normalizedCode=code.replace(/\D/g,'');
+    if(normalizedCode.length!==6){
       notify('6 haneli doğrulama kodunu gir.');
       return;
     }
@@ -209,7 +211,7 @@ setSession({customerId:customer.id});
 
     try{
       if(useLocalAuth()){
-        verifyDevAuthCode(f.ph,f.em,code);
+        verifyDevAuthCode(f.ph,f.em,normalizedCode);
       }else{
         const r=await fetch('/api/auth/verify-code',{
           method:'POST',
@@ -217,7 +219,7 @@ setSession({customerId:customer.id});
           body:JSON.stringify({
             phone:f.ph,
             email:f.em,
-            code
+            code:normalizedCode
           })
         });
 

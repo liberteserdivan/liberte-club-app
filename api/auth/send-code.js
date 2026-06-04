@@ -10,13 +10,19 @@ export default async function handler(req,res){
   if(req.method!=='POST') return res.status(405).json({error:'Method not allowed'});
   try{
     const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):req.body;
-    const phone=cleanPhone(body.phone); const name=String(body.name||'').trim(); const email=String(body.email||'').trim().toLowerCase();
+    const purpose=body.purpose==='login'?'login':'register';
+    const phone=cleanPhone(body.phone);
+    let name=String(body.name||'').trim();
+    const email=String(body.email||'').trim().toLowerCase();
     if(phone.length<10) return res.status(400).json({error:'Telefon eksik'});
-    if(name.split(' ').filter(Boolean).length<2) return res.status(400).json({error:'İsim soyisim zorunlu'});
     if(!validEmail(email)) return res.status(400).json({error:'Geçerli e-posta zorunlu'});
+    if(purpose==='register'&&name.split(' ').filter(Boolean).length<2) return res.status(400).json({error:'İsim soyisim zorunlu'});
+    if(!name) name='Liberte Üye';
     if(!process.env.DATABASE_URL) return res.status(500).json({error:'DATABASE_URL eksik'});
     const sql=neon(process.env.DATABASE_URL);
     await sql`CREATE TABLE IF NOT EXISTS email_codes (id bigserial PRIMARY KEY,email text NOT NULL,phone text NOT NULL,code text NOT NULL,attempts int NOT NULL DEFAULT 0,used boolean NOT NULL DEFAULT false,expires_at timestamptz NOT NULL,created_at timestamptz NOT NULL DEFAULT now())`;
+    // Eski kodları geçersiz kıl — yanlış kod hatasını önler
+    await sql`UPDATE email_codes SET used=true WHERE email=${email} AND phone=${phone} AND used=false`;
     const code=makeCode();
     await sql`INSERT INTO email_codes (email, phone, code, expires_at) VALUES (${email}, ${phone}, ${code}, now() + interval '10 minutes')`;
     const apiKey=process.env.RESEND_API_KEY;
