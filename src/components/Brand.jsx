@@ -1,26 +1,28 @@
+import { useState } from 'react';
 import { DEFAULT_LOGO } from '../lib/constants.js';
 
 // Kafe marka logosu veya varsayılan L monogramı
 export default function Brand({ db, small = false, admin = false, header = false, login = false }) {
   const cafe = db.settings?.cafe_name || 'Liberte Gastro Cafe';
   const logoSrc = db.settings?.logo || DEFAULT_LOGO;
-  const hasLogo = Boolean(logoSrc);
+  const [imgFailed, setImgFailed] = useState(false);
+  const showLogo = Boolean(logoSrc) && !imgFailed;
 
   const monogram = (
-    <div className="brandMonogram" aria-hidden={hasLogo}>
+    <div className="brandMonogram" aria-hidden={showLogo}>
       <b>L</b>
     </div>
   );
 
-  const image = hasLogo && (
+  const image = showLogo && (
     <img
       className="brandMarkImg"
       src={logoSrc}
       alt={cafe}
+      onError={() => setImgFailed(true)}
     />
   );
 
-  // Giriş ekranı — büyük dairesel logo
   if (login) {
     return (
       <div className="brandMark login">
@@ -29,17 +31,16 @@ export default function Brand({ db, small = false, admin = false, header = false
     );
   }
 
-  // Header ve admin: açık zeminli kutu — koyu logo da okunur
   if (header || admin) {
     return (
-      <div className={`brandMark${header ? ' header' : ' admin'}${hasLogo ? ' hasLogo' : ''}`}>
+      <div className={`brandMark${header ? ' header' : ' admin'}${showLogo ? ' hasLogo' : ''}`}>
         {image || monogram}
       </div>
     );
   }
 
-  if (hasLogo) {
-    return <img className={small ? 'brandLogo small' : 'brandLogo'} src={logoSrc} alt={cafe} />;
+  if (showLogo) {
+    return <img className={small ? 'brandLogo small' : 'brandLogo'} src={logoSrc} alt={cafe} onError={() => setImgFailed(true)} />;
   }
 
   return (

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Gift, Sparkles } from 'lucide-react';
-import { applyWheelPrize, localDayKey, seed, weightedPrize } from '../lib/db.js';
+import { applyWheelPrize, isWheelUnlimited, localDayKey, seed, weightedPrize } from '../lib/db.js';
 
-const SPIN_MS = 4500;
+const SPIN_MS = 9000;
+const SPIN_EASE = 'cubic-bezier(0.12, 0.72, 0.08, 1)';
 const WHEEL_COLORS = ['#0B2F26', '#1F5D4F', '#B9945E', '#9FDCC7', '#16473A', '#D8C29D', '#2A6B58', '#C4A574'];
 
 // Ödül tipine göre segment emojisi
@@ -15,7 +16,7 @@ function prizeEmoji(prize) {
 // Kazanan segmente inecek dönüş açısını hesaplar
 function calcSpinAngle(prizeIndex, total, currentRotation) {
   const segment = 360 / total;
-  const fullTurns = 5 + Math.floor(Math.random() * 3);
+  const fullTurns = 9 + Math.floor(Math.random() * 4);
   const landOffset = 360 - prizeIndex * segment - segment / 2;
   return currentRotation + fullTurns * 360 + landOffset;
 }
@@ -34,8 +35,9 @@ function buildWheelGradient(prizes) {
 
 export default function AnimatedWheel({ db, customer, commit }) {
   const prizes = db.wheelPrizes?.length ? db.wheelPrizes : seed.wheelPrizes;
+  const unlimited = isWheelUnlimited(db, customer);
   const todaySpin = (db.wheelSpins || []).find(x => x.customerId === customer.id && x.day === localDayKey());
-  const alreadySpun = Boolean(todaySpin);
+  const alreadySpun = !unlimited && Boolean(todaySpin);
 
   const [entered, setEntered] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -114,7 +116,7 @@ export default function AnimatedWheel({ db, customer, commit }) {
             style={{
               background: gradient,
               transform: `rotate(${rotation}deg)`,
-              transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.85, 0.22, 1)` : 'none'
+              transition: spinning ? `transform ${SPIN_MS}ms ${SPIN_EASE}` : 'none'
             }}
             onTransitionEnd={handleTransitionEnd}
           >
@@ -142,14 +144,15 @@ export default function AnimatedWheel({ db, customer, commit }) {
         </div>
 
         <p className="wheelHint">
-          {alreadySpun && !spinning
+          {unlimited && !spinning && 'Admin modu — sınırsız çevirme aktif.'}
+          {!unlimited && alreadySpun && !spinning
             ? `Bugünkü ödülün: ${todaySpin?.prize || wonPrize?.label}`
             : spinning
               ? 'Çark dönüyor, şansın açılsın…'
-              : 'Damga, ikram veya sürpriz kazan.'}
+              : !unlimited ? 'Damga, ikram veya sürpriz kazan.' : ''}
         </p>
 
-        {!alreadySpun && !spinning && (
+        {(!alreadySpun || unlimited) && !spinning && (
           <button type="button" className="goldBtn wheelSpinBtn" onClick={startSpin}>
             <Gift size={18} /> Şansımı Dene
           </button>

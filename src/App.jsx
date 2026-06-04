@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { applyBirthdayReward, cssVars, load, localDayKey } from './lib/db.js';
+import { applyBirthdayReward, cssVars, isWheelUnlimited, load, localDayKey } from './lib/db.js';
 import { readSession } from './lib/session.js';
 import { useCommit } from './hooks/useCommit.js';
 import Nav from './components/Nav.jsx';
@@ -57,7 +57,8 @@ export default function App() {
   }
 
   const card = db.loyalty[customer.id] || {};
-  const wheelDone = !!(db.wheelSpins || []).find((x) => x.customerId === customer.id && x.day === localDayKey());
+  const wheelDone = !isWheelUnlimited(db, customer)
+    && !!(db.wheelSpins || []).find((x) => x.customerId === customer.id && x.day === localDayKey());
 
   return <main className="app" style={cssVars(db.settings)}>
     <div className="appTabView" key={tab}>

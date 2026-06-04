@@ -1,39 +1,88 @@
 import { NodeIO } from '@gltf-transform/core';
-import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { center, dedup, flatten, inspect, prune, textureCompress, weld } from '@gltf-transform/functions';
+import { KHRDracoMeshCompression } from '@gltf-transform/extensions';
+import {
+  center,
+  dedup,
+  flatten,
+  inspect,
+  prune,
+  quantize,
+  simplify,
+  textureCompress,
+  weld
+} from '@gltf-transform/functions';
+import draco3d from 'draco3dgltf';
+import { MeshoptSimplifier } from 'meshoptimizer';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const cupFile = process.argv[2] || 'Liberte_Cup_Meshy.glb';
-const cupPath = join(root, 'public', cupFile);
+const sourceFile = process.argv[2] || 'Liberte_Cup_Luwai.glb';
+const outFile = process.argv[3] || 'Liberte_Cup_Luwai_App.glb';
+const sourcePath = join(root, 'public', sourceFile);
+const outPath = join(root, 'public', outFile);
 
-const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
-const doc = await io.readBinary(readFileSync(cupPath));
+const TARGET_HEIGHT = 1.35;
 
-console.log('--- Önce ---');
-console.log(JSON.stringify(inspect(doc).scenes, null, 2));
+// Draco sıkıştırmalı kaynak dosyayı oku
+async function createIO() {
+  const decoder = await draco3d.createDecoderModule();
+  const encoder = await draco3d.createEncoderModule();
+  return new NodeIO()
+    .registerExtensions([KHRDracoMeshCompression])
+    .registerDependencies({
+      'draco3d.decoder': decoder,
+      'draco3d.encoder': encoder
+    });
+}
 
-const scene = doc.getRoot().getDefaultScene();
-if (scene) {
+// Kök düğümü hedef yüksekliğe ölçekle
+function scaleToHeight(doc, targetHeight) {
+  const scene = doc.getRoot().getDefaultScene();
+  if (!scene) return;
+
+  const info = inspect(doc).scenes?.properties?.[0];
+  if (!info?.bboxMin || !info?.bboxMax) return;
+
+  const height = info.bboxMax[1] - info.bboxMin[1];
+  if (!height) return;
+
+  const factor = targetHeight / height;
   for (const node of scene.listChildren()) {
-    node.setScale([1.05, 1.05, 1.05]);
+    const [sx, sy, sz] = node.getScale();
+    node.setScale([sx * factor, sy * factor, sz * factor]);
   }
 }
+
+const io = await createIO();
+const doc = await io.readBinary(readFileSync(sourcePath));
+
+console.log('Kaynak:', sourcePath, `(${Math.round(readFileSync(sourcePath).length / 1024)} KB)`);
+console.log('--- Önce ---');
+console.log(JSON.stringify(inspect(doc).meshes, null, 2));
 
 await doc.transform(
   dedup(),
   weld(),
+  // Mobil web için ağır mesh'i sadeleştir
+  simplify({
+    simplifier: MeshoptSimplifier,
+    ratio: 0.075,
+    error: 0.002
+  }),
+  quantize(),
+  textureCompress({ resize: [512, 512], format: 'webp' }),
   center({ pivot: 'below' }),
-  textureCompress({ resize: [2048, 2048] }),
   flatten(),
   prune()
 );
 
-writeFileSync(cupPath, Buffer.from(await io.writeBinary(doc)));
+scaleToHeight(doc, TARGET_HEIGHT);
+
+writeFileSync(outPath, Buffer.from(await io.writeBinary(doc)));
 
 console.log('--- Sonra ---');
-const afterDoc = await io.readBinary(readFileSync(cupPath));
-console.log(JSON.stringify(inspect(afterDoc).scenes, null, 2));
-console.log('Hazır:', cupPath, `(${Math.round(readFileSync(cupPath).length / 1024)} KB)`);
+const after = await io.readBinary(readFileSync(outPath));
+console.log(JSON.stringify(inspect(after).meshes, null, 2));
+console.log('Hazır:', outPath, `(${Math.round(readFileSync(outPath).length / 1024)} KB)`);

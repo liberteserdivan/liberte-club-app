@@ -14,7 +14,8 @@ export const seed={
     promo_text:'QR kartını göster, 10 damgada 1 içecek bizden.',
     cashier_pin:'5454',
     review_popup:true,
-    daily_popup:true
+    daily_popup:true,
+    wheel_unlimited:false
   },
   customers:[
     {
@@ -202,6 +203,11 @@ export function daysSince(dateText){
 export function localDayKey(){
   const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Admin veya ayar açıksa çark sınırı yok
+export function isWheelUnlimited(db,customer){
+  return Boolean(customer?.isAdmin)||db.settings?.wheel_unlimited===true;
 }
 
 export function hasDailyClaim(db,customerId,type){

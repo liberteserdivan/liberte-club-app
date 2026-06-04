@@ -16,8 +16,14 @@ export const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=Liberte+
 // Varsayılan marka logosu (public klasörü)
 export const DEFAULT_LOGO = '/liberte-logo.png';
 
-// Uygulama için optimize edilmiş 3D bardak GLB
-export const CUP_MODEL = '/Liberte_Cup_3D_App_Fixed.glb?v=3';
+// Sadakat halkası statik bardak görseli (şeffaf PNG)
+export const CUP_STATIC_IMAGE = '/liberte-cup.png?v=2';
 
-// 3D model yerine statik logo kullan (daha stabil)
+// Luwai logo bardak GLB — optimize edilmiş (isteğe bağlı)
+export const CUP_MODEL = '/Liberte_Cup_Luwai_App.glb?v=2';
+
+// Şimdilik statik görsel — 3D kapalı
 export const CUP_USE_3D = false;
+
+// Bardak dönme animasyonu — kapalı
+export const CUP_SPIN_ENABLED = false;

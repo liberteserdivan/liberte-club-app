@@ -747,8 +747,8 @@ header{position:relative;top:0;left:auto;transform:none;width:min(430px,100%);he
 
 .wheelStage{
   opacity:0;
-  transform:scale(.9) translateY(20px);
-  transition:opacity .75s cubic-bezier(.22,1,.36,1),transform .75s cubic-bezier(.22,1,.36,1);
+  transform:scale(.94) translateY(16px);
+  transition:opacity 1s cubic-bezier(.22,1,.36,1),transform 1s cubic-bezier(.22,1,.36,1);
   margin-bottom:18px;
 }
 .wheelStage.isEntered{
@@ -814,7 +814,7 @@ header{position:relative;top:0;left:auto;transform:none;width:min(430px,100%);he
 }
 .wheelArena.isSpinning .wheelGlow{
   opacity:.85;
-  animation:wheelGlowPulse 1.2s ease-in-out infinite;
+  animation:wheelGlowPulse 2.4s ease-in-out infinite;
 }
 @keyframes wheelGlowPulse{
   0%,100%{transform:scale(1);opacity:.65}
@@ -1569,6 +1569,44 @@ header{
   place-items:center;
 }
 
+/* Bardak halka ortasında — küçük ve dengeli */
+.loyaltyRingCenter .loyaltyCupStatic{
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:52px;
+  height:62px;
+  transform:translate(-50%, calc(-50% - 10px));
+  z-index:2;
+}
+
+.loyaltyRingCenter .loyaltyCupStatic img{
+  object-position:center center;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.24));
+}
+
+/* Yavaş 3D dönüş — CUP_SPIN_ENABLED ile açılır */
+.loyaltyRingCenter .loyaltyCupStatic.isSpinning{
+  perspective:300px;
+}
+
+.loyaltyRingCenter .loyaltyCupStatic.isSpinning img{
+  animation:loyaltyCupSpinY 12s linear infinite;
+  transform-style:preserve-3d;
+  will-change:transform;
+}
+
+@keyframes loyaltyCupSpinY{
+  from{transform:rotateY(0deg);}
+  to{transform:rotateY(360deg);}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .loyaltyRingCenter .loyaltyCupStatic.isSpinning img{
+    animation:none;
+  }
+}
+
 .loyaltyRingMark{
   width:58px;
   height:58px;
@@ -1596,6 +1634,20 @@ header{
   z-index:2;
 }
 
+.loyaltyCupScene .loyaltyCupStatic{
+  position:absolute;
+  inset:0;
+  margin:auto;
+  animation:loyaltyCupFloat 3s ease-in-out infinite;
+  opacity:1;
+  transition:opacity .35s ease;
+}
+
+.loyaltyCupScene.isReady .loyaltyCupStatic{
+  opacity:0;
+  pointer-events:none;
+}
+
 .loyaltyCupModel{
   width:128px;
   height:140px;
@@ -1603,7 +1655,13 @@ header{
   --poster-color:transparent;
   --progress-bar-color:transparent;
   --progress-mask:transparent;
+  opacity:0;
+  transition:opacity .45s ease;
   pointer-events:none;
+}
+
+.loyaltyCupScene.isReady .loyaltyCupModel{
+  opacity:1;
 }
 
 @keyframes loyaltyMarkFloat{
@@ -2053,6 +2111,7 @@ header{
   .homeWelcome h1{font-size:32px}
   .loyaltyRingBalance strong{font-size:28px}
   .loyaltyRingCenter{width:118px;height:118px}
+  .loyaltyRingCenter .loyaltyCupStatic{width:46px;height:54px;transform:translate(-50%, calc(-50% - 8px))}
   .loyaltyRingMark{width:52px;height:52px}
   .loyaltyCupModel{width:108px;height:118px}
   .loyaltyCupScene{width:108px;height:118px}
@@ -2193,6 +2252,9 @@ header{
 }
 
 /* —— QR sayfası animasyonları —— */
+.qrPageEnter .qrPassCard{
+  animation:walletCardIn .75s cubic-bezier(.22,1,.36,1) both;
+}
 .qrPageEnter .walletCard{
   animation:walletCardIn .75s cubic-bezier(.22,1,.36,1) both;
 }
@@ -3303,7 +3365,7 @@ header{
 .qrPro{
   background:var(--cream);
   min-height:100svh;
-  margin:-22px -18px 0;
+  margin:0!important;
   padding:0 0 calc(130px + env(safe-area-inset-bottom));
 }
 
@@ -3333,9 +3395,6 @@ header{
 
 .qrProHero h1{
   margin:0 0 8px;
-  display:flex;
-  align-items:center;
-  gap:10px;
   font-family:var(--font-display);
   font-size:clamp(26px,6.5vw,34px);
   line-height:1.05;
@@ -3344,14 +3403,11 @@ header{
 }
 
 .qrProHero h1 svg{
-  width:28px;
-  height:28px;
-  color:var(--gold);
-  flex-shrink:0;
+  display:none;
 }
 
 .qrProHero p{
-  margin:0 0 18px;
+  margin:0;
   color:rgba(255,255,255,.78);
   font-size:14px;
   line-height:1.45;
@@ -3359,60 +3415,170 @@ header{
 }
 
 .qrProStats{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-}
-
-.qrProStats div{
-  padding:12px 10px;
-  border-radius:18px;
-  background:rgba(255,253,248,.12);
-  border:1px solid rgba(216,194,157,.28);
-  text-align:center;
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-}
-
-.qrProStats strong{
-  display:block;
-  font-family:var(--font-display);
-  font-size:22px;
-  line-height:1;
-  color:#fff;
-  margin-bottom:4px;
-}
-
-.qrProStats strong svg{
-  width:22px;
-  height:22px;
-  color:var(--gold);
-  margin:0 auto;
-}
-
-.qrProStats span{
-  display:block;
-  font-size:11px;
-  font-weight:800;
-  color:rgba(255,255,255,.82);
-  text-transform:uppercase;
-  letter-spacing:.04em;
-}
-
-.qrProStats em{
-  font-style:normal;
-  font-size:11px;
-  font-weight:700;
-  color:rgba(255,255,255,.5);
+  display:none;
 }
 
 .qrProBody{
-  padding:18px 18px 0;
+  padding:16px 16px 0;
 }
 
 .qrProBody .walletCard{
   margin:0;
   min-height:auto;
+}
+
+/* QR sadakat kartı — kompakt cüzdan görünümü */
+.qrPassCard{
+  padding:20px 18px 22px;
+  border-radius:28px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(216,194,157,.2),transparent 38%),
+    linear-gradient(155deg,#0B2F26 0%,#174B3A 55%,#1F6A57 100%);
+  border:1px solid rgba(216,194,157,.22);
+  box-shadow:0 20px 48px rgba(11,47,38,.22);
+}
+
+.qrPassHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.qrPassHead span{
+  display:block;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.14em;
+  color:rgba(255,255,255,.65);
+  margin-bottom:4px;
+}
+
+.qrPassHead strong{
+  display:block;
+  font-family:var(--font-display);
+  font-size:22px;
+  line-height:1.1;
+  letter-spacing:-.02em;
+  color:#fff;
+}
+
+.qrPassLevel{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(216,194,157,.28);
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.qrPassLevel svg{
+  width:14px;
+  height:14px;
+  color:var(--gold);
+}
+
+.qrPassFrame{
+  position:relative;
+  width:min(100%,260px);
+  margin:0 auto 18px;
+  padding:16px;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 16px 40px rgba(0,0,0,.2);
+  display:grid;
+  place-items:center;
+}
+
+.qrPassFrame canvas{
+  display:block!important;
+  width:196px!important;
+  height:196px!important;
+  border-radius:8px;
+}
+
+.qrPassPulse{
+  position:absolute;
+  inset:8px;
+  border-radius:20px;
+  border:2px solid rgba(216,194,157,.45);
+  animation:qrPulse 2.8s ease-in-out infinite;
+  pointer-events:none;
+}
+
+.qrPassMeta{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:16px;
+}
+
+.qrPassMeta div{
+  padding:10px 8px;
+  border-radius:16px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.1);
+  text-align:center;
+}
+
+.qrPassMeta span{
+  display:block;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.6);
+  margin-bottom:4px;
+}
+
+.qrPassMeta b{
+  display:block;
+  font-size:15px;
+  color:#fff;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.qrPassProgress{
+  margin-bottom:12px;
+}
+
+.qrPassProgress .progress{
+  height:10px;
+  background:rgba(255,255,255,.16);
+  margin-bottom:8px;
+}
+
+.qrPassProgress .progress span{
+  background:linear-gradient(90deg,var(--gold),#F2DFAD);
+}
+
+.qrPassProgress p{
+  margin:0;
+  font-size:12px;
+  font-weight:700;
+  color:rgba(255,255,255,.78);
+  line-height:1.4;
+  text-align:center;
+}
+
+.qrPassTip{
+  margin:0;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(255,255,255,.08);
+  font-size:12px;
+  font-weight:600;
+  line-height:1.45;
+  color:rgba(255,255,255,.72);
+  text-align:center;
 }
 
 /* =========================
@@ -3629,25 +3795,23 @@ header{
   text-decoration:none;
 }
 
-/* Statik sadakat bardağı */
+/* Statik sadakat bardağı — boyut üst kapsayıcıdan gelir */
 .loyaltyCupStatic{
-  width:88px;
-  height:96px;
   display:grid;
   place-items:center;
-  animation:loyaltyCupFloat 4s ease-in-out infinite;
+  position:relative;
+  z-index:2;
+  background:transparent;
 }
 
 .loyaltyCupStatic img{
-  width:72px;
-  height:72px;
+  width:100%;
+  height:100%;
   object-fit:contain;
-  filter:drop-shadow(0 8px 16px rgba(0,0,0,.2));
-}
-
-@keyframes loyaltyCupFloat{
-  0%,100%{transform:translateY(0) rotate(0deg)}
-  50%{transform:translateY(-4px) rotate(2deg)}
+  object-position:center center;
+  filter:drop-shadow(0 12px 22px rgba(0,0,0,.28));
+  pointer-events:none;
+  user-select:none;
 }
 
 .adminToggle.inline{
@@ -3662,5 +3826,170 @@ header{
     max-width:720px;
     margin-left:auto;
     margin-right:auto;
+  }
+}
+
+/* =========================
+   MOBİL DÜZEN — LOGO, NAV, MENÜ
+   ========================= */
+:root{
+  --nav-dock-height:68px;
+  --nav-dock-total:calc(var(--nav-dock-height) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Alt menü — ekranın en altına sabit dock */
+.liberteNav{
+  position:fixed!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:0!important;
+  transform:translateX(-50%)!important;
+  width:100%!important;
+  max-width:var(--app-max,430px)!important;
+  height:auto!important;
+  min-height:var(--nav-dock-total)!important;
+  margin:0!important;
+  padding:6px 8px env(safe-area-inset-bottom, 0px)!important;
+  border-radius:20px 20px 0 0!important;
+  border:1px solid rgba(11,47,38,.08)!important;
+  border-bottom:none!important;
+  box-shadow:0 -8px 32px rgba(11,47,38,.12)!important;
+  backdrop-filter:blur(24px)!important;
+  -webkit-backdrop-filter:blur(24px)!important;
+  z-index:999!important;
+  gap:4px!important;
+}
+
+.liberteNav button{
+  height:52px!important;
+  min-height:52px!important;
+  border-radius:14px!important;
+  font-size:9px!important;
+  gap:3px!important;
+}
+
+.liberteNav.has-admin button{
+  font-size:8px!important;
+}
+
+.liberteNav button svg{
+  width:20px!important;
+  height:20px!important;
+}
+
+.liberteNav button.nav-qr{
+  width:56px!important;
+  height:56px!important;
+  min-height:56px!important;
+  transform:translateY(-8px)!important;
+  box-shadow:0 8px 20px rgba(11,47,38,.22)!important;
+}
+
+.liberteNav button:nth-child(3){
+  transform:none!important;
+  width:auto!important;
+  height:52px!important;
+}
+
+.liberteNav button.nav-qr{
+  transform:translateY(-8px)!important;
+}
+
+/* Sayfa alt boşluğu — nav altında içerik kalmasın */
+.app{
+  padding-bottom:var(--nav-dock-total)!important;
+}
+
+.homeBody,
+.menuPro,
+.qrPro,
+.wheelPro,
+.campaignPro,
+.adminPage,
+.pageShell{
+  padding-bottom:calc(16px + var(--nav-dock-total))!important;
+}
+
+.v4Home{
+  padding-bottom:0!important;
+}
+
+/* Header logosu — kırpma ve görünürlük */
+.brandMark.header,
+.brandMark.admin{
+  background:#fff!important;
+  border:2px solid rgba(216,194,157,.65)!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.18)!important;
+}
+
+.brandMark.header.hasLogo .brandMarkImg,
+.brandMark.admin.hasLogo .brandMarkImg{
+  border-radius:12px!important;
+  object-fit:contain!important;
+  padding:4px!important;
+  width:100%!important;
+  height:100%!important;
+}
+
+.homePro .appHeader .brandMark.header{
+  background:#fff!important;
+  border-color:rgba(255,255,255,.85)!important;
+}
+
+/* Menü sayfası mobil uyumu */
+.menuPro{
+  margin:0!important;
+  width:100%!important;
+  overflow-x:hidden!important;
+  padding-top:0!important;
+}
+
+.menuProHero::after,
+.campaignProHero::after{
+  display:none!important;
+}
+
+.menuProHero{
+  padding-top:calc(14px + env(safe-area-inset-top, 0px))!important;
+  border-radius:0 0 28px 28px!important;
+}
+
+.menuProCats{
+  padding:14px 16px 4px!important;
+}
+
+.menuProSection{
+  padding-left:16px!important;
+  padding-right:16px!important;
+}
+
+.menuProFeaturedRail .menuProductCard{
+  flex:0 0 min(78%,240px)!important;
+}
+
+.menuProductVisual{
+  min-height:148px!important;
+}
+
+.menuProductVisual img{
+  min-height:148px!important;
+}
+
+.menuProGrid{
+  gap:12px!important;
+}
+
+/* Admin sayfa — nav ile çakışmayı önle */
+.adminPage{
+  padding-top:calc(8px + env(safe-area-inset-top, 0px))!important;
+}
+
+.adminContent{
+  padding-bottom:8px!important;
+}
+
+@supports(padding:max(0px)){
+  .liberteNav{
+    bottom:0!important;
   }
 }

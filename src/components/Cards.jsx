@@ -1,8 +1,7 @@
 import React,{useEffect,useState}from'react';
-import{initializeApp}from'firebase/app';
-import{getMessaging,getToken,isSupported,onMessage}from'firebase/messaging';
 import{Bell,Coffee,Crown,Gift,Plus,QrCode,Send,ShieldCheck,Sparkles,Star}from'lucide-react';
-import{firebaseConfig,googleReviewUrl}from'../lib/constants.js';
+import{googleReviewUrl}from'../lib/constants.js';
+import{tryEnablePush}from'../lib/firebasePush.js';
 import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
 import{isNativeApp}from'../lib/platform.js';
 import AnimatedWheel from './AnimatedWheel.jsx';
@@ -217,55 +216,8 @@ export function ReviewCard({db,commit,customer}){
 }
 
 async function enablePush(customer,db,commit){
-  try{
-    if(!('Notification'in window))return alert('Bu cihaz bildirim desteklemiyor.');
-
-    const supported=await isSupported();
-    if(!supported)return alert('Bu tarayıcı web push desteklemiyor.');
-
-    let perm=Notification.permission;
-    if(perm!=='granted')perm=await Notification.requestPermission();
-    if(perm!=='granted')return alert('Bildirim izni verilmedi.');
-
-    const reg=await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-    const app=initializeApp(firebaseConfig);
-    const messaging=getMessaging(app);
-
-    const token=await getToken(messaging,{
-      vapidKey:import.meta.env.VITE_FIREBASE_VAPID_KEY,
-      serviceWorkerRegistration:reg
-    });
-
-    if(!token)return alert('Token alınamadı.');
-
-    const exists=(db.pushSubscriptions||[]).some(x=>x.token===token);
-
-    if(!exists){
-      commit({
-        ...db,
-        pushSubscriptions:[
-          ...(db.pushSubscriptions||[]),
-          {
-            id:Date.now(),
-            customerId:customer.id,
-            name:customer.name,
-            phone:customer.phone,
-            token,
-            createdAt:new Date().toLocaleString('tr-TR')
-          }
-        ]
-      });
-    }
-
-    onMessage(messaging,p=>new Notification(p.notification?.title||'Liberte Club',{
-      body:p.notification?.body||'Yeni bildirim',
-      icon:'/icon.svg'
-    }));
-
-    alert('Bildirimler aktif.');
-  }catch(e){
-    alert('Bildirim kurulamadı: '+e.message);
-  }
+  const result=await tryEnablePush(customer,db,commit);
+  alert(result.message);
 }
 
 export function PushPermission({customer,db,commit}){
@@ -289,8 +241,9 @@ export function PushWelcomeBanner({customer,db,commit}){
   }
 
   async function accept(){
-    await enablePush(customer,db,commit);
-    dismiss();
+    const result=await tryEnablePush(customer,db,commit);
+    if(result.ok)dismiss();
+    else alert(result.message);
   }
 
   if(dismissed||subscribed)return null;

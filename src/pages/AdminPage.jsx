@@ -483,6 +483,7 @@ function GameAdmin({db,commit}){
   const[notifyOnSave,setNotifyOnSave]=useState(false);
   const[campaigns,setCampaigns]=useState(db.campaigns||seed.campaigns);
   const[campaignNotify,setCampaignNotify]=useState(false);
+  const[wheelUnlimited,setWheelUnlimited]=useState(db.settings?.wheel_unlimited===true);
 
   async function saveCampaign(){
     const next={...db,dailyCampaign:{...c,...form,updatedAt:new Date().toLocaleString('tr-TR')}};
@@ -495,7 +496,11 @@ function GameAdmin({db,commit}){
   }
 
   function savePrizes(){
-    commit({...db,wheelPrizes:prizes.map((p,i)=>({...p,id:p.id||Date.now()+i,weight:Number(p.weight||1),value:Number(p.value||0)}))});
+    commit({
+      ...db,
+      settings:{...db.settings,wheel_unlimited:wheelUnlimited},
+      wheelPrizes:prizes.map((p,i)=>({...p,id:p.id||Date.now()+i,weight:Number(p.weight||1),value:Number(p.value||0)}))
+    });
   }
 
   async function saveCampaigns(){
@@ -550,6 +555,8 @@ function GameAdmin({db,commit}){
         <input type="number" value={p.weight} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,weight:e.target.value}:x))}/>
       </div>)}
       <button type="button" className="ghost" onClick={()=>setPrizes([...prizes,{id:Date.now(),label:'+1 Damga',type:'stamp',value:1,weight:10}])}><Plus/> Ödül ekle</button>
+      <label className="adminToggle"><input type="checkbox" checked={wheelUnlimited} onChange={e=>setWheelUnlimited(e.target.checked)}/><span>Tüm üyeler için sınırsız çark</span></label>
+      <p className="pushHint">Admin hesapları her zaman sınırsız çevirebilir.</p>
       <button type="button" onClick={savePrizes}><ShieldCheck/> Çarkı kaydet</button>
     </div>
   </div>;
