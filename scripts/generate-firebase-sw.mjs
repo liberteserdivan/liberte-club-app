@@ -57,18 +57,33 @@ self.addEventListener('fetch', (event) => {
 firebase.initializeApp(${JSON.stringify(config, null, 2)});
 
 const messaging = firebase.messaging();
+const PUSH_ICON = 'https://app.liberte.cafe/liberte-logo.png';
 
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || payload.data?.title || 'Liberte Club';
-  const body = payload.notification?.body || payload.data?.body || 'Yeni bir bildirimin var.';
-  const icon = 'https://app.liberte.cafe/liberte-logo.png';
-  self.registration.showNotification(title, {
+function showLiberteNotification(payload) {
+  const data = payload.data || {};
+  const title = payload.notification?.title || data.title || 'Liberte Club';
+  const body = payload.notification?.body || data.body || 'Yeni bir bildirimin var.';
+  return self.registration.showNotification(title, {
     body,
-    icon,
-    badge: icon,
+    icon: PUSH_ICON,
+    badge: PUSH_ICON,
     tag: 'liberte-club-push',
-    data: payload.data || {}
+    data
   });
+}
+
+messaging.onBackgroundMessage((payload) => showLiberteNotification(payload));
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification?.data?.url || 'https://app.liberte.cafe';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const open = list.find((item) => item.url && item.url.includes('app.liberte.cafe'));
+      if (open) return open.focus();
+      return clients.openWindow(targetUrl);
+    })
+  );
 });
 
 self.addEventListener('install', () => self.skipWaiting());

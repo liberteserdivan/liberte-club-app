@@ -44,12 +44,12 @@ export default async function handler(req, res) {
     }
 
     const fb = getAdmin(serviceAccount);
+    // Web push — yalnızca data; SW bildirimi gösterir (fcmOptions.link Chrome'da URL uyarısı çıkarır)
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
-      notification: { title, body: message },
       data: {
-        title,
-        body: message,
+        title: String(title),
+        body: String(message),
         url: SITE_ORIGIN
       },
       webpush: {
@@ -57,13 +57,11 @@ export default async function handler(req, res) {
           Urgency: 'high',
           TTL: '86400'
         },
-        notification: {
-          title,
-          body: message,
-          icon: `${SITE_ORIGIN}/liberte-logo.png`,
-          badge: `${SITE_ORIGIN}/liberte-logo.png`
-        },
-        fcmOptions: { link: SITE_ORIGIN }
+        data: {
+          title: String(title),
+          body: String(message),
+          url: SITE_ORIGIN
+        }
       }
     });
 

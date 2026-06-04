@@ -2,7 +2,7 @@ import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey } 
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 
 // Service worker — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=9';
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=10';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
 // Tarayıcı bildirimi göster
