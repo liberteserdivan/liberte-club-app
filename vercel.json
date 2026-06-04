@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/firebase-messaging-sw.js", "destination": "/api/firebase-messaging-sw" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

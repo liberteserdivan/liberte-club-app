@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-firebase-sw.mjs && vite",
-    "build": "node scripts/generate-firebase-sw.mjs && vite build",
+    "build": "node scripts/generate-firebase-sw.mjs && vite build && node scripts/remove-static-sw.mjs",
     "preview": "vite preview",
     "optimize-cup": "node scripts/optimize-cup-glb.mjs Liberte_Cup_Luwai.glb Liberte_Cup_Luwai_App.glb",
     "import-luwai-cup": "node scripts/import-luwai-cup.mjs",

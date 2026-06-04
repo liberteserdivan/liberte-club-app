@@ -1,8 +1,8 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey } from './constants.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 
-// Service worker sürümü — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=6';
+// Service worker — Vercel rewrite ile runtime config
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=7';
 
 // Eski firebase SW kayıtlarını temizle
 async function resetFirebaseServiceWorker() {
@@ -22,7 +22,7 @@ function envOrDefault(key, fallback) {
   return fallback;
 }
 
-// Firebase web yapılandırmasını döndür
+// Build-time Firebase config
 export function getFirebaseConfig() {
   return {
     apiKey: envOrDefault('VITE_FIREBASE_API_KEY', defaultConfig.apiKey),
@@ -33,6 +33,29 @@ export function getFirebaseConfig() {
     appId: envOrDefault('VITE_FIREBASE_APP_ID', defaultConfig.appId),
     measurementId: envOrDefault('VITE_FIREBASE_MEASUREMENT_ID', defaultConfig.measurementId)
   };
+}
+
+let cachedFirebaseConfig = null;
+
+// Runtime config — Vercel FIREBASE_WEB_API_KEY ile güncellenir
+export async function resolveFirebaseConfig() {
+  if (cachedFirebaseConfig) return cachedFirebaseConfig;
+
+  try {
+    const response = await fetch('/api/config/firebase');
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.apiKey) {
+        cachedFirebaseConfig = data;
+        return cachedFirebaseConfig;
+      }
+    }
+  } catch {
+    // Sunucu yanıt vermezse build-time config kullan
+  }
+
+  cachedFirebaseConfig = getFirebaseConfig();
+  return cachedFirebaseConfig;
 }
 
 // Web push VAPID anahtarını döndür
@@ -88,7 +111,7 @@ function mapPushError(error) {
   }
 
   if (message.includes('API key not valid') || message.includes('INVALID_ARGUMENT') || message.includes('PERMISSION_DENIED')) {
-    return 'Firebase API anahtarı reddedildi. Google Cloud\'da Browser key → Application restrictions → None yapın (API restrictions Firebase API\'lerinde kalabilir). Siteyi Chrome\'da açın, WhatsApp içi tarayıcıda denemeyin.';
+    return 'Firebase API anahtarı reddedildi. Google Cloud\'da yeni API key oluşturup Vercel\'e FIREBASE_WEB_API_KEY olarak ekleyin (Application: None, API: Don\'t restrict). Chrome\'da deneyin.';
   }
 
   if (message.includes('installations') || message.includes('request-failed')) {
@@ -104,7 +127,7 @@ function mapPushError(error) {
 
 // Push bildirimlerini etkinleştir
 export async function enablePush(customer, db, commit) {
-  const { initializeApp, getApps } = await import('firebase/app');
+  const { initializeApp, getApps, deleteApp } = await import('firebase/app');
   const { getMessaging, getToken, isSupported, onMessage } = await import('firebase/messaging');
 
   if (!('Notification' in window)) {
@@ -132,9 +155,14 @@ export async function enablePush(customer, db, commit) {
     throw new Error('Bildirim izni verilmedi.');
   }
 
-  const config = getFirebaseConfig();
+  const config = await resolveFirebaseConfig();
   if (!config.apiKey) {
     throw new Error('Firebase API anahtarı bulunamadı.');
+  }
+
+  // Önceki Firebase app farklı config ile açıldıysa kapat
+  for (const app of getApps()) {
+    await deleteApp(app);
   }
 
   // HTTP referrer kısıtlı API key ile Firebase Installations için
@@ -145,7 +173,7 @@ export async function enablePush(customer, db, commit) {
   await registration.update();
   await navigator.serviceWorker.ready;
 
-  const app = getApps().length ? getApps()[0] : initializeApp(config);
+  const app = initializeApp(config);
   const messaging = getMessaging(app);
 
   const token = await getToken(messaging, {
