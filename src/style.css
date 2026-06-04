@@ -2122,24 +2122,21 @@ header{
   .loyaltyCupModel{width:108px;height:118px}
   .loyaltyCupScene{width:108px;height:118px}
   .homeBody{padding-left:16px;padding-right:16px}
-  /* Header logosu — mobil Safari hizalama */
+  /* Header logosu — mobilde okunaklı boyut */
   .brandMark.header{
-    width:52px;
-    height:52px;
-    min-width:52px;
+    width:58px;
+    height:58px;
+    min-width:58px;
     flex-shrink:0;
   }
   .brandMark.header.hasLogo{
-    padding:6px!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
+    padding:4px!important;
   }
   .brandMark.header.hasLogo .brandMarkImg{
-    width:auto!important;
-    height:auto!important;
-    max-width:100%!important;
-    max-height:100%!important;
+    width:100%!important;
+    height:100%!important;
+    max-width:none!important;
+    max-height:none!important;
     object-fit:contain!important;
     object-position:center center!important;
   }
@@ -2758,13 +2755,13 @@ header{
   border:2px solid rgba(216,194,157,.72);
   box-shadow:0 10px 28px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.95);
 }
-.brandMark.header{width:58px;height:58px;min-width:58px;border-radius:18px}
+.brandMark.header{width:60px;height:60px;min-width:60px;border-radius:18px}
 .brandMark.admin{width:64px;height:64px;min-width:64px;border-radius:18px}
 .brandMark.header.hasLogo,
 .brandMark.admin.hasLogo{
   background:#fff;
   border:2px solid rgba(216,194,157,.55);
-  padding:7px;
+  padding:5px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -3965,7 +3962,7 @@ header{
 
 .brandMark.header.hasLogo,
 .brandMark.admin.hasLogo{
-  padding:7px!important;
+  padding:5px!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
