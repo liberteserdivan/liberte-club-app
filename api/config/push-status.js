@@ -1,5 +1,5 @@
 import { readVapidKeyFromEnv } from '../lib/vapid.js';
-import { parseServiceAccount } from '../lib/serviceAccount.js';
+import { getServiceAccountStatus } from '../lib/serviceAccount.js';
 
 // Push kurulum durumunu kontrol et — gizli anahtar döndürmez
 export default async function handler(req, res) {
@@ -9,16 +9,23 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const vapidKey = readVapidKeyFromEnv();
-  const serviceAccount = parseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  const adminProjectId = serviceAccount?.project_id || (process.env.FIREBASE_SERVICE_ACCOUNT_JSON ? 'geçersiz' : 'yok');
-  const adminReady = adminProjectId === 'liberte-club';
+  const adminStatus = getServiceAccountStatus(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  const adminReady = adminStatus.state === 'hazir';
 
   return res.status(200).json({
     projectId: 'liberte-club',
     vapidReady: Boolean(vapidKey),
     vapidLength: vapidKey.length,
     adminReady,
-    adminProjectId: adminProjectId || 'yok',
+    adminProjectId: adminStatus.projectId,
+    adminState: adminStatus.state,
+    adminHint: adminStatus.state === 'gecersiz'
+      ? 'JSON bozuk. Firebase liberte-club key indirip tek satır yapıştırın.'
+      : adminStatus.state === 'yanlis_proje'
+        ? 'Yanlış Firebase projesi. liberte-club kullanın.'
+        : adminStatus.state === 'yok'
+          ? 'FIREBASE_SERVICE_ACCOUNT_JSON Vercel\'e ekleyin.'
+          : '',
     memberPushReady: Boolean(vapidKey),
     adminSendReady: adminReady,
     site: 'https://app.liberte.cafe'
