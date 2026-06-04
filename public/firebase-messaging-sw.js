@@ -25,7 +25,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 firebase.initializeApp({
-  "apiKey": "AIzaSyTestKey123",
+  "apiKey": "AIzaSyCDWpSpPoEsMirO0Grbpbabaju7QALVERC",
   "authDomain": "liberte-club.firebaseapp.com",
   "projectId": "liberte-club",
   "storageBucket": "liberte-club.firebasestorage.app",
