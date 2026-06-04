@@ -1,5 +1,7 @@
 import React,{useState}from'react';
+import { Mail, ShieldCheck } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
+import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
 import{findReferrerByCode,loyaltyTemplate,makeReferralCode,norm}from'../lib/db.js';
 
 export default function Login({db,commit,setSession}){
@@ -21,6 +23,15 @@ const[email,setEmail]=useState(()=>localStorage.getItem('liberteLastEmail')||'')
   const findByPhone=ph=>(db.customers||[]).find(x=>x.phone===ph);
   const findByEmail=em=>(db.customers||[]).find(x=>String(x.email||'').toLowerCase()===em);
 
+  // E-posta adresini güvenli şekilde maskele
+  function maskEmail(value=''){
+    const em=String(value).trim().toLowerCase();
+    const [local,domain]=em.split('@');
+    if(!local||!domain)return em;
+    if(local.length<=2)return `${local[0]||'*'}***@${domain}`;
+    return `${local[0]}***${local.slice(-1)}@${domain}`;
+  }
+
   const fields=()=>{
     const ph=norm(phone);
     const nm=name.trim();
@@ -31,7 +42,7 @@ const[email,setEmail]=useState(()=>localStorage.getItem('liberteLastEmail')||'')
       return null;
     }
 
-    if(!valid(em)){
+    if(!valid(em)&&authMode==='register'){
       notify('Geçerli bir e-posta adresi gir.');
       return null;
     }
@@ -127,10 +138,15 @@ setSession({customerId:customer.id});
         notify('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.','info');
         return;
       }
-      if(String(byPhone.email||'').toLowerCase()!==f.em){
-        notify('Telefon ve e-posta eşleşmiyor. Kayıtlı e-posta adresini gir.');
+
+      const registeredEmail=String(byPhone.email||'').toLowerCase();
+      if(!valid(registeredEmail)){
+        notify('Bu hesapta kayıtlı e-posta bulunamadı. Lütfen destek ile iletişime geç.');
         return;
       }
+
+      // Girişte kod kayıtlı e-postaya gider
+      f.em=registeredEmail;
     }
 
     setLoading(true);
@@ -138,6 +154,17 @@ setSession({customerId:customer.id});
 
     try{
       const sendName=authMode==='login'?(byPhone?.name||'Liberte Club'):f.nm;
+
+      // Yerel dev: API olmadan kod üret
+      if(useLocalAuth()){
+        const devCode=makeDevAuthCode();
+        saveDevAuthCode(f.ph,f.em,devCode);
+        setPending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName});
+        setStep('code');
+        setInfo(`Geliştirme modu — doğrulama kodu: ${devCode}`);
+        return;
+      }
+
       const r=await fetch('/api/auth/send-code',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -157,7 +184,11 @@ setSession({customerId:customer.id});
 
       setPending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName});
       setStep('code');
-      setInfo('Kod e-posta adresine gönderildi.');
+      if(j.testCode){
+        setInfo(`Test kodu: ${j.testCode}${j.warning?` — ${j.warning}`:''}`);
+      }else{
+        setInfo(`Kod ${maskEmail(f.em)} adresine gönderildi.`);
+      }
     }catch(e){
       notify(e.message||'Kod gönderilemedi');
     }finally{
@@ -177,21 +208,25 @@ setSession({customerId:customer.id});
     setLoading(true);
 
     try{
-      const r=await fetch('/api/auth/verify-code',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          phone:f.ph,
-          email:f.em,
-          code
-        })
-      });
+      if(useLocalAuth()){
+        verifyDevAuthCode(f.ph,f.em,code);
+      }else{
+        const r=await fetch('/api/auth/verify-code',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            phone:f.ph,
+            email:f.em,
+            code
+          })
+        });
 
-      const text=await r.text();
-      const j=text?JSON.parse(text):{};
+        const text=await r.text();
+        const j=text?JSON.parse(text):{};
 
-      if(!r.ok){
-        throw new Error(j.error||'Kod doğrulanamadı');
+        if(!r.ok){
+          throw new Error(j.error||'Kod doğrulanamadı');
+        }
       }
 
       if(f.mode==='register'){
@@ -221,7 +256,7 @@ setSession({customerId:customer.id});
     <div className="orb two"></div>
 
     <div className="loginCard">
-      <Brand db={db}/>
+      <Brand db={db} login />
 
       <h1>{authMode==='login'?'Giriş Yap':'Kayıt Ol'}</h1>
       <p>{authMode==='login'?'Kayıtlı Liberte Club hesabına e-posta kodu ile giriş yap.':'QR sadakat kartı, özel kampanyalar ve Liberte ayrıcalıkları için kayıt ol.'}</p>
@@ -247,8 +282,12 @@ setSession({customerId:customer.id});
           <p className="loginHint mini">Referans koduyla kayıt olursan sen de davet eden de +2 damga kazanır.</p>
         </>}
 
-        <label>E-posta <em>*</em></label>
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email"/>
+        {authMode==='register'&&<>
+          <label>E-posta <em>*</em></label>
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email"/>
+        </>}
+
+        {authMode==='login'&&<p className="loginHint mini">Doğrulama kodu hesabına kayıtlı e-posta adresine gönderilir.</p>}
 
         <button disabled={loading} onClick={sendCode}>
           <Mail/> {loading?'Gönderiliyor...':'Mail Kod Gönder'}

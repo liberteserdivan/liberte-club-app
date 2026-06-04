@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { applyBirthdayReward, cssVars, load, localDayKey } from './lib/db.js';
+import { readSession } from './lib/session.js';
 import { useCommit } from './hooks/useCommit.js';
 import Nav from './components/Nav.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
@@ -12,8 +13,8 @@ import CampaignPage from './pages/CampaignPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 
 export default function App() {
-  const [db, commit, sync] = useCommit(load());
-  const [session, setSession] = useState(() => JSON.parse(localStorage.getItem('liberteSession') || 'null'));
+  const [db, commit, sync, refreshRemote] = useCommit(load());
+  const [session, setSession] = useState(readSession);
   const [tab, setTab] = useState('home');
   const [installPrompt, setInstallPrompt] = useState(null);
 
@@ -26,8 +27,9 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // Push bildirimi yalnızca production'da kaydet — dev'de SW sorun çıkarabilir
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(() => {});
     }
   }, []);
@@ -37,13 +39,9 @@ export default function App() {
     else localStorage.removeItem('liberteSession');
   }, [session]);
 
-  useEffect(() => {
-    const refreshMs = 5 * 60 * 1000;
-    const t = setTimeout(() => window.location.reload(), refreshMs);
-    return () => clearTimeout(t);
-  }, []);
-
-  const customer = session ? (db.customers.find((c) => c.id === session.customerId) || db.customers[0]) : null;
+  const customer = session
+    ? (db.customers || []).find((c) => c.id === session.customerId) || (db.customers || [])[0] || null
+    : null;
 
   useEffect(() => {
     if (!customer?.id) return;
@@ -51,8 +49,9 @@ export default function App() {
     if (next !== db) commit(next);
   }, [customer?.id, customer?.birthDate]);
 
-  if (!session) {
-    return <main style={cssVars(db.settings)}>
+  // Geçersiz oturum — giriş ekranına düş
+  if (!session || !customer) {
+    return <main className="appBoot" style={cssVars(db.settings)}>
       <LoginPage db={db} commit={commit} setSession={setSession} />
     </main>;
   }
@@ -61,12 +60,14 @@ export default function App() {
   const wheelDone = !!(db.wheelSpins || []).find((x) => x.customerId === customer.id && x.day === localDayKey());
 
   return <main className="app" style={cssVars(db.settings)}>
-    {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={setSession} sync={sync} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />}
-    {tab === 'menu' && <MenuPage db={db} />}
-    {tab === 'qr' && <QrPage db={db} customer={customer} card={card} />}
-    {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}
-    {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
-    {tab === 'admin' && customer.isAdmin && <AdminPage db={db} commit={commit} />}
+    <div className="appTabView" key={tab}>
+      {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={setSession} sync={sync} refreshRemote={refreshRemote} commit={commit} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />}
+      {tab === 'menu' && <MenuPage db={db} />}
+      {tab === 'qr' && <QrPage db={db} customer={customer} card={card} />}
+      {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}
+      {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
+      {tab === 'admin' && customer.isAdmin && <AdminPage db={db} commit={commit} />}
+    </div>
 
     <OfflineNotice />
     <Nav tab={tab} setTab={setTab} admin={customer.isAdmin} wheelDone={wheelDone} />

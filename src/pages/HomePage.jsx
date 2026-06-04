@@ -1,44 +1,52 @@
-import { Coffee, Crown, Gift, QrCode, ShoppingBag, Sparkles } from 'lucide-react';
+import { Crown, Gift, QrCode, ShoppingBag, Sparkles } from 'lucide-react';
 import Header from '../components/Header.jsx';
-import { getGreeting, levelByStamps, productImageSrc } from '../lib/db.js';
-import { DailyCampaignCard, InstallAppCard, Product } from '../components/Cards.jsx';
+import LoyaltyRing from '../components/LoyaltyRing.jsx';
+import LiberteMarkIcon from '../components/LiberteMarkIcon.jsx';
+import FeaturedSlider from '../components/FeaturedSlider.jsx';
+import { getGreeting, levelByStamps } from '../lib/db.js';
+import { DailyCampaignCard, InstallAppCard, PushWelcomeBanner } from '../components/Cards.jsx';
 import DailyTasksStrip from '../components/DailyTasksStrip.jsx';
 
 // Ana sayfa — özet kart ve keşif; tüm içerik tek ekranda değil
 export default function HomePage({
-  db, customer, card, setTab, setSession, sync,
+  db, customer, card, setTab, setSession, sync, refreshRemote, commit,
   installPrompt, setInstallPrompt
 }) {
-  const best = db.items.filter((i) => i.best).slice(0, 4);
+  const featured = db.items.filter((i) => i.best || i.featured).slice(0, 8);
   const threshold = db.settings.stamp_threshold || 10;
   const stamps = card.totalStamps || 0;
   const rewards = card.availableRewards || 0;
   const progress = Math.min(100, (stamps / threshold) * 100);
-  const missing = Math.max(0, threshold - stamps);
   const level = card.level || levelByStamps(card.lifetimeStamps || 0);
   const greeting = getGreeting();
 
   return <section className="v4Home homePro">
     <div className="homeHeroPro">
-      <Header db={db} customer={customer} setSession={setSession} sync={sync} />
+      <Header db={db} customer={customer} setSession={setSession} sync={sync} refreshRemote={refreshRemote} />
       <div className="homeWelcome">
         <div>
-          <p className="homeGreet">{greeting.label} {greeting.emoji}</p>
+          <p className="homeGreet">
+            {greeting.label}
+            {greeting.emoji === '☕'
+              ? <LiberteMarkIcon size={18} className="homeGreetMark" />
+              : ` ${greeting.emoji}`}
+          </p>
           <h1>{customer.name.split(' ')[0] || 'Liberte'}</h1>
           <div className="homeTimeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
         </div>
         <div className="homeLevelPill"><Crown /><span>{level}</span></div>
       </div>
-      <div className="homeLoyaltyStrip">
-        <div><small>Damga</small><b>{stamps}<span>/{threshold}</span></b><em>{missing} kaldı</em></div>
-        <div className="homeLoyaltyMain"><Coffee /><b>{rewards}</b><em>ikram hakkı</em></div>
-        <div><small>Toplam</small><b>{card.lifetimeStamps || 0}</b><em>lifetime</em></div>
-      </div>
-      <div className="homeHeroProgress" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
+      <LoyaltyRing
+        stamps={stamps}
+        threshold={threshold}
+        rewards={rewards}
+        level={level}
+      />
     </div>
 
     <div className="homeBody">
       <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />
+      <PushWelcomeBanner db={db} customer={customer} commit={commit} />
 
       <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
 
@@ -75,10 +83,8 @@ export default function HomePage({
       <DailyCampaignCard db={db} setTab={setTab} />
 
       <div className="homeSection">
-        <div className="homeSubHead"><h3>Öne çıkanlar</h3><button type="button" className="homeLinkBtn" onClick={() => setTab('menu')}>Menü →</button></div>
-        <div className="v4List homeFeaturedList">
-          {best.map((i) => <Product key={i.id} item={i} />)}
-        </div>
+        <div className="homeSubHead"><h3>Öne çıkanlar</h3></div>
+        <FeaturedSlider items={featured} onMenuClick={() => setTab('menu')} />
       </div>
     </div>
   </section>;

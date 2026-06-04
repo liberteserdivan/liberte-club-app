@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Liberte Club</string>
+    <string name="title_activity_main">Liberte Club</string>
+    <string name="package_name">cafe.liberte.app</string>
+    <string name="custom_url_scheme">cafe.liberte.app</string>
+</resources>

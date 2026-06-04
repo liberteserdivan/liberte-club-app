@@ -4,6 +4,7 @@ import{getMessaging,getToken,isSupported,onMessage}from'firebase/messaging';
 import{Bell,Coffee,Crown,Gift,Plus,QrCode,Send,ShieldCheck,Sparkles,Star}from'lucide-react';
 import{firebaseConfig,googleReviewUrl}from'../lib/constants.js';
 import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
+import{isNativeApp}from'../lib/platform.js';
 import AnimatedWheel from './AnimatedWheel.jsx';
 
 export function CustomerHistoryCard({db,customer}){
@@ -146,7 +147,8 @@ export function InstallAppCard({installPrompt,setInstallPrompt}){
     alert('iPhone kullanıyorsan Safari paylaş menüsünden "Ana Ekrana Ekle" seçeneğini kullanabilirsin.');
   }
 
-  if(isStandalone)return null;
+  // Native uygulama veya zaten yüklüyse gösterme
+  if(isStandalone||isNativeApp())return null;
 
   return <div className="installCard">
     <div>
@@ -273,6 +275,36 @@ export function PushPermission({customer,db,commit}){
       <p>Ödül, fırsat ve yeni ürün bildirimleri gelsin.</p>
     </div>
     <button onClick={()=>enablePush(customer,db,commit)}><Bell/> Bildirim Aç</button>
+  </div>;
+}
+
+// İlk ziyarette bildirim izni banner'ı
+export function PushWelcomeBanner({customer,db,commit}){
+  const[dismissed,setDismissed]=useState(()=>localStorage.getItem('libertePushAsked')==='1');
+  const subscribed=(db.pushSubscriptions||[]).some(x=>x.customerId===customer.id);
+
+  function dismiss(){
+    localStorage.setItem('libertePushAsked','1');
+    setDismissed(true);
+  }
+
+  async function accept(){
+    await enablePush(customer,db,commit);
+    dismiss();
+  }
+
+  if(dismissed||subscribed)return null;
+
+  return <div className="pushWelcomeBanner">
+    <div className="pushWelcomeIcon"><Bell size={22}/></div>
+    <div>
+      <b>Kampanyalardan haberdar ol</b>
+      <p>Damga, çark ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.</p>
+    </div>
+    <div className="pushWelcomeActions">
+      <button type="button" className="goldBtn" onClick={accept}>Bildirimleri Aç</button>
+      <button type="button" className="ghost" onClick={dismiss}>Sonra</button>
+    </div>
   </div>;
 }
 

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "optimize-cup": "node scripts/optimize-cup-glb.mjs",
+    "import-meshy-cup": "node scripts/import-meshy-cup.mjs && node scripts/optimize-cup-glb.mjs Liberte_Cup_Meshy.glb"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
@@ -21,6 +23,9 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.0"
   }

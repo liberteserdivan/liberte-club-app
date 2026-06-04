@@ -8,7 +8,7 @@ export const seed={
     card:'#ffffff',
     accent:'#78dfbb',
     font:'Inter',
-    logo:'',
+    logo:'/liberte-logo.png',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
     promo_text:'QR kartını göster, 10 damgada 1 içecek bizden.',
@@ -86,7 +86,7 @@ export function mergeDb(x){
   return x?{
     ...seed,
     ...x,
-    settings:{...seed.settings,...x.settings},
+    settings:{...seed.settings,...x.settings,logo:x.settings?.logo||seed.settings.logo},
     customers:x.customers||seed.customers,
     loyalty:x.loyalty||seed.loyalty,
     categories:x.categories||seed.categories,
@@ -128,7 +128,8 @@ export async function loadRemote(){
     const r=await fetch('/api/state');
     if(!r.ok)return null;
     const j=await r.json();
-    return j?.data?mergeDb(j.data):null;
+    if(!j?.data)return null;
+    return{data:mergeDb(j.data),updatedAt:j.updated_at||null};
   }catch{
     return null;
   }
