@@ -146,7 +146,13 @@ export async function saveRemote(db){
   }catch{}
 }
 
-export const norm=p=>String(p||'').replace(/\D/g,'').replace(/^90/,'').replace(/^0/,'');
+export const norm=p=>{
+  let digits=String(p||'').replace(/\D/g,'');
+  if(digits.startsWith('90')&&digits.length>10) digits=digits.slice(2);
+  if(digits.startsWith('0')&&digits.length>10) digits=digits.slice(1);
+  if(digits.length>10) digits=digits.slice(-10);
+  return digits;
+};
 export const money=n=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:0}).format(Number(n||0));
 export const cssVars=s=>({'--bg':s.bg,'--card':s.card,'--accent':s.accent,fontFamily:`${s.font},Inter,system-ui,Arial`});
 export const levelByStamps=n=>n>=90?'Black':n>=50?'Gold':n>=20?'Silver':'Bronze';

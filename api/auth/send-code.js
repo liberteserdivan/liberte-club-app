@@ -1,7 +1,9 @@
 import { neon } from '@neondatabase/serverless';
-function cleanPhone(v=''){return String(v).replace(/\D/g,'').replace(/^90/,'').replace(/^0/,'')}
+import { cleanPhone } from '../lib/phone.js';
+
 function validEmail(v=''){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase())}
 function makeCode(){return String(Math.floor(100000 + Math.random()*900000))}
+
 export default async function handler(req,res){
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');
@@ -21,10 +23,10 @@ export default async function handler(req,res){
     if(!process.env.DATABASE_URL) return res.status(500).json({error:'DATABASE_URL eksik'});
     const sql=neon(process.env.DATABASE_URL);
     await sql`CREATE TABLE IF NOT EXISTS email_codes (id bigserial PRIMARY KEY,email text NOT NULL,phone text NOT NULL,code text NOT NULL,attempts int NOT NULL DEFAULT 0,used boolean NOT NULL DEFAULT false,expires_at timestamptz NOT NULL,created_at timestamptz NOT NULL DEFAULT now())`;
-    // Eski kodları geçersiz kıl — yanlış kod hatasını önler
-    await sql`UPDATE email_codes SET used=true WHERE email=${email} AND phone=${phone} AND used=false`;
     const code=makeCode();
+    // Önce yeni kodu kaydet, sonra eskileri geçersiz kıl
     await sql`INSERT INTO email_codes (email, phone, code, expires_at) VALUES (${email}, ${phone}, ${code}, now() + interval '10 minutes')`;
+    await sql`UPDATE email_codes SET used=true WHERE email=${email} AND phone=${phone} AND code<>${code} AND used=false`;
     const apiKey=process.env.RESEND_API_KEY;
     const from=process.env.RESEND_FROM_EMAIL || 'Liberte Club <noreply@liberte.cafe>';
     const subject='Liberte Club giriş kodun';
@@ -33,8 +35,8 @@ export default async function handler(req,res){
       const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from,to:email,subject,html})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok) return res.status(500).json({error:j.message||'Resend e-posta gönderemedi'});
-      return res.status(200).json({ok:true});
+      return res.status(200).json({ok:true,phone,email});
     }
-    return res.status(200).json({ok:true,testCode:code,warning:'RESEND_API_KEY yok, test kodu ekranda gösterildi.'});
+    return res.status(200).json({ok:true,testCode:code,phone,email,warning:'RESEND_API_KEY yok, test kodu ekranda gösterildi.'});
   }catch(e){return res.status(500).json({error:e.message||'Kod gönderilemedi'});}
 }

@@ -2,21 +2,29 @@ import React,{useState}from'react';
 import { Mail, ShieldCheck } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
+import { clearAuthPending, loadAuthPending, saveAuthPending } from '../lib/authPending.js';
 import{addStampToCustomer,findReferrerByCode,getReferralCode,loyaltyTemplate,makeReferralCode,mergeDb,norm}from'../lib/db.js';
 
 export default function Login({db,commit,setSession}){
-  const[authMode,setAuthMode]=useState('login');
+  const restoredPending=loadAuthPending();
+  const[authMode,setAuthMode]=useState(restoredPending?.mode||'login');
  const[phone,setPhone]=useState(()=>localStorage.getItem('liberteLastPhone')||'');
 const[name,setName]=useState('');
 const[email,setEmail]=useState(()=>localStorage.getItem('liberteLastEmail')||'');
   const[birthDate,setBirthDate]=useState('');
   const[referralCode,setReferralCode]=useState('');
   const[code,setCode]=useState('');
-  const[step,setStep]=useState('form');
+  const[step,setStep]=useState(restoredPending?'code':'form');
   const[loading,setLoading]=useState(false);
-  const[info,setInfo]=useState('');
-  const[pending,setPending]=useState(null);
+  const[info,setInfo]=useState(restoredPending?'Doğrulama kodunu gir.':'' );
+  const[pending,setPending]=useState(restoredPending);
   const[notice,setNotice]=useState(null);
+
+  // Kod adımı bilgilerini oturumda tut
+  function storePending(data){
+    setPending(data);
+    saveAuthPending(data);
+  }
 
   const notify=(message,type='warning')=>setNotice({message,type});
   const valid=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -159,7 +167,7 @@ setSession({customerId:customer.id});
       if(useLocalAuth()){
         const devCode=makeDevAuthCode();
         saveDevAuthCode(f.ph,f.em,devCode);
-        setPending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName});
+        storePending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName});
         setStep('code');
         setInfo(`Geliştirme modu — doğrulama kodu: ${devCode}`);
         return;
@@ -183,7 +191,7 @@ setSession({customerId:customer.id});
         throw new Error(j.error||'Kod gönderilemedi');
       }
 
-      setPending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName});
+      storePending({...f,mode:authMode,customerId:byPhone?.id||null,name:sendName,ph:j.phone||f.ph,em:j.email||f.em});
       setStep('code');
       if(j.testCode){
         setInfo(`Test kodu: ${j.testCode}${j.warning?` — ${j.warning}`:''}`);
@@ -198,9 +206,13 @@ setSession({customerId:customer.id});
   }
 
   async function verify(){
-    const f=pending||fields();
-    if(!f)return;
+    if(!pending){
+      notify('Oturum süresi doldu. Lütfen yeniden kod iste.');
+      setStep('form');
+      return;
+    }
 
+    const f=pending;
     const normalizedCode=code.replace(/\D/g,'');
     if(normalizedCode.length!==6){
       notify('6 haneli doğrulama kodunu gir.');
@@ -238,6 +250,8 @@ setSession({customerId:customer.id});
         if(!c)throw new Error('Kullanıcı bulunamadı.');
         loginExisting(c);
       }
+      clearAuthPending();
+      setPending(null);
     }catch(e){
       notify(e.message||'Kod doğrulanamadı');
     }finally{
@@ -251,6 +265,7 @@ setSession({customerId:customer.id});
     setCode('');
     setInfo('');
     setPending(null);
+    clearAuthPending();
   }
 
   return <section className="loginPage">
