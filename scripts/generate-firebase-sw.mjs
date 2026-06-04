@@ -20,12 +20,12 @@ function pick(name, fallback) {
 }
 
 const config = {
-  apiKey: pick('VITE_FIREBASE_API_KEY', defaults.apiKey),
-  authDomain: pick('VITE_FIREBASE_AUTH_DOMAIN', defaults.authDomain),
-  projectId: pick('VITE_FIREBASE_PROJECT_ID', defaults.projectId),
-  storageBucket: pick('VITE_FIREBASE_STORAGE_BUCKET', defaults.storageBucket),
-  messagingSenderId: pick('VITE_FIREBASE_MESSAGING_SENDER_ID', defaults.messagingSenderId),
-  appId: pick('VITE_FIREBASE_APP_ID', defaults.appId)
+  apiKey: pick('FIREBASE_WEB_API_KEY', pick('VITE_FIREBASE_API_KEY', defaults.apiKey)),
+  authDomain: pick('FIREBASE_WEB_AUTH_DOMAIN', pick('VITE_FIREBASE_AUTH_DOMAIN', defaults.authDomain)),
+  projectId: pick('FIREBASE_WEB_PROJECT_ID', pick('VITE_FIREBASE_PROJECT_ID', defaults.projectId)),
+  storageBucket: pick('FIREBASE_WEB_STORAGE_BUCKET', pick('VITE_FIREBASE_STORAGE_BUCKET', defaults.storageBucket)),
+  messagingSenderId: pick('FIREBASE_WEB_MESSAGING_SENDER_ID', pick('VITE_FIREBASE_MESSAGING_SENDER_ID', defaults.messagingSenderId)),
+  appId: pick('FIREBASE_WEB_APP_ID', pick('VITE_FIREBASE_APP_ID', defaults.appId))
 };
 
 const sw = `importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');

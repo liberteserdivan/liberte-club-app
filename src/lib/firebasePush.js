@@ -2,7 +2,7 @@ import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey } 
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 
 // Service worker — Vercel rewrite ile runtime config
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=7';
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=8';
 
 // Eski firebase SW kayıtlarını temizle
 async function resetFirebaseServiceWorker() {
