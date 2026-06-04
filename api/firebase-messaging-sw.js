@@ -1,4 +1,4 @@
-import { buildFirebaseMessagingSw, readFirebaseWebConfig } from '../lib/firebaseConfig.js';
+import { buildFirebaseMessagingSw, readFirebaseWebConfig } from './lib/firebaseConfig.js';
 
 // Firebase messaging service worker — runtime config
 export default async function handler(req, res) {
