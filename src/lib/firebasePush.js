@@ -1,8 +1,8 @@
-import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey } from './constants.js';
+import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 
 // Service worker — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=10';
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=11';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
 // Tarayıcı bildirimi göster
@@ -14,8 +14,8 @@ export function showPushNotification(payload) {
 
   new Notification(title, {
     body,
-    icon: `${PUSH_SITE_ORIGIN}/liberte-logo.png`,
-    badge: `${PUSH_SITE_ORIGIN}/liberte-logo.png`,
+    icon: `${PUSH_SITE_ORIGIN}${NOTIFICATION_ICON}`,
+    badge: `${PUSH_SITE_ORIGIN}${NOTIFICATION_BADGE}`,
     tag: 'liberte-club-push',
     data: payload?.data || {}
   });

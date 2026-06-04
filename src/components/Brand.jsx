@@ -1,22 +1,26 @@
 import { useState } from 'react';
 import { DEFAULT_LOGO } from '../lib/constants.js';
 
-// Logo kutusu — arka plan görseli ile tam doldurma
-function BrandLogoBox({ className, logoSrc, cafe, onFail, children }) {
+// Marka logosu kaynağını çöz — boş veya geçersizse varsayılan
+function resolveLogoSrc(settings) {
+  const raw = String(settings?.logo || '').trim();
+  if (!raw) return DEFAULT_LOGO;
+  if (raw.startsWith('data:') && raw.length > 500000) return DEFAULT_LOGO;
+  return raw;
+}
+
+// Logo kutusu — görünür img (mobilde CSS background güvenilir değil)
+function BrandLogoBox({ className, logoSrc, cafe, onFail }) {
   return (
-    <div
-      className={`${className} hasLogo`}
-      style={{ '--brand-logo': `url("${String(logoSrc).replace(/"/g, '')}")` }}
-      role="img"
-      aria-label={cafe}
-    >
+    <div className={`${className} hasLogo`}>
       <img
-        className="brandMarkProbe"
+        className="brandMarkImg"
         src={logoSrc}
-        alt=""
+        alt={cafe}
+        loading="eager"
+        decoding="async"
         onError={onFail}
       />
-      {children}
     </div>
   );
 }
@@ -24,9 +28,9 @@ function BrandLogoBox({ className, logoSrc, cafe, onFail, children }) {
 // Kafe marka logosu veya varsayılan L monogramı
 export default function Brand({ db, small = false, admin = false, header = false, login = false }) {
   const cafe = db.settings?.cafe_name || 'Liberte Gastro Cafe';
-  const logoSrc = db.settings?.logo || DEFAULT_LOGO;
+  const logoSrc = resolveLogoSrc(db.settings);
   const [imgFailed, setImgFailed] = useState(false);
-  const showLogo = Boolean(logoSrc) && !imgFailed;
+  const showLogo = !imgFailed;
 
   const monogram = (
     <div className="brandMonogram" aria-hidden={showLogo}>

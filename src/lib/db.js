@@ -8,7 +8,7 @@ export const seed={
     card:'#ffffff',
     accent:'#78dfbb',
     font:'Inter',
-    logo:'/liberte-logo.png',
+    logo:'/liberte-logo.png?v=4',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
     promo_text:'QR kartını göster, 10 damgada 1 içecek bizden.',

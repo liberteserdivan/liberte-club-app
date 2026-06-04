@@ -57,7 +57,8 @@ self.addEventListener('fetch', (event) => {
 firebase.initializeApp(${JSON.stringify(config, null, 2)});
 
 const messaging = firebase.messaging();
-const PUSH_ICON = 'https://app.liberte.cafe/liberte-logo.png';
+const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png';
+const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
 function showLiberteNotification(payload) {
   const data = payload.data || {};
@@ -66,7 +67,7 @@ function showLiberteNotification(payload) {
   return self.registration.showNotification(title, {
     body,
     icon: PUSH_ICON,
-    badge: PUSH_ICON,
+    badge: PUSH_BADGE,
     tag: 'liberte-club-push',
     data
   });
