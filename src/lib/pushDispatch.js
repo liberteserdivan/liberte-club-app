@@ -42,8 +42,21 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokens, title, body })
     });
-    const result = await response.json();
-    const note = result.note || `${result.sent || 0} cihaza iletildi${result.failed ? `, ${result.failed} başarısız` : ''}.`;
+
+    let result = {};
+    try {
+      result = await response.json();
+    } catch {
+      return {
+        ok: false,
+        sent: 0,
+        note: `Push sunucusu geçersiz yanıt döndü (HTTP ${response.status}).`
+      };
+    }
+
+    const note = result.note
+      || result.error
+      || `${result.sent || 0} cihaza iletildi${result.failed ? `, ${result.failed} başarısız` : ''}.`;
 
     commit({
       ...next,
@@ -54,7 +67,7 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       ))
     });
 
-    return { ok: true, sent: result.sent || 0, note };
+    return { ok: response.ok && result.ok !== false, sent: result.sent || 0, note };
   } catch {
     return { ok: false, sent: 0, note: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.' };
   }
