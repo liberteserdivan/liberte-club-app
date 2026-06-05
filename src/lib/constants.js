@@ -21,7 +21,7 @@ export const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=Liberte+
 export const DEFAULT_LOGO = '/liberte-logo.png?v=7';
 
 // Push bildirim görselleri — badge liberte-logo silueti
-export const NOTIFICATION_ICON = '/icon-192.png';
+export const NOTIFICATION_ICON = '/icon-192.png?v=8';
 export const NOTIFICATION_BADGE = '/notification-badge.png';
 
 // Sadakat halkası statik bardak görseli (şeffaf PNG)

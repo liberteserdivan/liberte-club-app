@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     }
 
     const fb = getAdmin(serviceAccount);
-    const iconUrl = `${SITE_ORIGIN}/icon-192.png`;
+    const iconUrl = `${SITE_ORIGIN}/icon-192.png?v=8`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
 
     // Veri odaklı push — iOS SW event.waitUntil ile gösterir (webpush.notification sessiz sayılabilir)

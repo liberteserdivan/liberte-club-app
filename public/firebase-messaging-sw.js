@@ -1,5 +1,5 @@
 // Liberte Club push service worker (v17)
-const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png';
+const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png?v=8';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
 

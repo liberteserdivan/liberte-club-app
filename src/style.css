@@ -3425,16 +3425,17 @@ header{
   background-color:#fff;
   background-image:none;
 }
-/* Header — sadece daire logo, çerçeve ve boşluk yok */
+/* Header — daire logo, şeffaf yerine beyaz zemin */
 .brandMark.header.hasLogo{
   padding:0;
   border:none;
   border-radius:50%;
-  background:transparent;
+  background:#fff;
   box-shadow:0 4px 14px rgba(0,0,0,.22);
 }
 .brandMark.header.hasLogo .brandMarkInner{
   border-radius:50%;
+  background:#fff;
 }
 .brandMark.header.hasLogo .brandMarkImg{
   width:100%;
@@ -3447,10 +3448,13 @@ header{
 .brandMark.login.hasLogo{
   padding:0;
   border:none;
-  background:transparent;
+  background:#fff;
   box-shadow:0 10px 28px rgba(11,47,38,.14);
 }
-.brandMark.login.hasLogo .brandMarkInner{border-radius:50%}
+.brandMark.login.hasLogo .brandMarkInner{
+  border-radius:50%;
+  background:#fff;
+}
 .brandMark.login.hasLogo .brandMarkImg{
   width:100%;
   height:100%;
@@ -4695,7 +4699,7 @@ header{
   padding:0!important;
   border:none!important;
   border-radius:50%!important;
-  background:transparent!important;
+  background:#fff!important;
   box-shadow:0 4px 14px rgba(0,0,0,.22)!important;
   overflow:hidden!important;
 }
@@ -4712,7 +4716,7 @@ header{
 .brandMark.login.hasLogo{
   padding:0!important;
   border:none!important;
-  background:transparent!important;
+  background:#fff!important;
 }
 
 .brandMark.header.hasLogo .brandMarkInner,
@@ -4721,6 +4725,7 @@ header{
   height:100%!important;
   border-radius:50%!important;
   overflow:hidden!important;
+  background:#fff!important;
 }
 
 .brandMark.header.hasLogo .brandMarkImg,
@@ -4746,7 +4751,7 @@ header{
 }
 
 .homePro .appHeader .brandMark.header.hasLogo{
-  background:transparent!important;
+  background:#fff!important;
   border:none!important;
 }
 

@@ -126,8 +126,8 @@ export function applyCategoryThresholds(stamps, rewards) {
 // Sadakat programı tanıtım metinleri
 export const LOYALTY_RULES_TITLE = 'Liberte’de müdavim olmak kazandırır.';
 export const LOYALTY_RULES_HIGHLIGHTS = [
-  { label: '6. kahven', tone: 'coffee' },
-  { label: '6. tatlın', tone: 'dessert' },
+  { label: '7. kahven', tone: 'coffee' },
+  { label: '7. tatlın', tone: 'dessert' },
   { label: '12. burgerin', tone: 'burger' }
 ];
 export const LOYALTY_RULES_DETAIL_SUFFIX = 'bizden.';

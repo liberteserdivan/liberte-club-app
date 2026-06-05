@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // iOS uyumlu push SW — Firebase messaging SDK kullanılmaz (çakışma ve sessiz push riski)
 const sw = `// Liberte Club push service worker (v17)
-const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png';
+const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png?v=8';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
 ${pushNotificationFormatterSource()}
