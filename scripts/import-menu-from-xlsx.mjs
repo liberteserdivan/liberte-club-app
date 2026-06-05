@@ -88,13 +88,23 @@ function readXlsxRows(filePath) {
   return [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, cols]) => cols);
 }
 
+// Menü sürümü — Excel yeniden import edildiğinde artırın
+const MENU_REVISION = 1;
+
 // menuSeed.js dosya içeriğini üret
 function toModuleSource(categories, items) {
   return `// Liberte menü verisi — Excel'den otomatik üretildi. Elle düzenlemeyin; scripts/import-menu-from-xlsx.mjs kullanın.
+export const MENU_REVISION = ${MENU_REVISION};
+
 export const menuCategories = ${JSON.stringify(categories, null, 2)};
 
 export const menuItems = ${JSON.stringify(items, null, 2)};
 `;
+}
+
+// API tarafı için JSON paketi
+function toApiBundle(categories, items) {
+  return { revision: MENU_REVISION, categories, items };
 }
 
 function main() {
@@ -188,10 +198,13 @@ function main() {
   items.sort((a, b) => a.categoryId - b.categoryId || a.name.localeCompare(b.name, 'tr'));
   items.forEach((item, idx) => { item.id = idx + 1; });
 
-  const outPath = path.join(__dirname, '..', 'src', 'lib', 'menuSeed.js');
-  fs.writeFileSync(outPath, toModuleSource(categories, items), 'utf8');
-  console.log(`Kategori: ${categories.length}, Ürün: ${items.length}`);
-  console.log('Yazıldı:', outPath);
+  const jsPath = path.join(__dirname, '..', 'src', 'lib', 'menuSeed.js');
+  const jsonPath = path.join(__dirname, '..', 'api', 'lib', 'menuSeed.json');
+  fs.writeFileSync(jsPath, toModuleSource(categories, items), 'utf8');
+  fs.writeFileSync(jsonPath, `${JSON.stringify(toApiBundle(categories, items), null, 2)}\n`, 'utf8');
+  console.log(`Kategori: ${categories.length}, Ürün: ${items.length}, Sürüm: ${MENU_REVISION}`);
+  console.log('Yazıldı:', jsPath);
+  console.log('Yazıldı:', jsonPath);
 }
 
 try {

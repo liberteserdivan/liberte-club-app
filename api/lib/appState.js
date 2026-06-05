@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { applyMenuSync } from './menuSync.js';
 
 const STATE_ID = 'liberte';
 
@@ -25,10 +26,21 @@ export async function loadAppState() {
 
   await ensureTables(sql);
   const rows = await sql`SELECT data, updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
-  return {
-    data: rows[0]?.data ?? null,
-    updatedAt: rows[0]?.updated_at ?? null
-  };
+  let data = rows[0]?.data ?? null;
+  let updatedAt = rows[0]?.updated_at ?? null;
+
+  if (data) {
+    const synced = applyMenuSync(data);
+    if (synced.changed) {
+      await saveAppState(synced.state);
+      data = synced.state;
+      updatedAt = new Date().toISOString();
+    } else {
+      data = synced.state;
+    }
+  }
+
+  return { data, updatedAt };
 }
 
 // Uygulama durumunu kaydet

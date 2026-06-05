@@ -1,4 +1,6 @@
 // Liberte menü verisi — Excel'den otomatik üretildi. Elle düzenlemeyin; scripts/import-menu-from-xlsx.mjs kullanın.
+export const MENU_REVISION = 1;
+
 export const menuCategories = [
   {
     "id": 1,

@@ -13,7 +13,24 @@ import{
 }from './loyaltyStamps.js';
 import { apiJson } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
-import { menuCategories, menuItems } from './menuSeed.js';
+import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
+
+// Güncel menü seed'i mi kullanılacak?
+function resolveMenu(x) {
+  const revision = Number(x?.menuRevision || 0);
+  if (revision >= MENU_REVISION) {
+    return {
+      menuRevision: revision,
+      categories: x.categories || menuCategories,
+      items: x.items || menuItems
+    };
+  }
+  return {
+    menuRevision: MENU_REVISION,
+    categories: menuCategories,
+    items: menuItems
+  };
+}
 
 export const seed={
   settings:{
@@ -98,6 +115,7 @@ export const seed={
       level:'Bronze'
     }
   },
+  menuRevision:MENU_REVISION,
   categories:menuCategories,
   items:menuItems,
   notifications:[
@@ -131,14 +149,14 @@ export const seed={
 };
 
 export function mergeDb(x){
+  const menu = resolveMenu(x);
   return x?{
     ...seed,
     ...x,
+    ...menu,
     settings:{...seed.settings,...x.settings,logo:x.settings?.logo||seed.settings.logo},
     customers:x.customers||seed.customers,
     loyalty:x.loyalty||seed.loyalty,
-    categories:x.categories||seed.categories,
-    items:x.items||seed.items,
     notifications:x.notifications||seed.notifications,
     history:x.history||[],
     feedback:x.feedback||[],
