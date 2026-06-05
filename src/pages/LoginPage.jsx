@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
-import { LogIn, Mail, ShieldCheck, ShoppingBag, X } from 'lucide-react';
+import { KeyRound, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
 import { apiJson } from '../lib/apiClient.js';
-import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
-import { clearAuthPending, loadAuthPending, saveAuthPending } from '../lib/authPending.js';
+import {
+  isValidDevPin,
+  makeDevAuthCode,
+  registerDevPin,
+  saveDevAuthCode,
+  useLocalAuth,
+  verifyDevAuthCode,
+  verifyDevPin
+} from '../lib/devAuth.js';
 import { getDeviceId } from '../lib/deviceId.js';
 import { applyAuthResult } from '../lib/session.js';
 import {
@@ -20,36 +27,24 @@ import {
 } from '../lib/db.js';
 
 export default function Login({ db, commit, setSession }) {
-  const restoredPending = loadAuthPending();
-  const registerPending = restoredPending?.mode === 'register' ? restoredPending : null;
-  const loginPending = restoredPending?.mode === 'login' ? restoredPending : null;
-
-  const [authMode, setAuthMode] = useState(
-    registerPending ? 'register' : loginPending ? 'login' : 'login'
-  );
+  const [authMode, setAuthMode] = useState('login');
+  const [forgotStep, setForgotStep] = useState('phone');
   const [phone, setPhone] = useState(() => localStorage.getItem('liberteLastPhone') || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('liberteLastEmail') || '');
   const [birthDate, setBirthDate] = useState('');
   const [referralCode, setReferralCode] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState(registerPending || loginPending ? 'code' : 'form');
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [resetCode, setResetCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [info, setInfo] = useState(
-    registerPending || loginPending ? 'Doğrulama kodunu gir.' : ''
-  );
-  const [pending, setPending] = useState(registerPending || loginPending);
+  const [info, setInfo] = useState('');
   const [legalType, setLegalType] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  function storePending(data) {
-    setPending(data);
-    saveAuthPending(data);
-  }
-
   const notify = (message, type = 'warning') => setNotice({ message, type });
-  const valid = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   const findByPhone = (ph) => (db.customers || []).find((x) => norm(x.phone) === norm(ph));
   const findByEmail = (em) => (db.customers || []).find((x) => String(x.email || '').toLowerCase() === em);
 
@@ -70,247 +65,196 @@ export default function Login({ db, commit, setSession }) {
     return ph;
   }
 
-  function registerFields() {
-    const ph = readPhone();
-    if (!ph) return null;
-
-    const nm = name.trim();
-    const em = email.trim().toLowerCase();
-
-    if (!valid(em)) {
-      notify('Geçerli bir e-posta adresi gir.');
+  function readPins(requireConfirm = false) {
+    const p = String(pin).replace(/\D/g, '');
+    const c = String(pinConfirm).replace(/\D/g, '');
+    if (!isValidDevPin(p)) {
+      notify('PIN 4 veya 6 haneli olmalı.');
       return null;
     }
-
-    if (nm.split(' ').filter(Boolean).length < 2) {
-      notify('Kayıt için isim soyisim zorunlu.');
+    if (requireConfirm && p !== c) {
+      notify('PIN tekrarı eşleşmiyor.');
       return null;
     }
-
-    return {
-      ph,
-      nm,
-      em,
-      birthDate,
-      referralCode: referralCode.trim().toUpperCase().replace(/\s/g, '')
-    };
+    return p;
   }
 
   function finishSession(result) {
+    setPin('');
+    setPinConfirm('');
     const session = applyAuthResult(result);
     localStorage.setItem('liberteLastPhone', phone || '');
     if (email) localStorage.setItem('liberteLastEmail', email);
     setSession(session);
   }
 
-  function createCustomerLocal(f) {
+  async function createCustomerLocal(fields, pinValue) {
     const next = mergeDb(db);
-    const duplicatePhone = (next.customers || []).some((x) => norm(x.phone) === f.ph);
-    const duplicateEmail = (next.customers || []).some((x) => String(x.email || '').toLowerCase() === f.em);
-    if (duplicatePhone || duplicateEmail) {
-      notify('Bu telefon veya e-posta ile zaten kayıt var. Lütfen Giriş Yap ekranını kullan.', 'info');
+    if (findByPhone(fields.ph) || findByEmail(fields.em)) {
+      notify('Bu telefon veya e-posta ile zaten kayıt var.', 'info');
       return;
     }
 
-    const referrer = findReferrerByCode(next, f.referralCode);
-    const c = {
+    const referrer = findReferrerByCode(next, fields.referralCode);
+    const customer = {
       id: Date.now(),
-      phone: f.ph,
-      name: f.nm,
-      email: f.em,
+      phone: fields.ph,
+      name: fields.nm,
+      email: fields.em,
       isAdmin: false,
       createdAt: new Date().toLocaleString('tr-TR'),
       lastVisit: new Date().toISOString(),
-      birthDate: f.birthDate || '',
-      referralCode: makeReferralCode(f.nm, f.ph, Date.now()),
+      birthDate: fields.birthDate || '',
+      referralCode: makeReferralCode(fields.nm, fields.ph, Date.now()),
       referredBy: referrer?.id || null
     };
 
-    if (f.referralCode && referrer?.phone === f.ph) {
-      notify('Kendi referans kodunla kayıt oluşturamazsın.', 'info');
-      return;
-    }
-
-    next.customers = [...next.customers, c];
-    next.loyalty = { ...next.loyalty, [c.id]: loyaltyTemplate(c.id) };
-    let withBonus = addStampToCustomer(next, c.id, 2, 'Yeni üye hoş geldin bonusu');
+    next.customers = [...next.customers, customer];
+    next.loyalty = { ...next.loyalty, [customer.id]: loyaltyTemplate(customer.id) };
+    let withBonus = addStampToCustomer(next, customer.id, 2, 'Yeni üye hoş geldin bonusu');
 
     if (referrer) {
-      withBonus = addStampToCustomer(withBonus, c.id, 2, 'Referans kayıt bonusu');
-      withBonus = addStampToCustomer(withBonus, referrer.id, 2, `${c.name} referans kaydı`);
-      withBonus.referrals = [
-        {
-          id: Date.now() + 15,
-          referrerId: referrer.id,
-          referrerName: referrer.name,
-          newCustomerId: c.id,
-          newCustomerName: c.name,
-          code: getReferralCode(referrer),
-          bonus: 2,
-          createdAt: new Date().toLocaleString('tr-TR')
-        },
-        ...(withBonus.referrals || [])
-      ];
+      withBonus = addStampToCustomer(withBonus, customer.id, 2, 'Referans kayıt bonusu');
+      withBonus = addStampToCustomer(withBonus, referrer.id, 2, `${customer.name} referans kaydı`);
     }
 
     commit(withBonus);
-    finishSession({ customerId: c.id, role: 'user', isAdmin: false, adminVerified: false });
+    await registerDevPin(fields.ph, pinValue);
+    finishSession({ customerId: customer.id, role: 'user', isAdmin: false, adminVerified: false });
   }
 
-  function loginExistingLocal(customer) {
-    commit({
-      ...db,
-      customers: (db.customers || []).map((c) => (
-        c.id === customer.id ? { ...c, lastVisit: new Date().toISOString() } : c
-      ))
-    });
-    finishSession({
-      customerId: customer.id,
-      role: customer.isAdmin ? 'admin' : 'user',
-      isAdmin: Boolean(customer.isAdmin),
-      adminVerified: false
-    });
-  }
-
-  async function loginWithPhone() {
+  async function loginWithPin() {
     const ph = readPhone();
-    if (!ph) return;
-
-    if (useLocalAuth()) {
-      const customer = findByPhone(ph);
-      if (!customer) {
-        notify('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.', 'info');
-        return;
-      }
-      setLoading(true);
-      try {
-        loginExistingLocal(customer);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    setLoading(true);
-    setInfo('');
-
-    try {
-      const { response, data } = await apiJson('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ phone: ph, deviceId: getDeviceId() })
-      });
-
-      if (!response.ok) throw new Error(data.error || 'Giriş başarısız');
-
-      if (!data.needsOtp) {
-        finishSession(data);
-        return;
-      }
-
-      const customer = findByPhone(ph);
-      storePending({
-        mode: 'login',
-        ph,
-        em: customer?.email || '',
-        name: customer?.name || ''
-      });
-      setStep('code');
-      setInfo(`Kod ${data.emailMasked || maskEmail(customer?.email)} adresine gönderildi.`);
-      if (data.testCode) {
-        setInfo(`Test kodu: ${data.testCode}${data.warning ? ` — ${data.warning}` : ''}`);
-      }
-    } catch (e) {
-      notify(e.message || 'Giriş başarısız');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function verifyLoginCode() {
-    if (!pending || pending.mode !== 'login') {
-      notify('Oturum süresi doldu. Lütfen yeniden giriş yap.');
-      setStep('form');
-      return;
-    }
-
-    const normalizedCode = code.replace(/\D/g, '');
-    if (normalizedCode.length !== 6) {
-      notify('6 haneli doğrulama kodunu gir.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { response, data } = await apiJson('/api/auth/login-verify', {
-        method: 'POST',
-        body: JSON.stringify({
-          phone: pending.ph,
-          email: pending.em,
-          code: normalizedCode,
-          deviceId: getDeviceId()
-        })
-      });
-
-      if (!response.ok) throw new Error(data.error || 'Kod doğrulanamadı');
-
-      clearAuthPending();
-      setPending(null);
-      finishSession(data);
-    } catch (e) {
-      notify(e.message || 'Kod doğrulanamadı');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function sendRegisterCode() {
-    const f = registerFields();
-    if (!f) return;
-
-    if (findByPhone(f.ph) || findByEmail(f.em)) {
-      notify('Bu telefon veya e-posta ile kayıt var. Lütfen Giriş Yap ekranını kullan.', 'info');
-      return;
-    }
+    const pinValue = readPins(false);
+    if (!ph || !pinValue) return;
 
     setLoading(true);
     setInfo('');
 
     try {
       if (useLocalAuth()) {
-        const devCode = makeDevAuthCode();
-        saveDevAuthCode(f.ph, f.em, devCode);
-        storePending({ ...f, mode: 'register', customerId: null, name: f.nm });
-        setStep('code');
-        setInfo(`Geliştirme modu — doğrulama kodu: ${devCode}`);
+        const customer = findByPhone(ph);
+        if (!customer) {
+          notify('Bu telefon ile kayıt bulunamadı. Önce kayıt ol.', 'info');
+          return;
+        }
+        await verifyDevPin(ph, pinValue);
+        finishSession({
+          customerId: customer.id,
+          role: customer.isAdmin ? 'admin' : 'user',
+          isAdmin: Boolean(customer.isAdmin),
+          adminVerified: false
+        });
         return;
       }
 
-      const { response, data: j } = await apiJson('/api/auth/send-code', {
+      const { response, data } = await apiJson('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
+      });
+
+      if (!response.ok) throw new Error(data.error || 'Giriş yapılamadı');
+      finishSession(data);
+    } catch (e) {
+      notify(e.message || 'Giriş yapılamadı');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function registerAccount() {
+    const ph = readPhone();
+    if (!ph) return;
+
+    const nm = name.trim();
+    const em = email.trim().toLowerCase();
+    if (!validEmail(em)) {
+      notify('Geçerli bir e-posta adresi gir.');
+      return;
+    }
+    if (nm.split(' ').filter(Boolean).length < 2) {
+      notify('Kayıt için isim soyisim zorunlu.');
+      return;
+    }
+
+    const pinValue = readPins(true);
+    if (!pinValue) return;
+
+    setLoading(true);
+    setInfo('');
+
+    try {
+      const fields = {
+        ph,
+        nm,
+        em,
+        birthDate,
+        referralCode: referralCode.trim().toUpperCase().replace(/\s/g, '')
+      };
+
+      if (useLocalAuth()) {
+        await createCustomerLocal(fields, pinValue);
+        return;
+      }
+
+      const { response, data } = await apiJson('/api/auth/register-complete', {
         method: 'POST',
         body: JSON.stringify({
-          phone: f.ph,
-          name: f.nm,
-          email: f.em,
-          purpose: 'register'
+          phone: ph,
+          name: nm,
+          email: em,
+          birthDate,
+          referralCode: fields.referralCode,
+          pin: pinValue,
+          pinConfirm: pinValue,
+          deviceId: getDeviceId()
         })
       });
 
-      if (!response.ok) throw new Error(j.error || 'Kod gönderilemedi');
+      if (!response.ok) throw new Error(data.error || 'Kayıt tamamlanamadı');
+      finishSession(data);
+    } catch (e) {
+      notify(e.message || 'Kayıt tamamlanamadı');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      storePending({
-        ...f,
-        mode: 'register',
-        customerId: null,
-        name: f.nm,
-        ph: j.phone || f.ph,
-        em: j.email || f.em
+  async function sendForgotCode() {
+    const ph = readPhone();
+    if (!ph) return;
+
+    const customer = findByPhone(ph);
+    if (!customer?.email) {
+      notify('Bu telefon için kayıtlı e-posta bulunamadı.');
+      return;
+    }
+
+    setEmail(String(customer.email).toLowerCase());
+    setLoading(true);
+    setInfo('');
+
+    try {
+      if (useLocalAuth()) {
+        const devCode = makeDevAuthCode();
+        saveDevAuthCode(ph, customer.email, devCode);
+        setForgotStep('reset');
+        setInfo(`Geliştirme modu — sıfırlama kodu: ${devCode}`);
+        return;
+      }
+
+      const { response, data } = await apiJson('/api/auth/forgot-pin/send-code', {
+        method: 'POST',
+        body: JSON.stringify({ phone: ph })
       });
-      setStep('code');
-      if (j.testCode) {
-        setInfo(`Test kodu: ${j.testCode}${j.warning ? ` — ${j.warning}` : ''}`);
+
+      if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
+
+      setForgotStep('reset');
+      if (data.testCode) {
+        setInfo(`Test kodu: ${data.testCode}`);
       } else {
-        setInfo(`Kod ${maskEmail(f.em)} adresine gönderildi.`);
+        setInfo(`Kod ${data.emailMasked || maskEmail(customer.email)} adresine gönderildi.`);
       }
     } catch (e) {
       notify(e.message || 'Kod gönderilemedi');
@@ -319,16 +263,13 @@ export default function Login({ db, commit, setSession }) {
     }
   }
 
-  async function verifyRegisterCode() {
-    if (!pending || pending.mode !== 'register') {
-      notify('Oturum süresi doldu. Lütfen yeniden kod iste.');
-      setStep('form');
-      return;
-    }
+  async function resetForgotPin() {
+    const ph = readPhone();
+    const pinValue = readPins(true);
+    if (!ph || !pinValue) return;
 
-    const f = pending;
-    const normalizedCode = code.replace(/\D/g, '');
-    if (normalizedCode.length !== 6) {
+    const code = resetCode.replace(/\D/g, '');
+    if (code.length !== 6) {
       notify('6 haneli doğrulama kodunu gir.');
       return;
     }
@@ -337,33 +278,30 @@ export default function Login({ db, commit, setSession }) {
 
     try {
       if (useLocalAuth()) {
-        verifyDevAuthCode(f.ph, f.em, normalizedCode);
-        createCustomerLocal(f);
-        clearAuthPending();
-        setPending(null);
+        verifyDevAuthCode(ph, email, code);
+        await registerDevPin(ph, pinValue);
+        setInfo('Yeni PIN kaydedildi. Giriş yapabilirsin.');
+        switchMode('login');
         return;
       }
 
-      const { response, data } = await apiJson('/api/auth/register-complete', {
+      const { response, data } = await apiJson('/api/auth/forgot-pin/reset', {
         method: 'POST',
         body: JSON.stringify({
-          phone: f.ph,
-          email: f.em,
-          name: f.nm,
-          birthDate: f.birthDate,
-          referralCode: f.referralCode,
-          code: normalizedCode,
-          deviceId: getDeviceId()
+          phone: ph,
+          email,
+          code,
+          pin: pinValue,
+          pinConfirm: pinValue
         })
       });
 
-      if (!response.ok) throw new Error(data.error || 'Kayıt tamamlanamadı');
+      if (!response.ok) throw new Error(data.error || 'PIN sıfırlanamadı');
 
-      clearAuthPending();
-      setPending(null);
-      finishSession(data);
+      setInfo('Yeni PIN kaydedildi. Giriş yapabilirsin.');
+      switchMode('login');
     } catch (e) {
-      notify(e.message || 'Kod doğrulanamadı');
+      notify(e.message || 'PIN sıfırlanamadı');
     } finally {
       setLoading(false);
     }
@@ -371,133 +309,202 @@ export default function Login({ db, commit, setSession }) {
 
   function switchMode(mode) {
     setAuthMode(mode);
-    setStep('form');
-    setCode('');
+    setForgotStep('phone');
+    setPin('');
+    setPinConfirm('');
+    setResetCode('');
     setInfo('');
-    setPending(null);
-    clearAuthPending();
   }
 
-  const showCodeStep = step === 'code';
+  return (
+    <section className="loginPage">
+      <div className="orb one" />
+      <div className="orb two" />
 
-  return <section className="loginPage">
-    <div className="orb one"></div>
-    <div className="orb two"></div>
+      <div className="loginPageStack">
+        <div className="loginCard">
+          <Brand db={db} login />
 
-    <div className="loginPageStack">
-    <div className="loginCard">
-      <Brand db={db} login />
+          <h1>
+            {authMode === 'login' && 'Giriş Yap'}
+            {authMode === 'register' && 'Kayıt Ol'}
+            {authMode === 'forgot' && 'PIN Sıfırla'}
+          </h1>
+          <p>
+            {authMode === 'login' && 'Telefon numaran ve kişisel PIN ile giriş yap.'}
+            {authMode === 'register' && '4 veya 6 haneli PIN belirle; sonraki girişlerde telefon + PIN kullan.'}
+            {authMode === 'forgot' && 'E-posta doğrulaması ile yeni PIN belirle.'}
+          </p>
 
-      <h1>{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h1>
-      <p>
-        {authMode === 'login'
-          ? 'Kayıtlı hesabına telefon numaranla giriş yap. Yeni cihazda e-posta kodu istenir.'
-          : 'QR sadakat kartı, özel kampanyalar ve Liberte ayrıcalıkları için kayıt ol.'}
-      </p>
+          {authMode !== 'forgot' && (
+            <div className="authSwitch">
+              <button type="button" className={authMode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>Giriş Yap</button>
+              <button type="button" className={authMode === 'register' ? 'active' : ''} onClick={() => switchMode('register')}>Kayıt Ol</button>
+            </div>
+          )}
 
-      <div className="authSwitch">
-        <button type="button" className={authMode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>Giriş Yap</button>
-        <button type="button" className={authMode === 'register' ? 'active' : ''} onClick={() => switchMode('register')}>Kayıt Ol</button>
+          {authMode === 'login' && (
+            <>
+              <label>Telefon</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel" />
+
+              <label>PIN</label>
+              <input
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="4 veya 6 haneli PIN"
+                type="password"
+                inputMode="numeric"
+                autoComplete="current-password"
+              />
+
+              <button disabled={loading} onClick={loginWithPin}>
+                <LogIn /> {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+              </button>
+
+              <button type="button" className="ghost loginForgotBtn" onClick={() => switchMode('forgot')}>
+                PIN&apos;imi unuttum
+              </button>
+            </>
+          )}
+
+          {authMode === 'register' && (
+            <>
+              <label>Telefon</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel" />
+
+              <label>İsim Soyisim <em>*</em></label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" />
+
+              <label>E-posta <em>*</em></label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email" />
+              <p className="loginHint mini">PIN sıfırlama ve hesap güvenliği için gereklidir.</p>
+
+              <label>Doğum Tarihi</label>
+              <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date" />
+
+              <label>Referans Kodu</label>
+              <input value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} placeholder="Varsa davet kodun" />
+
+              <label>PIN belirle <em>*</em></label>
+              <input
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="4 veya 6 hane"
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+              />
+
+              <label>PIN tekrar <em>*</em></label>
+              <input
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="PIN tekrar"
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+              />
+
+              <p className="loginLegal">
+                Kayıt olarak{' '}
+                <button type="button" className="loginLegalLink" onClick={() => setLegalType('privacy')}>Gizlilik Politikası</button>
+                {' '}ve{' '}
+                <button type="button" className="loginLegalLink" onClick={() => setLegalType('terms')}>Kullanım Şartları</button>
+                {' '}nı kabul etmiş olursun.
+              </p>
+
+              <button disabled={loading} onClick={registerAccount}>
+                <UserPlus /> {loading ? 'Kaydediliyor...' : 'Kayıt Ol'}
+              </button>
+            </>
+          )}
+
+          {authMode === 'forgot' && forgotStep === 'phone' && (
+            <>
+              <label>Telefon</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Kayıtlı telefon numaran" inputMode="tel" />
+
+              <button disabled={loading} onClick={sendForgotCode}>
+                <ShieldCheck /> {loading ? 'Gönderiliyor...' : 'Doğrulama Kodu Gönder'}
+              </button>
+
+              <button type="button" className="ghost" onClick={() => switchMode('login')}>Girişe dön</button>
+            </>
+          )}
+
+          {authMode === 'forgot' && forgotStep === 'reset' && (
+            <>
+              <label>E-posta kodu</label>
+              <input value={resetCode} maxLength={6} onChange={(e) => setResetCode(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
+
+              <label>Yeni PIN</label>
+              <input
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="4 veya 6 hane"
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+              />
+
+              <label>Yeni PIN tekrar</label>
+              <input
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="PIN tekrar"
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+              />
+
+              <button disabled={loading} onClick={resetForgotPin}>
+                <KeyRound /> {loading ? 'Kaydediliyor...' : 'Yeni PIN Kaydet'}
+              </button>
+
+              <button type="button" className="ghost" onClick={() => setForgotStep('phone')}>Kodu yeniden gönder</button>
+            </>
+          )}
+
+          {info && <p className="info">{info}</p>}
+        </div>
+
+        <div className="loginFooter">
+          <p className="loginFooterLabel">Liberte Gastro Cafe</p>
+          <CafeContactBar compact />
+          <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
+            <ShoppingBag size={20} aria-hidden="true" />
+            Menüyü Gör
+          </button>
+        </div>
       </div>
 
-      {!showCodeStep ? <>
-        <label>Telefon</label>
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel"/>
-
-        {authMode === 'register' && <>
-          <label>İsim Soyisim <em>*</em></label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad"/>
-          <label>Doğum Tarihi</label>
-          <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date"/>
-          <p className="loginHint mini">Doğum gününde 1 içecek ikramı hesabına tanımlanır.</p>
-
-          <label>Referans Kodu</label>
-          <input value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} placeholder="Varsa davet kodun"/>
-          <p className="loginHint mini">Referans koduyla kayıt olursan sen de davet eden de +2 damga kazanır.</p>
-
-          <label>E-posta <em>*</em></label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email"/>
-          <p className="loginHint mini">Kayıt için e-postana doğrulama kodu gönderilir.</p>
-        </>}
-
-        {authMode === 'login' ? (
-          <button disabled={loading} onClick={loginWithPhone}>
-            <LogIn/> {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-          </button>
-        ) : (
-          <>
-            <p className="loginLegal">
-              Kayıt olarak{' '}
-              <button type="button" className="loginLegalLink" onClick={() => setLegalType('privacy')}>
-                Gizlilik Politikası
-              </button>
-              {' '}ve{' '}
-              <button type="button" className="loginLegalLink" onClick={() => setLegalType('terms')}>
-                Kullanım Şartları
-              </button>
-              {' '}nı kabul etmiş olursun.
-            </p>
-            <button disabled={loading} onClick={sendRegisterCode}>
-              <Mail/> {loading ? 'Gönderiliyor...' : 'Mail Kod Gönder'}
+      {menuOpen && (
+        <div className="loginMenuOverlay">
+          <div className="loginMenuOverlayHead">
+            <button type="button" className="loginMenuClose" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">
+              <X size={22} />
             </button>
-          </>
-        )}
-
-        {authMode === 'login' && <p className="loginHint">Henüz hesabın yoksa Kayıt Ol sekmesine geç.</p>}
-        {authMode === 'register' && <p className="loginHint">Zaten hesabın varsa Giriş Yap sekmesini kullan.</p>}
-        {info && <p className="info">{info}</p>}
-      </> : <>
-        <label>Mail kodu</label>
-        <input value={code} maxLength={6} onChange={(e) => setCode(e.target.value)} placeholder="6 haneli kod"/>
-
-        <button
-          disabled={loading}
-          onClick={authMode === 'login' ? verifyLoginCode : verifyRegisterCode}
-        >
-          <ShieldCheck/> {loading ? 'Kontrol ediliyor...' : authMode === 'login' ? 'Girişi Tamamla' : 'Kaydı Tamamla'}
-        </button>
-
-        <button className="ghost" onClick={() => setStep('form')}>
-          Bilgileri değiştir
-        </button>
-
-        {info && <p className="info">{info}</p>}
-      </>}
-    </div>
-
-    <div className="loginFooter">
-      <p className="loginFooterLabel">Liberte Gastro Cafe</p>
-      <CafeContactBar compact />
-      <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
-        <ShoppingBag size={20} aria-hidden="true" />
-        Menüyü Gör
-      </button>
-    </div>
-    </div>
-
-    {menuOpen && (
-      <div className="loginMenuOverlay">
-        <div className="loginMenuOverlayHead">
-          <button type="button" className="loginMenuClose" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">
-            <X size={22} />
-          </button>
-          <span>Menü</span>
+            <span>Menü</span>
+          </div>
+          <div className="loginMenuOverlayBody">
+            <MenuPage db={db} embedded />
+          </div>
         </div>
-        <div className="loginMenuOverlayBody">
-          <MenuPage db={db} embedded />
+      )}
+
+      {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
+
+      {notice && (
+        <div className="noticeBackdrop" onClick={() => setNotice(null)}>
+          <div className={`noticeModal ${notice.type}`} onClick={(e) => e.stopPropagation()}>
+            <div className="noticeIcon"><ShieldCheck /></div>
+            <h3>{notice.type === 'info' ? 'Bilgilendirme' : 'Kontrol Edelim'}</h3>
+            <p>{notice.message}</p>
+            <button onClick={() => setNotice(null)}>Tamam</button>
+          </div>
         </div>
-      </div>
-    )}
-
-    {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
-
-    {notice && <div className="noticeBackdrop" onClick={() => setNotice(null)}>
-      <div className={`noticeModal ${notice.type}`} onClick={(e) => e.stopPropagation()}>
-        <div className="noticeIcon"><ShieldCheck/></div>
-        <h3>{notice.type === 'info' ? 'Bilgilendirme' : 'Kontrol Edelim'}</h3>
-        <p>{notice.message}</p>
-        <button onClick={() => setNotice(null)}>Tamam</button>
-      </div>
-    </div>}
-  </section>;
+      )}
+    </section>
+  );
 }

@@ -12,14 +12,14 @@ Liberte Gastro Cafe sadakat uygulaması. Müşteriler kayıt olur, **Kartım** s
 
 ### Demo müşteri
 - **Telefon:** 5550100001
-- **E-posta:** demo.customer@liberte.cafe
-- **Akış:** Giriş Yap → telefon → (yeni cihazda e-posta OTP) → Ana Sayfa → **Kartım** → QR göster
+- **PIN:** İnceleme notunda ayrı iletilecek (4 veya 6 hane)
+- **Akış:** Giriş Yap → telefon + PIN → Ana Sayfa → **Kartım** → QR göster
 
 ### Demo yönetici (kasiyer)
 - **Telefon:** 5550100002
-- **E-posta:** demo.admin@liberte.cafe
-- **Yönetici PIN:** Vercel `ADMIN_PIN` ortam değişkeninde tanımlı (inceleme ekibine ayrı iletilecek)
-- **Akış:** Giriş Yap → telefon → OTP (yeni cihazda) → **QR Tara** → müşteri QR okut → damga / ikram → Profil → Yönetim Paneli → PIN
+- **Müşteri PIN:** İnceleme notunda ayrı iletilecek
+- **Yönetici kasa PIN:** Vercel `ADMIN_PIN` (müşteri PIN’inden ayrı)
+- **Akış:** telefon + müşteri PIN → **Yönetici PIN** ekranı → **QR Tara** → müşteri QR okut → damga / ikram
 
 ## QR kullanımı
 

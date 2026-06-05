@@ -3,7 +3,7 @@ import { applyCors, readBody } from '../lib/http.js';
 import { cleanPhone } from '../lib/phone.js';
 import { buildCustomerRecord, createSession } from '../lib/auth.js';
 import { loadAppState, saveAppState } from '../lib/appState.js';
-import { verifyEmailCode } from '../lib/emailCodes.js';
+import { isValidPinFormat, normalizePin, saveCustomerPin } from '../lib/pinAuth.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
@@ -22,7 +22,7 @@ function loyaltyTemplate(id) {
   };
 }
 
-// Kayıt OTP doğrulama ve hesap oluşturma
+// Kayıt — telefon + kişisel PIN ile hesap oluştur
 export default async function handler(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -33,22 +33,25 @@ export default async function handler(req, res) {
     const phone = cleanPhone(body.phone);
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
-    const code = String(body.code || '').replace(/\D/g, '');
+    const pin = normalizePin(body.pin);
+    const pinConfirm = normalizePin(body.pinConfirm);
     const birthDate = String(body.birthDate || '');
     const referralCode = String(body.referralCode || '').trim().toUpperCase();
     const deviceId = String(body.deviceId || '').trim();
 
     if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
-    if (phone.length < 10 || !validEmail(email) || code.length !== 6) {
-      return res.status(400).json({ error: 'Bilgiler eksik' });
+    if (phone.length < 10 || !validEmail(email)) {
+      return res.status(400).json({ error: 'Telefon ve geçerli e-posta zorunlu' });
     }
     if (name.split(' ').filter(Boolean).length < 2) {
       return res.status(400).json({ error: 'İsim soyisim zorunlu' });
     }
-
-    const sql = neon(process.env.DATABASE_URL);
-    const verified = await verifyEmailCode(sql, { email, phone, code, purpose: 'register' });
-    if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
+    if (!isValidPinFormat(pin)) {
+      return res.status(400).json({ error: 'PIN 4 veya 6 haneli olmalı.' });
+    }
+    if (pin !== pinConfirm) {
+      return res.status(400).json({ error: 'PIN tekrarı eşleşmiyor.' });
+    }
 
     const remote = await loadAppState();
     const state = remote.data || { customers: [], loyalty: {}, history: [] };
@@ -88,6 +91,9 @@ export default async function handler(req, res) {
 
     await saveAppState(state);
 
+    const sql = neon(process.env.DATABASE_URL);
+    await saveCustomerPin(sql, phone, customer.id, pin);
+
     const session = await createSession(res, {
       customerId: customer.id,
       role: 'user',
@@ -99,6 +105,7 @@ export default async function handler(req, res) {
       customerId: customer.id,
       role: session.role,
       isAdmin: false,
+      adminVerified: false,
       sessionToken: session.token
     });
   } catch (e) {

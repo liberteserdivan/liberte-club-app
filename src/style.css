@@ -3205,6 +3205,12 @@ header{
   font-weight:900;
   white-space:nowrap;
 }
+.loginForgotBtn{
+  width:100%;
+  margin-top:4px;
+  font-size:13px;
+  font-weight:700;
+}
 .scanRescanBtn--hero{
   width:100%;
   margin-top:8px;
