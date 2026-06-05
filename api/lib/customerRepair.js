@@ -1,11 +1,11 @@
 import { loadAppState, saveAppState } from './appState.js';
 import { cleanPhone } from './phone.js';
 import {
+  findCustomerIdByEmail,
   listCustomers,
   normalizeEmail,
   syncCustomerEmailsFromState
 } from './customerEmails.js';
-import { getSql } from './appState.js';
 
 // Bilinen telefon → e-posta eşleşmeleri (eksik e-posta alanlarını onar)
 const BASELINE_CONTACTS = [
@@ -41,85 +41,108 @@ export async function repairCustomerDirectory() {
   return true;
 }
 
-// PIN sıfırlama için müşteriyi e-posta veya telefon ile bul
+// Bilinen e-posta → telefon eşleşmesi ile müşteri bul
+function findByBaselineEmail(data, email) {
+  const normalized = normalizeEmail(email);
+  const baseline = BASELINE_CONTACTS.find((item) => normalizeEmail(item.email) === normalized);
+  if (!baseline || !data) return null;
+
+  return listCustomers(data).find(
+    (customer) => cleanPhone(customer.phone) === cleanPhone(baseline.phone)
+  ) || null;
+}
+
+// E-posta ile müşteri ara — state, indeks ve bilinen eşleşmeler
+async function findCustomerByEmailDeep(email) {
+  const normalized = normalizeEmail(email);
+  const { data } = await loadAppState();
+
+  if (data) {
+    const fromState = listCustomers(data).find((c) => normalizeEmail(c.email) === normalized);
+    if (fromState) return { customer: fromState, deliveryEmail: normalized };
+
+    const fromBaseline = findByBaselineEmail(data, normalized);
+    if (fromBaseline) {
+      const deliveryEmail = normalizeEmail(fromBaseline.email) || normalized;
+      return { customer: fromBaseline, deliveryEmail };
+    }
+  }
+
+  const indexed = await findCustomerIdByEmail(normalized);
+  if (indexed && data) {
+    const fromId = listCustomers(data).find(
+      (c) => Number(c.id) === Number(indexed.customer_id)
+    );
+    if (fromId) {
+      return { customer: fromId, deliveryEmail: normalized };
+    }
+  }
+
+  return null;
+}
+
+// Telefon ile müşteri ara — kodlar kayıtlı e-postaya gider
+async function findCustomerByPhoneDeep(phone) {
+  const normalizedPhone = cleanPhone(phone);
+  const { data } = await loadAppState();
+  const fromPhone = listCustomers(data).find((c) => cleanPhone(c.phone) === normalizedPhone);
+
+  if (!fromPhone) return null;
+
+  let deliveryEmail = normalizeEmail(fromPhone.email);
+  if (!deliveryEmail) {
+    const baseline = BASELINE_CONTACTS.find(
+      (item) => cleanPhone(item.phone) === normalizedPhone
+    );
+    deliveryEmail = normalizeEmail(baseline?.email || '');
+  }
+
+  if (!deliveryEmail) {
+    return { error: 'Hesabında kayıtlı e-posta yok. Destek ile iletişime geç.' };
+  }
+
+  return { customer: fromPhone, deliveryEmail };
+}
+
+// PIN sıfırlama — e-posta veya telefon ile müşteri bul
 export async function resolveRecoveryCustomer(rawInput) {
   const value = String(rawInput || '').trim();
   if (!value) return { ok: false, status: 400, error: 'E-posta veya telefon gir.' };
 
-  const tryResolve = async () => {
-    if (value.includes('@')) {
-      const email = normalizeEmail(value);
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return { ok: false, status: 400, error: 'Geçerli e-posta gir.' };
-      }
+  try {
+    await repairCustomerDirectory();
+  } catch {
+    // Onarım başarısız olsa da aramaya devam et
+  }
 
-      const { data } = await loadAppState();
-      if (data) {
-        await syncCustomerEmailsFromState(data);
-        const fromState = listCustomers(data).find((c) => normalizeEmail(c.email) === email);
-        if (fromState) {
-          return buildRecoveryResult(fromState, email);
-        }
-      }
+  if (value.includes('@')) {
+    const email = normalizeEmail(value);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, status: 400, error: 'Geçerli e-posta gir.' };
+    }
 
-      const sql = getSql();
-      if (sql) {
-        await sql`CREATE TABLE IF NOT EXISTS customer_emails (
-          email text PRIMARY KEY,
-          customer_id bigint NOT NULL,
-          phone text NOT NULL,
-          updated_at timestamptz NOT NULL DEFAULT now()
-        )`;
-        const rows = await sql`
-          SELECT customer_id, phone FROM customer_emails WHERE email = ${email} LIMIT 1
-        `;
-        if (rows[0] && data) {
-          const fromId = listCustomers(data).find(
-            (c) => Number(c.id) === Number(rows[0].customer_id)
-          );
-          if (fromId) return buildRecoveryResult(fromId, email);
-        }
-      }
-
+    const found = await findCustomerByEmailDeep(email);
+    if (!found) {
       return { ok: false, status: 404, error: 'Bu e-posta ile kayıt bulunamadı.' };
     }
 
-    const phone = cleanPhone(value);
-    if (phone.length < 10) {
-      return { ok: false, status: 400, error: 'Geçerli e-posta veya 10 haneli telefon gir.' };
-    }
-
-    const { data } = await loadAppState();
-    const fromPhone = listCustomers(data).find((c) => cleanPhone(c.phone) === phone);
-    if (!fromPhone) {
-      return { ok: false, status: 404, error: 'Bu telefon ile kayıt bulunamadı.' };
-    }
-
-    const deliveryEmail = normalizeEmail(fromPhone.email);
-    if (!deliveryEmail) {
-      return {
-        ok: false,
-        status: 400,
-        error: 'Hesabında kayıtlı e-posta yok. Destek ile iletişime geç.'
-      };
-    }
-
-    return buildRecoveryResult(fromPhone, deliveryEmail);
-  };
-
-  let result = await tryResolve();
-  if (result.ok) return result;
-
-  let repaired = false;
-  try {
-    repaired = await repairCustomerDirectory();
-  } catch {
-    return result;
+    return buildRecoveryResult(found.customer, found.deliveryEmail);
   }
-  if (!repaired) return result;
 
-  result = await tryResolve();
-  return result;
+  const phone = cleanPhone(value);
+  if (phone.length < 10) {
+    return { ok: false, status: 400, error: 'Geçerli e-posta veya 10 haneli telefon gir.' };
+  }
+
+  const found = await findCustomerByPhoneDeep(phone);
+  if (!found) {
+    return { ok: false, status: 404, error: 'Bu telefon ile kayıt bulunamadı.' };
+  }
+  if (found.error) {
+    return { ok: false, status: 400, error: found.error };
+  }
+
+  return buildRecoveryResult(found.customer, found.deliveryEmail);
 }
 
 // Müşteri ve kod gönderilecek e-postayı hazırla

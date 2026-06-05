@@ -1,3 +1,5 @@
+import { ensureEmailCodesTable } from './emailCodesSchema.js';
+
 // E-posta doğrulama kodları — deneme sayısı ve süre kontrolü
 
 function normalizeCode(v = '') {
@@ -33,19 +35,7 @@ function codesMatch(row, code, code2) {
 
 // Kodu doğrula — hatalı denemelerde attempts artır
 export async function verifyEmailCode(sql, { email, phone, code, code2, purpose = 'register' }) {
-  await sql`CREATE TABLE IF NOT EXISTS email_codes (
-    id bigserial PRIMARY KEY,
-    email text NOT NULL,
-    phone text NOT NULL,
-    code text NOT NULL,
-    code2 text,
-    attempts int NOT NULL DEFAULT 0,
-    used boolean NOT NULL DEFAULT false,
-    purpose text NOT NULL DEFAULT 'register',
-    expires_at timestamptz NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-  )`;
-  await sql`ALTER TABLE email_codes ADD COLUMN IF NOT EXISTS code2 text`;
+  await ensureEmailCodesTable(sql);
 
   const row = await findActiveCode(sql, { email, phone, purpose });
   if (!row) {

@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { ensureEmailCodesTable } from './emailCodesSchema.js';
 
 function makeCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -14,23 +15,6 @@ export function maskEmail(value = '') {
 
 function isProduction() {
   return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-}
-
-// E-posta kodları tablosunu hazırla
-async function ensureEmailCodesTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS email_codes (
-    id bigserial PRIMARY KEY,
-    email text NOT NULL,
-    phone text NOT NULL,
-    code text NOT NULL,
-    code2 text,
-    attempts int NOT NULL DEFAULT 0,
-    used boolean NOT NULL DEFAULT false,
-    purpose text NOT NULL DEFAULT 'register',
-    expires_at timestamptz NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-  )`;
-  await sql`ALTER TABLE email_codes ADD COLUMN IF NOT EXISTS code2 text`;
 }
 
 // İki doğrulama kodu üret ve kaydet
