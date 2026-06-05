@@ -2,8 +2,14 @@ import React,{useEffect,useState}from'react';
 import{Bell,Coffee,Crown,Gift,Plus,QrCode,Send,ShieldCheck,Sparkles,Star}from'lucide-react';
 import{googleReviewUrl}from'../lib/constants.js';
 import{tryEnablePush}from'../lib/firebasePush.js';
+import{
+  canRequestPushOnThisDevice,
+  getPushPromptHint,
+  markPushDismissed,
+  shouldShowPushPrompt
+}from'../lib/pushPrompt.js';
 import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
-import{isNativeApp}from'../lib/platform.js';
+import{isNativeApp,isStandalonePwa}from'../lib/platform.js';
 import AnimatedWheel from './AnimatedWheel.jsx';
 
 export function CustomerHistoryCard({db,customer}){
@@ -129,11 +135,10 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
 }
 
 export function InstallAppCard({installPrompt,setInstallPrompt}){
-  const[isStandalone,setIsStandalone]=useState(false);
+  const[isStandalone,setIsStandalone]=useState(()=>isStandalonePwa());
 
   useEffect(()=>{
-    const standalone=window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone;
-    setIsStandalone(Boolean(standalone));
+    setIsStandalone(isStandalonePwa());
   },[]);
 
   async function install(){
@@ -232,27 +237,35 @@ export function PushPermission({customer,db,commit}){
 
 // İlk ziyarette bildirim izni banner'ı
 export function PushWelcomeBanner({customer,db,commit}){
-  const[dismissed,setDismissed]=useState(()=>localStorage.getItem('libertePushAsked')==='1');
-  const subscribed=(db.pushSubscriptions||[]).some(x=>x.customerId===customer.id);
+  const[visible,setVisible]=useState(()=>shouldShowPushPrompt(customer,db));
+
+  useEffect(()=>{
+    setVisible(shouldShowPushPrompt(customer,db));
+  },[customer?.id,db.pushSubscriptions]);
 
   function dismiss(){
-    localStorage.setItem('libertePushAsked','1');
-    setDismissed(true);
+    markPushDismissed(customer.id);
+    setVisible(false);
   }
 
   async function accept(){
+    if(!canRequestPushOnThisDevice()){
+      alert('iPhone\'da bildirimler için önce Safari paylaş menüsünden "Ana Ekrana Ekle" yapmalısın. Uygulamayı ana ekrandan açınca Bildirimleri Aç seçeneği görünür.');
+      return;
+    }
+
     const result=await tryEnablePush(customer,db,commit);
-    if(result.ok)dismiss();
+    if(result.ok)setVisible(false);
     else alert(result.message);
   }
 
-  if(dismissed||subscribed)return null;
+  if(!visible)return null;
 
   return <div className="pushWelcomeBanner">
     <div className="pushWelcomeIcon"><Bell size={22}/></div>
     <div>
       <b>Kampanyalardan haberdar ol</b>
-      <p>Damga, çark ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.</p>
+      <p>{getPushPromptHint()}</p>
     </div>
     <div className="pushWelcomeActions">
       <button type="button" className="goldBtn" onClick={accept}>Bildirimleri Aç</button>

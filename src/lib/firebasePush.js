@@ -1,5 +1,6 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
+import { markPushEnabledOnDevice } from './pushPrompt.js';
 
 // Service worker — cache kırma
 export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=13';
@@ -228,7 +229,7 @@ export async function enablePush(customer, db, commit) {
 
   const supported = await isSupported();
   if (!supported) {
-    throw new Error('Bu tarayıcı web push desteklemiyor.');
+    throw new Error('Bu tarayıcı web push desteklemiyor. iPhone kullanıyorsan uygulamayı ana ekrana ekleyip oradan aç.');
   }
 
   const vapidKey = await resolveVapidKey();
@@ -278,6 +279,7 @@ export async function enablePush(customer, db, commit) {
   }
 
   commit(upsertPushSubscription(db, customer, token));
+  markPushEnabledOnDevice(customer.id, token);
 
   onMessage(messaging, showPushNotification);
   foregroundListenerAttached = true;
@@ -285,14 +287,19 @@ export async function enablePush(customer, db, commit) {
   return token;
 }
 
-// Kayıtlı üyede token yenile — iOS'ta eski token hatasını önler
+import { getLocalPushToken } from './pushPrompt.js';
+
+// Kayıtlı üyede token yenile — yalnızca bu cihazda izin verilmişse
 export async function refreshPushTokenIfSubscribed(customer, db, commit) {
   if (!import.meta.env.PROD) return;
   if (!customer?.id) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  const subscribed = (db.pushSubscriptions || []).some((row) => row.customerId === customer.id);
-  if (!subscribed) return;
+  const localToken = getLocalPushToken(customer.id);
+  const onThisDevice = (db.pushSubscriptions || []).some(
+    (row) => row.customerId === customer.id && (!localToken || row.token === localToken)
+  );
+  if (!onThisDevice && !localToken) return;
 
   try {
     await enablePush(customer, db, commit);

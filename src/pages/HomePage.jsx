@@ -41,8 +41,8 @@ export default function HomePage({
     </div>
 
     <div className="homeBody">
-      <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />
       <PushWelcomeBanner db={db} customer={customer} commit={commit} />
+      <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />
 
       <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
 
