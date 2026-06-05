@@ -123,7 +123,17 @@ export function applyCategoryThresholds(stamps, rewards) {
   return { categoryStamps: nextStamps, categoryRewards: nextRewards };
 }
 
-// Kurallar metni
+// Sadakat programı tanıtım metinleri
+export const LOYALTY_RULES_TITLE = 'Liberte’de müdavim olmak kazandırır.';
+export const LOYALTY_RULES_HIGHLIGHTS = [
+  { label: '7. kahven', tone: 'coffee' },
+  { label: '7. tatlın', tone: 'dessert' },
+  { label: '12. burgerin', tone: 'burger' }
+];
+export const LOYALTY_RULES_DETAIL_SUFFIX = 'bizden.';
+
+// Kurallar metni — tek satır özet (geri uyumluluk)
 export function getStampRulesText() {
-  return STAMP_CATEGORIES.map((cat) => `${cat.shortLabel} ${cat.threshold}'de 1 ikram`).join(' · ');
+  const detail = LOYALTY_RULES_HIGHLIGHTS.map((item) => item.label).join(', ');
+  return `${LOYALTY_RULES_TITLE} ${detail} ${LOYALTY_RULES_DETAIL_SUFFIX}`;
 }

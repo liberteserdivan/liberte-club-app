@@ -1,13 +1,13 @@
-import { Crown, Gift } from 'lucide-react';
+import { Gift } from 'lucide-react';
 import {
   STAMP_CATEGORIES,
   categoryProgress,
   countTotalRewards,
   countTotalStamps,
-  getStampRulesText,
   normalizeCategoryRewards,
   normalizeCategoryStamps
 } from '../lib/loyaltyStamps.js';
+import { StampRulesBanner } from './StampRulesCopy.jsx';
 
 const RING = 2 * Math.PI * 46;
 
@@ -91,10 +91,7 @@ export default function LoyaltyTripleStamps({ card, level = 'Bronze' }) {
         })}
       </div>
 
-      <p className="loyaltyTripleRules">
-        <Crown aria-hidden="true" />
-        {getStampRulesText()}
-      </p>
+      <StampRulesBanner />
     </div>
   );
 }

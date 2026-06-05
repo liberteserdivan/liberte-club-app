@@ -11,7 +11,8 @@ import {
   VipBenefitsCard
 } from '../components/Cards.jsx';
 import PremiumSection from '../components/PremiumSection.jsx';
-import { levelByStamps, loyaltyTemplate, countTotalRewards, countTotalStamps, normalizeCategoryRewards, normalizeCategoryStamps, getStampRulesText } from '../lib/db.js';
+import { levelByStamps, loyaltyTemplate, countTotalRewards, countTotalStamps, normalizeCategoryRewards, normalizeCategoryStamps } from '../lib/db.js';
+import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 
 // Aktif kampanya listesini döndür
 function activeCampaigns(db) {
@@ -49,7 +50,7 @@ export default function CampaignPage({ db, customer, commit }) {
             <span>{level}</span>
           </div>
         </div>
-        <p className="campaignProRules">{getStampRulesText()}</p>
+        <StampRulesInline className="campaignProRules" />
       </div>
 
       {campaigns.length > 0 && (

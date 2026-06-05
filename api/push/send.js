@@ -68,12 +68,12 @@ export default async function handler(req, res) {
     const iconUrl = `${SITE_ORIGIN}/icon-192.png`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
 
-    // webpush.notification — iOS'ta uygulama kapalıyken sistem bildirimi için gerekli
+    // webpush.notification — iOS kapalı uygulama; Android SW üzerinden gösterilir
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
       data: {
         title: pushText.title,
-        body: pushText.body,
+        body: pushText.body || '',
         url: SITE_ORIGIN
       },
       webpush: {
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
         },
         data: {
           title: pushText.title,
-          body: pushText.body,
+          body: pushText.body || '',
           url: SITE_ORIGIN
         }
       }

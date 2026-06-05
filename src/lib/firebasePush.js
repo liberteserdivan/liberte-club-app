@@ -4,7 +4,7 @@ import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
 
 // Service worker — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=15';
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=16';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
 // Tarayıcı bildirimi göster
@@ -292,20 +292,52 @@ export async function enablePush(customer, db, commit) {
 
 import { getLocalPushToken } from './pushPrompt.js';
 
-// Kayıtlı üyede token yenile — yalnızca bu cihazda izin verilmişse
+// Kayıtlı üyede token yenile — SW sıfırlamadan, yalnızca bu cihazda
 export async function refreshPushTokenIfSubscribed(customer, db, commit) {
   if (!import.meta.env.PROD) return;
   if (!customer?.id) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!('serviceWorker' in navigator)) return;
 
   const localToken = getLocalPushToken(customer.id);
+  if (!localToken) return;
+
   const onThisDevice = (db.pushSubscriptions || []).some(
-    (row) => row.customerId === customer.id && (!localToken || row.token === localToken)
+    (row) => row.customerId === customer.id && row.token === localToken
   );
-  if (!onThisDevice && !localToken) return;
+  if (!onThisDevice) return;
 
   try {
-    await enablePush(customer, db, commit);
+    const { initializeApp, getApps, deleteApp } = await import('firebase/app');
+    const { getMessaging, getToken, isSupported } = await import('firebase/messaging');
+    if (!(await isSupported())) return;
+
+    const vapidKey = await resolveVapidKey();
+    if (!isValidVapidPublicKey(vapidKey)) return;
+
+    const config = await resolveFirebaseConfig();
+    if (!config.apiKey) return;
+
+    const registration = await navigator.serviceWorker.getRegistration()
+      || await navigator.serviceWorker.register(FIREBASE_SW_URL);
+    await registration.update();
+
+    for (const app of getApps()) {
+      await deleteApp(app);
+    }
+
+    patchFirebaseReferrer();
+    const app = initializeApp(config);
+    const messaging = getMessaging(app);
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration
+    });
+
+    if (!token || token === localToken) return;
+
+    commit(upsertPushSubscription(db, customer, token));
+    markPushEnabledOnDevice(customer.id, token);
   } catch {
     // Arka planda sessizce dene
   }

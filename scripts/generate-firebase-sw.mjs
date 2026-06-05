@@ -84,13 +84,13 @@ function showLiberteNotification(payload) {
   });
 }
 
-// FCM webpush.notification varsa tarayıcı zaten gösterir — çift bildirim olmasın
+// iOS: sistem bildirimi varsa tekrar gösterme — Android'de her zaman SW göstersin
 messaging.onBackgroundMessage((payload) => {
-  if (payload.notification?.title) return Promise.resolve();
+  if (shouldDeferToSystemNotification(payload)) return Promise.resolve();
   return showLiberteNotification(payload);
 });
 
-// iOS kapalı uygulama — yedek push dinleyicisi
+// Kapalı uygulama yedek dinleyicisi
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
@@ -101,9 +101,10 @@ self.addEventListener('push', (event) => {
     return;
   }
 
-  if (payload?.notification?.title) return;
+  if (shouldDeferToSystemNotification(payload)) return;
 
   event.waitUntil(showLiberteNotification({
+    notification: payload.notification,
     data: payload.data || payload
   }));
 });

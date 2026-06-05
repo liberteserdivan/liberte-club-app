@@ -9,7 +9,14 @@ import{
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
 import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
-import{isNativeApp,isStandalonePwa}from'../lib/platform.js';
+import{isNativeApp,isAndroid,isIos}from'../lib/platform.js';
+import{
+  getDeferredPwaPrompt,
+  getInstallCardHint,
+  getInstallHelpText,
+  requestPwaInstall,
+  shouldShowInstallCard
+}from'../lib/pwaInstall.js';
 import AnimatedWheel from './AnimatedWheel.jsx';
 
 export function CustomerHistoryCard({db,customer}){
@@ -134,33 +141,45 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
   </div>;
 }
 
-export function InstallAppCard({installPrompt,setInstallPrompt}){
-  const[isStandalone,setIsStandalone]=useState(()=>isStandalonePwa());
+export function InstallAppCard(){
+  const[canNativeInstall,setCanNativeInstall]=useState(()=>Boolean(getDeferredPwaPrompt()));
+  const[visible,setVisible]=useState(()=>shouldShowInstallCard(isNativeApp()));
 
   useEffect(()=>{
-    setIsStandalone(isStandalonePwa());
+    const sync=()=>{
+      setCanNativeInstall(Boolean(getDeferredPwaPrompt()));
+      setVisible(shouldShowInstallCard(isNativeApp()));
+    };
+    window.addEventListener('liberte:pwa-install-ready',sync);
+    window.addEventListener('liberte:pwa-installed',sync);
+    return()=>{
+      window.removeEventListener('liberte:pwa-install-ready',sync);
+      window.removeEventListener('liberte:pwa-installed',sync);
+    };
   },[]);
 
   async function install(){
-    if(installPrompt){
-      installPrompt.prompt();
-      await installPrompt.userChoice.catch(()=>{});
-      setInstallPrompt(null);
+    const result=await requestPwaInstall();
+    if(result.ok){
+      setVisible(false);
       return;
     }
-    alert('iPhone kullanıyorsan Safari paylaş menüsünden "Ana Ekrana Ekle" seçeneğini kullanabilirsin.');
+    alert(getInstallHelpText());
   }
 
-  // Native uygulama veya zaten yüklüyse gösterme
-  if(isStandalone||isNativeApp())return null;
+  if(!visible)return null;
+
+  const buttonLabel=canNativeInstall
+    ?'Ana Ekrana Ekle'
+    :(isAndroid()?'Nasıl Eklenir?':isIos()?'Ana Ekrana Ekle':'Ana Ekrana Ekle');
 
   return <div className="installCard">
     <div>
       <span>UYGULAMA GİBİ KULLAN</span>
       <b>Liberte Club ana ekranında dursun</b>
-      <p>QR kartına, kampanyalara ve ödüllerine tek dokunuşla ulaş.</p>
+      <p>{getInstallCardHint(canNativeInstall)}</p>
     </div>
-    <button onClick={install}>Ana Ekrana Ekle</button>
+    <button type="button" onClick={install}>{buttonLabel}</button>
   </div>;
 }
 

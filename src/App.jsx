@@ -17,17 +17,6 @@ export default function App() {
   const [db, commit, sync, refreshRemote] = useCommit(load());
   const [session, setSession] = useState(readSession);
   const [tab, setTab] = useState('home');
-  const [installPrompt, setInstallPrompt] = useState(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
   // Push service worker + ön plan dinleyici
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
@@ -68,7 +57,7 @@ export default function App() {
 
   return <main className="app" style={cssVars(db.settings)}>
     <div className="appTabView" key={tab}>
-      {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={setSession} sync={sync} refreshRemote={refreshRemote} commit={commit} installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />}
+      {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={setSession} sync={sync} refreshRemote={refreshRemote} commit={commit} />}
       {tab === 'menu' && <MenuPage db={db} />}
       {tab === 'qr' && <QrPage db={db} customer={customer} card={card} />}
       {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}

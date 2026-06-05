@@ -25,7 +25,7 @@ export const seed={
     logo:'/liberte-logo.png?v=7',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
-    promo_text:'Tatlı ve kahve 7 damgada, burger 12 damgada ikram kazan.',
+    promo_text:'Liberte’de müdavim olmak kazandırır. 7. kahven, 7. tatlın ve 12. burgerin bizden.',
     cashier_pin:'5454',
     review_popup:true,
     daily_popup:true,

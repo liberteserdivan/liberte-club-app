@@ -14,6 +14,12 @@ export function isIos() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 }
 
+// Android tarayıcı tespiti
+export function isAndroid() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent || '');
+}
+
 export function isStandalonePwa() {
   if (typeof window === 'undefined') return false;
   return Boolean(

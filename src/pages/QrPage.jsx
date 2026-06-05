@@ -6,12 +6,12 @@ import {
   levelByStamps,
   countTotalRewards,
   countTotalStamps,
-  getStampRulesText,
   normalizeCategoryRewards,
   normalizeCategoryStamps,
   stampCardProgress,
   stampsRemaining
 } from '../lib/db.js';
+import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 
 // Kasada gösterilecek QR sadakat kartı
 export default function QrPage({ db, customer, card }) {
@@ -78,7 +78,7 @@ export default function QrPage({ db, customer, card }) {
                   ? 'Damga eşiği doldu, ikram hesabına işlendi.'
                   : `En yakın ikrama ${remaining} damga kaldı`}
             </p>
-            <small>{getStampRulesText()}</small>
+            <StampRulesInline />
           </div>
 
           <p className="qrPassTip">Ekran parlaklığını açık tut, kasada birkaç saniye göster.</p>

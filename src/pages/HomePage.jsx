@@ -3,14 +3,14 @@ import Header from '../components/Header.jsx';
 import LoyaltyTripleStamps from '../components/LoyaltyTripleStamps.jsx';
 import LiberteMarkIcon from '../components/LiberteMarkIcon.jsx';
 import FeaturedSlider from '../components/FeaturedSlider.jsx';
-import { getGreeting, levelByStamps, stampCardProgress, countTotalStamps, countTotalRewards, normalizeCategoryStamps, normalizeCategoryRewards, getStampRulesText } from '../lib/db.js';
+import { getGreeting, levelByStamps, stampCardProgress, countTotalStamps, countTotalRewards, normalizeCategoryStamps, normalizeCategoryRewards } from '../lib/db.js';
+import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { DailyCampaignCard, InstallAppCard, PushWelcomeBanner } from '../components/Cards.jsx';
 import DailyTasksStrip from '../components/DailyTasksStrip.jsx';
 
 // Ana sayfa — özet kart ve keşif; tüm içerik tek ekranda değil
 export default function HomePage({
   db, customer, card, setTab, setSession, sync, refreshRemote, commit,
-  installPrompt, setInstallPrompt
 }) {
   const featured = db.items.filter((i) => i.best || i.featured).slice(0, 8);
   const categoryStamps = normalizeCategoryStamps(card);
@@ -42,7 +42,7 @@ export default function HomePage({
 
     <div className="homeBody">
       <PushWelcomeBanner db={db} customer={customer} commit={commit} />
-      <InstallAppCard installPrompt={installPrompt} setInstallPrompt={setInstallPrompt} />
+      <InstallAppCard />
 
       <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
 
@@ -53,7 +53,7 @@ export default function HomePage({
             <span>LIBERTE CLUB</span>
             <h2>Sadakat Kartı</h2>
             <p>{totalStamps} aktif damga · {rewards} ikram hakkı</p>
-            <small className="homeWalletRules">{getStampRulesText()}</small>
+            <StampRulesInline className="homeWalletRules" />
           </div>
           <Crown />
           <div className="progress"><span style={{ width: `${progress}%` }} /></div>

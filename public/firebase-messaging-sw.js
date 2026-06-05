@@ -38,6 +38,14 @@ const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
 
+function isIosPushClient() {
+  return /iPhone|iPad|iPod/i.test(self.navigator?.userAgent || '');
+}
+
+function shouldDeferToSystemNotification(payload) {
+  return isIosPushClient() && Boolean(payload?.notification?.title);
+}
+
 const IOS_TITLE_MAX = 30;
 
 function isAppName(value) {
@@ -107,13 +115,13 @@ function showLiberteNotification(payload) {
   });
 }
 
-// FCM webpush.notification varsa tarayıcı zaten gösterir — çift bildirim olmasın
+// iOS: sistem bildirimi varsa tekrar gösterme — Android'de her zaman SW göstersin
 messaging.onBackgroundMessage((payload) => {
-  if (payload.notification?.title) return Promise.resolve();
+  if (shouldDeferToSystemNotification(payload)) return Promise.resolve();
   return showLiberteNotification(payload);
 });
 
-// iOS kapalı uygulama — yedek push dinleyicisi
+// Kapalı uygulama yedek dinleyicisi
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
@@ -124,9 +132,10 @@ self.addEventListener('push', (event) => {
     return;
   }
 
-  if (payload?.notification?.title) return;
+  if (shouldDeferToSystemNotification(payload)) return;
 
   event.waitUntil(showLiberteNotification({
+    notification: payload.notification,
     data: payload.data || payload
   }));
 });
