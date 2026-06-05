@@ -1,4 +1,6 @@
 // Push bildirimi gönder — uygulama içi kayıt + FCM
+import { pruneInvalidPushTokens } from './pushTokens.js';
+
 export async function dispatchPush(db, commit, { title, body, customerId = null }) {
   const tokens = (db.pushSubscriptions || []).map((x) => x.token).filter(Boolean);
   const createdAt = new Date().toLocaleString('tr-TR');
@@ -58,16 +60,25 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       || result.error
       || `${result.sent || 0} cihaza iletildi${result.failed ? `, ${result.failed} başarısız` : ''}.`;
 
+    const { subscriptions, removed } = pruneInvalidPushTokens(
+      next.pushSubscriptions || [],
+      result.invalidTokens || []
+    );
+
+    const synced = removed
+      ? { ...next, pushSubscriptions: subscriptions }
+      : next;
+
     commit({
-      ...next,
-      pushLog: next.pushLog.map((row) => (
+      ...synced,
+      pushLog: synced.pushLog.map((row) => (
         row.id === logId
           ? { ...row, sent: result.sent || 0, failed: result.failed || 0, note }
           : row
       ))
     });
 
-    return { ok: response.ok && result.ok !== false, sent: result.sent || 0, note };
+    return { ok: response.ok && result.ok !== false, sent: result.sent || 0, note, removedInvalid: removed };
   } catch {
     return { ok: false, sent: 0, note: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.' };
   }

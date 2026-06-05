@@ -164,6 +164,59 @@ function mapPushError(error) {
   return `Bildirim kurulamadı: ${message}`;
 }
 
+// Cihaz platformunu kısaca etiketle
+function detectPushPlatform() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+  if (/Android/i.test(ua)) return 'android';
+  return 'web';
+}
+
+// Üye başına tek güncel token tut — eski iOS/Android kayıtlarını temizle
+function upsertPushSubscription(db, customer, token) {
+  const others = (db.pushSubscriptions || []).filter(
+    (row) => row.customerId !== customer.id && row.token !== token
+  );
+
+  const existing = (db.pushSubscriptions || []).find((row) => row.token === token);
+  const platform = detectPushPlatform();
+  const now = new Date().toLocaleString('tr-TR');
+
+  if (existing) {
+    return {
+      ...db,
+      pushSubscriptions: [
+        ...others,
+        {
+          ...existing,
+          customerId: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          platform,
+          updatedAt: now
+        }
+      ]
+    };
+  }
+
+  return {
+    ...db,
+    pushSubscriptions: [
+      ...others,
+      {
+        id: Date.now(),
+        customerId: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        token,
+        platform,
+        createdAt: now,
+        updatedAt: now
+      }
+    ]
+  };
+}
+
 // Push bildirimlerini etkinleştir
 export async function enablePush(customer, db, commit) {
   const { initializeApp, getApps, deleteApp } = await import('firebase/app');
@@ -224,28 +277,28 @@ export async function enablePush(customer, db, commit) {
     throw new Error('Bildirim tokenı alınamadı.');
   }
 
-  const exists = (db.pushSubscriptions || []).some((row) => row.token === token);
-  if (!exists) {
-    commit({
-      ...db,
-      pushSubscriptions: [
-        ...(db.pushSubscriptions || []),
-        {
-          id: Date.now(),
-          customerId: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          token,
-          createdAt: new Date().toLocaleString('tr-TR')
-        }
-      ]
-    });
-  }
+  commit(upsertPushSubscription(db, customer, token));
 
   onMessage(messaging, showPushNotification);
   foregroundListenerAttached = true;
 
   return token;
+}
+
+// Kayıtlı üyede token yenile — iOS'ta eski token hatasını önler
+export async function refreshPushTokenIfSubscribed(customer, db, commit) {
+  if (!import.meta.env.PROD) return;
+  if (!customer?.id) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const subscribed = (db.pushSubscriptions || []).some((row) => row.customerId === customer.id);
+  if (!subscribed) return;
+
+  try {
+    await enablePush(customer, db, commit);
+  } catch {
+    // Arka planda sessizce dene
+  }
 }
 
 // enablePush sarmalayıcı — hata mesajını döndürür

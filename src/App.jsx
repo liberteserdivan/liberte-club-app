@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { applyBirthdayReward, cssVars, isWheelUnlimited, load, localDayKey } from './lib/db.js';
 import { readSession } from './lib/session.js';
-import { FIREBASE_SW_URL, startPushForegroundListener } from './lib/firebasePush.js';
+import { FIREBASE_SW_URL, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { useCommit } from './hooks/useCommit.js';
 import Nav from './components/Nav.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
@@ -49,6 +49,11 @@ export default function App() {
     const next = applyBirthdayReward(db, customer.id);
     if (next !== db) commit(next);
   }, [customer?.id, customer?.birthDate]);
+
+  useEffect(() => {
+    if (!customer?.id) return;
+    refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
+  }, [customer?.id]);
 
   // Geçersiz oturum — giriş ekranına düş
   if (!session || !customer) {

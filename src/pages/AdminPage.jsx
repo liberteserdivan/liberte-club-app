@@ -667,7 +667,7 @@ function NotificationAdmin({db,commit}){
         <div><span>BİLDİRİM</span><h3>Kurulu cihazlara gönder</h3></div>
         <span className="deviceCountBadge"><Smartphone size={14}/> {devices.length} cihaz</span>
       </div>
-      <p className="pushHint">Uygulamayı yükleyip bildirim izni veren üyelere anlık push gönderilir.</p>
+      <p className="pushHint">Uygulamayı yükleyip bildirim izni veren üyelere anlık push gönderilir. iPhone&apos;da ana ekrana eklenmiş PWA ve iOS 16.4+ gerekir; eski tokenlar gönderimde otomatik temizlenir.</p>
 
       <div className="pushPreview">
         <span>Önizleme</span>
@@ -697,7 +697,7 @@ function NotificationAdmin({db,commit}){
       <div className="adminSectionHead"><div><span>CİHAZLAR</span><h3>Kayıtlı bildirim cihazları</h3></div></div>
       {devices.length?devices.map(d=>
         <div className="deviceRow" key={d.id||d.token}>
-          <div><b>{d.name||'Üye'}</b><p>{d.phone||'—'} · {d.createdAt||'Tarih yok'}</p></div>
+          <div><b>{d.name||'Üye'}</b><p>{d.phone||'—'} · {(d.platform==='ios'?'iOS':d.platform==='android'?'Android':'Web')} · {d.updatedAt||d.createdAt||'Tarih yok'}</p></div>
           <button type="button" className="ghost deviceRemoveBtn" onClick={()=>removeDevice(d.id,d.token)} aria-label="Kaldır"><Trash2 size={14}/></button>
         </div>
       ):<p className="emptySmall">Henüz bildirim izni veren cihaz yok. Üyeler uygulamada &quot;Bildirim Aç&quot; butonuna basmalı.</p>}

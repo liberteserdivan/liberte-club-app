@@ -3,6 +3,12 @@ import { parseServiceAccount, validateServiceAccount } from '../lib/serviceAccou
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
+const INVALID_TOKEN_CODES = new Set([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+  'messaging/invalid-argument'
+]);
+
 // Firebase Admin SDK başlat
 function getAdmin(serviceAccount) {
   if (admin.apps.length) return admin;
@@ -18,6 +24,19 @@ function summarizeFailures(responses) {
     .filter(Boolean)
     .slice(0, 3)
     .join(', ');
+}
+
+// Gönderim sonrası silinmesi gereken tokenları bul
+function collectInvalidTokens(tokens, responses) {
+  const invalid = [];
+  responses.forEach((row, index) => {
+    if (row.success) return;
+    const code = row.error?.code || '';
+    if (INVALID_TOKEN_CODES.has(code) && tokens[index]) {
+      invalid.push(tokens[index]);
+    }
+  });
+  return [...new Set(invalid)];
 }
 
 export default async function handler(req, res) {
@@ -66,10 +85,14 @@ export default async function handler(req, res) {
     });
 
     const failures = summarizeFailures(result.responses);
+    const invalidTokens = collectInvalidTokens(clean, result.responses);
+
     let note = `${result.successCount} cihaza iletildi`;
     if (result.failureCount) note += `, ${result.failureCount} başarısız`;
     if (failures) note += ` (${failures})`;
-    if (result.successCount > 0) {
+    if (invalidTokens.length) {
+      note += `. ${invalidTokens.length} geçersiz kayıt listeden kaldırıldı — ilgili üye Bildirimleri yeniden açmalı.`;
+    } else if (result.successCount > 0) {
       note += '. Görünmüyorsa uygulamayı arka plana alın veya Bildirimleri yeniden açın.';
     }
 
@@ -77,6 +100,7 @@ export default async function handler(req, res) {
       ok: result.successCount > 0,
       sent: result.successCount,
       failed: result.failureCount,
+      invalidTokens,
       note
     });
   } catch (error) {
