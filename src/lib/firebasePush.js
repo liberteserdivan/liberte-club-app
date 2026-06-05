@@ -7,8 +7,8 @@ import { formatPushNotification } from './pushNotificationText.js';
 export const FIREBASE_SW_URL = '/firebase-messaging-sw.js';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
-// Tarayıcı bildirimi göster
-export function showPushNotification(payload) {
+// Tarayıcı bildirimi göster — iOS PWA'da yalnızca SW üzerinden çalışır
+export async function showPushNotification(payload) {
   if (Notification.permission !== 'granted') return;
 
   const formatted = formatPushNotification(
@@ -16,13 +16,23 @@ export function showPushNotification(payload) {
     payload?.notification?.body || payload?.data?.body
   );
 
-  new Notification(formatted.title, {
+  const options = {
     body: formatted.body || undefined,
     icon: `${PUSH_SITE_ORIGIN}${NOTIFICATION_ICON}`,
     badge: `${PUSH_SITE_ORIGIN}${NOTIFICATION_BADGE}`,
     tag: 'liberte-club-push',
-    data: payload?.data || {}
-  });
+    data: {
+      ...(payload?.data || {}),
+      url: payload?.data?.url || PUSH_SITE_ORIGIN
+    }
+  };
+
+  if ('serviceWorker' in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    return registration.showNotification(formatted.title, options);
+  }
+
+  return new Notification(formatted.title, options);
 }
 
 let foregroundListenerAttached = false;

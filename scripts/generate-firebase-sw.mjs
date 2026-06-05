@@ -79,24 +79,25 @@ function showLiberteNotification(payload) {
   });
 }
 
-// iOS: sistem bildirimi varsa tekrar gösterme — Android'de her zaman SW göstersin
-messaging.onBackgroundMessage((payload) => {
-  if (shouldDeferToSystemNotification(payload)) return Promise.resolve();
-  return showLiberteNotification(payload);
-});
+// Arka plan — iOS'ta onBackgroundMessage sınırlı; yine de göster
+messaging.onBackgroundMessage((payload) => showLiberteNotification(payload));
 
-// Kapalı uygulama yedek dinleyicisi
+// iOS kapalı/arka plan — asıl teslimat push olayı ile
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  let payload = { data: {} };
 
-  let payload = null;
-  try {
-    payload = event.data.json();
-  } catch {
-    return;
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch {
+      try {
+        const text = event.data.text();
+        payload = { data: { title: text || 'Yeni bildirim', body: '' } };
+      } catch {
+        payload = { data: { title: 'Yeni bildirim', body: '' } };
+      }
+    }
   }
-
-  if (shouldDeferToSystemNotification(payload)) return;
 
   event.waitUntil(showLiberteNotification({
     notification: payload.notification,

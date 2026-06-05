@@ -14,7 +14,7 @@ import{
 
 export const seed={
   settings:{
-    stamp_threshold:7,
+    stamp_threshold:6,
     reward_description:'Kategori ikramı',
     cafe_name:'Liberte Gastro Cafe',
     app_name:'Liberte Club',
@@ -25,7 +25,7 @@ export const seed={
     logo:'/liberte-logo.png?v=7',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
-    promo_text:'Liberte’de müdavim olmak kazandırır. 7. kahven, 7. tatlın ve 12. burgerin bizden.',
+    promo_text:'Liberte’de müdavim olmak kazandırır. 6. kahven, 6. tatlın ve 12. burgerin bizden.',
     cashier_pin:'5454',
     review_popup:true,
     daily_popup:true,

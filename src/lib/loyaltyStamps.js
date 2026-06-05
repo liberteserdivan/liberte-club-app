@@ -6,7 +6,7 @@ export const STAMP_CATEGORIES = [
     shortLabel: 'Tatlı',
     image: '/stamps/dessert.png?v=7',
     imagePosition: 'center center',
-    threshold: 7,
+    threshold: 6,
     rewardLabel: '1 ikram tatlı',
     ikramShort: 'Tatlı ikramı'
   },
@@ -16,7 +16,7 @@ export const STAMP_CATEGORIES = [
     shortLabel: 'Kahve',
     image: '/stamps/coffee.png?v=7',
     imagePosition: 'center center',
-    threshold: 7,
+    threshold: 6,
     rewardLabel: '1 ikram içecek',
     ikramShort: 'Kahve ikramı'
   },
@@ -86,7 +86,7 @@ export function countTotalStamps(stamps) {
 
 // Kategori eşiğini döndürür
 export function getCategoryThreshold(categoryId) {
-  return STAMP_CATEGORIES.find((cat) => cat.id === categoryId)?.threshold || 7;
+  return STAMP_CATEGORIES.find((cat) => cat.id === categoryId)?.threshold || 6;
 }
 
 // Kategori ilerleme yüzdesi
@@ -126,8 +126,8 @@ export function applyCategoryThresholds(stamps, rewards) {
 // Sadakat programı tanıtım metinleri
 export const LOYALTY_RULES_TITLE = 'Liberte’de müdavim olmak kazandırır.';
 export const LOYALTY_RULES_HIGHLIGHTS = [
-  { label: '7. kahven', tone: 'coffee' },
-  { label: '7. tatlın', tone: 'dessert' },
+  { label: '6. kahven', tone: 'coffee' },
+  { label: '6. tatlın', tone: 'dessert' },
   { label: '12. burgerin', tone: 'burger' }
 ];
 export const LOYALTY_RULES_DETAIL_SUFFIX = 'bizden.';

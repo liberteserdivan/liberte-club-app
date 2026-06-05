@@ -50,22 +50,9 @@ export function formatPushNotification(title = '', body = '') {
   return { title: finalTitle, body: finalBody };
 }
 
-// Service worker — yalnızca iOS'ta sistem bildirimini tekrarlama
-export function pushServiceWorkerPlatformSource() {
-  return `
-function isIosPushClient() {
-  return /iPhone|iPad|iPod/i.test(self.navigator?.userAgent || '');
-}
-
-function shouldDeferToSystemNotification(payload) {
-  return isIosPushClient() && Boolean(payload?.notification?.title);
-}`;
-}
-
 // Service worker şablonu için aynı mantık
 export function pushNotificationFormatterSource() {
-  return `${pushServiceWorkerPlatformSource()}
-
+  return `
 const IOS_TITLE_MAX = 30;
 
 function isAppName(value) {
