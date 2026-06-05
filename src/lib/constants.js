@@ -22,10 +22,10 @@ export const privacyPolicyUrl = 'https://app.liberte.cafe/gizlilik';
 export const termsUrl = 'https://app.liberte.cafe/kullanim-sartlari';
 
 // Varsayılan marka logosu (public klasörü)
-export const DEFAULT_LOGO = '/liberte-logo.png?v=7';
+export const DEFAULT_LOGO = '/liberte-logo.png?v=10';
 
 // Push bildirim görselleri — badge liberte-logo silueti
-export const NOTIFICATION_ICON = '/icon-192.png?v=9';
+export const NOTIFICATION_ICON = '/icon-192.png?v=10';
 export const NOTIFICATION_BADGE = '/notification-badge.png';
 
 // Sadakat halkası statik bardak görseli (şeffaf PNG)

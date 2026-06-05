@@ -3474,17 +3474,17 @@ header{
   background-color:#fff;
   background-image:none;
 }
-/* Header — squircle logo, kırpma yok */
+/* Header — squircle logo, şeffaf rozet */
 .brandMark.header.hasLogo{
-  padding:5px;
+  padding:4px;
   border:2px solid rgba(216,194,157,.72);
   border-radius:20px;
-  background:#fff;
-  box-shadow:0 6px 18px rgba(11,47,38,.16),inset 0 1px 0 rgba(255,255,255,.9);
+  background:rgba(255,255,255,.08);
+  box-shadow:0 6px 18px rgba(11,47,38,.16);
 }
 .brandMark.header.hasLogo .brandMarkInner{
   border-radius:14px;
-  background:#fff;
+  background:transparent;
 }
 .brandMark.header.hasLogo .brandMarkImg{
   width:100%;
@@ -3498,20 +3498,21 @@ header{
 .brandMark.login.hasLogo{
   padding:0;
   border:none;
-  background:#fff;
-  box-shadow:0 10px 28px rgba(11,47,38,.14);
+  background:transparent;
+  box-shadow:none;
 }
 .brandMark.login.hasLogo .brandMarkInner{
-  border-radius:50%;
-  background:#fff;
+  border-radius:0;
+  background:transparent;
 }
 .brandMark.login.hasLogo .brandMarkImg{
   width:100%;
   height:100%;
-  max-width:none;
-  max-height:none;
-  object-fit:cover;
-  border-radius:50%;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  object-position:center center;
+  border-radius:0;
 }
 .brandMarkInner{
   width:100%;
@@ -3535,13 +3536,13 @@ header{
   padding:0;
 }
 .brandMark.login{
-  width:108px;
-  height:108px;
-  min-width:108px;
-  margin:0 auto 4px;
-  border-radius:999px;
-  border:2px solid rgba(11,47,38,.1);
-  box-shadow:0 16px 40px rgba(11,47,38,.12);
+  width:124px;
+  height:124px;
+  min-width:124px;
+  margin:0 auto 8px;
+  border-radius:0;
+  border:none;
+  box-shadow:none;
 }
 .loginCard .brandMark.login{
   display:block;
@@ -3549,9 +3550,16 @@ header{
 .loginPage{
   min-height:100svh!important;
   display:flex!important;
+  flex-direction:column!important;
   align-items:center!important;
   justify-content:center!important;
   padding:max(12px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom))!important;
+}
+
+.loginPageStack{
+  width:min(430px,100%);
+  position:relative;
+  z-index:2;
 }
 .loginCard{
   width:min(430px,100%)!important;
@@ -4747,11 +4755,11 @@ header{
 }
 
 .brandMark.header.hasLogo{
-  padding:5px!important;
+  padding:4px!important;
   border:2px solid rgba(216,194,157,.72)!important;
   border-radius:20px!important;
-  background:#fff!important;
-  box-shadow:0 6px 18px rgba(11,47,38,.16),inset 0 1px 0 rgba(255,255,255,.9)!important;
+  background:rgba(255,255,255,.08)!important;
+  box-shadow:0 6px 18px rgba(11,47,38,.16)!important;
   overflow:hidden!important;
 }
 
@@ -4775,7 +4783,7 @@ header{
   height:100%!important;
   border-radius:14px!important;
   overflow:hidden!important;
-  background:#fff!important;
+  background:transparent!important;
 }
 
 .brandMark.login.hasLogo .brandMarkInner{
@@ -4805,7 +4813,14 @@ header{
   max-height:100%!important;
   object-fit:contain!important;
   object-position:center center!important;
-  border-radius:50%!important;
+  border-radius:0!important;
+}
+
+.brandMark.login.hasLogo,
+.brandMark.login.hasLogo .brandMarkInner{
+  background:transparent!important;
+  border:none!important;
+  box-shadow:none!important;
 }
 
 .brandMark.admin.hasLogo .brandMarkImg{
@@ -4830,7 +4845,7 @@ header{
 
 .homePro .appHeader .brandMark.header.hasLogo .brandMarkInner,
 .pagePro--profile .appHeader .brandMark.header.hasLogo .brandMarkInner{
-  background:rgba(255,255,255,.92)!important;
+  background:transparent!important;
 }
 
 /* Menü sayfası mobil uyumu */
@@ -5368,11 +5383,9 @@ header{
 
 /* Giriş sayfası alt iletişim */
 .loginFooter{
-  position:relative;
-  z-index:2;
-  width:min(420px,100%);
-  margin:20px auto 0;
-  padding:0 4px calc(20px + env(safe-area-inset-bottom));
+  width:100%;
+  margin:16px 0 0;
+  padding:0 4px 4px;
 }
 
 .loginFooterLabel{

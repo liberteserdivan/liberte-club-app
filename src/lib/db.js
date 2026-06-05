@@ -22,7 +22,7 @@ export const seed={
     card:'#ffffff',
     accent:'#78dfbb',
     font:'Inter',
-    logo:'/liberte-logo.png?v=7',
+    logo:'/liberte-logo.png?v=10',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
     promo_text:'Liberte’de müdavim olmak kazandırır. 6. kahven, 6. tatlın ve 12. burgerin bizden.',

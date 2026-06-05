@@ -328,6 +328,7 @@ export default function Login({ db, commit, setSession }) {
     <div className="orb one"></div>
     <div className="orb two"></div>
 
+    <div className="loginPageStack">
     <div className="loginCard">
       <Brand db={db} login />
 
@@ -408,6 +409,7 @@ export default function Login({ db, commit, setSession }) {
     <div className="loginFooter">
       <p className="loginFooterLabel">Liberte Gastro Cafe</p>
       <CafeContactBar compact />
+    </div>
     </div>
 
     {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
