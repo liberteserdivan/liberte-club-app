@@ -1,12 +1,13 @@
 import { createPortal } from 'react-dom';
-import { Gift, Home, Menu as MenuIcon, QrCode, ShieldCheck, Sparkles } from 'lucide-react';
+import { Gift, Home, Menu as MenuIcon, ShieldCheck, Sparkles } from 'lucide-react';
+import NavQrIcon from './NavQrIcon.jsx';
 
 // Alt navigasyon — viewport altına sabitlenir
 export default function Nav({ tab, setTab, admin, wheelDone }) {
   const items = [
     ['home', Home, 'Ana Sayfa'],
     ['menu', MenuIcon, 'Menü'],
-    ['qr', QrCode, 'QR'],
+    ['qr', NavQrIcon, 'QR'],
     ['wheel', Sparkles, 'Çark'],
     ['campaign', Gift, 'Fırsat']
   ];
@@ -33,9 +34,9 @@ export default function Nav({ tab, setTab, admin, wheelDone }) {
           aria-current={tab === id ? 'page' : undefined}
         >
           <span className="navIconWrap" aria-hidden="true">
-            <Icon strokeWidth={id === 'qr' ? 2.2 : 2} />
+            <Icon />
           </span>
-          {id !== 'qr' && <span>{label}</span>}
+          <span>{label}</span>
         </button>
       ))}
     </nav>
