@@ -3,8 +3,8 @@ import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
 
-// Service worker — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=16';
+// Service worker — sabit yol (sorgu parametresi kayıt çakışması yapar)
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
 // Tarayıcı bildirimi göster
@@ -47,15 +47,23 @@ export async function startPushForegroundListener() {
   foregroundListenerAttached = true;
 }
 
-// Eski firebase SW kayıtlarını temizle
-async function resetFirebaseServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(
-    registrations
-      .filter((reg) => reg.active?.scriptURL?.includes('firebase-messaging-sw'))
-      .map((reg) => reg.unregister())
-  );
+// Firebase messaging service worker kaydını hazırla
+async function ensureServiceWorkerRegistration() {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service worker desteklenmiyor.');
+  }
+
+  const existing = await navigator.serviceWorker.getRegistration('/');
+  if (existing?.active?.scriptURL?.includes('firebase-messaging-sw')) {
+    await existing.update();
+    await navigator.serviceWorker.ready;
+    return existing;
+  }
+
+  const registration = await navigator.serviceWorker.register(FIREBASE_SW_URL, { scope: '/' });
+  await registration.update();
+  await navigator.serviceWorker.ready;
+  return registration;
 }
 
 // Ortam değişkeni varsa kullan, boş string ile varsayılanı ezme
@@ -161,6 +169,14 @@ function mapPushError(error) {
     return 'Firebase bağlantısı kurulamadı. API key, domain kısıtı ve VAPID ayarlarını kontrol edin.';
   }
 
+  if (
+    message.includes('push service error')
+    || message.includes('Registration failed')
+    || message.includes('token-subscribe-failed')
+  ) {
+    return 'Push servisi bağlanamadı. Sayfayı yenile, Chrome\'da site ayarlarından bildirim iznini aç ve tekrar dene. Sorun sürerse tarayıcı önbelleğini temizle.';
+  }
+
   if (message.includes('messaging/permission-blocked')) {
     return 'Bildirim izni tarayıcı tarafından engellendi.';
   }
@@ -263,11 +279,7 @@ export async function enablePush(customer, db, commit) {
 
   // HTTP referrer kısıtlı API key ile Firebase Installations için
   patchFirebaseReferrer();
-  await resetFirebaseServiceWorker();
-
-  const registration = await navigator.serviceWorker.register(FIREBASE_SW_URL);
-  await registration.update();
-  await navigator.serviceWorker.ready;
+  const registration = await ensureServiceWorkerRegistration();
 
   const app = initializeApp(config);
   const messaging = getMessaging(app);
@@ -318,9 +330,7 @@ export async function refreshPushTokenIfSubscribed(customer, db, commit) {
     const config = await resolveFirebaseConfig();
     if (!config.apiKey) return;
 
-    const registration = await navigator.serviceWorker.getRegistration()
-      || await navigator.serviceWorker.register(FIREBASE_SW_URL);
-    await registration.update();
+    const registration = await ensureServiceWorkerRegistration();
 
     for (const app of getApps()) {
       await deleteApp(app);

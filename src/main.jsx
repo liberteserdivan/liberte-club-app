@@ -10,10 +10,14 @@ patchFirebaseReferrer();
 // PWA kurulum istemini React'tan önce yakala
 initPwaInstallCapture();
 
-// Geliştirmede eski service worker bozuk önbellek yapabilir — temizle
+// Geliştirmede eski önbellek SW'lerini temizle — push SW'sine dokunma
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => r.unregister());
+    regs.forEach((reg) => {
+      if (!reg.active?.scriptURL?.includes('firebase-messaging-sw')) {
+        reg.unregister();
+      }
+    });
   });
 }
 
