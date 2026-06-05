@@ -22,7 +22,7 @@ export const seed={
     card:'#ffffff',
     accent:'#78dfbb',
     font:'Inter',
-    logo:'/liberte-logo.png?v=4',
+    logo:'/liberte-logo.png?v=7',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
     promo_text:'Tatlı ve kahve 7 damgada, burger 12 damgada ikram kazan.',

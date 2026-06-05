@@ -18,7 +18,7 @@ export const yemeksepetiUrl = 'https://www.yemeksepeti.com/restaurant/x9yt/liber
 export const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=Liberte+Gastro+Cafe+Serdivan+Sakarya';
 
 // Varsayılan marka logosu (public klasörü)
-export const DEFAULT_LOGO = '/liberte-logo.png?v=4';
+export const DEFAULT_LOGO = '/liberte-logo.png?v=7';
 
 // Push bildirim görselleri — badge liberte-logo silueti
 export const NOTIFICATION_ICON = '/icon-192.png';

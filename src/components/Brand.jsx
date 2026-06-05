@@ -9,18 +9,20 @@ function resolveLogoSrc(settings) {
   return raw;
 }
 
-// Logo kutusu — görünür img (mobilde CSS background güvenilir değil)
+// Logo kutusu — iç sarmalayıcı iOS’ta img hizasını sabitler
 function BrandLogoBox({ className, logoSrc, cafe, onFail }) {
   return (
     <div className={`${className} hasLogo`}>
-      <img
-        className="brandMarkImg"
-        src={logoSrc}
-        alt={cafe}
-        loading="eager"
-        decoding="async"
-        onError={onFail}
-      />
+      <div className="brandMarkInner">
+        <img
+          className="brandMarkImg"
+          src={logoSrc}
+          alt={cafe}
+          loading="eager"
+          decoding="async"
+          onError={onFail}
+        />
+      </div>
     </div>
   );
 }
