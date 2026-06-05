@@ -1,10 +1,20 @@
 import { applyCors } from '../lib/http.js';
-import { getSession } from '../lib/auth.js';
+import { destroySession, getSession } from '../lib/auth.js';
 import { loadAppState } from '../lib/appState.js';
 
 export default async function handler(req, res) {
-  applyCors(req, res, 'GET,OPTIONS');
+  applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (req.method === 'POST') {
+    try {
+      await destroySession(req, res);
+      return res.status(200).json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ error: e.message || 'Çıkış yapılamadı' });
+    }
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

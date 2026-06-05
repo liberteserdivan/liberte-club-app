@@ -62,7 +62,7 @@ export async function logoutSession() {
   if (useLocalAuth()) return;
 
   try {
-    await apiJson('/api/auth/logout', { method: 'POST' });
+    await apiJson('/api/auth/session', { method: 'POST' });
   } catch {
     // Sessizce geç
   }

@@ -243,9 +243,9 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
 
-      const { response, data } = await apiJson('/api/auth/forgot-pin/send-code', {
+      const { response, data } = await apiJson('/api/auth/forgot-pin', {
         method: 'POST',
-        body: JSON.stringify({ phone: ph })
+        body: JSON.stringify({ action: 'send-code', phone: ph })
       });
 
       if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
@@ -285,9 +285,10 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
 
-      const { response, data } = await apiJson('/api/auth/forgot-pin/reset', {
+      const { response, data } = await apiJson('/api/auth/forgot-pin', {
         method: 'POST',
         body: JSON.stringify({
+          action: 'reset',
           phone: ph,
           email,
           code,
