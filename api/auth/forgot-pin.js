@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../lib/http.js';
 import { cleanPhone } from '../lib/phone.js';
-import { findCustomerByPhone } from '../lib/auth.js';
+import { findCustomerByEmail } from '../lib/auth.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
 import { sendDualVerificationCodes } from '../lib/verificationMail.js';
 import {
@@ -14,21 +14,21 @@ function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
 }
 
-// PIN unutma — iki doğrulama kodu e-posta ile gönder
+// PIN unutma — kayıtlı e-postaya iki doğrulama kodu gönder
 async function handleSendCode(req, res) {
   const body = readBody(req);
-  const phone = cleanPhone(body.phone);
+  const email = String(body.email || '').trim().toLowerCase();
 
-  if (phone.length < 10) return res.status(400).json({ error: 'Telefon eksik' });
+  if (!validEmail(email)) return res.status(400).json({ error: 'Geçerli e-posta gir.' });
 
-  const customer = await findCustomerByPhone(phone);
+  const customer = await findCustomerByEmail(email);
   if (!customer) {
-    return res.status(404).json({ error: 'Bu telefon ile kayıt bulunamadı.' });
+    return res.status(404).json({ error: 'Bu e-posta ile kayıt bulunamadı.' });
   }
 
-  const email = String(customer.email || '').trim().toLowerCase();
-  if (!validEmail(email)) {
-    return res.status(400).json({ error: 'Hesapta geçerli e-posta yok. Destek ile iletişime geç.' });
+  const phone = cleanPhone(customer.phone);
+  if (phone.length < 10) {
+    return res.status(400).json({ error: 'Hesapta geçerli telefon yok. Destek ile iletişime geç.' });
   }
 
   const sent = await sendDualVerificationCodes({
@@ -53,7 +53,6 @@ async function handleSendCode(req, res) {
 // PIN unutma — kodları doğrula ve yeni PIN kaydet
 async function handleReset(req, res) {
   const body = readBody(req);
-  const phone = cleanPhone(body.phone);
   const email = String(body.email || '').trim().toLowerCase();
   const code = String(body.code || '').replace(/\D/g, '');
   const code2 = String(body.code2 || '').replace(/\D/g, '');
@@ -61,7 +60,7 @@ async function handleReset(req, res) {
   const pinConfirm = normalizePin(body.pinConfirm);
 
   if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
-  if (phone.length < 10 || !email || code.length !== 6 || code2.length !== 6) {
+  if (!validEmail(email) || code.length !== 6 || code2.length !== 6) {
     return res.status(400).json({ error: 'Bilgiler eksik' });
   }
   if (!isValidPinFormat(pin)) {
@@ -71,12 +70,10 @@ async function handleReset(req, res) {
     return res.status(400).json({ error: 'PIN tekrarı eşleşmiyor.' });
   }
 
-  const customer = await findCustomerByPhone(phone);
+  const customer = await findCustomerByEmail(email);
   if (!customer) return res.status(404).json({ error: 'Hesap bulunamadı' });
-  if (String(customer.email || '').toLowerCase() !== email) {
-    return res.status(400).json({ error: 'E-posta hesap ile eşleşmiyor' });
-  }
 
+  const phone = cleanPhone(customer.phone);
   const sql = neon(process.env.DATABASE_URL);
   const verified = await verifyEmailCode(sql, {
     email,

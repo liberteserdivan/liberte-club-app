@@ -169,6 +169,14 @@ export async function findCustomerByPhone(phone) {
   return data.customers.find((c) => cleanPhone(c.phone) === normalized) || null;
 }
 
+// Müşteriyi e-posta ile bul
+export async function findCustomerByEmail(email) {
+  const { data } = await loadAppState();
+  if (!data?.customers) return null;
+  const normalized = String(email || '').trim().toLowerCase();
+  return data.customers.find((c) => String(c.email || '').toLowerCase() === normalized) || null;
+}
+
 // Müşteri kaydını sunucu tarafında oluştur
 export function buildCustomerRecord(payload) {
   const id = Date.now();

@@ -29,7 +29,7 @@ import {
 export default function Login({ db, commit, setSession }) {
   const [authMode, setAuthMode] = useState('login');
   const [registerStep, setRegisterStep] = useState('form');
-  const [forgotStep, setForgotStep] = useState('phone');
+  const [forgotStep, setForgotStep] = useState('email');
   const [phone, setPhone] = useState(() => localStorage.getItem('liberteLastPhone') || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('liberteLastEmail') || '');
@@ -285,17 +285,25 @@ export default function Login({ db, commit, setSession }) {
     }
   }
 
-  async function sendForgotCode() {
-    const ph = readPhone();
-    if (!ph) return;
+  function readForgotEmail() {
+    const em = email.trim().toLowerCase();
+    if (!validEmail(em)) {
+      notify('Kayıtlı e-posta adresini gir.');
+      return null;
+    }
+    return em;
+  }
 
-    const customer = findByPhone(ph);
-    if (!customer?.email) {
-      notify('Bu telefon için kayıtlı e-posta bulunamadı.');
+  async function sendForgotCode() {
+    const em = readForgotEmail();
+    if (!em) return;
+
+    const customer = findByEmail(em);
+    if (!customer) {
+      notify('Bu e-posta ile kayıt bulunamadı.', 'info');
       return;
     }
 
-    setEmail(String(customer.email).toLowerCase());
     setLoading(true);
     setInfo('');
 
@@ -303,7 +311,7 @@ export default function Login({ db, commit, setSession }) {
       if (useLocalAuth()) {
         const devCode = makeDevAuthCode();
         const devCode2 = makeDevAuthCode();
-        saveDevAuthCode(ph, customer.email, devCode, devCode2);
+        saveDevAuthCode(customer.phone, em, devCode, devCode2);
         setForgotStep('reset');
         setInfo(`Geliştirme modu — Kod 1: ${devCode}, Kod 2: ${devCode2}`);
         return;
@@ -311,7 +319,7 @@ export default function Login({ db, commit, setSession }) {
 
       const { response, data } = await apiJson('/api/auth/forgot-pin', {
         method: 'POST',
-        body: JSON.stringify({ action: 'send-code', phone: ph })
+        body: JSON.stringify({ action: 'send-code', email: em })
       });
 
       if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
@@ -320,7 +328,7 @@ export default function Login({ db, commit, setSession }) {
       if (data.testCode && data.testCode2) {
         setInfo(`Test kodları — Kod 1: ${data.testCode}, Kod 2: ${data.testCode2}`);
       } else {
-        setInfo(`İki doğrulama kodu ${data.emailMasked || maskEmail(customer.email)} adresine gönderildi.`);
+        setInfo(`İki doğrulama kodu ${data.emailMasked || maskEmail(em)} adresine gönderildi.`);
       }
     } catch (e) {
       notify(e.message || 'Kod gönderilemedi');
@@ -330,9 +338,9 @@ export default function Login({ db, commit, setSession }) {
   }
 
   async function resetForgotPin() {
-    const ph = readPhone();
+    const em = readForgotEmail();
     const pinValue = readPins(true);
-    if (!ph || !pinValue) return;
+    if (!em || !pinValue) return;
 
     const code = resetCode.replace(/\D/g, '');
     const code2 = resetCode2.replace(/\D/g, '');
@@ -345,8 +353,10 @@ export default function Login({ db, commit, setSession }) {
 
     try {
       if (useLocalAuth()) {
-        verifyDevAuthCode(ph, email, code, code2);
-        await registerDevPin(ph, pinValue);
+        const customer = findByEmail(em);
+        if (!customer) throw new Error('Hesap bulunamadı');
+        verifyDevAuthCode(customer.phone, em, code, code2);
+        await registerDevPin(customer.phone, pinValue);
         setInfo('Yeni PIN kaydedildi. Giriş yapabilirsin.');
         switchMode('login');
         return;
@@ -356,8 +366,7 @@ export default function Login({ db, commit, setSession }) {
         method: 'POST',
         body: JSON.stringify({
           action: 'reset',
-          phone: ph,
-          email,
+          email: em,
           code,
           code2,
           pin: pinValue,
@@ -379,7 +388,7 @@ export default function Login({ db, commit, setSession }) {
   function switchMode(mode) {
     setAuthMode(mode);
     setRegisterStep('form');
-    setForgotStep('phone');
+    setForgotStep('email');
     setPin('');
     setPinConfirm('');
     setResetCode('');
@@ -510,10 +519,16 @@ export default function Login({ db, commit, setSession }) {
             </>
           )}
 
-          {authMode === 'forgot' && forgotStep === 'phone' && (
+          {authMode === 'forgot' && forgotStep === 'email' && (
             <>
-              <label>Telefon</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Kayıtlı telefon numaran" inputMode="tel" />
+              <label>E-posta</label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Kayıtlı e-posta adresin"
+                inputMode="email"
+                autoComplete="email"
+              />
 
               <button disabled={loading} onClick={sendForgotCode}>
                 <ShieldCheck /> {loading ? 'Gönderiliyor...' : 'Doğrulama Kodlarını Gönder'}
@@ -555,7 +570,7 @@ export default function Login({ db, commit, setSession }) {
                 <KeyRound /> {loading ? 'Kaydediliyor...' : 'Yeni PIN Kaydet'}
               </button>
 
-              <button type="button" className="ghost" onClick={() => setForgotStep('phone')}>Kodu yeniden gönder</button>
+              <button type="button" className="ghost" onClick={() => setForgotStep('email')}>Kodları yeniden gönder</button>
             </>
           )}
 
