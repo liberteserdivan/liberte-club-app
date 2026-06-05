@@ -33,8 +33,8 @@ input,textarea,select{width:100%;border:1px solid var(--line);background:#fff;bo
 input:focus,textarea:focus,select:focus{border-color:rgba(11,47,38,.28);box-shadow:0 0 0 4px rgba(159,220,199,.22)}
 textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;color:#68766F;font-weight:900;margin-top:8px}label em{color:var(--forest);font-style:normal}.info{border:1px solid rgba(11,47,38,.12);background:#ECFFF6;border-radius:16px;padding:12px;color:#1D6B52;font-weight:750}.empty{border:1px dashed rgba(11,47,38,.18);border-radius:24px;padding:24px;color:var(--muted);text-align:center;background:rgba(255,255,255,.5)}
 
-.appShell{width:100%}
-.appShell--booting{visibility:hidden}
+.appShell{width:100%;min-height:100vh;transition:opacity .35s ease}
+.appShell--booting{opacity:0;pointer-events:none}
 .appSplash{
   position:fixed;
   inset:0;
