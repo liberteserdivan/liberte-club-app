@@ -169,12 +169,20 @@ export async function findCustomerByPhone(phone) {
   return data.customers.find((c) => cleanPhone(c.phone) === normalized) || null;
 }
 
-// Müşteriyi e-posta ile bul
+// E-posta adresini karşılaştırma için normalize et
+function normalizeEmail(email = '') {
+  return String(email).trim().toLowerCase();
+}
+
+// Müşteriyi e-posta ile bul — sunucu app_state kaynağı
 export async function findCustomerByEmail(email) {
   const { data } = await loadAppState();
-  if (!data?.customers) return null;
-  const normalized = String(email || '').trim().toLowerCase();
-  return data.customers.find((c) => String(c.email || '').toLowerCase() === normalized) || null;
+  if (!data?.customers?.length) return null;
+
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
+
+  return data.customers.find((c) => normalizeEmail(c.email) === normalized) || null;
 }
 
 // Müşteri kaydını sunucu tarafında oluştur

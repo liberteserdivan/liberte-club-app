@@ -298,17 +298,17 @@ export default function Login({ db, commit, setSession }) {
     const em = readForgotEmail();
     if (!em) return;
 
-    const customer = findByEmail(em);
-    if (!customer) {
-      notify('Bu e-posta ile kayıt bulunamadı.', 'info');
-      return;
-    }
-
     setLoading(true);
     setInfo('');
 
     try {
       if (useLocalAuth()) {
+        const customer = findByEmail(em);
+        if (!customer) {
+          notify('Bu e-posta ile kayıt bulunamadı.', 'info');
+          return;
+        }
+
         const devCode = makeDevAuthCode();
         const devCode2 = makeDevAuthCode();
         saveDevAuthCode(customer.phone, em, devCode, devCode2);
