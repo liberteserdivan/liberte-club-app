@@ -1,0 +1,69 @@
+import { useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
+import { apiJson } from '../lib/apiClient.js';
+import { useLocalAuth, verifyDevAdminPin } from '../lib/devAuth.js';
+
+// Yönetici PIN doğrulama ekranı
+export default function AdminPinGate({ onVerified, fullscreen = false }) {
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(event) {
+    event.preventDefault();
+    if (!pin.trim()) {
+      setError('Yönetici PIN gir.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      if (useLocalAuth()) {
+        verifyDevAdminPin(pin.trim());
+        onVerified?.();
+        return;
+      }
+
+      const { response, data } = await apiJson('/api/auth/admin-pin', {
+        method: 'POST',
+        body: JSON.stringify({ pin: pin.trim() })
+      });
+
+      if (!response.ok) {
+        throw new Error(data.error || 'PIN doğrulanamadı');
+      }
+
+      onVerified?.();
+    } catch (e) {
+      setError(e.message || 'PIN doğrulanamadı');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className={`adminPinGate${fullscreen ? ' adminPinGate--fullscreen' : ''}`}>
+      <div className="adminPinCard">
+        <ShieldCheck size={28} aria-hidden="true" />
+        <h3>Yönetici Doğrulama</h3>
+        <p>QR tarama ve yönetim işlemleri için yönetici PIN gir.</p>
+        <form onSubmit={submit}>
+          <input
+            type="password"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="Yönetici PIN"
+          />
+          <button type="submit" disabled={loading}>
+            {loading ? 'Kontrol ediliyor...' : 'Doğrula'}
+          </button>
+        </form>
+        {error && <p className="adminPinError">{error}</p>}
+      </div>
+    </div>
+  );
+}

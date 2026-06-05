@@ -4,8 +4,11 @@ import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
+import { apiJson } from '../lib/apiClient.js';
 import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
 import { clearAuthPending, loadAuthPending, saveAuthPending } from '../lib/authPending.js';
+import { getDeviceId } from '../lib/deviceId.js';
+import { applyAuthResult } from '../lib/session.js';
 import {
   addStampToCustomer,
   findReferrerByCode,
@@ -19,23 +22,27 @@ import {
 export default function Login({ db, commit, setSession }) {
   const restoredPending = loadAuthPending();
   const registerPending = restoredPending?.mode === 'register' ? restoredPending : null;
+  const loginPending = restoredPending?.mode === 'login' ? restoredPending : null;
 
-  const [authMode, setAuthMode] = useState(registerPending ? 'register' : 'login');
+  const [authMode, setAuthMode] = useState(
+    registerPending ? 'register' : loginPending ? 'login' : 'login'
+  );
   const [phone, setPhone] = useState(() => localStorage.getItem('liberteLastPhone') || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('liberteLastEmail') || '');
   const [birthDate, setBirthDate] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [code, setCode] = useState('');
-  const [step, setStep] = useState(registerPending ? 'code' : 'form');
+  const [step, setStep] = useState(registerPending || loginPending ? 'code' : 'form');
   const [loading, setLoading] = useState(false);
-  const [info, setInfo] = useState(registerPending ? 'Doğrulama kodunu gir.' : '');
-  const [pending, setPending] = useState(registerPending);
+  const [info, setInfo] = useState(
+    registerPending || loginPending ? 'Doğrulama kodunu gir.' : ''
+  );
+  const [pending, setPending] = useState(registerPending || loginPending);
   const [legalType, setLegalType] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  // Kod adımı bilgilerini oturumda tut
   function storePending(data) {
     setPending(data);
     saveAuthPending(data);
@@ -43,10 +50,9 @@ export default function Login({ db, commit, setSession }) {
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
   const valid = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-  const findByPhone = (ph) => (db.customers || []).find((x) => x.phone === ph);
+  const findByPhone = (ph) => (db.customers || []).find((x) => norm(x.phone) === norm(ph));
   const findByEmail = (em) => (db.customers || []).find((x) => String(x.email || '').toLowerCase() === em);
 
-  // E-posta adresini güvenli şekilde maskele
   function maskEmail(value = '') {
     const em = String(value).trim().toLowerCase();
     const [local, domain] = em.split('@');
@@ -55,7 +61,6 @@ export default function Login({ db, commit, setSession }) {
     return `${local[0]}***${local.slice(-1)}@${domain}`;
   }
 
-  // Giriş — yalnızca telefon
   function readPhone() {
     const ph = norm(phone);
     if (ph.length < 10) {
@@ -65,7 +70,6 @@ export default function Login({ db, commit, setSession }) {
     return ph;
   }
 
-  // Kayıt formu alanlarını doğrula
   function registerFields() {
     const ph = readPhone();
     if (!ph) return null;
@@ -92,9 +96,16 @@ export default function Login({ db, commit, setSession }) {
     };
   }
 
-  function createCustomer(f) {
+  function finishSession(result) {
+    const session = applyAuthResult(result);
+    localStorage.setItem('liberteLastPhone', phone || '');
+    if (email) localStorage.setItem('liberteLastEmail', email);
+    setSession(session);
+  }
+
+  function createCustomerLocal(f) {
     const next = mergeDb(db);
-    const duplicatePhone = (next.customers || []).some((x) => x.phone === f.ph);
+    const duplicatePhone = (next.customers || []).some((x) => norm(x.phone) === f.ph);
     const duplicateEmail = (next.customers || []).some((x) => String(x.email || '').toLowerCase() === f.em);
     if (duplicatePhone || duplicateEmail) {
       notify('Bu telefon veya e-posta ile zaten kayıt var. Lütfen Giriş Yap ekranını kullan.', 'info');
@@ -107,7 +118,7 @@ export default function Login({ db, commit, setSession }) {
       phone: f.ph,
       name: f.nm,
       email: f.em,
-      isAdmin: f.ph === '5058665406',
+      isAdmin: false,
       createdAt: new Date().toLocaleString('tr-TR'),
       lastVisit: new Date().toISOString(),
       birthDate: f.birthDate || '',
@@ -142,70 +153,117 @@ export default function Login({ db, commit, setSession }) {
       ];
     }
 
-    withBonus.history = [
-      {
-        id: Date.now() + 3,
-        customerId: c.id,
-        name: c.name,
-        phone: c.phone,
-        type: 'register',
-        count: 0,
-        source: referrer ? `Referanslı kayıt: ${referrer.name}` : 'Kullanıcı kayıt',
-        createdAt: new Date().toLocaleString('tr-TR')
-      },
-      ...(withBonus.history || [])
-    ];
-
     commit(withBonus);
-    setSession({ customerId: c.id });
+    finishSession({ customerId: c.id, role: 'user', isAdmin: false, adminVerified: false });
   }
 
-  function loginExisting(customer) {
-    const createdAt = new Date().toLocaleString('tr-TR');
+  function loginExistingLocal(customer) {
     commit({
       ...db,
       customers: (db.customers || []).map((c) => (
         c.id === customer.id ? { ...c, lastVisit: new Date().toISOString() } : c
-      )),
-      history: [
-        {
-          id: Date.now() + 44,
-          customerId: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          type: 'login',
-          count: 0,
-          source: 'Kullanıcı giriş',
-          createdAt
-        },
-        ...(db.history || [])
-      ]
+      ))
     });
-    localStorage.setItem('liberteLastPhone', customer.phone || '');
-    localStorage.setItem('liberteLastEmail', customer.email || '');
-    setSession({ customerId: customer.id });
+    finishSession({
+      customerId: customer.id,
+      role: customer.isAdmin ? 'admin' : 'user',
+      isAdmin: Boolean(customer.isAdmin),
+      adminVerified: false
+    });
   }
 
-  // Kayıtlı üye — telefon ile doğrudan giriş
-  function loginWithPhone() {
+  async function loginWithPhone() {
     const ph = readPhone();
     if (!ph) return;
 
-    const customer = findByPhone(ph);
-    if (!customer) {
-      notify('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.', 'info');
+    if (useLocalAuth()) {
+      const customer = findByPhone(ph);
+      if (!customer) {
+        notify('Bu telefon ile kayıt bulunamadı. Önce Kayıt Ol ekranından üye ol.', 'info');
+        return;
+      }
+      setLoading(true);
+      try {
+        loginExistingLocal(customer);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
     setLoading(true);
+    setInfo('');
+
     try {
-      loginExisting(customer);
+      const { response, data } = await apiJson('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ phone: ph, deviceId: getDeviceId() })
+      });
+
+      if (!response.ok) throw new Error(data.error || 'Giriş başarısız');
+
+      if (!data.needsOtp) {
+        finishSession(data);
+        return;
+      }
+
+      const customer = findByPhone(ph);
+      storePending({
+        mode: 'login',
+        ph,
+        em: customer?.email || '',
+        name: customer?.name || ''
+      });
+      setStep('code');
+      setInfo(`Kod ${data.emailMasked || maskEmail(customer?.email)} adresine gönderildi.`);
+      if (data.testCode) {
+        setInfo(`Test kodu: ${data.testCode}${data.warning ? ` — ${data.warning}` : ''}`);
+      }
+    } catch (e) {
+      notify(e.message || 'Giriş başarısız');
     } finally {
       setLoading(false);
     }
   }
 
-  // Kayıt — e-posta doğrulama kodu gönder
+  async function verifyLoginCode() {
+    if (!pending || pending.mode !== 'login') {
+      notify('Oturum süresi doldu. Lütfen yeniden giriş yap.');
+      setStep('form');
+      return;
+    }
+
+    const normalizedCode = code.replace(/\D/g, '');
+    if (normalizedCode.length !== 6) {
+      notify('6 haneli doğrulama kodunu gir.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { response, data } = await apiJson('/api/auth/login-verify', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone: pending.ph,
+          email: pending.em,
+          code: normalizedCode,
+          deviceId: getDeviceId()
+        })
+      });
+
+      if (!response.ok) throw new Error(data.error || 'Kod doğrulanamadı');
+
+      clearAuthPending();
+      setPending(null);
+      finishSession(data);
+    } catch (e) {
+      notify(e.message || 'Kod doğrulanamadı');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function sendRegisterCode() {
     const f = registerFields();
     if (!f) return;
@@ -228,9 +286,8 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
 
-      const r = await fetch('/api/auth/send-code', {
+      const { response, data: j } = await apiJson('/api/auth/send-code', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: f.ph,
           name: f.nm,
@@ -239,12 +296,7 @@ export default function Login({ db, commit, setSession }) {
         })
       });
 
-      const text = await r.text();
-      const j = text ? JSON.parse(text) : {};
-
-      if (!r.ok) {
-        throw new Error(j.error || 'Kod gönderilemedi');
-      }
+      if (!response.ok) throw new Error(j.error || 'Kod gönderilemedi');
 
       storePending({
         ...f,
@@ -286,28 +338,30 @@ export default function Login({ db, commit, setSession }) {
     try {
       if (useLocalAuth()) {
         verifyDevAuthCode(f.ph, f.em, normalizedCode);
-      } else {
-        const r = await fetch('/api/auth/verify-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: f.ph,
-            email: f.em,
-            code: normalizedCode
-          })
-        });
-
-        const text = await r.text();
-        const j = text ? JSON.parse(text) : {};
-
-        if (!r.ok) {
-          throw new Error(j.error || 'Kod doğrulanamadı');
-        }
+        createCustomerLocal(f);
+        clearAuthPending();
+        setPending(null);
+        return;
       }
 
-      createCustomer(f);
+      const { response, data } = await apiJson('/api/auth/register-complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone: f.ph,
+          email: f.em,
+          name: f.nm,
+          birthDate: f.birthDate,
+          referralCode: f.referralCode,
+          code: normalizedCode,
+          deviceId: getDeviceId()
+        })
+      });
+
+      if (!response.ok) throw new Error(data.error || 'Kayıt tamamlanamadı');
+
       clearAuthPending();
       setPending(null);
+      finishSession(data);
     } catch (e) {
       notify(e.message || 'Kod doğrulanamadı');
     } finally {
@@ -324,7 +378,7 @@ export default function Login({ db, commit, setSession }) {
     clearAuthPending();
   }
 
-  const showRegisterCodeStep = authMode === 'register' && step === 'code';
+  const showCodeStep = step === 'code';
 
   return <section className="loginPage">
     <div className="orb one"></div>
@@ -337,7 +391,7 @@ export default function Login({ db, commit, setSession }) {
       <h1>{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h1>
       <p>
         {authMode === 'login'
-          ? 'Kayıtlı Liberte Club hesabına telefon numaranla giriş yap.'
+          ? 'Kayıtlı hesabına telefon numaranla giriş yap. Yeni cihazda e-posta kodu istenir.'
           : 'QR sadakat kartı, özel kampanyalar ve Liberte ayrıcalıkları için kayıt ol.'}
       </p>
 
@@ -346,7 +400,7 @@ export default function Login({ db, commit, setSession }) {
         <button type="button" className={authMode === 'register' ? 'active' : ''} onClick={() => switchMode('register')}>Kayıt Ol</button>
       </div>
 
-      {!showRegisterCodeStep ? <>
+      {!showCodeStep ? <>
         <label>Telefon</label>
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel"/>
 
@@ -396,8 +450,11 @@ export default function Login({ db, commit, setSession }) {
         <label>Mail kodu</label>
         <input value={code} maxLength={6} onChange={(e) => setCode(e.target.value)} placeholder="6 haneli kod"/>
 
-        <button disabled={loading} onClick={verifyRegisterCode}>
-          <ShieldCheck/> {loading ? 'Kontrol ediliyor...' : 'Kaydı Tamamla'}
+        <button
+          disabled={loading}
+          onClick={authMode === 'login' ? verifyLoginCode : verifyRegisterCode}
+        >
+          <ShieldCheck/> {loading ? 'Kontrol ediliyor...' : authMode === 'login' ? 'Girişi Tamamla' : 'Kaydı Tamamla'}
         </button>
 
         <button className="ghost" onClick={() => setStep('form')}>

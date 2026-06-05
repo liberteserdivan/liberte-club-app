@@ -1,0 +1,212 @@
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { neon } from '@neondatabase/serverless';
+import { cleanPhone } from './phone.js';
+import { loadAppState } from './appState.js';
+
+export const SESSION_COOKIE = 'liberte_session';
+const SESSION_DAYS = 30;
+
+// Token hash üret
+function hashToken(token) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+// Oturum tablosunu hazırla
+async function ensureSessionTable(sql) {
+  await sql`CREATE TABLE IF NOT EXISTS auth_sessions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    token_hash text NOT NULL UNIQUE,
+    customer_id bigint NOT NULL,
+    role text NOT NULL DEFAULT 'user',
+    admin_verified boolean NOT NULL DEFAULT false,
+    device_id text,
+    expires_at timestamptz NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`;
+}
+
+// SQL bağlantısı
+function getSql() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) return null;
+  return neon(connectionString);
+}
+
+// Cookie'den veya Authorization başlığından token oku
+export function readAuthToken(req) {
+  const header = req.headers.authorization || '';
+  if (header.startsWith('Bearer ')) {
+    return header.slice(7).trim();
+  }
+
+  const cookie = req.headers.cookie || '';
+  const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+// Oturum çerezini ayarla
+export function setSessionCookie(res, token) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  const maxAge = SESSION_DAYS * 24 * 60 * 60;
+  res.setHeader(
+    'Set-Cookie',
+    `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`
+  );
+}
+
+// Oturum çerezini temizle
+export function clearSessionCookie(res) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader(
+    'Set-Cookie',
+    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
+  );
+}
+
+// Aktif oturumu veritabanından getir
+export async function getSession(req) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  const sql = getSql();
+  if (!sql) return null;
+
+  await ensureSessionTable(sql);
+  const tokenHash = hashToken(token);
+  const rows = await sql`
+    SELECT customer_id, role, admin_verified, expires_at
+    FROM auth_sessions
+    WHERE token_hash = ${tokenHash}
+      AND expires_at > now()
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    customerId: Number(row.customer_id),
+    role: row.role,
+    isAdmin: row.role === 'admin',
+    adminVerified: Boolean(row.admin_verified),
+    expiresAt: row.expires_at
+  };
+}
+
+// Yeni oturum oluştur
+export async function createSession(res, { customerId, role = 'user', deviceId = '' }) {
+  const sql = getSql();
+  if (!sql) throw new Error('DATABASE_URL eksik');
+
+  await ensureSessionTable(sql);
+  const token = randomBytes(32).toString('base64url');
+  const tokenHash = hashToken(token);
+  const safeRole = role === 'admin' ? 'admin' : 'user';
+
+  await sql`
+    INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at)
+    VALUES (
+      ${tokenHash},
+      ${customerId},
+      ${safeRole},
+      ${deviceId || null},
+      now() + interval '30 days'
+    )
+  `;
+
+  setSessionCookie(res, token);
+  return { token, customerId, role: safeRole, isAdmin: safeRole === 'admin' };
+}
+
+// Oturumu sonlandır
+export async function destroySession(req, res) {
+  const token = readAuthToken(req);
+  if (token) {
+    const sql = getSql();
+    if (sql) {
+      await ensureSessionTable(sql);
+      await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
+    }
+  }
+  clearSessionCookie(res);
+}
+
+// Admin PIN doğrula
+export function verifyAdminPin(pin) {
+  const expected = String(process.env.ADMIN_PIN || process.env.CASHIER_PIN || '').trim();
+  if (!expected) return false;
+
+  const a = Buffer.from(String(pin || '').trim());
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+// Oturumda admin PIN onayını işaretle
+export async function markAdminVerified(req) {
+  const token = readAuthToken(req);
+  if (!token) return false;
+
+  const sql = getSql();
+  if (!sql) return false;
+
+  await ensureSessionTable(sql);
+  await sql`
+    UPDATE auth_sessions
+    SET admin_verified = true
+    WHERE token_hash = ${hashToken(token)}
+      AND role = 'admin'
+      AND expires_at > now()
+  `;
+  return true;
+}
+
+// Müşteriyi telefon ile bul
+export async function findCustomerByPhone(phone) {
+  const { data } = await loadAppState();
+  if (!data?.customers) return null;
+  const normalized = cleanPhone(phone);
+  return data.customers.find((c) => cleanPhone(c.phone) === normalized) || null;
+}
+
+// Müşteri kaydını sunucu tarafında oluştur
+export function buildCustomerRecord(payload) {
+  const id = Date.now();
+  return {
+    id,
+    phone: cleanPhone(payload.phone),
+    name: String(payload.name || 'Liberte Üye').trim(),
+    email: String(payload.email || '').trim().toLowerCase(),
+    isAdmin: Boolean(payload.isAdmin),
+    createdAt: new Date().toLocaleString('tr-TR'),
+    lastVisit: new Date().toISOString(),
+    birthDate: String(payload.birthDate || ''),
+    referralCode: String(payload.referralCode || `LC${id}`).slice(0, 12).toUpperCase(),
+    referredBy: payload.referredBy || null
+  };
+}
+
+// Oturum zorunlu — yoksa 401
+export async function requireSession(req, res) {
+  const session = await getSession(req);
+  if (!session) {
+    res.status(401).json({ error: 'Oturum gerekli' });
+    return null;
+  }
+  return session;
+}
+
+// Admin oturumu zorunlu
+export async function requireAdminSession(req, res, { pinRequired = true } = {}) {
+  const session = await requireSession(req, res);
+  if (!session) return null;
+  if (!session.isAdmin) {
+    res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
+    return null;
+  }
+  if (pinRequired && !session.adminVerified) {
+    res.status(403).json({ error: 'Yönetici PIN doğrulaması gerekli', needsAdminPin: true });
+    return null;
+  }
+  return session;
+}

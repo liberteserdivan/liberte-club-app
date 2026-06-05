@@ -7,30 +7,43 @@ import CafeContactBar from '../components/CafeContactBar.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import { PushWelcomeBanner } from '../components/Cards.jsx';
 import { levelByStamps } from '../lib/db.js';
+import { apiJson } from '../lib/apiClient.js';
+import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
+import { logoutSession } from '../lib/session.js';
 import { supportEmail } from '../lib/constants.js';
 
 // Profil — çıkış, hesap silme, yasal linkler
 export default function ProfilePage({
-  db, customer, card, commit, setSession, setTab, sync, refreshRemote
+  db, customer, card, commit, setSession, setTab, sync, refreshRemote, isAdmin = false
 }) {
   const [legalType, setLegalType] = useState('');
   const [message, setMessage] = useState('');
   const level = card.level || levelByStamps(card.lifetimeStamps || 0);
 
-  function logout() {
+  async function logout() {
+    await logoutSession();
     setSession(null);
   }
 
-  function removeAccount() {
+  async function removeAccount() {
     const ok = confirm(
       'Hesabın ve tüm sadakat verilerin kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam edilsin mi?'
     );
     if (!ok) return;
 
     try {
-      const next = deleteCustomerAccount(db, customer.id);
-      commit(next);
+      if (useLocalAuth()) {
+        const next = deleteCustomerAccount(db, customer.id);
+        commit(next);
+        clearLocalCustomerSession(customer.id);
+        setSession(null);
+        return;
+      }
+
+      const { response, data } = await apiJson('/api/account/delete', { method: 'POST' });
+      if (!response.ok) throw new Error(data.error || 'Hesap silinemedi');
+
       clearLocalCustomerSession(customer.id);
       setSession(null);
     } catch (error) {
@@ -80,7 +93,7 @@ export default function ProfilePage({
           <button type="button" className="profileAction" onClick={logout}>
             <LogOut size={18} /> Çıkış Yap
           </button>
-          {customer.isAdmin && (
+          {isAdmin && (
             <button type="button" className="profileAction" onClick={() => setTab('admin')}>
               <ShieldCheck size={18} /> Yönetim Paneli
             </button>

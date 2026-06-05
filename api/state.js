@@ -1,36 +1,64 @@
-import { neon } from '@neondatabase/serverless';
+import { applyCors, readBody } from './lib/http.js';
+import { loadAppState, saveAppState } from './lib/appState.js';
+import { requireAdminSession, requireSession } from './lib/auth.js';
+import {
+  filterStateForAdmin,
+  filterStateForUser,
+  mergeUserState
+} from './lib/stateAccess.js';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    return res.status(200).json({ data: null, mode: 'local', message: 'DATABASE_URL yok' });
+  if (!process.env.DATABASE_URL) {
+    return res.status(503).json({ error: 'Bulut veritabanı yapılandırılmadı', mode: 'local' });
   }
 
   try {
-    const sql = neon(connectionString);
-    await sql`CREATE TABLE IF NOT EXISTS app_state (
-      id text PRIMARY KEY,
-      data jsonb NOT NULL,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )`;
-
     if (req.method === 'GET') {
-      const rows = await sql`SELECT data, updated_at FROM app_state WHERE id = 'liberte' LIMIT 1`;
-      return res.status(200).json({ data: rows[0]?.data ?? null, updated_at: rows[0]?.updated_at ?? null, mode: 'cloud' });
+      const session = await requireSession(req, res);
+      if (!session) return;
+
+      const remote = await loadAppState();
+      if (!remote.data) {
+        return res.status(200).json({ data: null, updated_at: null, mode: 'cloud' });
+      }
+
+      const data = session.isAdmin && session.adminVerified
+        ? filterStateForAdmin(remote.data)
+        : filterStateForUser(remote.data, session.customerId);
+
+      return res.status(200).json({
+        data,
+        updated_at: remote.updatedAt,
+        mode: 'cloud',
+        role: session.role,
+        isAdmin: session.isAdmin,
+        adminVerified: session.adminVerified
+      });
     }
 
     if (req.method === 'POST') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body;
+      const body = readBody(req);
       const data = body?.data;
       if (!data) return res.status(400).json({ error: 'data zorunlu' });
-      await sql`INSERT INTO app_state (id, data, updated_at)
-        VALUES ('liberte', ${JSON.stringify(data)}::jsonb, now())
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+
+      const session = await requireSession(req, res);
+      if (!session) return;
+
+      const remote = await loadAppState();
+      const canonical = remote.data || data;
+
+      if (session.isAdmin) {
+        const adminSession = await requireAdminSession(req, res, { pinRequired: true });
+        if (!adminSession) return;
+        await saveAppState(data);
+        return res.status(200).json({ ok: true, mode: 'cloud' });
+      }
+
+      const merged = mergeUserState(canonical, data, session.customerId);
+      await saveAppState(merged);
       return res.status(200).json({ ok: true, mode: 'cloud' });
     }
 

@@ -11,13 +11,15 @@ import{
   stampCardProgress,
   stampsRemaining
 }from './loyaltyStamps.js';
+import { apiJson } from './apiClient.js';
+import { useLocalAuth } from './devAuth.js';
 
 export const seed={
   settings:{
     stamp_threshold:6,
     reward_description:'Kategori ikramı',
     cafe_name:'Liberte Gastro Cafe',
-    app_name:'Liberte Club',
+    app_name:'Liberte',
     bg:'#f7fbf8',
     card:'#ffffff',
     accent:'#78dfbb',
@@ -25,7 +27,7 @@ export const seed={
     logo:'/liberte-logo-source.png?v=11',
     hero_title:'Bugünün Favorileri',
     hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
-    promo_text:'Liberte’de müdavim olmak kazandırır. 6. kahven, 6. tatlın ve 12. burgerin bizden.',
+    promo_text:'Liberte’de müdavim olmak kazandırır. 7. kahven, 7. tatlın ve 12. burgerin bizden.',
     cashier_pin:'5454',
     review_popup:true,
     daily_popup:true,
@@ -41,11 +43,51 @@ export const seed={
       createdAt:new Date().toLocaleString('tr-TR'),
       lastVisit:null,
       birthDate:''
+    },
+    {
+      id:900001,
+      phone:'5550100001',
+      name:'Demo Müşteri',
+      email:'demo.customer@liberte.cafe',
+      isAdmin:false,
+      createdAt:new Date().toLocaleString('tr-TR'),
+      lastVisit:null,
+      birthDate:''
+    },
+    {
+      id:900002,
+      phone:'5550100002',
+      name:'Demo Yönetici',
+      email:'demo.admin@liberte.cafe',
+      isAdmin:true,
+      createdAt:new Date().toLocaleString('tr-TR'),
+      lastVisit:null,
+      birthDate:''
     }
   ],
   loyalty:{
     1:{
       customerId:1,
+      totalStamps:0,
+      categoryStamps:emptyCategoryStamps(),
+      categoryRewards:emptyCategoryRewards(),
+      availableRewards:0,
+      usedRewards:0,
+      lifetimeStamps:0,
+      level:'Bronze'
+    },
+    900001:{
+      customerId:900001,
+      totalStamps:2,
+      categoryStamps:{coffee:2,dessert:0,burger:0},
+      categoryRewards:emptyCategoryRewards(),
+      availableRewards:0,
+      usedRewards:0,
+      lifetimeStamps:2,
+      level:'Bronze'
+    },
+    900002:{
+      customerId:900002,
       totalStamps:0,
       categoryStamps:emptyCategoryStamps(),
       categoryRewards:emptyCategoryRewards(),
@@ -141,22 +183,28 @@ export function save(db){
 }
 
 export async function loadRemote(){
+  if(useLocalAuth())return null;
   try{
-    const r=await fetch('/api/state');
-    if(!r.ok)return null;
-    const j=await r.json();
+    const {response,data:j}=await apiJson('/api/state');
+    if(!response.ok)return null;
     if(!j?.data)return null;
-    return{data:mergeDb(j.data),updatedAt:j.updated_at||null};
+    return{
+      data:mergeDb(j.data),
+      updatedAt:j.updated_at||null,
+      role:j.role||'user',
+      isAdmin:Boolean(j.isAdmin),
+      adminVerified:Boolean(j.adminVerified)
+    };
   }catch{
     return null;
   }
 }
 
 export async function saveRemote(db){
+  if(useLocalAuth())return;
   try{
-    await fetch('/api/state',{
+    await apiJson('/api/state',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({data:db})
     });
   }catch{}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { applyBirthdayReward, cssVars, load } from './lib/db.js';
-import { readSession } from './lib/session.js';
+import { bootstrapSession, logoutSession, setMemorySession } from './lib/session.js';
 import { FIREBASE_SW_URL, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { getInitialSplashPhase, markAppSplashSeen } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
 import { useCommit } from './hooks/useCommit.js';
 import AppSplash from './components/AppSplash.jsx';
 import Nav from './components/Nav.jsx';
+import AdminPinGate from './components/AdminPinGate.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
@@ -19,11 +20,23 @@ import AdminPage from './pages/AdminPage.jsx';
 
 export default function App() {
   const [db, commit, sync, refreshRemote] = useCommit(load());
-  const [session, setSession] = useState(readSession);
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
 
-  // Açılış splash — oturumda bir kez, ~1 sn
+  useEffect(() => {
+    bootstrapSession().then((active) => {
+      if (active) setSession(active);
+      setAuthReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!session?.customerId) return;
+    refreshRemote(true);
+  }, [session?.customerId, refreshRemote]);
+
   useEffect(() => {
     if (splashPhase !== 'visible') return undefined;
 
@@ -49,21 +62,36 @@ export default function App() {
     hideNativeSplash();
   }, [splashPhase]);
 
-  // Push service worker + ön plan dinleyici
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register(FIREBASE_SW_URL).catch(() => {});
     startPushForegroundListener().catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (session) localStorage.setItem('liberteSession', JSON.stringify(session));
-    else localStorage.removeItem('liberteSession');
-  }, [session]);
+  async function handleSetSession(next) {
+    if (!next) {
+      await logoutSession();
+      setMemorySession(null);
+      setSession(null);
+      return;
+    }
+    setMemorySession(next);
+    setSession(next);
+  }
 
   const customer = session
-    ? (db.customers || []).find((c) => c.id === session.customerId) || (db.customers || [])[0] || null
+    ? (db.customers || []).find((c) => c.id === session.customerId) || null
     : null;
+
+  const isAdmin = Boolean(session?.isAdmin);
+  const adminVerified = Boolean(session?.adminVerified);
+
+  function handleAdminVerified() {
+    const next = { ...session, adminVerified: true };
+    setMemorySession(next);
+    setSession(next);
+    refreshRemote(true);
+  }
 
   useEffect(() => {
     if (!customer?.id) return;
@@ -76,15 +104,16 @@ export default function App() {
     refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
   }, [customer?.id]);
 
-  // Yalnızca splash tam görünürken gizle — fade sırasında içerik altta hazır olsun
   const shellClass = splashPhase === 'visible' ? 'appShell appShell--booting' : 'appShell';
   const theme = cssVars(db.settings);
 
   let mainContent;
-  if (!session || !customer) {
+  if (!authReady) {
+    mainContent = <main className="appBoot" style={theme} />;
+  } else if (!session || !customer) {
     mainContent = (
       <main className="appBoot" style={theme}>
-        <LoginPage db={db} commit={commit} setSession={setSession} />
+        <LoginPage db={db} commit={commit} setSession={handleSetSession} />
       </main>
     );
   } else {
@@ -93,9 +122,18 @@ export default function App() {
     mainContent = (
       <main className="app" style={theme}>
         <div className="appTabView" key={tab}>
-          {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={setSession} sync={sync} refreshRemote={refreshRemote} commit={commit} />}
+          {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={handleSetSession} sync={sync} refreshRemote={refreshRemote} commit={commit} />}
           {tab === 'menu' && <MenuPage db={db} />}
-          {tab === 'qr' && <QrPage db={db} customer={customer} card={card} commit={commit} />}
+          {tab === 'qr' && (
+            <QrPage
+              db={db}
+              customer={customer}
+              card={card}
+              commit={commit}
+              isAdmin={isAdmin}
+              adminVerified={adminVerified}
+            />
+          )}
           {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}
           {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
           {tab === 'profile' && (
@@ -104,17 +142,22 @@ export default function App() {
               customer={customer}
               card={card}
               commit={commit}
-              setSession={setSession}
+              setSession={handleSetSession}
               setTab={setTab}
               sync={sync}
               refreshRemote={refreshRemote}
+              isAdmin={isAdmin}
             />
           )}
-          {tab === 'admin' && customer.isAdmin && <AdminPage db={db} commit={commit} />}
+          {tab === 'admin' && isAdmin && adminVerified && <AdminPage db={db} commit={commit} />}
         </div>
 
+        {isAdmin && !adminVerified && (
+          <AdminPinGate fullscreen onVerified={handleAdminVerified} />
+        )}
+
         <OfflineNotice />
-        <Nav tab={tab} setTab={setTab} isAdmin={customer.isAdmin} />
+        <Nav tab={tab} setTab={setTab} isAdmin={isAdmin} />
       </main>
     );
   }

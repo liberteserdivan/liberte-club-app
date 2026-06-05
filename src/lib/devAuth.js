@@ -30,3 +30,12 @@ export function verifyDevAuthCode(phone, email, code) {
 
 // Vite dev sunucusunda API yok; yerel doğrulama kullan
 export const useLocalAuth = () => import.meta.env.DEV;
+
+// Yerel geliştirmede yönetici PIN doğrula (yalnızca dev)
+export function verifyDevAdminPin(pin) {
+  const expected = String(import.meta.env.VITE_DEV_ADMIN_PIN || '5454').trim();
+  if (String(pin || '').trim() !== expected) {
+    throw new Error('Yönetici PIN hatalı');
+  }
+  return true;
+}

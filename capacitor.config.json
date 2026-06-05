@@ -1,6 +1,6 @@
 {
   "appId": "cafe.liberte.app",
-  "appName": "Liberte Club",
+  "appName": "Liberte",
   "webDir": "dist",
   "plugins": {
     "SplashScreen": {

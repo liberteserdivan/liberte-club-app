@@ -18,7 +18,6 @@ function withoutCustomerRows(list, customerId) {
 
 // Yerel cihaz kayıtlarını temizle
 export function clearLocalCustomerSession(customerId) {
-  localStorage.removeItem('liberteSession');
   if (customerId) {
     localStorage.removeItem(`libertePushDismissed:${customerId}`);
     localStorage.removeItem(`libertePushDevice:${customerId}`);

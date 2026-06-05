@@ -3276,6 +3276,54 @@ header{
   font-weight:800;
 }
 
+.adminPinGate{
+  display:grid;
+  place-items:center;
+  min-height:60vh;
+  padding:24px 16px;
+}
+.adminPinGate--fullscreen{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  min-height:100%;
+  padding:24px 16px calc(24px + env(safe-area-inset-bottom));
+  background:rgba(11,47,38,.62);
+  backdrop-filter:blur(8px);
+}
+.adminPinCard{
+  width:min(100%,380px);
+  padding:24px 20px;
+  border-radius:24px;
+  background:var(--card);
+  border:1px solid rgba(11,47,38,.08);
+  box-shadow:0 18px 40px rgba(11,47,38,.08);
+  text-align:center;
+}
+.adminPinCard h3{
+  margin:12px 0 6px;
+  color:var(--forest);
+}
+.adminPinCard p{
+  margin:0 0 16px;
+  color:var(--muted);
+  font-size:13px;
+}
+.adminPinCard form{
+  display:grid;
+  gap:10px;
+}
+.adminPinCard input{
+  text-align:center;
+  letter-spacing:.2em;
+}
+.adminPinError{
+  margin:10px 0 0;
+  color:#b42318;
+  font-size:13px;
+  font-weight:700;
+}
+
 /* —— Premium admin panel —— */
 .adminPage{
   padding-top:calc(12px + env(safe-area-inset-top));

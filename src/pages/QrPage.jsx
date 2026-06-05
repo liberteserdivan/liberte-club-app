@@ -16,9 +16,13 @@ import {
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 
 // Kartım — müşteri QR gösterir, yönetici müşteri QR tarar
-export default function QrPage({ db, customer, card, commit }) {
-  if (customer?.isAdmin) {
+export default function QrPage({ db, customer, card, commit, isAdmin = false, adminVerified = false }) {
+  if (isAdmin && adminVerified) {
     return <CustomerQrScanner db={db} commit={commit} />;
+  }
+
+  if (isAdmin && !adminVerified) {
+    return null;
   }
 
   return <CustomerQrCard db={db} customer={customer} card={card} />;

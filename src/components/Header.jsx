@@ -7,7 +7,7 @@ export default function Header({ db, customer, setSession, sync, refreshRemote, 
     <div className="head">
       <Brand db={db} header />
       <div className="headText">
-        <b>{db.settings.app_name || 'Liberte Club'}</b>
+        <b>{db.settings.app_name || 'Liberte'}</b>
         <span>{customer.name} · {sync === 'cloud' ? 'Bulut senkron' : 'Yerel kayıt'}</span>
       </div>
     </div>
