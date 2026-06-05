@@ -2835,9 +2835,9 @@ header{
   .homeBody{padding-left:16px;padding-right:16px}
   /* Header logosu — mobilde okunaklı boyut */
   .brandMark.header{
-    width:62px;
-    height:62px;
-    min-width:62px;
+    width:56px;
+    height:56px;
+    min-width:56px;
     flex-shrink:0;
   }
   .brandMark.login{
@@ -3460,7 +3460,7 @@ header{
   border:2px solid rgba(216,194,157,.72);
   box-shadow:0 10px 28px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.95);
 }
-.brandMark.header{width:68px;height:68px;min-width:68px;border-radius:50%}
+.brandMark.header{width:60px;height:60px;min-width:60px;border-radius:20px}
 .brandMark.admin{width:64px;height:64px;min-width:64px;border-radius:18px}
 .brandMark.header.hasLogo,
 .brandMark.admin.hasLogo,
@@ -3474,25 +3474,26 @@ header{
   background-color:#fff;
   background-image:none;
 }
-/* Header — daire logo, şeffaf yerine beyaz zemin */
+/* Header — squircle logo, kırpma yok */
 .brandMark.header.hasLogo{
-  padding:0;
-  border:none;
-  border-radius:50%;
+  padding:5px;
+  border:2px solid rgba(216,194,157,.72);
+  border-radius:20px;
   background:#fff;
-  box-shadow:0 4px 14px rgba(0,0,0,.22);
+  box-shadow:0 6px 18px rgba(11,47,38,.16),inset 0 1px 0 rgba(255,255,255,.9);
 }
 .brandMark.header.hasLogo .brandMarkInner{
-  border-radius:50%;
+  border-radius:14px;
   background:#fff;
 }
 .brandMark.header.hasLogo .brandMarkImg{
   width:100%;
   height:100%;
-  max-width:none;
-  max-height:none;
-  object-fit:cover;
-  border-radius:50%;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  object-position:center center;
+  border-radius:12px;
 }
 .brandMark.login.hasLogo{
   padding:0;
@@ -4737,7 +4738,7 @@ header{
   padding-bottom:0!important;
 }
 
-/* Header logosu — dairesel, kenar boşluğu yok */
+/* Header logosu — squircle, altın halka, tam görünüm */
 .brandMark.admin{
   background:#fff!important;
   border:2px solid rgba(216,194,157,.65)!important;
@@ -4746,11 +4747,11 @@ header{
 }
 
 .brandMark.header.hasLogo{
-  padding:0!important;
-  border:none!important;
-  border-radius:50%!important;
+  padding:5px!important;
+  border:2px solid rgba(216,194,157,.72)!important;
+  border-radius:20px!important;
   background:#fff!important;
-  box-shadow:0 4px 14px rgba(0,0,0,.22)!important;
+  box-shadow:0 6px 18px rgba(11,47,38,.16),inset 0 1px 0 rgba(255,255,255,.9)!important;
   overflow:hidden!important;
 }
 
@@ -4769,7 +4770,14 @@ header{
   background:#fff!important;
 }
 
-.brandMark.header.hasLogo .brandMarkInner,
+.brandMark.header.hasLogo .brandMarkInner{
+  width:100%!important;
+  height:100%!important;
+  border-radius:14px!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+
 .brandMark.login.hasLogo .brandMarkInner{
   width:100%!important;
   height:100%!important;
@@ -4778,14 +4786,24 @@ header{
   background:#fff!important;
 }
 
-.brandMark.header.hasLogo .brandMarkImg,
+.brandMark.header.hasLogo .brandMarkImg{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  border-radius:12px!important;
+}
+
 .brandMark.login.hasLogo .brandMarkImg{
   display:block!important;
   width:100%!important;
   height:100%!important;
-  max-width:none!important;
-  max-height:none!important;
-  object-fit:cover!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
   object-position:center center!important;
   border-radius:50%!important;
 }
@@ -4800,9 +4818,19 @@ header{
   object-position:center center!important;
 }
 
-.homePro .appHeader .brandMark.header.hasLogo{
-  background:#fff!important;
-  border:none!important;
+/* Ana sayfa & profil — cam kapsül logo */
+.homePro .appHeader .brandMark.header.hasLogo,
+.pagePro--profile .appHeader .brandMark.header.hasLogo{
+  background:rgba(255,253,248,.16)!important;
+  border:2px solid rgba(216,194,157,.58)!important;
+  backdrop-filter:blur(14px)!important;
+  -webkit-backdrop-filter:blur(14px)!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.22)!important;
+}
+
+.homePro .appHeader .brandMark.header.hasLogo .brandMarkInner,
+.pagePro--profile .appHeader .brandMark.header.hasLogo .brandMarkInner{
+  background:rgba(255,255,255,.92)!important;
 }
 
 /* Menü sayfası mobil uyumu */
