@@ -5395,6 +5395,80 @@ header{
   background:#fff;
 }
 
+.loginMenuBtn{
+  width:100%;
+  margin-top:12px;
+  min-height:54px;
+  padding:14px 20px;
+  border-radius:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  background:linear-gradient(135deg,var(--forest),#1B5A49);
+  color:#fff;
+  font-size:15px;
+  font-weight:850;
+  box-shadow:0 12px 28px rgba(11,47,38,.18);
+}
+
+.loginMenuBtn svg{
+  color:var(--gold);
+}
+
+/* Giriş ekranı — misafir menü tam ekran */
+.loginMenuOverlay{
+  position:fixed;
+  inset:0;
+  z-index:110;
+  background:var(--cream);
+  display:flex;
+  flex-direction:column;
+}
+
+.loginMenuOverlayHead{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  background:#fff;
+  border-bottom:1px solid rgba(11,47,38,.08);
+}
+
+.loginMenuOverlayHead span{
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+  color:var(--forest);
+}
+
+.loginMenuClose{
+  width:44px;
+  height:44px;
+  min-width:44px;
+  padding:0;
+  border-radius:14px;
+  background:#F3F8F5;
+  color:var(--forest);
+  box-shadow:none;
+}
+
+.loginMenuOverlayBody{
+  flex:1;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.loginMenuOverlayBody .pagePro{
+  margin:0;
+  min-height:auto;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+}
+
+.loginMenuOverlayBody .pageProHero{
+  border-radius:0 0 28px 28px;
+}
+
 @media (min-width:900px){
   .pagePro{
     max-width:720px;

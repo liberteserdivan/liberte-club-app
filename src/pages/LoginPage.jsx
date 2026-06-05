@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { LogIn, Mail, ShieldCheck } from 'lucide-react';
+import { LogIn, Mail, ShieldCheck, ShoppingBag, X } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
+import MenuPage from './MenuPage.jsx';
 import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
 import { clearAuthPending, loadAuthPending, saveAuthPending } from '../lib/authPending.js';
 import {
@@ -31,6 +32,7 @@ export default function Login({ db, commit, setSession }) {
   const [info, setInfo] = useState(registerPending ? 'Doğrulama kodunu gir.' : '');
   const [pending, setPending] = useState(registerPending);
   const [legalType, setLegalType] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState(null);
 
   // Kod adımı bilgilerini oturumda tut
@@ -409,8 +411,26 @@ export default function Login({ db, commit, setSession }) {
     <div className="loginFooter">
       <p className="loginFooterLabel">Liberte Gastro Cafe</p>
       <CafeContactBar compact />
+      <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
+        <ShoppingBag size={20} aria-hidden="true" />
+        Menüyü Gör
+      </button>
     </div>
     </div>
+
+    {menuOpen && (
+      <div className="loginMenuOverlay">
+        <div className="loginMenuOverlayHead">
+          <button type="button" className="loginMenuClose" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">
+            <X size={22} />
+          </button>
+          <span>Menü</span>
+        </div>
+        <div className="loginMenuOverlayBody">
+          <MenuPage db={db} />
+        </div>
+      </div>
+    )}
 
     {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
 
