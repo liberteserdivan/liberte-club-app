@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     const iconUrl = `${SITE_ORIGIN}/icon-192.png`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
 
-    // webpush.notification — iOS kapalı uygulama; Android SW üzerinden gösterilir
+    // Veri odaklı push — iOS SW event.waitUntil ile gösterir (webpush.notification sessiz sayılabilir)
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
       data: {
@@ -81,19 +81,15 @@ export default async function handler(req, res) {
           Urgency: 'high',
           TTL: '86400'
         },
-        notification: {
-          title: pushText.title,
-          body: pushText.body || undefined,
-          icon: iconUrl,
-          badge: badgeUrl
-        },
         fcmOptions: {
           link: SITE_ORIGIN
         },
         data: {
           title: pushText.title,
           body: pushText.body || '',
-          url: SITE_ORIGIN
+          url: SITE_ORIGIN,
+          icon: iconUrl,
+          badge: badgeUrl
         }
       }
     });

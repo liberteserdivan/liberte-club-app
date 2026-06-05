@@ -667,7 +667,7 @@ function NotificationAdmin({db,commit}){
         <div><span>BİLDİRİM</span><h3>Kurulu cihazlara gönder</h3></div>
         <span className="deviceCountBadge"><Smartphone size={14}/> {devices.length} cihaz</span>
       </div>
-      <p className="pushHint">iPhone&apos;da &quot;from Liberte&quot; satırı iOS sisteminden gelir. Başlıkta uygulama adı yazma; kampanya başlığı kullan (ör: Smash zamanı).</p>
+      <p className="pushHint">iPhone: uygulama ana ekrandan açılmalı. Firebase Console → Cloud Messaging → Apple → APNs Auth Key yüklü olmalı. &quot;from Liberte&quot; satırı iOS sisteminden gelir; başlıkta kampanya adı kullan (ör: Smash zamanı).</p>
 
       <div className="pushPreview">
         <span>Önizleme</span>

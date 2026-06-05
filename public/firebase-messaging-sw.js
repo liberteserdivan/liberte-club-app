@@ -1,34 +1,4 @@
-importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
-
-// Yalnızca Installations GET isteklerine referrer ekle — POST push kaydını bozma
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-
-  let url;
-  try {
-    url = new URL(event.request.url);
-  } catch {
-    return;
-  }
-  if (url.hostname !== 'firebaseinstallations.googleapis.com') return;
-
-  event.respondWith(fetch(new Request(event.request, {
-    referrer: self.location.origin + '/',
-    referrerPolicy: 'strict-origin'
-  })));
-});
-
-firebase.initializeApp({
-  "apiKey": "AIzaSyCDWpSpPoEsMirO0Grbpbabaju7QALVERC",
-  "authDomain": "liberte-club.firebaseapp.com",
-  "projectId": "liberte-club",
-  "storageBucket": "liberte-club.firebasestorage.app",
-  "messagingSenderId": "605225271131",
-  "appId": "1:605225271131:web:d03f217cfd9445a193e47e"
-});
-
-const messaging = firebase.messaging();
+// Liberte Club push service worker (v17)
 const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
@@ -81,6 +51,27 @@ function formatPushNotification(title, body) {
   return { title: finalTitle, body: finalBody };
 }
 
+function parsePushPayload(event) {
+  if (!event.data) {
+    return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+  }
+
+  try {
+    const json = event.data.json();
+    return {
+      notification: json.notification,
+      data: json.data || json
+    };
+  } catch {
+    try {
+      const text = event.data.text();
+      return { data: { title: text || 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+    } catch {
+      return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+    }
+  }
+}
+
 function showLiberteNotification(payload) {
   const data = payload.data || {};
   const formatted = formatPushNotification(
@@ -102,30 +93,9 @@ function showLiberteNotification(payload) {
   });
 }
 
-// Arka plan — iOS'ta onBackgroundMessage sınırlı; yine de göster
-messaging.onBackgroundMessage((payload) => showLiberteNotification(payload));
-
-// iOS kapalı/arka plan — asıl teslimat push olayı ile
+// iOS — event.waitUntil zorunlu; aksi halde abonelik iptal edilir
 self.addEventListener('push', (event) => {
-  let payload = { data: {} };
-
-  if (event.data) {
-    try {
-      payload = event.data.json();
-    } catch {
-      try {
-        const text = event.data.text();
-        payload = { data: { title: text || 'Yeni bildirim', body: '' } };
-      } catch {
-        payload = { data: { title: 'Yeni bildirim', body: '' } };
-      }
-    }
-  }
-
-  event.waitUntil(showLiberteNotification({
-    notification: payload.notification,
-    data: payload.data || payload
-  }));
+  event.waitUntil(showLiberteNotification(parsePushPayload(event)));
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -136,7 +106,9 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const open = list.find((item) => item.url && item.url.includes('app.liberte.cafe'));
       if (open) {
-        open.navigate(targetUrl);
+        if (typeof open.navigate === 'function') {
+          open.navigate(targetUrl);
+        }
         return open.focus();
       }
       return clients.openWindow(targetUrl);

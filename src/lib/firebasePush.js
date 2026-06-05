@@ -2,6 +2,7 @@ import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, N
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
+import { isIos } from './platform.js';
 
 // Service worker — sabit yol (sorgu parametresi kayıt çakışması yapar)
 export const FIREBASE_SW_URL = '/firebase-messaging-sw.js';
@@ -37,10 +38,18 @@ export async function showPushNotification(payload) {
 
 let foregroundListenerAttached = false;
 
-// Uygulama açıkken gelen push mesajlarını dinle
+// iOS'ta onMessage sessiz push sayılır — bildirimleri yalnızca SW gösterir
+function attachForegroundPushListener(messaging, onMessage) {
+  if (isIos() || foregroundListenerAttached) return;
+  onMessage(messaging, showPushNotification);
+  foregroundListenerAttached = true;
+}
+
+// Uygulama açıkken gelen push mesajlarını dinle (Android)
 export async function startPushForegroundListener() {
   if (!import.meta.env.PROD) return;
   if (Notification.permission !== 'granted') return;
+  if (isIos()) return;
   if (foregroundListenerAttached) return;
 
   const { initializeApp, getApps } = await import('firebase/app');
@@ -53,8 +62,7 @@ export async function startPushForegroundListener() {
   const app = getApps().length ? getApps()[0] : initializeApp(config);
   const messaging = getMessaging(app);
 
-  onMessage(messaging, showPushNotification);
-  foregroundListenerAttached = true;
+  attachForegroundPushListener(messaging, onMessage);
 }
 
 // Firebase messaging service worker kaydını hazırla
@@ -306,8 +314,7 @@ export async function enablePush(customer, db, commit) {
   commit(upsertPushSubscription(db, customer, token));
   markPushEnabledOnDevice(customer.id, token);
 
-  onMessage(messaging, showPushNotification);
-  foregroundListenerAttached = true;
+  attachForegroundPushListener(messaging, onMessage);
 
   return token;
 }

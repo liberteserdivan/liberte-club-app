@@ -28,6 +28,7 @@ export default async function handler(req, res) {
           : '',
     memberPushReady: Boolean(vapidKey),
     adminSendReady: adminReady,
+    iosWebPushHint: 'iPhone için: PWA ana ekrandan açılmalı. Firebase Console → Cloud Messaging → Apple yapılandırmasında APNs Auth Key gerekli.',
     site: 'https://app.liberte.cafe'
   });
 }
