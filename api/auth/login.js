@@ -5,6 +5,7 @@ import {
   createSession,
   findCustomerByPhone,
   getSession,
+  indexCustomerEmail,
   readAuthToken
 } from '../lib/auth.js';
 import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../lib/pinAuth.js';
@@ -52,6 +53,8 @@ export default async function handler(req, res) {
         lockedUntil: verified.lockedUntil || null
       });
     }
+
+    await indexCustomerEmail(customer);
 
     const role = customer.isAdmin ? 'admin' : 'user';
     const session = await createSession(res, {

@@ -2,6 +2,13 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { cleanPhone } from './phone.js';
 import { loadAppState } from './appState.js';
+import {
+  findCustomerIdByEmail,
+  listCustomers,
+  normalizeEmail,
+  syncCustomerEmailsFromState,
+  upsertCustomerEmail
+} from './customerEmails.js';
 
 export const SESSION_COOKIE = 'liberte_session';
 const SESSION_DAYS = 30;
@@ -164,25 +171,48 @@ export async function markAdminVerified(req) {
 // Müşteriyi telefon ile bul
 export async function findCustomerByPhone(phone) {
   const { data } = await loadAppState();
-  if (!data?.customers) return null;
+  if (!data) return null;
   const normalized = cleanPhone(phone);
-  return data.customers.find((c) => cleanPhone(c.phone) === normalized) || null;
+  return listCustomers(data).find((c) => cleanPhone(c.phone) === normalized) || null;
 }
 
-// E-posta adresini karşılaştırma için normalize et
-function normalizeEmail(email = '') {
-  return String(email).trim().toLowerCase();
-}
-
-// Müşteriyi e-posta ile bul — sunucu app_state kaynağı
+// Müşteriyi e-posta ile bul — app_state + SQL indeks
 export async function findCustomerByEmail(email) {
-  const { data } = await loadAppState();
-  if (!data?.customers?.length) return null;
-
   const normalized = normalizeEmail(email);
   if (!normalized) return null;
 
-  return data.customers.find((c) => normalizeEmail(c.email) === normalized) || null;
+  const { data } = await loadAppState();
+  if (data) {
+    await syncCustomerEmailsFromState(data);
+    const fromState = listCustomers(data).find((c) => normalizeEmail(c.email) === normalized);
+    if (fromState) return fromState;
+  }
+
+  const indexed = await findCustomerIdByEmail(normalized);
+  if (!indexed) return null;
+
+  const customers = listCustomers(data);
+  const fromId = customers.find((c) => Number(c.id) === Number(indexed.customer_id));
+  if (fromId) return fromId;
+
+  return {
+    id: indexed.customer_id,
+    phone: indexed.phone,
+    email: normalized,
+    name: 'Liberte Üye',
+    isAdmin: false
+  };
+}
+
+// Giriş/kayıt sonrası e-posta indeksini güncelle
+export async function indexCustomerEmail(customer) {
+  const sql = getSql();
+  if (!sql || !customer) return;
+  await upsertCustomerEmail(sql, {
+    email: customer.email,
+    customerId: customer.id,
+    phone: customer.phone
+  });
 }
 
 // Müşteri kaydını sunucu tarafında oluştur

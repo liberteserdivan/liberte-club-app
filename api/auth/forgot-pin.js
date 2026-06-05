@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../lib/http.js';
 import { cleanPhone } from '../lib/phone.js';
-import { findCustomerByEmail } from '../lib/auth.js';
+import { findCustomerByEmail, indexCustomerEmail } from '../lib/auth.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
 import { sendDualVerificationCodes } from '../lib/verificationMail.js';
 import {
@@ -85,6 +85,7 @@ async function handleReset(req, res) {
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
 
   await saveCustomerPin(sql, phone, customer.id, pin);
+  await indexCustomerEmail(customer);
 
   return res.status(200).json({ ok: true });
 }

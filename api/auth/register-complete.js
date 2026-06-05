@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../lib/http.js';
 import { cleanPhone } from '../lib/phone.js';
-import { buildCustomerRecord, createSession } from '../lib/auth.js';
+import { buildCustomerRecord, createSession, indexCustomerEmail } from '../lib/auth.js';
 import { loadAppState, saveAppState } from '../lib/appState.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
 import { sendDualVerificationCodes } from '../lib/verificationMail.js';
@@ -146,6 +146,7 @@ async function handleComplete(req, res) {
 
   await saveAppState(state);
   await saveCustomerPin(sql, phone, customer.id, pin);
+  await indexCustomerEmail(customer);
 
   const session = await createSession(res, {
     customerId: customer.id,
