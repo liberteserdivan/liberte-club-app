@@ -1,6 +1,44 @@
 import { money, productImageSrc } from '../lib/db.js';
 
-// Menü sayfası premium ürün kartı
+// Sade menü satırı — dikey liste, kaydırma yok
+export function MenuListRow({ item, onSelect }) {
+  function activate() {
+    onSelect?.(item);
+  }
+
+  return (
+    <article
+      className="menuListRow"
+      role="button"
+      tabIndex={0}
+      onClick={activate}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          activate();
+        }
+      }}
+    >
+      <div className="menuListThumb" style={{ '--tone': item.tone || '#b9f5d0' }}>
+        {productImageSrc(item)
+          ? <img src={productImageSrc(item)} alt="" />
+          : <span>{item.image || '☕'}</span>}
+      </div>
+      <div className="menuListBody">
+        <div className="menuListTop">
+          <b>{item.name}</b>
+          {(item.best || item.featured) && (
+            <em className="menuListBadge">{item.best ? 'Öne çıkan' : 'Favori'}</em>
+          )}
+        </div>
+        {item.description && <p>{item.description}</p>}
+      </div>
+      <strong className="menuListPrice">{money(item.price)}</strong>
+    </article>
+  );
+}
+
+// Eski kart görünümü — başka yerlerde kullanılıyorsa kalsın
 export default function MenuProductCard({ item, onSelect }) {
   return (
     <article
@@ -24,7 +62,6 @@ export default function MenuProductCard({ item, onSelect }) {
           <em className="menuProductBadge">{item.best ? 'Öne çıkan' : 'Favori'}</em>
         )}
       </div>
-
       <div className="menuProductBody">
         <div className="menuProductTop">
           <b>{item.name}</b>

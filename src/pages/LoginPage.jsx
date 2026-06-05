@@ -427,7 +427,7 @@ export default function Login({ db, commit, setSession }) {
           <span>Menü</span>
         </div>
         <div className="loginMenuOverlayBody">
-          <MenuPage db={db} />
+          <MenuPage db={db} embedded />
         </div>
       </div>
     )}
