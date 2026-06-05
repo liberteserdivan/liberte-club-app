@@ -29,7 +29,8 @@ import {
 export default function Login({ db, commit, setSession }) {
   const [authMode, setAuthMode] = useState('login');
   const [registerStep, setRegisterStep] = useState('form');
-  const [forgotStep, setForgotStep] = useState('email');
+  const [forgotStep, setForgotStep] = useState('identify');
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
   const [phone, setPhone] = useState(() => localStorage.getItem('liberteLastPhone') || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('liberteLastEmail') || '');
@@ -285,33 +286,54 @@ export default function Login({ db, commit, setSession }) {
     }
   }
 
-  function readForgotEmail() {
-    const em = email.trim().toLowerCase();
-    if (!validEmail(em)) {
-      notify('Kayıtlı e-posta adresini gir.');
+  function readForgotIdentifier() {
+    const raw = forgotIdentifier.trim();
+    if (!raw) {
+      notify('Kayıtlı e-posta veya telefonunu gir.');
       return null;
     }
-    return em;
+    if (raw.includes('@')) {
+      const em = raw.toLowerCase();
+      if (!validEmail(em)) {
+        notify('Geçerli e-posta gir.');
+        return null;
+      }
+      return em;
+    }
+    const ph = norm(raw);
+    if (ph.length < 10) {
+      notify('Geçerli e-posta veya 10 haneli telefon gir.');
+      return null;
+    }
+    return ph;
+  }
+
+  function findCustomerByIdentifier(value) {
+    if (String(value).includes('@')) {
+      return findByEmail(String(value).toLowerCase());
+    }
+    return findByPhone(norm(value));
   }
 
   async function sendForgotCode() {
-    const em = readForgotEmail();
-    if (!em) return;
+    const identifier = readForgotIdentifier();
+    if (!identifier) return;
 
     setLoading(true);
     setInfo('');
 
     try {
       if (useLocalAuth()) {
-        const customer = findByEmail(em);
-        if (!customer) {
-          notify('Bu e-posta ile kayıt bulunamadı.', 'info');
+        const customer = findCustomerByIdentifier(identifier);
+        if (!customer?.email) {
+          notify('Bu bilgi ile kayıt bulunamadı veya hesapta e-posta yok.', 'info');
           return;
         }
 
+        const deliveryEmail = String(customer.email).toLowerCase();
         const devCode = makeDevAuthCode();
         const devCode2 = makeDevAuthCode();
-        saveDevAuthCode(customer.phone, em, devCode, devCode2);
+        saveDevAuthCode(customer.phone, deliveryEmail, devCode, devCode2);
         setForgotStep('reset');
         setInfo(`Geliştirme modu — Kod 1: ${devCode}, Kod 2: ${devCode2}`);
         return;
@@ -319,7 +341,7 @@ export default function Login({ db, commit, setSession }) {
 
       const { response, data } = await apiJson('/api/auth/forgot-pin', {
         method: 'POST',
-        body: JSON.stringify({ action: 'send-code', email: em })
+        body: JSON.stringify({ action: 'send-code', identifier })
       });
 
       if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
@@ -328,7 +350,7 @@ export default function Login({ db, commit, setSession }) {
       if (data.testCode && data.testCode2) {
         setInfo(`Test kodları — Kod 1: ${data.testCode}, Kod 2: ${data.testCode2}`);
       } else {
-        setInfo(`İki doğrulama kodu ${data.emailMasked || maskEmail(em)} adresine gönderildi.`);
+        setInfo(`İki doğrulama kodu ${data.emailMasked || 'kayıtlı e-posta'} adresine gönderildi.`);
       }
     } catch (e) {
       notify(e.message || 'Kod gönderilemedi');
@@ -338,9 +360,9 @@ export default function Login({ db, commit, setSession }) {
   }
 
   async function resetForgotPin() {
-    const em = readForgotEmail();
+    const identifier = readForgotIdentifier();
     const pinValue = readPins(true);
-    if (!em || !pinValue) return;
+    if (!identifier || !pinValue) return;
 
     const code = resetCode.replace(/\D/g, '');
     const code2 = resetCode2.replace(/\D/g, '');
@@ -353,9 +375,10 @@ export default function Login({ db, commit, setSession }) {
 
     try {
       if (useLocalAuth()) {
-        const customer = findByEmail(em);
-        if (!customer) throw new Error('Hesap bulunamadı');
-        verifyDevAuthCode(customer.phone, em, code, code2);
+        const customer = findCustomerByIdentifier(identifier);
+        if (!customer?.email) throw new Error('Hesap bulunamadı');
+        const deliveryEmail = String(customer.email).toLowerCase();
+        verifyDevAuthCode(customer.phone, deliveryEmail, code, code2);
         await registerDevPin(customer.phone, pinValue);
         setInfo('Yeni PIN kaydedildi. Giriş yapabilirsin.');
         switchMode('login');
@@ -366,7 +389,7 @@ export default function Login({ db, commit, setSession }) {
         method: 'POST',
         body: JSON.stringify({
           action: 'reset',
-          email: em,
+          identifier,
           code,
           code2,
           pin: pinValue,
@@ -388,7 +411,8 @@ export default function Login({ db, commit, setSession }) {
   function switchMode(mode) {
     setAuthMode(mode);
     setRegisterStep('form');
-    setForgotStep('email');
+    setForgotStep('identify');
+    setForgotIdentifier('');
     setPin('');
     setPinConfirm('');
     setResetCode('');
@@ -416,7 +440,7 @@ export default function Login({ db, commit, setSession }) {
             {authMode === 'login' && 'Telefon numaran ve kişisel PIN ile giriş yap.'}
             {authMode === 'register' && registerStep === 'form' && 'Bilgilerini gir; e-postana iki doğrulama kodu gönderilir.'}
             {authMode === 'register' && registerStep === 'verify' && 'E-postadaki iki kodu gir ve kaydı tamamla.'}
-            {authMode === 'forgot' && 'E-postana gelen iki kod ile yeni PIN belirle.'}
+            {authMode === 'forgot' && 'E-posta veya telefonunu gir; kodlar kayıtlı e-postana gider.'}
           </p>
 
           {authMode !== 'forgot' && (
@@ -519,15 +543,15 @@ export default function Login({ db, commit, setSession }) {
             </>
           )}
 
-          {authMode === 'forgot' && forgotStep === 'email' && (
+          {authMode === 'forgot' && forgotStep === 'identify' && (
             <>
-              <label>E-posta</label>
+              <label>E-posta veya telefon</label>
               <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Kayıtlı e-posta adresin"
-                inputMode="email"
-                autoComplete="email"
+                value={forgotIdentifier}
+                onChange={(e) => setForgotIdentifier(e.target.value)}
+                placeholder="Kayıtlı e-posta veya telefon"
+                inputMode="text"
+                autoComplete="username"
               />
 
               <button disabled={loading} onClick={sendForgotCode}>
@@ -570,7 +594,7 @@ export default function Login({ db, commit, setSession }) {
                 <KeyRound /> {loading ? 'Kaydediliyor...' : 'Yeni PIN Kaydet'}
               </button>
 
-              <button type="button" className="ghost" onClick={() => setForgotStep('email')}>Kodları yeniden gönder</button>
+              <button type="button" className="ghost" onClick={() => setForgotStep('identify')}>Kodları yeniden gönder</button>
             </>
           )}
 

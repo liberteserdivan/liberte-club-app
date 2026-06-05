@@ -1,42 +1,38 @@
 import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../lib/http.js';
-import { cleanPhone } from '../lib/phone.js';
-import { findCustomerByEmail, indexCustomerEmail } from '../lib/auth.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
 import { sendDualVerificationCodes } from '../lib/verificationMail.js';
+import { indexCustomerEmail } from '../lib/auth.js';
+import { resolveRecoveryCustomer } from '../lib/customerRepair.js';
 import {
   isValidPinFormat,
   normalizePin,
   saveCustomerPin
 } from '../lib/pinAuth.js';
 
-function validEmail(v = '') {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
+// İstek gövdesinden tanımlayıcıyı oku (e-posta veya telefon)
+function readIdentifier(body) {
+  return String(body.identifier || body.email || body.phone || '').trim();
 }
 
 // PIN unutma — kayıtlı e-postaya iki doğrulama kodu gönder
 async function handleSendCode(req, res) {
   const body = readBody(req);
-  const email = String(body.email || '').trim().toLowerCase();
+  const identifier = readIdentifier(body);
+  const resolved = await resolveRecoveryCustomer(identifier);
 
-  if (!validEmail(email)) return res.status(400).json({ error: 'Geçerli e-posta gir.' });
-
-  const customer = await findCustomerByEmail(email);
-  if (!customer) {
-    return res.status(404).json({ error: 'Bu e-posta ile kayıt bulunamadı.' });
+  if (!resolved.ok) {
+    return res.status(resolved.status || 400).json({ error: resolved.error });
   }
 
-  const phone = cleanPhone(customer.phone);
-  if (phone.length < 10) {
-    return res.status(400).json({ error: 'Hesapta geçerli telefon yok. Destek ile iletişime geç.' });
-  }
+  const { customer, deliveryEmail, phone } = resolved;
 
   const sent = await sendDualVerificationCodes({
-    email,
+    email: deliveryEmail,
     phone,
     purpose: 'pin_reset',
     subject: 'Liberte PIN sıfırlama kodların',
-    greeting: `Merhaba ${customer.name},`
+    greeting: `Merhaba ${customer.name || 'Liberte Üye'},`
   });
 
   if (!sent.ok) return res.status(sent.status || 500).json({ error: sent.error });
@@ -44,6 +40,7 @@ async function handleSendCode(req, res) {
   return res.status(200).json({
     ok: true,
     emailMasked: sent.emailMasked,
+    deliveryEmail,
     testCode: sent.testCode,
     testCode2: sent.testCode2,
     warning: sent.warning
@@ -53,14 +50,14 @@ async function handleSendCode(req, res) {
 // PIN unutma — kodları doğrula ve yeni PIN kaydet
 async function handleReset(req, res) {
   const body = readBody(req);
-  const email = String(body.email || '').trim().toLowerCase();
+  const identifier = readIdentifier(body);
   const code = String(body.code || '').replace(/\D/g, '');
   const code2 = String(body.code2 || '').replace(/\D/g, '');
   const pin = normalizePin(body.pin);
   const pinConfirm = normalizePin(body.pinConfirm);
 
   if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
-  if (!validEmail(email) || code.length !== 6 || code2.length !== 6) {
+  if (!identifier || code.length !== 6 || code2.length !== 6) {
     return res.status(400).json({ error: 'Bilgiler eksik' });
   }
   if (!isValidPinFormat(pin)) {
@@ -70,13 +67,15 @@ async function handleReset(req, res) {
     return res.status(400).json({ error: 'PIN tekrarı eşleşmiyor.' });
   }
 
-  const customer = await findCustomerByEmail(email);
-  if (!customer) return res.status(404).json({ error: 'Hesap bulunamadı' });
+  const resolved = await resolveRecoveryCustomer(identifier);
+  if (!resolved.ok) {
+    return res.status(resolved.status || 404).json({ error: resolved.error });
+  }
 
-  const phone = cleanPhone(customer.phone);
+  const { customer, deliveryEmail, phone } = resolved;
   const sql = neon(process.env.DATABASE_URL);
   const verified = await verifyEmailCode(sql, {
-    email,
+    email: deliveryEmail,
     phone,
     code,
     code2,
@@ -85,7 +84,7 @@ async function handleReset(req, res) {
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
 
   await saveCustomerPin(sql, phone, customer.id, pin);
-  await indexCustomerEmail(customer);
+  await indexCustomerEmail({ ...customer, email: deliveryEmail, phone });
 
   return res.status(200).json({ ok: true });
 }

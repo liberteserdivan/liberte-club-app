@@ -8,6 +8,7 @@ import {
   indexCustomerEmail,
   readAuthToken
 } from '../lib/auth.js';
+import { repairCustomerDirectory } from '../lib/customerRepair.js';
 import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../lib/pinAuth.js';
 
 // Giriş — telefon + PIN; geçerli oturum varsa PIN isteme
@@ -54,6 +55,7 @@ export default async function handler(req, res) {
       });
     }
 
+    await repairCustomerDirectory();
     await indexCustomerEmail(customer);
 
     const role = customer.isAdmin ? 'admin' : 'user';
