@@ -65,7 +65,10 @@ export default async function handler(req, res) {
     }
 
     const fb = getAdmin(serviceAccount);
-    // Web push — yalnızca data; SW bildirimi gösterir (fcmOptions.link Chrome'da URL uyarısı çıkarır)
+    const iconUrl = `${SITE_ORIGIN}/icon-192.png`;
+    const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
+
+    // webpush.notification — iOS'ta uygulama kapalıyken sistem bildirimi için gerekli
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
       data: {
@@ -77,6 +80,15 @@ export default async function handler(req, res) {
         headers: {
           Urgency: 'high',
           TTL: '86400'
+        },
+        notification: {
+          title: pushText.title,
+          body: pushText.body || undefined,
+          icon: iconUrl,
+          badge: badgeUrl
+        },
+        fcmOptions: {
+          link: SITE_ORIGIN
         },
         data: {
           title: pushText.title,

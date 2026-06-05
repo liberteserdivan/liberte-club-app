@@ -4,7 +4,7 @@ import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
 
 // Service worker — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=14';
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=15';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
 // Tarayıcı bildirimi göster

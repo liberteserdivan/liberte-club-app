@@ -69,24 +69,56 @@ function showLiberteNotification(payload) {
     payload.notification?.title || data.title,
     payload.notification?.body || data.body
   );
+  const noticeData = {
+    ...data,
+    title: formatted.title,
+    body: formatted.body,
+    url: data.url || 'https://app.liberte.cafe'
+  };
   return self.registration.showNotification(formatted.title, {
     body: formatted.body || undefined,
     icon: PUSH_ICON,
     badge: PUSH_BADGE,
     tag: 'liberte-club-push',
-    data
+    data: noticeData
   });
 }
 
-messaging.onBackgroundMessage((payload) => showLiberteNotification(payload));
+// FCM webpush.notification varsa tarayıcı zaten gösterir — çift bildirim olmasın
+messaging.onBackgroundMessage((payload) => {
+  if (payload.notification?.title) return Promise.resolve();
+  return showLiberteNotification(payload);
+});
+
+// iOS kapalı uygulama — yedek push dinleyicisi
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload = null;
+  try {
+    payload = event.data.json();
+  } catch {
+    return;
+  }
+
+  if (payload?.notification?.title) return;
+
+  event.waitUntil(showLiberteNotification({
+    data: payload.data || payload
+  }));
+});
 
 self.addEventListener('notificationclick', (event) => {
+  event.preventDefault();
   event.notification.close();
   const targetUrl = event.notification?.data?.url || 'https://app.liberte.cafe';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const open = list.find((item) => item.url && item.url.includes('app.liberte.cafe'));
-      if (open) return open.focus();
+      if (open) {
+        open.navigate(targetUrl);
+        return open.focus();
+      }
       return clients.openWindow(targetUrl);
     })
   );
