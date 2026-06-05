@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import MenuProductCard from '../components/MenuProductCard.jsx';
 import MenuProductDetailModal from '../components/MenuProductDetailModal.jsx';
+import PageShell from '../components/PageShell.jsx';
+import PageSection from '../components/PageSection.jsx';
 
 // Ürün listesini arama metnine göre filtrele
 function filterByQuery(items, query) {
@@ -47,14 +49,37 @@ export default function MenuPage({ db }) {
       .filter((group) => group.items.length);
   }, [allItems, cats, cat, query, featured]);
 
-  return (
-    <section className="menuPro">
-      <div className="menuProHero">
-        <span className="menuProEyebrow">Liberte Gastro</span>
-        <h1>{settings.hero_title || 'Menü'}</h1>
-        <p>{settings.hero_subtitle || 'Favori lezzetini seç, kampanyaları takip et.'}</p>
+  const categoryPills = (
+    <div className="pageProSticky menuProCats">
+      <button
+        type="button"
+        className={cat === 'all' ? 'on' : ''}
+        onClick={() => setCat('all')}
+      >
+        <span>✨</span> Tümü
+      </button>
+      {cats.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          className={String(cat) === String(c.id) ? 'on' : ''}
+          onClick={() => setCat(c.id)}
+        >
+          <span>{c.icon || '•'}</span> {c.name}
+        </button>
+      ))}
+    </div>
+  );
 
-        <label className="menuProSearch">
+  return (
+    <PageShell
+      variant="menu"
+      eyebrow="Liberte Gastro"
+      title={settings.hero_title || 'Menü'}
+      subtitle={settings.hero_subtitle || 'Favori lezzetini seç, kampanyaları takip et.'}
+      stickySlot={categoryPills}
+      heroSlot={(
+        <label className="pageProSearch menuProSearch">
           <Search aria-hidden="true" />
           <input
             type="search"
@@ -63,81 +88,47 @@ export default function MenuPage({ db }) {
             placeholder="Kahve, tatlı, burger ara..."
           />
         </label>
-      </div>
-
-      <div className="menuProCats">
-        <button
-          type="button"
-          className={cat === 'all' ? 'on' : ''}
-          onClick={() => setCat('all')}
-        >
-          <span>✨</span> Tümü
-        </button>
-        {cats.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={String(cat) === String(c.id) ? 'on' : ''}
-            onClick={() => setCat(c.id)}
-          >
-            <span>{c.icon || '•'}</span> {c.name}
-          </button>
-        ))}
-      </div>
-
+      )}
+    >
       {!query && cat === 'all' && featured.length > 0 && (
-        <div className="menuProSection">
-          <div className="menuProSectionHead">
-            <h3>Öne çıkanlar</h3>
-            <em>{featured.length} ürün</em>
-          </div>
+        <PageSection title="Öne çıkanlar" count={`${featured.length} ürün`}>
           <div className="menuProFeaturedRail">
             {featured.map((item) => (
               <MenuProductCard key={`f-${item.id}`} item={item} onSelect={setSelected} />
             ))}
           </div>
-        </div>
+        </PageSection>
       )}
 
       {grouped ? grouped.map(({ category, items }) => (
-        <div key={category.id} className="menuProSection">
-          <div className="menuProSectionHead">
-            <h3><span>{category.icon || '•'}</span> {category.name}</h3>
-            <em>{items.length} ürün</em>
-          </div>
+        <PageSection
+          key={category.id}
+          title={<><span>{category.icon || '•'}</span> {category.name}</>}
+          count={`${items.length} ürün`}
+        >
           {category.description && <p className="menuProSectionDesc">{category.description}</p>}
           <div className="menuProGrid">
             {items.map((item) => <MenuProductCard key={item.id} item={item} onSelect={setSelected} />)}
           </div>
-        </div>
+        </PageSection>
       )) : (
-        <div className="menuProSection">
-          {cat !== 'all' && (
-            <div className="menuProSectionHead">
-              <h3>
-                <span>{cats.find((c) => String(c.id) === String(cat))?.icon || '•'}</span>
-                {' '}
-                {cats.find((c) => String(c.id) === String(cat))?.name || 'Menü'}
-              </h3>
-              <em>{visibleItems.length} ürün</em>
-            </div>
-          )}
-          {query && (
-            <div className="menuProSectionHead">
-              <h3>Arama sonucu</h3>
-              <em>{visibleItems.length} ürün</em>
-            </div>
-          )}
+        <PageSection
+          title={cat !== 'all'
+            ? <><span>{cats.find((c) => String(c.id) === String(cat))?.icon || '•'}</span> {cats.find((c) => String(c.id) === String(cat))?.name || 'Menü'}</>
+            : query ? 'Arama sonucu' : null}
+          count={visibleItems.length ? `${visibleItems.length} ürün` : null}
+        >
           <div className="menuProGrid">
             {visibleItems.length
               ? visibleItems.map((item) => <MenuProductCard key={item.id} item={item} onSelect={setSelected} />)
               : <div className="empty menuProEmpty">Aradığın ürün bulunamadı.</div>}
           </div>
-        </div>
+        </PageSection>
       )}
+
       {selected && (
         <MenuProductDetailModal item={selected} onClose={() => setSelected(null)} />
       )}
-    </section>
+    </PageShell>
   );
 }

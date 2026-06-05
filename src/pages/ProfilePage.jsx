@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { LogOut, ShieldCheck, Trash2, User } from 'lucide-react';
+import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User } from 'lucide-react';
 import Header from '../components/Header.jsx';
+import PageShell from '../components/PageShell.jsx';
+import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import { PushWelcomeBanner } from '../components/Cards.jsx';
@@ -36,59 +38,73 @@ export default function ProfilePage({
     }
   }
 
+  const profileHero = (
+    <div className="profileHeroCard">
+      <div className="profileAvatar" aria-hidden="true"><User size={28} /></div>
+      <div className="profileHeroInfo">
+        <strong>{customer.name}</strong>
+        <p><Phone size={14} aria-hidden="true" /> {customer.phone}</p>
+        {customer.email && <p><Mail size={14} aria-hidden="true" /> {customer.email}</p>}
+      </div>
+      <div className="profileLevelBadge"><Crown size={14} aria-hidden="true" /> {level}</div>
+    </div>
+  );
+
   return (
-    <section className="profilePage">
-      <Header
-        db={db}
-        customer={customer}
-        sync={sync}
-        refreshRemote={refreshRemote}
-        showLogout={false}
-      />
+    <PageShell
+      variant="profile"
+      header={(
+        <Header
+          db={db}
+          customer={customer}
+          sync={sync}
+          refreshRemote={refreshRemote}
+          showLogout={false}
+        />
+      )}
+      eyebrow="Liberte Club"
+      title="Profilim"
+      subtitle="Hesap ayarları, destek ve yasal bilgiler"
+      heroSlot={profileHero}
+    >
+      <PageSection label="İletişim">
+        <CafeContactBar />
+      </PageSection>
 
-      <div className="profileHero card">
-        <div className="profileAvatar" aria-hidden="true"><User size={28} /></div>
-        <div>
-          <span>PROFİL</span>
-          <h2>{customer.name}</h2>
-          <p>{customer.phone}</p>
-          {customer.email && <p>{customer.email}</p>}
-          <em>Seviye: {level}</em>
-        </div>
-      </div>
+      <PageSection label="Bildirimler" tight>
+        <PushWelcomeBanner db={db} customer={customer} commit={commit} />
+      </PageSection>
 
-      <CafeContactBar />
-
-      <PushWelcomeBanner db={db} customer={customer} commit={commit} />
-
-      <div className="profileSection card">
-        <span>HESAP</span>
-        <button type="button" className="profileAction" onClick={logout}>
-          <LogOut size={18} /> Çıkış Yap
-        </button>
-        {customer.isAdmin && (
-          <button type="button" className="profileAction" onClick={() => setTab('admin')}>
-            <ShieldCheck size={18} /> Yönetim Paneli
+      <PageSection label="Hesap">
+        <div className="profileActionStack">
+          <button type="button" className="profileAction" onClick={logout}>
+            <LogOut size={18} /> Çıkış Yap
           </button>
-        )}
-        <button type="button" className="profileAction danger" onClick={removeAccount}>
-          <Trash2 size={18} /> Hesabımı Sil
-        </button>
-        {message && <p className="profileMessage">{message}</p>}
-        <p className="profileHint">Destek: {supportEmail}</p>
-      </div>
+          {customer.isAdmin && (
+            <button type="button" className="profileAction" onClick={() => setTab('admin')}>
+              <ShieldCheck size={18} /> Yönetim Paneli
+            </button>
+          )}
+          <button type="button" className="profileAction danger" onClick={removeAccount}>
+            <Trash2 size={18} /> Hesabımı Sil
+          </button>
+          {message && <p className="profileMessage">{message}</p>}
+          <p className="profileHint">Destek: {supportEmail}</p>
+        </div>
+      </PageSection>
 
-      <div className="profileSection card">
-        <span>YASAL</span>
-        <button type="button" className="profileAction ghost" onClick={() => setLegalType('privacy')}>
-          Gizlilik Politikası
-        </button>
-        <button type="button" className="profileAction ghost" onClick={() => setLegalType('terms')}>
-          Kullanım Şartları
-        </button>
-      </div>
+      <PageSection label="Yasal">
+        <div className="profileActionStack">
+          <button type="button" className="profileAction ghost" onClick={() => setLegalType('privacy')}>
+            Gizlilik Politikası
+          </button>
+          <button type="button" className="profileAction ghost" onClick={() => setLegalType('terms')}>
+            Kullanım Şartları
+          </button>
+        </div>
+      </PageSection>
 
       {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
-    </section>
+    </PageShell>
   );
 }

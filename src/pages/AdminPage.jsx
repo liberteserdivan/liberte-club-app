@@ -26,7 +26,7 @@ export default function AdminPage({db,commit}){
     setTab('uyeler');
   }
 
-  return <section className="pageShell adminPage">
+  return <section className="pagePro pagePro--admin adminPage">
     <div className="adminPremiumHero">
       <div className="adminHeroBrand">
         <Brand db={db} admin />

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LogIn, Mail, ShieldCheck } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
+import CafeContactBar from '../components/CafeContactBar.jsx';
 import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
 import { clearAuthPending, loadAuthPending, saveAuthPending } from '../lib/authPending.js';
 import {
@@ -402,6 +403,11 @@ export default function Login({ db, commit, setSession }) {
 
         {info && <p className="info">{info}</p>}
       </>}
+    </div>
+
+    <div className="loginFooter">
+      <p className="loginFooterLabel">Liberte Gastro Cafe</p>
+      <CafeContactBar compact />
     </div>
 
     {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}

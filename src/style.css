@@ -4723,6 +4723,7 @@ header{
 }
 
 .homeBody,
+.pagePro,
 .menuPro,
 .qrPro,
 .wheelPro,
@@ -5065,4 +5066,305 @@ header{
   text-decoration:underline;
   box-shadow:none;
   min-height:0;
+}
+
+/* =========================
+   ORTAK SAYFA DÜZENİ
+   ========================= */
+.pagePro{
+  background:var(--cream);
+  min-height:100svh;
+  margin:-22px -18px 0;
+  padding:0 0 calc(16px + var(--nav-dock-total));
+}
+
+.pagePro--qr,
+.pagePro--admin{
+  margin:0!important;
+}
+
+.pageProHero{
+  padding:calc(18px + env(safe-area-inset-top)) 20px 24px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 90% 6%,rgba(216,194,157,.24),transparent 32%),
+    radial-gradient(circle at 6% 82%,rgba(159,220,199,.14),transparent 30%),
+    linear-gradient(168deg,#11100D 0%,var(--forest) 58%,#071B16 100%);
+  border-radius:0 0 34px 34px;
+  position:relative;
+  overflow:hidden;
+}
+
+.pageProHero::after{
+  content:'';
+  position:absolute;
+  right:-14%;
+  bottom:-20%;
+  width:min(68vw,280px);
+  height:min(68vw,280px);
+  background:url('/liberte-logo.png?v=7') center/contain no-repeat;
+  opacity:.07;
+  pointer-events:none;
+}
+
+.pageProHeroContent{
+  position:relative;
+  z-index:1;
+}
+
+.pageProEyebrow{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(216,194,157,.35);
+  color:var(--gold);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:12px;
+}
+
+.pageProTitle{
+  margin:0 0 8px;
+  font-family:var(--font-display);
+  font-size:clamp(28px,7vw,36px);
+  line-height:1.05;
+  letter-spacing:-.03em;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.pageProTitleIcon{
+  width:28px;
+  height:28px;
+  color:var(--gold);
+}
+
+.pageProSubtitle{
+  margin:0 0 16px;
+  color:rgba(255,255,255,.78);
+  font-size:14px;
+  line-height:1.45;
+  max-width:36ch;
+}
+
+.pageProSearch{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 14px;
+  border-radius:18px;
+  background:rgba(255,253,248,.14);
+  border:1px solid rgba(216,194,157,.32);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+
+.pageProSticky{
+  position:sticky;
+  top:0;
+  z-index:12;
+  background:linear-gradient(180deg,var(--cream) 72%,rgba(247,250,248,0));
+  padding-bottom:4px;
+}
+
+.pageProBody{
+  padding:8px 18px 0;
+  display:grid;
+  gap:14px;
+}
+
+.pageProStats{
+  margin-top:4px;
+}
+
+.pageSection{
+  margin-bottom:10px;
+}
+
+.pageSection--tight{
+  margin-bottom:4px;
+}
+
+.pageSectionHead{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin:18px 0 12px 4px;
+}
+
+.pageSectionLabel{
+  margin:0;
+  color:var(--forest);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  opacity:.72;
+}
+
+.pageSectionTitle{
+  margin:4px 0 0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+  color:var(--forest);
+  letter-spacing:-.02em;
+}
+
+.pageSectionTitle svg{
+  width:20px;
+  height:20px;
+  color:#126047;
+}
+
+.pageSectionCount{
+  font-style:normal;
+  font-size:12px;
+  font-weight:800;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+/* Profil hero kartı */
+.pagePro--profile .pageProHero{
+  padding-top:calc(10px + env(safe-area-inset-top));
+}
+
+.pagePro--profile .appHeader{
+  margin:0 0 18px!important;
+  background:rgba(255,253,248,.14)!important;
+  border:1px solid rgba(216,194,157,.38)!important;
+  box-shadow:0 12px 32px rgba(0,0,0,.18)!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+
+.pagePro--profile .headText b{
+  color:#fff!important;
+}
+
+.pagePro--profile .headText span{
+  color:rgba(255,255,255,.78)!important;
+}
+
+.profileHeroCard{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:14px;
+  align-items:center;
+  margin-top:8px;
+  padding:16px;
+  border-radius:22px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(216,194,157,.28);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+
+.profileHeroInfo strong{
+  display:block;
+  font-family:var(--font-display);
+  font-size:22px;
+  line-height:1.1;
+  color:#fff;
+  margin-bottom:6px;
+}
+
+.profileHeroInfo p{
+  margin:0 0 4px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:rgba(255,255,255,.78);
+  font-size:13px;
+}
+
+.profileLevelBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:10px 12px;
+  border-radius:999px;
+  background:rgba(159,220,199,.14);
+  border:1px solid rgba(159,220,199,.3);
+  color:var(--mint);
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.profileActionStack{
+  display:grid;
+  gap:8px;
+  padding:14px;
+  border-radius:22px;
+  background:#fff;
+  border:1px solid rgba(11,47,38,.07);
+  box-shadow:0 10px 24px rgba(11,47,38,.06);
+}
+
+/* Ana sayfa hub — 2x2 grid */
+.homeHubGrid--three{
+  grid-template-columns:1fr 1fr;
+}
+
+.homeHubTile--primary{
+  background:linear-gradient(145deg,var(--forest),#1B5A49)!important;
+  color:#fff!important;
+  border-color:rgba(216,194,157,.25)!important;
+}
+
+.homeHubTile--primary span,
+.homeHubTile--primary b{
+  color:#fff!important;
+}
+
+.homeHubTile--primary svg{
+  color:var(--gold)!important;
+}
+
+.wheelRewardStack{
+  display:grid;
+  gap:12px;
+}
+
+/* Giriş sayfası alt iletişim */
+.loginFooter{
+  position:relative;
+  z-index:2;
+  width:min(420px,100%);
+  margin:20px auto 0;
+  padding:0 4px calc(20px + env(safe-area-inset-bottom));
+}
+
+.loginFooterLabel{
+  margin:0 0 10px;
+  text-align:center;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(11,47,38,.45);
+}
+
+.loginFooter .cafeContactBtn{
+  background:#fff;
+}
+
+@media (min-width:900px){
+  .pagePro{
+    max-width:720px;
+    margin-left:auto;
+    margin-right:auto;
+  }
 }
