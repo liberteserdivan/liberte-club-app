@@ -17,7 +17,8 @@
     "cap:sync:ios": "npm run build && npx cap sync ios",
     "cap:android": "npm run cap:sync:android && cd android && gradlew.bat assembleDebug",
     "cap:ios": "npm run cap:sync:ios && npx cap open ios",
-    "release:android": "npm run build && node scripts/generate-android-icons.mjs && npx cap sync android && cd android && gradlew.bat bundleRelease"
+    "release:android": "npm run build && node scripts/generate-android-icons.mjs && npx cap sync android && cd android && gradlew.bat bundleRelease",
+    "import:menu": "node scripts/import-menu-from-xlsx.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",

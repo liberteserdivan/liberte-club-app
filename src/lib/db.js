@@ -13,6 +13,7 @@ import{
 }from './loyaltyStamps.js';
 import { apiJson } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
+import { menuCategories, menuItems } from './menuSeed.js';
 
 export const seed={
   settings:{
@@ -97,20 +98,8 @@ export const seed={
       level:'Bronze'
     }
   },
-  categories:[
-    {id:1,name:'Kahveler',description:'Sıcak ve soğuk kahveler',icon:'☕'},
-    {id:2,name:'Tatlılar',description:'Magnolia, waffle ve cheesecake',icon:'🍰'},
-    {id:3,name:'Burger',description:'Smash burger ve atıştırmalıklar',icon:'🍔'},
-    {id:4,name:'Soğuk İçecek',description:'Milkshake ve ferah içecekler',icon:'🥤'}
-  ],
-  items:[
-    {id:1,categoryId:1,name:'Latte',description:'Espresso ve süt dengesi',price:90,featured:true,best:true,image:'☕',tone:'#b69474',imageUrl:''},
-    {id:2,categoryId:1,name:'Ice Americano',description:'Buzlu ferah americano',price:80,featured:true,image:'🧊',tone:'#4b8aa8',imageUrl:''},
-    {id:3,categoryId:2,name:'Çilekli Magnolia',description:'Çilek, krema ve bisküvi katları',price:145,featured:true,best:true,image:'🍓',tone:'#d85f71',imageUrl:''},
-    {id:4,categoryId:2,name:'San Sebastian',description:'Kremamsı cheesecake',price:170,featured:true,image:'🍰',tone:'#d6ad70',imageUrl:''},
-    {id:5,categoryId:3,name:'Smash Burger',description:'140 g et, cheddar ve özel sos',price:295,featured:true,best:true,image:'🍔',tone:'#a0482d',imageUrl:''},
-    {id:6,categoryId:4,name:'Milkshake',description:'Yoğun kıvamlı soğuk lezzet',price:140,featured:true,image:'🥤',tone:'#bb7fb2',imageUrl:''}
-  ],
+  categories:menuCategories,
+  items:menuItems,
   notifications:[
     {id:1,title:'Liberte Club Açıldı',body:'QR kartını göster, damgalarını toplamaya başla.',createdAt:new Date().toLocaleString('tr-TR')}
   ],
