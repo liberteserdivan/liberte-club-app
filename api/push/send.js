@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import { parseServiceAccount, validateServiceAccount } from '../lib/serviceAccount.js';
+import { formatPushNotification } from '../lib/pushNotificationText.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -49,7 +50,8 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const { tokens = [], title = 'Liberte Club', body: message = 'Yeni kampanya var!' } = body;
+    const { tokens = [], title = '', body: message = 'Yeni kampanya var!' } = body;
+    const pushText = formatPushNotification(title, message);
     const clean = [...new Set(tokens.filter(Boolean))];
 
     if (!clean.length) {
@@ -67,8 +69,8 @@ export default async function handler(req, res) {
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
       data: {
-        title: String(title),
-        body: String(message),
+        title: pushText.title,
+        body: pushText.body,
         url: SITE_ORIGIN
       },
       webpush: {
@@ -77,8 +79,8 @@ export default async function handler(req, res) {
           TTL: '86400'
         },
         data: {
-          title: String(title),
-          body: String(message),
+          title: pushText.title,
+          body: pushText.body,
           url: SITE_ORIGIN
         }
       }

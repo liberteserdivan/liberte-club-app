@@ -1,20 +1,23 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice } from './pushPrompt.js';
+import { formatPushNotification } from './pushNotificationText.js';
 
 // Service worker — cache kırma
-export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=13';
+export const FIREBASE_SW_URL = '/firebase-messaging-sw.js?v=14';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
 // Tarayıcı bildirimi göster
 export function showPushNotification(payload) {
   if (Notification.permission !== 'granted') return;
 
-  const title = payload?.notification?.title || payload?.data?.title || 'Liberte Club';
-  const body = payload?.notification?.body || payload?.data?.body || 'Yeni bildirim';
+  const formatted = formatPushNotification(
+    payload?.notification?.title || payload?.data?.title,
+    payload?.notification?.body || payload?.data?.body
+  );
 
-  new Notification(title, {
-    body,
+  new Notification(formatted.title, {
+    body: formatted.body || undefined,
     icon: `${PUSH_SITE_ORIGIN}${NOTIFICATION_ICON}`,
     badge: `${PUSH_SITE_ORIGIN}${NOTIFICATION_BADGE}`,
     tag: 'liberte-club-push',

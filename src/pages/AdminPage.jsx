@@ -632,7 +632,7 @@ function GameAdmin({db,commit}){
 
 
 function NotificationAdmin({db,commit}){
-  const[title,setTitle]=useState('Liberte Club');
+  const[title,setTitle]=useState('');
   const[body,setBody]=useState('Bugüne özel kampanya seni bekliyor.');
   const[status,setStatus]=useState('');
   const[sending,setSending]=useState(false);
@@ -648,7 +648,7 @@ function NotificationAdmin({db,commit}){
   ];
 
   async function sendPush(){
-    if(!title.trim()||!body.trim())return alert('Başlık ve mesaj zorunlu.');
+    if(!body.trim())return alert('Mesaj zorunlu.');
     setSending(true);
     setStatus('Gönderiliyor...');
     const result=await dispatchPush(db,commit,{title,body});
@@ -667,7 +667,7 @@ function NotificationAdmin({db,commit}){
         <div><span>BİLDİRİM</span><h3>Kurulu cihazlara gönder</h3></div>
         <span className="deviceCountBadge"><Smartphone size={14}/> {devices.length} cihaz</span>
       </div>
-      <p className="pushHint">Uygulamayı yükleyip bildirim izni veren üyelere anlık push gönderilir. iPhone&apos;da ana ekrana eklenmiş PWA ve iOS 16.4+ gerekir; eski tokenlar gönderimde otomatik temizlenir.</p>
+      <p className="pushHint">Uygulamayı yükleyip bildirim izni veren üyelere anlık push gönderilir. Başlıkta &quot;Liberte Club&quot; yazma; iOS&apos;ta tekrarlı görünür. Kampanya başlığı kullan (ör: Smash zamanı).</p>
 
       <div className="pushPreview">
         <span>Önizleme</span>
@@ -676,7 +676,7 @@ function NotificationAdmin({db,commit}){
       </div>
 
       <label>Başlık</label>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Bildirim başlığı"/>
+      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Örn: Smash zamanı 🍔"/>
 
       <label>Mesaj</label>
       <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Bildirim metni" rows={3}/>

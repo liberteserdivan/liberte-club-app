@@ -37,12 +37,31 @@ const messaging = firebase.messaging();
 const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
+
+function formatPushNotification(title, body) {
+  const cleanTitle = String(title || '').trim();
+  const cleanBody = String(body || '').trim();
+  const isAppName = (value) => {
+    const normalized = value.toLowerCase();
+    return normalized === 'liberte club' || normalized === 'liberte';
+  };
+  if ((isAppName(cleanTitle) || !cleanTitle) && cleanBody) {
+    return { title: cleanBody, body: '' };
+  }
+  return {
+    title: cleanTitle || 'Liberte Club',
+    body: cleanBody || 'Yeni bir bildirimin var.'
+  };
+}
+
 function showLiberteNotification(payload) {
   const data = payload.data || {};
-  const title = payload.notification?.title || data.title || 'Liberte Club';
-  const body = payload.notification?.body || data.body || 'Yeni bir bildirimin var.';
-  return self.registration.showNotification(title, {
-    body,
+  const formatted = formatPushNotification(
+    payload.notification?.title || data.title,
+    payload.notification?.body || data.body
+  );
+  return self.registration.showNotification(formatted.title, {
+    body: formatted.body || undefined,
     icon: PUSH_ICON,
     badge: PUSH_BADGE,
     tag: 'liberte-club-push',
