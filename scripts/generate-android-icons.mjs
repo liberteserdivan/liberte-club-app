@@ -2,10 +2,10 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { BRAND_FOREST_RGB } from './iconBrand.mjs';
+import { BRAND_CREAM_RGB } from './iconBrand.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const source = join(root, 'public', 'liberte-logo.png');
+const source = join(root, 'public', 'liberte-logo-source.png');
 const resRoot = join(root, 'android', 'app', 'src', 'main', 'res');
 
 const DENSITIES = [
@@ -16,13 +16,12 @@ const DENSITIES = [
   { folder: 'mipmap-xxxhdpi', size: 192, foreground: 432 }
 ];
 
-// Şeffaf logo + yeşil zeminli kare ikon
 async function buildSquareIcon(size, dest) {
-  const padding = Math.max(2, Math.round(size * 0.11));
+  const padding = Math.max(2, Math.round(size * 0.08));
   const inner = size - padding * 2;
 
   const logoBuf = await sharp(source)
-    .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .resize(inner, inner, { fit: 'contain', background: BRAND_CREAM_RGB })
     .png()
     .toBuffer();
 
@@ -31,7 +30,7 @@ async function buildSquareIcon(size, dest) {
       width: size,
       height: size,
       channels: 3,
-      background: BRAND_FOREST_RGB
+      background: BRAND_CREAM_RGB
     }
   })
     .composite([{ input: logoBuf, gravity: 'center' }])
@@ -39,11 +38,10 @@ async function buildSquareIcon(size, dest) {
     .toFile(dest);
 }
 
-// Adaptive icon ön planı
 async function buildForeground(size, dest) {
-  const logoSize = Math.round(size * 0.66);
+  const logoSize = Math.round(size * 0.62);
   const logoBuf = await sharp(source)
-    .resize(logoSize, logoSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .resize(logoSize, logoSize, { fit: 'contain', background: BRAND_CREAM_RGB })
     .png()
     .toBuffer();
 
