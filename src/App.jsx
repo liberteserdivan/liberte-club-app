@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { applyBirthdayReward, cssVars, isWheelUnlimited, load, localDayKey } from './lib/db.js';
+import { applyBirthdayReward, cssVars, load } from './lib/db.js';
 import { readSession } from './lib/session.js';
 import { FIREBASE_SW_URL, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { getInitialSplashPhase, markAppSplashSeen } from './lib/appSplash.js';
@@ -14,6 +14,7 @@ import MenuPage from './pages/MenuPage.jsx';
 import QrPage from './pages/QrPage.jsx';
 import WheelPage from './pages/WheelPage.jsx';
 import CampaignPage from './pages/CampaignPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 
 export default function App() {
@@ -88,8 +89,6 @@ export default function App() {
     );
   } else {
     const card = db.loyalty[customer.id] || {};
-    const wheelDone = !isWheelUnlimited(db, customer)
-      && !!(db.wheelSpins || []).find((x) => x.customerId === customer.id && x.day === localDayKey());
 
     mainContent = (
       <main className="app" style={theme}>
@@ -99,11 +98,23 @@ export default function App() {
           {tab === 'qr' && <QrPage db={db} customer={customer} card={card} />}
           {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}
           {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
+          {tab === 'profile' && (
+            <ProfilePage
+              db={db}
+              customer={customer}
+              card={card}
+              commit={commit}
+              setSession={setSession}
+              setTab={setTab}
+              sync={sync}
+              refreshRemote={refreshRemote}
+            />
+          )}
           {tab === 'admin' && customer.isAdmin && <AdminPage db={db} commit={commit} />}
         </div>
 
         <OfflineNotice />
-        <Nav tab={tab} setTab={setTab} admin={customer.isAdmin} wheelDone={wheelDone} />
+        <Nav tab={tab} setTab={setTab} />
       </main>
     );
   }

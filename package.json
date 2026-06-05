@@ -5,19 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-firebase-sw.mjs && vite",
-    "build": "node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-notification-badge.mjs && vite build",
+    "build": "node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-notification-badge.mjs && node scripts/generate-legal-pages.mjs && vite build",
     "preview": "vite preview",
     "optimize-cup": "node scripts/optimize-cup-glb.mjs Liberte_Cup_Luwai.glb Liberte_Cup_Luwai_App.glb",
     "import-luwai-cup": "node scripts/import-luwai-cup.mjs",
     "import-meshy-cup": "node scripts/import-meshy-cup.mjs && node scripts/optimize-cup-glb.mjs Liberte_Cup_Meshy.glb",
     "deploy:check": "npm run build",
-    "cap:sync": "npm run build && npx cap sync android",
-    "cap:android": "npm run cap:sync && cd android && gradlew.bat assembleDebug"
+    "icons:android": "node scripts/generate-android-icons.mjs",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:sync:android": "npm run build && npx cap sync android",
+    "cap:sync:ios": "npm run build && npx cap sync ios",
+    "cap:android": "npm run cap:sync:android && cd android && gradlew.bat assembleDebug",
+    "cap:ios": "npm run cap:sync:ios && npx cap open ios",
+    "release:android": "npm run build && node scripts/generate-android-icons.mjs && npx cap sync android && cd android && gradlew.bat bundleRelease"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
+    "@capacitor/ios": "^8.4.0",
     "@capacitor/splash-screen": "^8.0.1",
     "@neondatabase/serverless": "^1.1.0",
     "firebase": "^11.0.0",

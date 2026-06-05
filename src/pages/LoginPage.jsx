@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, Mail, ShieldCheck } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
+import LegalSheet from '../components/LegalSheet.jsx';
 import { makeDevAuthCode, saveDevAuthCode, useLocalAuth, verifyDevAuthCode } from '../lib/devAuth.js';
 import { clearAuthPending, loadAuthPending, saveAuthPending } from '../lib/authPending.js';
 import {
@@ -28,6 +29,7 @@ export default function Login({ db, commit, setSession }) {
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState(registerPending ? 'Doğrulama kodunu gir.' : '');
   const [pending, setPending] = useState(registerPending);
+  const [legalType, setLegalType] = useState('');
   const [notice, setNotice] = useState(null);
 
   // Kod adımı bilgilerini oturumda tut
@@ -365,9 +367,22 @@ export default function Login({ db, commit, setSession }) {
             <LogIn/> {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
           </button>
         ) : (
-          <button disabled={loading} onClick={sendRegisterCode}>
-            <Mail/> {loading ? 'Gönderiliyor...' : 'Mail Kod Gönder'}
-          </button>
+          <>
+            <p className="loginLegal">
+              Kayıt olarak{' '}
+              <button type="button" className="loginLegalLink" onClick={() => setLegalType('privacy')}>
+                Gizlilik Politikası
+              </button>
+              {' '}ve{' '}
+              <button type="button" className="loginLegalLink" onClick={() => setLegalType('terms')}>
+                Kullanım Şartları
+              </button>
+              {' '}nı kabul etmiş olursun.
+            </p>
+            <button disabled={loading} onClick={sendRegisterCode}>
+              <Mail/> {loading ? 'Gönderiliyor...' : 'Mail Kod Gönder'}
+            </button>
+          </>
         )}
 
         {authMode === 'login' && <p className="loginHint">Henüz hesabın yoksa Kayıt Ol sekmesine geç.</p>}
@@ -388,6 +403,8 @@ export default function Login({ db, commit, setSession }) {
         {info && <p className="info">{info}</p>}
       </>}
     </div>
+
+    {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
 
     {notice && <div className="noticeBackdrop" onClick={() => setNotice(null)}>
       <div className={`noticeModal ${notice.type}`} onClick={(e) => e.stopPropagation()}>

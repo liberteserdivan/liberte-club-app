@@ -1,0 +1,8 @@
+Firebase Android push için (isteğe bağlı):
+
+1. Firebase Console → Project Settings → Your apps → Add Android
+2. Package name: cafe.liberte.app
+3. google-services.json indir → bu klasöre google-services.json olarak kaydet
+4. npm run release:android ile yeniden derle
+
+google-services.json olmadan uygulama çalışır; native FCM entegrasyonu devreye girmez.

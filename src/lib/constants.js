@@ -16,6 +16,10 @@ export const googleReviewUrl = 'https://g.page/r/CY8uWX2mwBgIEBM/review';
 export const instagramUrl = 'https://www.instagram.com/gastroliberte';
 export const yemeksepetiUrl = 'https://www.yemeksepeti.com/restaurant/x9yt/liberte-gastro-cafe';
 export const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=Liberte+Gastro+Cafe+Serdivan+Sakarya';
+export const phoneUrl = 'tel:+905058665406';
+export const supportEmail = 'liberteserdivan@gmail.com';
+export const privacyPolicyUrl = 'https://app.liberte.cafe/gizlilik';
+export const termsUrl = 'https://app.liberte.cafe/kullanim-sartlari';
 
 // Varsayılan marka logosu (public klasörü)
 export const DEFAULT_LOGO = '/liberte-logo.png?v=7';

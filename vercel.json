@@ -2,6 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/gizlilik", "destination": "/gizlilik.html" },
+    { "source": "/kullanim-sartlari", "destination": "/kullanim-sartlari.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

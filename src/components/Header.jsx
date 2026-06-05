@@ -1,8 +1,8 @@
 import { LogOut, RefreshCw } from 'lucide-react';
 import Brand from './Brand.jsx';
 
-// Üst bar: logo, senkron ve çıkış
-export default function Header({ db, customer, setSession, sync, refreshRemote }) {
+// Üst bar: logo ve senkron (çıkış profil sekmesinde)
+export default function Header({ db, customer, setSession, sync, refreshRemote, showLogout = true }) {
   return <header className="appHeader">
     <div className="head">
       <Brand db={db} header />
@@ -17,9 +17,11 @@ export default function Header({ db, customer, setSession, sync, refreshRemote }
           <RefreshCw size={18} />
         </button>
       )}
-      <button type="button" className="logout" onClick={() => setSession(null)}>
-        <LogOut /><span>Çıkış</span>
-      </button>
+      {showLogout && setSession && (
+        <button type="button" className="logout" onClick={() => setSession(null)}>
+          <LogOut /><span>Çıkış</span>
+        </button>
+      )}
     </div>
   </header>;
 }

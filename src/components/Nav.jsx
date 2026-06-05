@@ -1,22 +1,20 @@
 import { createPortal } from 'react-dom';
-import { Gift, Home, Menu as MenuIcon, ShieldCheck, Sparkles } from 'lucide-react';
+import { Gift, Home, Menu as MenuIcon, User } from 'lucide-react';
 import NavQrIcon from './NavQrIcon.jsx';
 
-// Alt navigasyon — viewport altına sabitlenir
-export default function Nav({ tab, setTab, admin, wheelDone }) {
+// Alt menü — App Store uyumlu 5 sekme
+export default function Nav({ tab, setTab }) {
   const items = [
     ['home', Home, 'Ana Sayfa'],
     ['menu', MenuIcon, 'Menü'],
-    ['qr', NavQrIcon, 'QR'],
-    ['wheel', Sparkles, 'Çark'],
-    ['campaign', Gift, 'Fırsat']
+    ['qr', NavQrIcon, 'Kartım'],
+    ['campaign', Gift, 'Kampanyalar'],
+    ['profile', User, 'Profil']
   ];
-
-  if (admin) items.push(['admin', ShieldCheck, 'Admin']);
 
   const bar = (
     <nav
-      className={`liberteNav${admin ? ' has-admin' : ''}`}
+      className="liberteNav"
       style={{ '--nav-cols': items.length }}
       aria-label="Ana menü"
     >
@@ -26,8 +24,7 @@ export default function Nav({ tab, setTab, admin, wheelDone }) {
           key={id}
           className={[
             tab === id ? 'active' : '',
-            id === 'qr' ? 'nav-qr' : '',
-            id === 'wheel' && wheelDone ? 'wheel-done' : ''
+            id === 'qr' ? 'nav-qr' : ''
           ].filter(Boolean).join(' ')}
           onClick={() => setTab(id)}
           aria-label={label}

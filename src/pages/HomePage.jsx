@@ -7,6 +7,7 @@ import { getGreeting, levelByStamps, stampCardProgress, countTotalStamps, countT
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { DailyCampaignCard, InstallAppCard, PushWelcomeBanner } from '../components/Cards.jsx';
 import DailyTasksStrip from '../components/DailyTasksStrip.jsx';
+import CafeContactBar from '../components/CafeContactBar.jsx';
 
 // Ana sayfa — özet kart ve keşif; tüm içerik tek ekranda değil
 export default function HomePage({
@@ -78,6 +79,11 @@ export default function HomePage({
       </div>
 
       <DailyCampaignCard db={db} setTab={setTab} />
+
+      <div className="homeSection">
+        <p className="homeSectionLabel">Bize ulaş</p>
+        <CafeContactBar />
+      </div>
 
       <div className="homeSection">
         <div className="homeSubHead"><h3>Öne çıkanlar</h3></div>

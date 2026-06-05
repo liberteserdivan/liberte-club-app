@@ -4861,3 +4861,208 @@ header{
     bottom:0!important;
   }
 }
+
+/* Profil sekmesi */
+.profilePage{
+  padding-bottom:120px;
+}
+.profileHero{
+  display:flex;
+  gap:16px;
+  align-items:center;
+  margin-bottom:14px;
+}
+.profileAvatar{
+  width:56px;
+  height:56px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  background:#E1F6EB;
+  color:#126047;
+  flex-shrink:0;
+}
+.profileHero span{
+  display:block;
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.08em;
+  color:#6B7A73;
+}
+.profileHero h2{
+  margin:4px 0 2px;
+  font-size:1.35rem;
+}
+.profileHero p{
+  margin:0;
+  color:#4E5F58;
+  font-size:.92rem;
+}
+.profileHero em{
+  display:block;
+  margin-top:6px;
+  font-style:normal;
+  font-size:.88rem;
+  color:#126047;
+  font-weight:750;
+}
+.profileSection{
+  margin-bottom:14px;
+  display:grid;
+  gap:8px;
+}
+.profileSection > span{
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.08em;
+  color:#6B7A73;
+}
+.profileAction{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  justify-content:flex-start;
+  padding:14px 16px;
+  border-radius:16px;
+  background:#F3F8F5;
+  color:#0B2F26;
+  font-weight:800;
+  box-shadow:none;
+}
+.profileAction.ghost{
+  background:transparent;
+  border:1px solid rgba(11,47,38,.1);
+}
+.profileAction.danger{
+  background:#FFF1F0;
+  color:#B42318;
+}
+.profileMessage{
+  margin:0;
+  color:#B42318;
+  font-size:.9rem;
+}
+.profileHint{
+  margin:4px 0 0;
+  font-size:.85rem;
+  color:#6B7A73;
+}
+
+/* İletişim çubuğu */
+.cafeContactBar{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.cafeContactBar--compact{
+  gap:6px;
+}
+.cafeContactBtn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-height:72px;
+  padding:10px 8px;
+  border-radius:18px;
+  background:#F3F8F5;
+  color:#126047;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:850;
+  border:1px solid rgba(11,47,38,.06);
+}
+.cafeContactBtn:active{
+  transform:scale(.98);
+}
+
+/* Yasal metin paneli */
+.legalSheetBackdrop{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  background:rgba(6,20,16,.45);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding:0 12px calc(12px + env(safe-area-inset-bottom));
+}
+.legalSheet{
+  width:min(480px,100%);
+  max-height:min(88vh,720px);
+  background:#fff;
+  border-radius:24px 24px 20px 20px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.22);
+}
+.legalSheetHead{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:18px 18px 12px;
+  border-bottom:1px solid rgba(11,47,38,.08);
+}
+.legalSheetHead span{
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.08em;
+  color:#6B7A73;
+}
+.legalSheetHead h2{
+  margin:4px 0 2px;
+  font-size:1.2rem;
+}
+.legalSheetHead p{
+  margin:0;
+  font-size:.85rem;
+  color:#6B7A73;
+}
+.legalSheetClose{
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:#F3F8F5;
+  color:#0B2F26;
+  flex-shrink:0;
+}
+.legalSheetBody{
+  overflow:auto;
+  padding:8px 18px 22px;
+}
+.legalSheetBody section{
+  margin-bottom:18px;
+}
+.legalSheetBody h3{
+  margin:0 0 6px;
+  font-size:1rem;
+}
+.legalSheetBody p{
+  margin:0;
+  color:#2A3D36;
+  line-height:1.55;
+  font-size:.94rem;
+}
+
+/* Kayıt yasal metin linkleri */
+.loginLegal{
+  margin:0 0 12px;
+  font-size:.86rem;
+  line-height:1.45;
+  color:#5A6B64;
+  text-align:center;
+}
+.loginLegalLink{
+  display:inline;
+  padding:0;
+  background:none;
+  border:none;
+  color:#126047;
+  font-weight:850;
+  text-decoration:underline;
+  box-shadow:none;
+  min-height:0;
+}
