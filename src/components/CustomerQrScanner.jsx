@@ -29,10 +29,12 @@ function findCustomerFromQr(db, rawText) {
 // Kasiyer — müşteri QR tarama ve damga işlemleri
 export default function CustomerQrScanner({ db, commit }) {
   const readerId = useId().replace(/:/g, '');
+  const hostRef = useRef(null);
   const scannerRef = useRef(null);
   const startingRef = useRef(false);
 
   const [active, setActive] = useState(false);
+  const [scanRequested, setScanRequested] = useState(false);
   const [found, setFound] = useState(null);
   const [msg, setMsg] = useState('');
   const [success, setSuccess] = useState(false);
@@ -72,45 +74,77 @@ export default function CustomerQrScanner({ db, commit }) {
     }
   }, [db, stopScanner]);
 
-  const startScanner = useCallback(async () => {
+  // Kamera alanı DOM'da hazır olduktan sonra tarayıcıyı başlat
+  const requestScan = useCallback(() => {
     if (startingRef.current) return;
-    startingRef.current = true;
     setFound(null);
     setSuccess(false);
     setMsg('Kamera açılıyor...');
     setActive(true);
+    setScanRequested(true);
+  }, []);
 
-    try {
-      await stopScanner();
-      const host = document.getElementById(readerId);
-      if (!host) throw new Error('Kamera alanı hazır değil');
+  useEffect(() => {
+    if (!scanRequested) return undefined;
 
-      const scanner = new Html5Qrcode(readerId);
-      scannerRef.current = scanner;
+    let cancelled = false;
 
-      const cameras = await Html5Qrcode.getCameras();
-      const backCam = cameras.find((c) => /back|rear|environment|arka/i.test(c.label));
-      const cameraId = backCam?.id || cameras[0]?.id;
+    async function bootScanner() {
+      if (startingRef.current) return;
+      startingRef.current = true;
 
-      const qrbox = (viewWidth, viewHeight) => {
-        const size = Math.floor(Math.min(viewWidth, viewHeight) * 0.72);
-        return { width: size, height: size };
-      };
+      try {
+        // Önceki oturum varsa kapat; ilk açılışta active durumunu bozma
+        if (scannerRef.current) {
+          await stopScanner();
+          if (cancelled) return;
+        }
 
-      await scanner.start(
-        cameraId || { facingMode: 'environment' },
-        { fps: 10, qrbox, aspectRatio: 1 },
-        onScanSuccess
-      );
+        const host = hostRef.current;
+        if (!host) {
+          throw new Error('Kamera alanı hazır değil');
+        }
 
-      setMsg('Müşteri kartını çerçeveye hizala.');
-    } catch (error) {
-      setMsg(`Kamera açılamadı: ${error?.message || 'izin verilmedi'}`);
-      await stopScanner();
-    } finally {
-      startingRef.current = false;
+        const scanner = new Html5Qrcode(readerId);
+        scannerRef.current = scanner;
+
+        const cameras = await Html5Qrcode.getCameras();
+        if (cancelled) return;
+
+        const backCam = cameras.find((c) => /back|rear|environment|arka/i.test(c.label));
+        const cameraId = backCam?.id || cameras[0]?.id;
+
+        const qrbox = (viewWidth, viewHeight) => {
+          const size = Math.floor(Math.min(viewWidth, viewHeight) * 0.72);
+          return { width: size, height: size };
+        };
+
+        await scanner.start(
+          cameraId || { facingMode: 'environment' },
+          { fps: 10, qrbox, aspectRatio: 1 },
+          onScanSuccess
+        );
+
+        if (!cancelled) {
+          setMsg('Müşteri kartını çerçeveye hizala.');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMsg(`Kamera açılamadı: ${error?.message || 'izin verilmedi'}`);
+          await stopScanner();
+        }
+      } finally {
+        startingRef.current = false;
+        if (!cancelled) setScanRequested(false);
+      }
     }
-  }, [readerId, onScanSuccess, stopScanner]);
+
+    bootScanner();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scanRequested, readerId, onScanSuccess, stopScanner]);
 
   useEffect(() => () => {
     stopScanner();
@@ -121,7 +155,7 @@ export default function CustomerQrScanner({ db, commit }) {
     setFound(null);
     setSuccess(false);
     setMsg('');
-    startScanner();
+    requestScan();
   }
 
   function addCategory(category) {
@@ -158,7 +192,7 @@ export default function CustomerQrScanner({ db, commit }) {
       title="Müşteri QR Tara"
       subtitle="Müşterinin kartındaki QR kodu okut, damga veya ikram işle."
       heroSlot={!active && !found ? (
-        <button type="button" className="goldBtn scanStartBtn scanStartBtn--hero" onClick={startScanner}>
+        <button type="button" className="goldBtn scanStartBtn scanStartBtn--hero" onClick={requestScan}>
           <ScanLine size={18} /> Kamerayı Aç
         </button>
       ) : null}
@@ -176,9 +210,9 @@ export default function CustomerQrScanner({ db, commit }) {
           )}
         </div>
 
-        {active && (
-          <div className="scannerFrame">
-            <div id={readerId} className="qrReaderHost" />
+        <div className={`scannerFrame${active ? '' : ' scannerFrame--hidden'}`}>
+          <div ref={hostRef} id={readerId} className="qrReaderHost" />
+          {active && (
             <div className="scannerOverlay" aria-hidden="true">
               <span className="scannerCorner tl" />
               <span className="scannerCorner tr" />
@@ -186,8 +220,8 @@ export default function CustomerQrScanner({ db, commit }) {
               <span className="scannerCorner br" />
               <span className="scannerLine" />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <p className={`scanMsg${success ? ' isSuccess' : ''}`}>
           {msg || 'Müşteri QR gösterir → okut → kategori damgası veya ikram uygula.'}
