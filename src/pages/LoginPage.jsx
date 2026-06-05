@@ -28,6 +28,7 @@ import {
 
 export default function Login({ db, commit, setSession }) {
   const [authMode, setAuthMode] = useState('login');
+  const [registerStep, setRegisterStep] = useState('form');
   const [forgotStep, setForgotStep] = useState('phone');
   const [phone, setPhone] = useState(() => localStorage.getItem('liberteLastPhone') || '');
   const [name, setName] = useState('');
@@ -37,6 +38,9 @@ export default function Login({ db, commit, setSession }) {
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [resetCode, setResetCode] = useState('');
+  const [resetCode2, setResetCode2] = useState('');
+  const [registerCode, setRegisterCode] = useState('');
+  const [registerCode2, setRegisterCode2] = useState('');
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState('');
   const [legalType, setLegalType] = useState('');
@@ -162,20 +166,33 @@ export default function Login({ db, commit, setSession }) {
     }
   }
 
-  async function registerAccount() {
+  function readRegisterFields() {
     const ph = readPhone();
-    if (!ph) return;
+    if (!ph) return null;
 
     const nm = name.trim();
     const em = email.trim().toLowerCase();
     if (!validEmail(em)) {
       notify('Geçerli bir e-posta adresi gir.');
-      return;
+      return null;
     }
     if (nm.split(' ').filter(Boolean).length < 2) {
       notify('Kayıt için isim soyisim zorunlu.');
-      return;
+      return null;
     }
+
+    return {
+      ph,
+      nm,
+      em,
+      birthDate,
+      referralCode: referralCode.trim().toUpperCase().replace(/\s/g, '')
+    };
+  }
+
+  async function sendRegisterCodes() {
+    const fields = readRegisterFields();
+    if (!fields) return;
 
     const pinValue = readPins(true);
     if (!pinValue) return;
@@ -184,15 +201,60 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
 
     try {
-      const fields = {
-        ph,
-        nm,
-        em,
-        birthDate,
-        referralCode: referralCode.trim().toUpperCase().replace(/\s/g, '')
-      };
-
       if (useLocalAuth()) {
+        const devCode = makeDevAuthCode();
+        const devCode2 = makeDevAuthCode();
+        saveDevAuthCode(fields.ph, fields.em, devCode, devCode2);
+        setRegisterStep('verify');
+        setInfo(`Geliştirme modu — Kod 1: ${devCode}, Kod 2: ${devCode2}`);
+        return;
+      }
+
+      const { response, data } = await apiJson('/api/auth/register-complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'send-code',
+          phone: fields.ph,
+          name: fields.nm,
+          email: fields.em
+        })
+      });
+
+      if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
+
+      setRegisterStep('verify');
+      if (data.testCode && data.testCode2) {
+        setInfo(`Test kodları — Kod 1: ${data.testCode}, Kod 2: ${data.testCode2}`);
+      } else {
+        setInfo(`İki doğrulama kodu ${data.emailMasked || maskEmail(fields.em)} adresine gönderildi.`);
+      }
+    } catch (e) {
+      notify(e.message || 'Kod gönderilemedi');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function registerAccount() {
+    const fields = readRegisterFields();
+    if (!fields) return;
+
+    const pinValue = readPins(true);
+    if (!pinValue) return;
+
+    const code = registerCode.replace(/\D/g, '');
+    const code2 = registerCode2.replace(/\D/g, '');
+    if (code.length !== 6 || code2.length !== 6) {
+      notify('E-postadaki iki doğrulama kodunu da gir.');
+      return;
+    }
+
+    setLoading(true);
+    setInfo('');
+
+    try {
+      if (useLocalAuth()) {
+        verifyDevAuthCode(fields.ph, fields.em, code, code2);
         await createCustomerLocal(fields, pinValue);
         return;
       }
@@ -200,13 +262,16 @@ export default function Login({ db, commit, setSession }) {
       const { response, data } = await apiJson('/api/auth/register-complete', {
         method: 'POST',
         body: JSON.stringify({
-          phone: ph,
-          name: nm,
-          email: em,
-          birthDate,
+          action: 'complete',
+          phone: fields.ph,
+          name: fields.nm,
+          email: fields.em,
+          birthDate: fields.birthDate,
           referralCode: fields.referralCode,
           pin: pinValue,
           pinConfirm: pinValue,
+          code,
+          code2,
           deviceId: getDeviceId()
         })
       });
@@ -237,9 +302,10 @@ export default function Login({ db, commit, setSession }) {
     try {
       if (useLocalAuth()) {
         const devCode = makeDevAuthCode();
-        saveDevAuthCode(ph, customer.email, devCode);
+        const devCode2 = makeDevAuthCode();
+        saveDevAuthCode(ph, customer.email, devCode, devCode2);
         setForgotStep('reset');
-        setInfo(`Geliştirme modu — sıfırlama kodu: ${devCode}`);
+        setInfo(`Geliştirme modu — Kod 1: ${devCode}, Kod 2: ${devCode2}`);
         return;
       }
 
@@ -251,10 +317,10 @@ export default function Login({ db, commit, setSession }) {
       if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
 
       setForgotStep('reset');
-      if (data.testCode) {
-        setInfo(`Test kodu: ${data.testCode}`);
+      if (data.testCode && data.testCode2) {
+        setInfo(`Test kodları — Kod 1: ${data.testCode}, Kod 2: ${data.testCode2}`);
       } else {
-        setInfo(`Kod ${data.emailMasked || maskEmail(customer.email)} adresine gönderildi.`);
+        setInfo(`İki doğrulama kodu ${data.emailMasked || maskEmail(customer.email)} adresine gönderildi.`);
       }
     } catch (e) {
       notify(e.message || 'Kod gönderilemedi');
@@ -269,8 +335,9 @@ export default function Login({ db, commit, setSession }) {
     if (!ph || !pinValue) return;
 
     const code = resetCode.replace(/\D/g, '');
-    if (code.length !== 6) {
-      notify('6 haneli doğrulama kodunu gir.');
+    const code2 = resetCode2.replace(/\D/g, '');
+    if (code.length !== 6 || code2.length !== 6) {
+      notify('E-postadaki iki doğrulama kodunu da gir.');
       return;
     }
 
@@ -278,7 +345,7 @@ export default function Login({ db, commit, setSession }) {
 
     try {
       if (useLocalAuth()) {
-        verifyDevAuthCode(ph, email, code);
+        verifyDevAuthCode(ph, email, code, code2);
         await registerDevPin(ph, pinValue);
         setInfo('Yeni PIN kaydedildi. Giriş yapabilirsin.');
         switchMode('login');
@@ -292,6 +359,7 @@ export default function Login({ db, commit, setSession }) {
           phone: ph,
           email,
           code,
+          code2,
           pin: pinValue,
           pinConfirm: pinValue
         })
@@ -310,10 +378,14 @@ export default function Login({ db, commit, setSession }) {
 
   function switchMode(mode) {
     setAuthMode(mode);
+    setRegisterStep('form');
     setForgotStep('phone');
     setPin('');
     setPinConfirm('');
     setResetCode('');
+    setResetCode2('');
+    setRegisterCode('');
+    setRegisterCode2('');
     setInfo('');
   }
 
@@ -333,8 +405,9 @@ export default function Login({ db, commit, setSession }) {
           </h1>
           <p>
             {authMode === 'login' && 'Telefon numaran ve kişisel PIN ile giriş yap.'}
-            {authMode === 'register' && '4 veya 6 haneli PIN belirle; sonraki girişlerde telefon + PIN kullan.'}
-            {authMode === 'forgot' && 'E-posta doğrulaması ile yeni PIN belirle.'}
+            {authMode === 'register' && registerStep === 'form' && 'Bilgilerini gir; e-postana iki doğrulama kodu gönderilir.'}
+            {authMode === 'register' && registerStep === 'verify' && 'E-postadaki iki kodu gir ve kaydı tamamla.'}
+            {authMode === 'forgot' && 'E-postana gelen iki kod ile yeni PIN belirle.'}
           </p>
 
           {authMode !== 'forgot' && (
@@ -369,7 +442,7 @@ export default function Login({ db, commit, setSession }) {
             </>
           )}
 
-          {authMode === 'register' && (
+          {authMode === 'register' && registerStep === 'form' && (
             <>
               <label>Telefon</label>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel" />
@@ -379,7 +452,7 @@ export default function Login({ db, commit, setSession }) {
 
               <label>E-posta <em>*</em></label>
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email" />
-              <p className="loginHint mini">PIN sıfırlama ve hesap güvenliği için gereklidir.</p>
+              <p className="loginHint mini">İki doğrulama kodu bu adrese gönderilir.</p>
 
               <label>Doğum Tarihi</label>
               <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date" />
@@ -415,9 +488,25 @@ export default function Login({ db, commit, setSession }) {
                 {' '}nı kabul etmiş olursun.
               </p>
 
-              <button disabled={loading} onClick={registerAccount}>
-                <UserPlus /> {loading ? 'Kaydediliyor...' : 'Kayıt Ol'}
+              <button disabled={loading} onClick={sendRegisterCodes}>
+                <ShieldCheck /> {loading ? 'Gönderiliyor...' : 'Doğrulama Kodlarını Gönder'}
               </button>
+            </>
+          )}
+
+          {authMode === 'register' && registerStep === 'verify' && (
+            <>
+              <label>Doğrulama kodu 1</label>
+              <input value={registerCode} maxLength={6} onChange={(e) => setRegisterCode(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
+
+              <label>Doğrulama kodu 2</label>
+              <input value={registerCode2} maxLength={6} onChange={(e) => setRegisterCode2(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
+
+              <button disabled={loading} onClick={registerAccount}>
+                <UserPlus /> {loading ? 'Kaydediliyor...' : 'Kaydı Tamamla'}
+              </button>
+
+              <button type="button" className="ghost" onClick={() => setRegisterStep('form')}>Kodları yeniden gönder</button>
             </>
           )}
 
@@ -427,7 +516,7 @@ export default function Login({ db, commit, setSession }) {
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Kayıtlı telefon numaran" inputMode="tel" />
 
               <button disabled={loading} onClick={sendForgotCode}>
-                <ShieldCheck /> {loading ? 'Gönderiliyor...' : 'Doğrulama Kodu Gönder'}
+                <ShieldCheck /> {loading ? 'Gönderiliyor...' : 'Doğrulama Kodlarını Gönder'}
               </button>
 
               <button type="button" className="ghost" onClick={() => switchMode('login')}>Girişe dön</button>
@@ -436,8 +525,11 @@ export default function Login({ db, commit, setSession }) {
 
           {authMode === 'forgot' && forgotStep === 'reset' && (
             <>
-              <label>E-posta kodu</label>
+              <label>Doğrulama kodu 1</label>
               <input value={resetCode} maxLength={6} onChange={(e) => setResetCode(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
+
+              <label>Doğrulama kodu 2</label>
+              <input value={resetCode2} maxLength={6} onChange={(e) => setResetCode2(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
 
               <label>Yeni PIN</label>
               <input

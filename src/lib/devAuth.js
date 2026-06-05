@@ -66,22 +66,26 @@ export function makeDevAuthCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-export function saveDevAuthCode(phone, email, code) {
+export function saveDevAuthCode(phone, email, code, code2) {
   sessionStorage.setItem(`${CODE_PREFIX}${normPhone(phone)}:${email}`, JSON.stringify({
     code,
+    code2,
     expires: Date.now() + 10 * 60 * 1000
   }));
 }
 
-export function verifyDevAuthCode(phone, email, code) {
+export function verifyDevAuthCode(phone, email, code, code2) {
   const raw = sessionStorage.getItem(`${CODE_PREFIX}${normPhone(phone)}:${email}`);
   if (!raw) throw new Error('Aktif kod bulunamadı. Yeni kod iste.');
 
   const entry = JSON.parse(raw);
-  const normalized = String(code || '').replace(/\D/g, '');
+  const first = String(code || '').replace(/\D/g, '');
+  const second = String(code2 || '').replace(/\D/g, '');
 
   if (Date.now() > entry.expires) throw new Error('Kod süresi doldu. Yeni kod iste.');
-  if (entry.code !== normalized) throw new Error('Kod hatalı');
+  if (entry.code !== first || entry.code2 !== second) {
+    throw new Error('Doğrulama kodlarından biri hatalı');
+  }
 
   sessionStorage.removeItem(`${CODE_PREFIX}${normPhone(phone)}:${email}`);
   return true;

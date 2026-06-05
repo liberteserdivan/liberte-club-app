@@ -3,6 +3,7 @@ import { applyCors, readBody } from '../lib/http.js';
 import { cleanPhone } from '../lib/phone.js';
 import { findCustomerByPhone } from '../lib/auth.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
+import { sendDualVerificationCodes } from '../lib/verificationMail.js';
 import {
   isValidPinFormat,
   normalizePin,
@@ -13,29 +14,12 @@ function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
 }
 
-function makeCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-function maskEmail(value = '') {
-  const em = String(value).trim().toLowerCase();
-  const [local, domain] = em.split('@');
-  if (!local || !domain) return em;
-  if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
-  return `${local[0]}***${local.slice(-1)}@${domain}`;
-}
-
-function isProduction() {
-  return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-}
-
-// PIN unutma — e-posta doğrulama kodu gönder
+// PIN unutma — iki doğrulama kodu e-posta ile gönder
 async function handleSendCode(req, res) {
   const body = readBody(req);
   const phone = cleanPhone(body.phone);
 
   if (phone.length < 10) return res.status(400).json({ error: 'Telefon eksik' });
-  if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
 
   const customer = await findCustomerByPhone(phone);
   if (!customer) {
@@ -47,67 +31,37 @@ async function handleSendCode(req, res) {
     return res.status(400).json({ error: 'Hesapta geçerli e-posta yok. Destek ile iletişime geç.' });
   }
 
-  const sql = neon(process.env.DATABASE_URL);
-  await sql`CREATE TABLE IF NOT EXISTS email_codes (
-    id bigserial PRIMARY KEY,
-    email text NOT NULL,
-    phone text NOT NULL,
-    code text NOT NULL,
-    attempts int NOT NULL DEFAULT 0,
-    used boolean NOT NULL DEFAULT false,
-    purpose text NOT NULL DEFAULT 'register',
-    expires_at timestamptz NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-  )`;
+  const sent = await sendDualVerificationCodes({
+    email,
+    phone,
+    purpose: 'pin_reset',
+    subject: 'Liberte PIN sıfırlama kodların',
+    greeting: `Merhaba ${customer.name},`
+  });
 
-  const code = makeCode();
-  await sql`INSERT INTO email_codes (email, phone, code, purpose, expires_at)
-    VALUES (${email}, ${phone}, ${code}, 'pin_reset', now() + interval '10 minutes')`;
-  await sql`UPDATE email_codes SET used=true
-    WHERE email=${email} AND phone=${phone} AND purpose='pin_reset' AND code<>${code} AND used=false`;
-
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || 'Liberte <noreply@liberte.cafe>';
-  const subject = 'Liberte PIN sıfırlama kodun';
-  const html = `<div style="font-family:Arial,sans-serif;background:#06110d;color:#fff;padding:28px;border-radius:18px"><h2 style="color:#b9f5d0">Liberte</h2><p>Merhaba ${customer.name},</p><p>PIN sıfırlama kodun:</p><div style="font-size:34px;letter-spacing:8px;font-weight:800;color:#b9f5d0;margin:18px 0">${code}</div><p>Bu kod 10 dakika geçerlidir.</p></div>`;
-
-  if (apiKey) {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ from, to: email, subject, html })
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) return res.status(500).json({ error: j.message || 'E-posta gönderilemedi' });
-    return res.status(200).json({ ok: true, emailMasked: maskEmail(email) });
-  }
-
-  if (isProduction()) {
-    return res.status(503).json({ error: 'E-posta servisi yapılandırılmadı.' });
-  }
+  if (!sent.ok) return res.status(sent.status || 500).json({ error: sent.error });
 
   return res.status(200).json({
     ok: true,
-    emailMasked: maskEmail(email),
-    testCode: code,
-    warning: 'Geliştirme modu — test kodu yalnızca dev ortamında.'
+    emailMasked: sent.emailMasked,
+    testCode: sent.testCode,
+    testCode2: sent.testCode2,
+    warning: sent.warning
   });
 }
 
-// PIN unutma — kod doğrula ve yeni PIN kaydet
+// PIN unutma — kodları doğrula ve yeni PIN kaydet
 async function handleReset(req, res) {
   const body = readBody(req);
   const phone = cleanPhone(body.phone);
   const email = String(body.email || '').trim().toLowerCase();
   const code = String(body.code || '').replace(/\D/g, '');
+  const code2 = String(body.code2 || '').replace(/\D/g, '');
   const pin = normalizePin(body.pin);
   const pinConfirm = normalizePin(body.pinConfirm);
 
   if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
-  if (phone.length < 10 || !email || code.length !== 6) {
+  if (phone.length < 10 || !email || code.length !== 6 || code2.length !== 6) {
     return res.status(400).json({ error: 'Bilgiler eksik' });
   }
   if (!isValidPinFormat(pin)) {
@@ -124,7 +78,13 @@ async function handleReset(req, res) {
   }
 
   const sql = neon(process.env.DATABASE_URL);
-  const verified = await verifyEmailCode(sql, { email, phone, code, purpose: 'pin_reset' });
+  const verified = await verifyEmailCode(sql, {
+    email,
+    phone,
+    code,
+    code2,
+    purpose: 'pin_reset'
+  });
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
 
   await saveCustomerPin(sql, phone, customer.id, pin);
