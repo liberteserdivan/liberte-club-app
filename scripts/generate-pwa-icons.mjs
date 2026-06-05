@@ -1,26 +1,26 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { BRAND_FOREST, BRAND_FOREST_RGB } from './iconBrand.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const source = join(root, 'public', 'liberte-logo.png');
-const white = { r: 255, g: 255, b: 255 };
 
-// Logo dosyasını beyaz zeminli kare ikona dönüştür — şeffaf alan kalmasın
-async function buildSquareIcon(size, dest, paddingRatio = 0.06) {
+// Logo dosyasını koyu yeşil zeminli kare ikona dönüştür
+async function buildSquareIcon(size, dest, paddingRatio = 0.1) {
   const padding = Math.max(2, Math.round(size * paddingRatio));
   const inner = size - padding * 2;
 
   await sharp(source)
-    .resize(inner, inner, { fit: 'contain', background: white })
+    .resize(inner, inner, { fit: 'contain', background: BRAND_FOREST_RGB })
     .extend({
       top: padding,
       bottom: padding,
       left: padding,
       right: padding,
-      background: white
+      background: BRAND_FOREST_RGB
     })
-    .flatten({ background: '#ffffff' })
+    .flatten({ background: BRAND_FOREST })
     .png({ compressionLevel: 9, force: true })
     .toFile(dest);
 }
@@ -37,7 +37,7 @@ async function main() {
   for (const [relPath, size] of targets) {
     const dest = join(root, relPath);
     await buildSquareIcon(size, dest);
-    console.log(`${relPath} (${size}px, beyaz zemin)`);
+    console.log(`${relPath} (${size}px, yeşil zemin)`);
   }
 }
 
