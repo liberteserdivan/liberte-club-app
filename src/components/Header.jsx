@@ -1,8 +1,8 @@
-import { LogOut, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import Brand from './Brand.jsx';
 
-// Üst bar: logo ve senkron (çıkış profil sekmesinde)
-export default function Header({ db, customer, setSession, sync, refreshRemote, showLogout = true }) {
+// Üst bar: logo ve senkron — çıkış yalnızca Profil > Hesap bölümünde
+export default function Header({ db, customer, sync, refreshRemote }) {
   return <header className="appHeader">
     <div className="head">
       <Brand db={db} header />
@@ -11,17 +11,12 @@ export default function Header({ db, customer, setSession, sync, refreshRemote, 
         <span>{customer.name} · {sync === 'cloud' ? 'Bulut senkron' : 'Yerel kayıt'}</span>
       </div>
     </div>
-    <div className="headActions">
-      {refreshRemote && (
+    {refreshRemote && (
+      <div className="headActions">
         <button type="button" className="syncBtn" onClick={() => refreshRemote(true)} title="Verileri yenile" aria-label="Verileri yenile">
           <RefreshCw size={18} />
         </button>
-      )}
-      {showLogout && setSession && (
-        <button type="button" className="logout" onClick={() => setSession(null)}>
-          <LogOut /><span>Çıkış</span>
-        </button>
-      )}
-    </div>
+      </div>
+    )}
   </header>;
 }

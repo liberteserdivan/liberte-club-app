@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User } from 'lucide-react';
-import Header from '../components/Header.jsx';
 import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
@@ -15,7 +14,7 @@ import { supportEmail } from '../lib/constants.js';
 
 // Profil — çıkış, hesap silme, yasal linkler
 export default function ProfilePage({
-  db, customer, card, commit, setSession, setTab, sync, refreshRemote, isAdmin = false
+  db, customer, card, commit, setSession, setTab, isAdmin = false
 }) {
   const [legalType, setLegalType] = useState('');
   const [message, setMessage] = useState('');
@@ -66,15 +65,6 @@ export default function ProfilePage({
   return (
     <PageShell
       variant="profile"
-      header={(
-        <Header
-          db={db}
-          customer={customer}
-          sync={sync}
-          refreshRemote={refreshRemote}
-          showLogout={false}
-        />
-      )}
       eyebrow="Liberte Club"
       title="Profilim"
       subtitle="Hesap ayarları, destek ve yasal bilgiler"

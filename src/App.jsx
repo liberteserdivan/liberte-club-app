@@ -122,7 +122,7 @@ export default function App() {
     mainContent = (
       <main className="app" style={theme}>
         <div className="appTabView" key={tab}>
-          {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={handleSetSession} sync={sync} refreshRemote={refreshRemote} commit={commit} />}
+          {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} commit={commit} />}
           {tab === 'menu' && <MenuPage db={db} />}
           {tab === 'qr' && (
             <QrPage
@@ -144,8 +144,6 @@ export default function App() {
               commit={commit}
               setSession={handleSetSession}
               setTab={setTab}
-              sync={sync}
-              refreshRemote={refreshRemote}
               isAdmin={isAdmin}
             />
           )}
