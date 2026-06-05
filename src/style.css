@@ -2250,6 +2250,49 @@ header{
   background:rgba(11,47,38,.04);
   border:1px solid rgba(11,47,38,.08);
 }
+.stampCategoryCardTop{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.stampCategoryCard--cashier{
+  gap:8px;
+  padding:10px 12px;
+}
+.stampCategoryGrid--cashier{
+  gap:8px;
+}
+.stampCategoryCard--cashier .stampCategoryCardPhoto{
+  width:44px;
+  height:44px;
+  flex-shrink:0;
+}
+.stampCategoryCard--cashier .stampCategoryCardBody span{
+  margin-top:3px;
+  font-size:12px;
+  line-height:1.35;
+}
+.stampCategoryCardActions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.stampCategoryMainBtn--compact{
+  flex:1 1 120px;
+  padding:10px 12px;
+  font-size:13px;
+}
+.stampCategoryRedeemBtn--compact,
+.stampCategoryUndoBtn--compact{
+  flex:0 1 auto;
+  padding:10px 12px;
+  font-size:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
 
 .stampCategoryCardPhoto{
   width:56px;
@@ -3161,6 +3204,76 @@ header{
   font-size:11px;
   font-weight:900;
   white-space:nowrap;
+}
+.scanRescanBtn--hero{
+  width:100%;
+  margin-top:8px;
+}
+.qrScanResultBody{
+  display:grid;
+  gap:12px;
+}
+.scanResultCard{
+  display:grid;
+  gap:12px;
+}
+.scanResultToast{
+  margin:0;
+  padding:10px 14px;
+  border-radius:14px;
+  background:#ecfdf5;
+  color:#1d6a55;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.4;
+}
+.scanResultEmail{
+  margin:-4px 0 0;
+  padding:0 4px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.scanResultStats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.scanResultStats div{
+  padding:12px 8px;
+  border-radius:16px;
+  background:rgba(11,47,38,.05);
+  border:1px solid rgba(11,47,38,.07);
+  text-align:center;
+}
+.scanResultStats span{
+  display:block;
+  color:#6b7772;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.scanResultStats b{
+  display:block;
+  margin-top:4px;
+  color:var(--forest);
+  font-size:18px;
+}
+.scanResultFooter{
+  display:flex;
+  justify-content:center;
+  padding-top:4px;
+}
+.scanResultFooter button{
+  min-height:42px;
+  padding:0 18px;
+  border-radius:14px;
+  font-size:13px;
+  font-weight:800;
 }
 
 /* —— Premium admin panel —— */

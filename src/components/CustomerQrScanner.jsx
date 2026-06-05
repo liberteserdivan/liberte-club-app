@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ScanLine } from 'lucide-react';
 import PageShell from './PageShell.jsx';
+import PageSection from './PageSection.jsx';
 import StampCategoryPanel from './StampCategoryPanel.jsx';
 import {
   STAMP_CATEGORIES,
@@ -184,89 +185,101 @@ export default function CustomerQrScanner({ db, commit }) {
   const categoryRewards = loyalty ? normalizeCategoryRewards(loyalty) : null;
   const totalStamps = categoryStamps ? countTotalStamps(categoryStamps) : 0;
   const totalRewards = categoryRewards ? countTotalRewards(categoryRewards) : 0;
+  const memberRef = found ? `LC-${String(found.id).slice(-6)}` : '';
 
   return (
     <PageShell
       variant="qr"
-      eyebrow="Kasiyer"
-      title="Müşteri QR Tara"
-      subtitle="Müşterinin kartındaki QR kodu okut, damga veya ikram işle."
-      heroSlot={!active && !found ? (
-        <button type="button" className="goldBtn scanStartBtn scanStartBtn--hero" onClick={requestScan}>
-          <ScanLine size={18} /> Kamerayı Aç
-        </button>
-      ) : null}
+      eyebrow={found ? 'Müşteri bulundu' : 'Kasiyer'}
+      title={found ? found.name : 'Müşteri QR Tara'}
+      subtitle={
+        found
+          ? `${memberRef} · ${found.phone}`
+          : 'Müşterinin kartındaki QR kodu okut, damga veya ikram işle.'
+      }
+      heroSlot={
+        found ? (
+          <button type="button" className="ghost scanRescanBtn scanRescanBtn--hero" onClick={rescan}>
+            <ScanLine size={16} /> Yeniden Tara
+          </button>
+        ) : !active ? (
+          <button type="button" className="goldBtn scanStartBtn scanStartBtn--hero" onClick={requestScan}>
+            <ScanLine size={18} /> Kamerayı Aç
+          </button>
+        ) : null
+      }
+      bodyClassName={found ? 'qrScanResultBody' : ''}
     >
-      <div className="card scanPanelCard">
-        <div className="scanPanelHead">
-          <div>
-            <span>OKUYUCU</span>
-            <h3>{found ? 'Müşteri seçildi' : 'Kamera'}</h3>
+      <div className={`scannerFrame${active ? '' : ' scannerFrame--hidden'}`}>
+        <div ref={hostRef} id={readerId} className="qrReaderHost" />
+        {active && (
+          <div className="scannerOverlay" aria-hidden="true">
+            <span className="scannerCorner tl" />
+            <span className="scannerCorner tr" />
+            <span className="scannerCorner bl" />
+            <span className="scannerCorner br" />
+            <span className="scannerLine" />
           </div>
-          {(active || found) && (
-            <button type="button" className="ghost scanRescanBtn" onClick={rescan}>
-              <ScanLine size={16} /> Yeniden Tara
-            </button>
-          )}
-        </div>
+        )}
+      </div>
 
-        <div className={`scannerFrame${active ? '' : ' scannerFrame--hidden'}`}>
-          <div ref={hostRef} id={readerId} className="qrReaderHost" />
-          {active && (
-            <div className="scannerOverlay" aria-hidden="true">
-              <span className="scannerCorner tl" />
-              <span className="scannerCorner tr" />
-              <span className="scannerCorner bl" />
-              <span className="scannerCorner br" />
-              <span className="scannerLine" />
+      {!found ? (
+        <div className="card scanPanelCard">
+          <div className="scanPanelHead">
+            <div>
+              <span>OKUYUCU</span>
+              <h3>Kamera</h3>
             </div>
-          )}
+            {active && (
+              <button type="button" className="ghost scanRescanBtn" onClick={rescan}>
+                <ScanLine size={16} /> İptal
+              </button>
+            )}
+          </div>
+
+          <p className={`scanMsg${success ? ' isSuccess' : ''}`}>
+            {msg || 'Müşteri QR gösterir → okut → kategori damgası veya ikram uygula.'}
+          </p>
         </div>
+      ) : (
+        <div className={`scanResultCard${success ? ' scanFoundPop' : ''}`}>
+          {msg && <p className="scanResultToast">{msg}</p>}
 
-        <p className={`scanMsg${success ? ' isSuccess' : ''}`}>
-          {msg || 'Müşteri QR gösterir → okut → kategori damgası veya ikram uygula.'}
-        </p>
+          {found.email && (
+            <p className="scanResultEmail">{found.email}</p>
+          )}
 
-        {found && (
-          <div className={`found rewardBox scanFoundCard${success ? ' scanFoundPop' : ''}`}>
-            <div className="scanFoundTop">
-              <div>
-                <b>{found.name}</b>
-                <span>{found.phone} · {found.email || 'mail yok'}</span>
-              </div>
-              <span className="scanFoundBadge">LC-{found.id}</span>
-            </div>
-
-            <div className="adminStats">
+          <PageSection label="Özet" tight>
+            <div className="scanResultStats">
               <div><span>Damga</span><b>{totalStamps}</b></div>
               <div><span>İkram</span><b>{totalRewards}</b></div>
               <div><span>Kullanılan</span><b>{loyalty.usedRewards || 0}</b></div>
             </div>
+          </PageSection>
 
-            <StampCategoryPanel
-              mode="cashier"
-              categoryStamps={categoryStamps}
-              categoryRewards={categoryRewards}
-              onAdd={addCategory}
-              onRemove={removeCategory}
-              onRedeem={redeemCategory}
-            />
+          <StampCategoryPanel
+            mode="cashier"
+            categoryStamps={categoryStamps}
+            categoryRewards={categoryRewards}
+            onAdd={addCategory}
+            onRemove={removeCategory}
+            onRedeem={redeemCategory}
+          />
 
-            <div className="adminActions">
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  commit(checkInCustomer(db, found.id, 'Kasa QR check-in'));
-                  setMsg('Check-in kaydedildi.');
-                }}
-              >
-                Check-in kaydet
-              </button>
-            </div>
+          <div className="scanResultFooter">
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                commit(checkInCustomer(db, found.id, 'Kasa QR check-in'));
+                setMsg('Check-in kaydedildi.');
+              }}
+            >
+              Check-in kaydet
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </PageShell>
   );
 }
