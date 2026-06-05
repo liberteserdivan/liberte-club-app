@@ -3038,6 +3038,11 @@ header{
   font-size:20px;
   color:var(--forest);
 }
+.scanStartBtn--hero{
+  width:100%;
+  margin-top:8px;
+}
+
 .scanStartBtn{
   display:flex!important;
   align-items:center;
@@ -3060,11 +3065,14 @@ header{
   margin-bottom:12px;
   background:#0b2f26;
 }
-.scannerFrame #reader{
+.scannerFrame #reader,
+.scannerFrame .qrReaderHost{
   margin-top:0!important;
   border-radius:0!important;
+  min-height:280px;
 }
-.scannerFrame #reader video{
+.scannerFrame #reader video,
+.scannerFrame .qrReaderHost video{
   border-radius:22px;
   object-fit:cover;
 }

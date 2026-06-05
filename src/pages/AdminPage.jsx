@@ -1,15 +1,13 @@
-import React,{useEffect,useRef,useState}from'react';
-import{Html5Qrcode}from'html5-qrcode';
-import{Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,QrCode,ScanLine,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
+import React,{useState}from'react';
+import{Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
-import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,checkInCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,countTotalRewards,countTotalStamps,normalizeCategoryRewards,normalizeCategoryStamps,STAMP_CATEGORIES}from'../lib/db.js';
+import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,countTotalRewards,countTotalStamps,normalizeCategoryRewards,normalizeCategoryStamps,STAMP_CATEGORIES}from'../lib/db.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
 
 const ADMIN_TABS=[
   {id:'overview',label:'Özet',Icon:LayoutDashboard},
-  {id:'kasa',label:'Kasa',Icon:ScanLine},
   {id:'menu',label:'Menü',Icon:UtensilsCrossed},
   {id:'kampanya',label:'Kampanya',Icon:Megaphone},
   {id:'uyeler',label:'Üyeler',Icon:Users},
@@ -49,7 +47,6 @@ export default function AdminPage({db,commit}){
 
     <div className="adminContent">
       {tab==='overview'&&<OverviewAdmin db={db} commit={commit} onManageUsers={openUserManage}/>}
-      {tab==='kasa'&&<ScanPanel db={db} commit={commit}/>}
       {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
       {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
       {tab==='uyeler'&&<MembersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={()=>setFocusUserId(null)}/>}
@@ -211,149 +208,6 @@ function UserManageOverview({db,commit,onManageUsers}){
         </div>
       </div>;
     }):<div className="empty">Eşleşen kullanıcı yok.</div>}
-  </div>;
-}
-
-function ScanPanel({db,commit}){
-  const[active,setActive]=useState(false);
-  const[found,setFound]=useState(null);
-  const[msg,setMsg]=useState('');
-  const[success,setSuccess]=useState(false);
-  const scanner=useRef(null);
-
-  useEffect(()=>()=>{try{scanner.current?.stop()}catch{}},[]);
-
-  async function stopScanner(){
-    try{await scanner.current?.stop()}catch{}
-    scanner.current=null;
-    setActive(false);
-  }
-
-  async function start(){
-    setFound(null);
-    setSuccess(false);
-    setMsg('Kamera açılıyor...');
-    setActive(true);
-
-    setTimeout(async()=>{
-      try{
-        scanner.current=new Html5Qrcode('reader');
-        await scanner.current.start(
-          {facingMode:'environment'},
-          {fps:12,qrbox:{width:240,height:240}},
-          txt=>{
-            try{
-              const data=JSON.parse(txt);
-              const c=db.customers.find(x=>String(x.id)===String(data.id)||x.phone===data.phone);
-              if(c){
-                setFound(c);
-                setSuccess(true);
-                setMsg('Müşteri bulundu!');
-                stopScanner();
-              }else{
-                setMsg('Müşteri bulunamadı.');
-              }
-            }catch{
-              setMsg('Geçerli Liberte QR kodu okut.');
-            }
-          }
-        );
-      }catch(e){
-        setMsg('Kamera açılamadı: '+e.message);
-        setActive(false);
-      }
-    },100);
-  }
-
-  async function rescan(){
-    await stopScanner();
-    setFound(null);
-    setSuccess(false);
-    setMsg('');
-    start();
-  }
-
-  function addCategory(category){
-    if(!found)return;
-    const next=addCategoryStampToCustomer(db,found.id,category,1,'QR kamera');
-    commit(next);
-    setMsg(`${STAMP_CATEGORIES.find(c=>c.id===category)?.label||category} damgası eklendi.`);
-  }
-
-  function removeCategory(category){
-    if(!found)return;
-    const next=addCategoryStampToCustomer(db,found.id,category,-1,'QR düzeltme');
-    commit(next);
-    setMsg(`${STAMP_CATEGORIES.find(c=>c.id===category)?.label||category} damgası silindi.`);
-  }
-
-  function redeemCategory(category){
-    if(!found)return;
-    const catLabel=STAMP_CATEGORIES.find(c=>c.id===category)?.label||category;
-    const ok=confirm(`${found.name} için 1 ${catLabel.toLowerCase()} ikramı kullanılsın mı?`);
-    if(!ok)return;
-    const next=redeemCategoryRewardForCustomer(db,found.id,category,'QR kasiyer');
-    commit(next);
-    setMsg(`${catLabel} ikramı kullanıldı.`);
-  }
-
-  const l=found?(db.loyalty[found.id]||loyaltyTemplate(found.id)):null;
-  const categoryStamps=l?normalizeCategoryStamps(l):null;
-  const categoryRewards=l?normalizeCategoryRewards(l):null;
-  const totalStamps=categoryStamps?countTotalStamps(categoryStamps):0;
-  const totalRewards=categoryRewards?countTotalRewards(categoryRewards):0;
-
-  return <div className="card scanPanelCard">
-    <div className="scanPanelHead">
-      <div>
-        <span>KASİYER</span>
-        <h3>QR Okuyucu</h3>
-      </div>
-      {!active&&!found&&<button type="button" className="goldBtn scanStartBtn" onClick={start}><ScanLine size={18}/> Kamera Aç</button>}
-      {(active||found)&&<button type="button" className="ghost scanRescanBtn" onClick={rescan}><ScanLine size={16}/> Yeniden Tara</button>}
-    </div>
-
-    {active&&<div className="scannerFrame">
-      <div id="reader" />
-      <div className="scannerOverlay" aria-hidden="true">
-        <span className="scannerCorner tl" /><span className="scannerCorner tr" />
-        <span className="scannerCorner bl" /><span className="scannerCorner br" />
-        <span className="scannerLine" />
-      </div>
-    </div>}
-
-    <p className={`scanMsg${success?' isSuccess':''}`}>
-      {msg || '1) Müşteri QR gösterir  2) Kasiyer aldığı kategoriye damga basar  3) Eşik dolunca ikram hakkı oluşur'}
-    </p>
-
-    {found&&<div className={`found rewardBox scanFoundCard${success?' scanFoundPop':''}`}>
-      <div className="scanFoundTop">
-        <div>
-          <b>{found.name}</b>
-          <span>{found.phone} · {found.email||'mail yok'}</span>
-        </div>
-        <span className="scanFoundBadge">LC-{found.id}</span>
-      </div>
-
-      <div className="adminStats">
-        <div><span>Damga</span><b>{totalStamps}</b></div>
-        <div><span>İkram</span><b>{totalRewards}</b></div>
-        <div><span>Kullanılan</span><b>{l.usedRewards||0}</b></div>
-      </div>
-
-      <StampCategoryPanel
-        mode="cashier"
-        categoryStamps={categoryStamps}
-        categoryRewards={categoryRewards}
-        onAdd={addCategory}
-        onRemove={removeCategory}
-        onRedeem={redeemCategory}
-      />
-
-      <div className="adminActions">
-        <button className="ghost" onClick={()=>{commit(checkInCustomer(db,found.id,'Admin QR check-in'));setMsg('Check-in kaydedildi.')}}><QrCode/> Check-in</button>
-      </div>
-    </div>}
   </div>;
 }
 

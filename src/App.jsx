@@ -95,7 +95,7 @@ export default function App() {
         <div className="appTabView" key={tab}>
           {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} setSession={setSession} sync={sync} refreshRemote={refreshRemote} commit={commit} />}
           {tab === 'menu' && <MenuPage db={db} />}
-          {tab === 'qr' && <QrPage db={db} customer={customer} card={card} />}
+          {tab === 'qr' && <QrPage db={db} customer={customer} card={card} commit={commit} />}
           {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}
           {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
           {tab === 'profile' && (
@@ -114,7 +114,7 @@ export default function App() {
         </div>
 
         <OfflineNotice />
-        <Nav tab={tab} setTab={setTab} />
+        <Nav tab={tab} setTab={setTab} isAdmin={customer.isAdmin} />
       </main>
     );
   }

@@ -3,11 +3,11 @@ import { Gift, Home, Menu as MenuIcon, User } from 'lucide-react';
 import NavQrIcon from './NavQrIcon.jsx';
 
 // Alt menü — App Store uyumlu 5 sekme
-export default function Nav({ tab, setTab }) {
+export default function Nav({ tab, setTab, isAdmin = false }) {
   const items = [
     ['home', Home, 'Ana Sayfa'],
     ['menu', MenuIcon, 'Menü'],
-    ['qr', NavQrIcon, 'Kartım'],
+    ['qr', NavQrIcon, isAdmin ? 'QR Tara' : 'Kartım'],
     ['campaign', Gift, 'Kampanyalar'],
     ['profile', User, 'Profil']
   ];
