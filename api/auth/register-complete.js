@@ -4,7 +4,7 @@ import { cleanPhone } from '../lib/phone.js';
 import { buildCustomerRecord, createSession, indexCustomerEmail } from '../lib/auth.js';
 import { loadAppState, saveAppState } from '../lib/appState.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
-import { sendDualVerificationCodes } from '../lib/verificationMail.js';
+import { sendVerificationCode } from '../lib/verificationMail.js';
 import { isValidPinFormat, normalizePin, saveCustomerPin } from '../lib/pinAuth.js';
 
 function validEmail(v = '') {
@@ -24,7 +24,7 @@ function loyaltyTemplate(id) {
   };
 }
 
-// Kayıt öncesi — e-postaya iki doğrulama kodu gönder
+// Kayıt öncesi — e-postaya doğrulama kodu gönder
 async function handleSendCode(req, res) {
   const body = readBody(req);
   const phone = cleanPhone(body.phone);
@@ -48,11 +48,11 @@ async function handleSendCode(req, res) {
     return res.status(409).json({ error: 'Bu telefon veya e-posta zaten kayıtlı' });
   }
 
-  const sent = await sendDualVerificationCodes({
+  const sent = await sendVerificationCode({
     email,
     phone,
     purpose: 'register',
-    subject: 'Liberte kayıt doğrulama kodların',
+    subject: 'Liberte kayıt doğrulama kodun',
     greeting: `Merhaba ${name.split(' ')[0]},`
   });
 
@@ -62,7 +62,6 @@ async function handleSendCode(req, res) {
     ok: true,
     emailMasked: sent.emailMasked,
     testCode: sent.testCode,
-    testCode2: sent.testCode2,
     warning: sent.warning
   });
 }
@@ -76,7 +75,6 @@ async function handleComplete(req, res) {
   const pin = normalizePin(body.pin);
   const pinConfirm = normalizePin(body.pinConfirm);
   const code = String(body.code || '').replace(/\D/g, '');
-  const code2 = String(body.code2 || '').replace(/\D/g, '');
   const birthDate = String(body.birthDate || '');
   const referralCode = String(body.referralCode || '').trim().toUpperCase();
   const deviceId = String(body.deviceId || '').trim();
@@ -94,8 +92,8 @@ async function handleComplete(req, res) {
   if (pin !== pinConfirm) {
     return res.status(400).json({ error: 'PIN tekrarı eşleşmiyor.' });
   }
-  if (code.length !== 6 || code2.length !== 6) {
-    return res.status(400).json({ error: 'İki doğrulama kodunu da gir.' });
+  if (code.length !== 6) {
+    return res.status(400).json({ error: '6 haneli doğrulama kodunu gir.' });
   }
 
   const remote = await loadAppState();
@@ -114,7 +112,6 @@ async function handleComplete(req, res) {
     email,
     phone,
     code,
-    code2,
     purpose: 'register'
   });
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });

@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../lib/http.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
-import { sendDualVerificationCodes } from '../lib/verificationMail.js';
+import { sendVerificationCode } from '../lib/verificationMail.js';
 import { upsertCustomerEmail } from '../lib/customerEmails.js';
 import { getSql } from '../lib/appState.js';
 import { resolveRecoveryCustomer } from '../lib/customerRepair.js';
@@ -16,7 +16,7 @@ function readIdentifier(body) {
   return String(body.identifier || body.email || body.phone || '').trim();
 }
 
-// PIN unutma — kayıtlı e-postaya iki doğrulama kodu gönder
+// PIN unutma — kayıtlı e-postaya doğrulama kodu gönder
 async function handleSendCode(req, res) {
   const body = readBody(req);
   const identifier = readIdentifier(body);
@@ -28,11 +28,11 @@ async function handleSendCode(req, res) {
 
   const { customer, deliveryEmail, phone } = resolved;
 
-  const sent = await sendDualVerificationCodes({
+  const sent = await sendVerificationCode({
     email: deliveryEmail,
     phone,
     purpose: 'pin_reset',
-    subject: 'Liberte PIN sıfırlama kodların',
+    subject: 'Liberte PIN sıfırlama kodun',
     greeting: `Merhaba ${customer.name || 'Liberte Üye'},`
   });
 
@@ -42,7 +42,6 @@ async function handleSendCode(req, res) {
     ok: true,
     emailMasked: sent.emailMasked,
     testCode: sent.testCode,
-    testCode2: sent.testCode2,
     warning: sent.warning
   });
 }
@@ -52,12 +51,11 @@ async function handleReset(req, res) {
   const body = readBody(req);
   const identifier = readIdentifier(body);
   const code = String(body.code || '').replace(/\D/g, '');
-  const code2 = String(body.code2 || '').replace(/\D/g, '');
   const pin = normalizePin(body.pin);
   const pinConfirm = normalizePin(body.pinConfirm);
 
   if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
-  if (!identifier || code.length !== 6 || code2.length !== 6) {
+  if (!identifier || code.length !== 6) {
     return res.status(400).json({ error: 'Bilgiler eksik' });
   }
   if (!isValidPinFormat(pin)) {
@@ -78,7 +76,6 @@ async function handleReset(req, res) {
     email: deliveryEmail,
     phone,
     code,
-    code2,
     purpose: 'pin_reset'
   });
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });

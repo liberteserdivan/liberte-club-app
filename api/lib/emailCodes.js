@@ -27,14 +27,8 @@ async function findActiveCode(sql, { email, phone, purpose }) {
   return rows[0] || null;
 }
 
-function codesMatch(row, code, code2) {
-  const firstOk = normalizeCode(row.code) === normalizeCode(code);
-  if (!row.code2) return firstOk;
-  return firstOk && normalizeCode(row.code2) === normalizeCode(code2);
-}
-
 // Kodu doğrula — hatalı denemelerde attempts artır
-export async function verifyEmailCode(sql, { email, phone, code, code2, purpose = 'register' }) {
+export async function verifyEmailCode(sql, { email, phone, code, purpose = 'register' }) {
   await ensureEmailCodesTable(sql);
 
   const row = await findActiveCode(sql, { email, phone, purpose });
@@ -52,7 +46,7 @@ export async function verifyEmailCode(sql, { email, phone, code, code2, purpose 
     return { ok: false, status: 429, error: 'Çok fazla deneme. Yeni kod iste.' };
   }
 
-  if (!codesMatch(row, code, code2)) {
+  if (normalizeCode(row.code) !== normalizeCode(code)) {
     const nextAttempts = Number(row.attempts || 0) + 1;
     const exhausted = nextAttempts >= 5;
     await sql`
@@ -63,12 +57,7 @@ export async function verifyEmailCode(sql, { email, phone, code, code2, purpose 
     if (exhausted) {
       return { ok: false, status: 429, error: 'Çok fazla deneme. Yeni kod iste.' };
     }
-    const needsSecond = Boolean(row.code2);
-    return {
-      ok: false,
-      status: 400,
-      error: needsSecond ? 'Doğrulama kodlarından biri hatalı' : 'Kod hatalı'
-    };
+    return { ok: false, status: 400, error: 'Kod hatalı' };
   }
 
   await sql`UPDATE email_codes SET used = true WHERE id = ${row.id}`;

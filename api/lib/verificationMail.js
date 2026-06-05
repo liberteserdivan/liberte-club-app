@@ -17,32 +17,28 @@ function isProduction() {
   return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 }
 
-// İki doğrulama kodu üret ve kaydet
-async function storeDualCodes(sql, { email, phone, purpose }) {
+// Tek doğrulama kodu kaydet
+async function storeVerificationCode(sql, { email, phone, purpose }) {
   const code = makeCode();
-  const code2 = makeCode();
 
-  await sql`INSERT INTO email_codes (email, phone, code, code2, purpose, expires_at)
-    VALUES (${email}, ${phone}, ${code}, ${code2}, ${purpose}, now() + interval '10 minutes')`;
+  await sql`INSERT INTO email_codes (email, phone, code, purpose, expires_at)
+    VALUES (${email}, ${phone}, ${code}, ${purpose}, now() + interval '10 minutes')`;
   await sql`UPDATE email_codes SET used=true
     WHERE email=${email} AND phone=${phone} AND purpose=${purpose} AND code<>${code} AND used=false`;
 
-  return { code, code2 };
+  return code;
 }
 
-// Resend ile çift kodlu doğrulama e-postası gönder
-async function dispatchDualCodeEmail({ email, subject, greeting, code, code2 }) {
+// Resend ile doğrulama e-postası gönder
+async function dispatchVerificationEmail({ email, subject, greeting, code }) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL || 'Liberte <noreply@liberte.cafe>';
   const html = `<div style="font-family:Arial,sans-serif;background:#06110d;color:#fff;padding:28px;border-radius:18px">
     <h2 style="color:#b9f5d0">Liberte</h2>
     <p>${greeting}</p>
-    <p>İki doğrulama kodunu uygulamaya gir:</p>
-    <p style="margin:12px 0 4px;color:#b9f5d0;font-weight:700">Kod 1</p>
-    <div style="font-size:32px;letter-spacing:6px;font-weight:800;color:#b9f5d0;margin:0 0 16px">${code}</div>
-    <p style="margin:12px 0 4px;color:#b9f5d0;font-weight:700">Kod 2</p>
-    <div style="font-size:32px;letter-spacing:6px;font-weight:800;color:#b9f5d0;margin:0 0 16px">${code2}</div>
-    <p>Kodlar 10 dakika geçerlidir.</p>
+    <p>Doğrulama kodun:</p>
+    <div style="font-size:34px;letter-spacing:8px;font-weight:800;color:#b9f5d0;margin:18px 0">${code}</div>
+    <p>Bu kod 10 dakika geçerlidir.</p>
   </div>`;
 
   if (!apiKey) {
@@ -52,8 +48,7 @@ async function dispatchDualCodeEmail({ email, subject, greeting, code, code2 }) 
     return {
       ok: true,
       testCode: code,
-      testCode2: code2,
-      warning: 'Geliştirme modu — test kodları yalnızca dev ortamında.'
+      warning: 'Geliştirme modu — test kodu yalnızca dev ortamında.'
     };
   }
 
@@ -73,8 +68,8 @@ async function dispatchDualCodeEmail({ email, subject, greeting, code, code2 }) 
   return { ok: true };
 }
 
-// Çift kod oluştur, kaydet ve e-posta gönder
-export async function sendDualVerificationCodes({
+// Doğrulama kodu oluştur, kaydet ve e-posta gönder
+export async function sendVerificationCode({
   email,
   phone,
   purpose,
@@ -89,8 +84,8 @@ export async function sendDualVerificationCodes({
     const sql = neon(process.env.DATABASE_URL);
     await ensureEmailCodesTable(sql);
 
-    const { code, code2 } = await storeDualCodes(sql, { email, phone, purpose });
-    const sent = await dispatchDualCodeEmail({ email, subject, greeting, code, code2 });
+    const code = await storeVerificationCode(sql, { email, phone, purpose });
+    const sent = await dispatchVerificationEmail({ email, subject, greeting, code });
 
     if (!sent.ok) {
       return sent;
@@ -100,10 +95,12 @@ export async function sendDualVerificationCodes({
       ok: true,
       emailMasked: maskEmail(email),
       testCode: sent.testCode,
-      testCode2: sent.testCode2,
       warning: sent.warning
     };
   } catch (e) {
     return { ok: false, status: 500, error: e.message || 'Doğrulama kodu gönderilemedi' };
   }
 }
+
+// Geriye uyumluluk
+export const sendDualVerificationCodes = sendVerificationCode;

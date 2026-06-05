@@ -19,7 +19,7 @@ Liberte Gastro Cafe sadakat uygulaması. Müşteriler kayıt olur, **Kartım** s
 - **Telefon:** 5550100002
 - **Müşteri PIN:** İnceleme notunda ayrı iletilecek
 - **Yönetici kasa PIN:** Vercel ortam değişkeni `ADMIN_PIN` — müşteri giriş PIN’inden ayrı; QR tarama ve yönetim için ikinci doğrulama
-- **E-posta doğrulama:** Kayıt ve PIN sıfırlamada e-postaya **iki ayrı 6 haneli kod** gönderilir
+- **E-posta doğrulama:** Kayıt ve PIN sıfırlamada e-postaya **6 haneli kod** gönderilir
 - **Akış:** telefon + müşteri PIN → **Yönetici PIN** ekranı → **QR Tara** → müşteri QR okut → damga / ikram
 
 ## QR kullanımı
