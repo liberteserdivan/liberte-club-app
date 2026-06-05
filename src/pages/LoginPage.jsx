@@ -221,7 +221,13 @@ export default function Login({ db, commit, setSession }) {
         })
       });
 
-      if (!response.ok) throw new Error(data.error || 'Kod gönderilemedi');
+      if (!response.ok) {
+        if (response.status === 409) {
+          notify('Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.', 'info');
+          return;
+        }
+        throw new Error(data.error || 'Kod gönderilemedi');
+      }
 
       setRegisterStep('verify');
       if (data.testCode && data.testCode2) {
@@ -277,7 +283,13 @@ export default function Login({ db, commit, setSession }) {
         })
       });
 
-      if (!response.ok) throw new Error(data.error || 'Kayıt tamamlanamadı');
+      if (!response.ok) {
+        if (response.status === 409) {
+          notify('Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.', 'info');
+          return;
+        }
+        throw new Error(data.error || 'Kayıt tamamlanamadı');
+      }
       finishSession(data);
     } catch (e) {
       notify(e.message || 'Kayıt tamamlanamadı');

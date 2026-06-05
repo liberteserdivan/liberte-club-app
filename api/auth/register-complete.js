@@ -174,8 +174,8 @@ export default async function handler(req, res) {
     const body = readBody(req);
     const action = String(body.action || 'complete').trim();
 
-    if (action === 'send-code') return handleSendCode(req, res);
-    if (action === 'complete') return handleComplete(req, res);
+    if (action === 'send-code') return await handleSendCode(req, res);
+    if (action === 'complete') return await handleComplete(req, res);
 
     return res.status(400).json({ error: 'Geçersiz işlem' });
   } catch (e) {

@@ -2,7 +2,8 @@ import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../lib/http.js';
 import { verifyEmailCode } from '../lib/emailCodes.js';
 import { sendDualVerificationCodes } from '../lib/verificationMail.js';
-import { indexCustomerEmail } from '../lib/auth.js';
+import { upsertCustomerEmail } from '../lib/customerEmails.js';
+import { getSql } from '../lib/appState.js';
 import { resolveRecoveryCustomer } from '../lib/customerRepair.js';
 import {
   isValidPinFormat,
@@ -40,7 +41,6 @@ async function handleSendCode(req, res) {
   return res.status(200).json({
     ok: true,
     emailMasked: sent.emailMasked,
-    deliveryEmail,
     testCode: sent.testCode,
     testCode2: sent.testCode2,
     warning: sent.warning
@@ -84,7 +84,15 @@ async function handleReset(req, res) {
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
 
   await saveCustomerPin(sql, phone, customer.id, pin);
-  await indexCustomerEmail({ ...customer, email: deliveryEmail, phone });
+
+  const indexSql = getSql();
+  if (indexSql) {
+    await upsertCustomerEmail(indexSql, {
+      email: deliveryEmail,
+      customerId: customer.id,
+      phone
+    });
+  }
 
   return res.status(200).json({ ok: true });
 }
@@ -99,8 +107,8 @@ export default async function handler(req, res) {
     const body = readBody(req);
     const action = String(body.action || 'send-code').trim();
 
-    if (action === 'send-code') return handleSendCode(req, res);
-    if (action === 'reset') return handleReset(req, res);
+    if (action === 'send-code') return await handleSendCode(req, res);
+    if (action === 'reset') return await handleReset(req, res);
 
     return res.status(400).json({ error: 'Geçersiz işlem' });
   } catch (e) {

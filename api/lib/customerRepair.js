@@ -110,7 +110,12 @@ export async function resolveRecoveryCustomer(rawInput) {
   let result = await tryResolve();
   if (result.ok) return result;
 
-  const repaired = await repairCustomerDirectory();
+  let repaired = false;
+  try {
+    repaired = await repairCustomerDirectory();
+  } catch {
+    return result;
+  }
   if (!repaired) return result;
 
   result = await tryResolve();

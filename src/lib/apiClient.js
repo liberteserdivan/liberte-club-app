@@ -47,10 +47,23 @@ export async function apiFetch(path, options = {}) {
   return response;
 }
 
-// JSON API isteği
+// JSON API isteği — sunucu HTML hata dönerse güvenli parse
 export async function apiJson(path, options = {}) {
   const response = await apiFetch(path, options);
   const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
+  let data = {};
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = {
+        error: response.ok
+          ? 'Sunucu yanıtı okunamadı.'
+          : 'Sunucu geçici olarak yanıt veremedi. Biraz sonra tekrar dene.'
+      };
+    }
+  }
+
   return { response, data };
 }

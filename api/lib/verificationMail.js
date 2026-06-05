@@ -97,25 +97,29 @@ export async function sendDualVerificationCodes({
   subject,
   greeting
 }) {
-  if (!process.env.DATABASE_URL) {
-    return { ok: false, status: 500, error: 'DATABASE_URL eksik' };
+  try {
+    if (!process.env.DATABASE_URL) {
+      return { ok: false, status: 500, error: 'DATABASE_URL eksik' };
+    }
+
+    const sql = neon(process.env.DATABASE_URL);
+    await ensureEmailCodesTable(sql);
+
+    const { code, code2 } = await storeDualCodes(sql, { email, phone, purpose });
+    const sent = await dispatchDualCodeEmail({ email, subject, greeting, code, code2 });
+
+    if (!sent.ok) {
+      return sent;
+    }
+
+    return {
+      ok: true,
+      emailMasked: maskEmail(email),
+      testCode: sent.testCode,
+      testCode2: sent.testCode2,
+      warning: sent.warning
+    };
+  } catch (e) {
+    return { ok: false, status: 500, error: e.message || 'Doğrulama kodu gönderilemedi' };
   }
-
-  const sql = neon(process.env.DATABASE_URL);
-  await ensureEmailCodesTable(sql);
-
-  const { code, code2 } = await storeDualCodes(sql, { email, phone, purpose });
-  const sent = await dispatchDualCodeEmail({ email, subject, greeting, code, code2 });
-
-  if (!sent.ok) {
-    return sent;
-  }
-
-  return {
-    ok: true,
-    emailMasked: maskEmail(email),
-    testCode: sent.testCode,
-    testCode2: sent.testCode2,
-    warning: sent.warning
-  };
 }
