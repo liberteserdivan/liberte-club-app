@@ -5113,12 +5113,12 @@ header{
 }
 
 .menuProCats{
-  padding:14px 16px 4px!important;
+  padding:14px 18px 4px!important;
 }
 
 .menuProSection{
-  padding-left:16px!important;
-  padding-right:16px!important;
+  padding-left:18px!important;
+  padding-right:18px!important;
 }
 
 .menuProFeaturedRail .menuProductCard{
@@ -5378,7 +5378,6 @@ header{
 
 .pagePro--menu{
   overflow-x:hidden!important;
-  width:100%!important;
 }
 
 .pageProHero{

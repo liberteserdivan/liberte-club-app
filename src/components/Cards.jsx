@@ -8,7 +8,7 @@ import{
   markPushDismissed,
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
-import{addStampToCustomer,applyCouponToCustomer,checkInCustomer,claimDailyLoginReward,claimFirstOrderBonus,getReferralCode,hasDailyClaim,levelByStamps,localDayKey,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
+import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
 import{isNativeApp,isAndroid,isIos}from'../lib/platform.js';
 import{
   getDeferredPwaPrompt,
@@ -17,8 +17,6 @@ import{
   requestPwaInstall,
   shouldShowInstallCard
 }from'../lib/pwaInstall.js';
-import AnimatedWheel from './AnimatedWheel.jsx';
-
 export function CustomerHistoryCard({db,customer}){
   const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,5);
 
@@ -304,18 +302,6 @@ export function Product({item}){
 }
 
 
-export function CouponUseCard({db,customer,commit}){
-  const[code,setCode]=useState('');
-  return <div className="card couponUseCard">
-    <b>Kupon Kodun Var mı?</b>
-    <p>Kodunu gir, damga veya ikram hakkını hesabına yükle.</p>
-    <div className="couponRow">
-      <input placeholder="LIBERTE20" value={code} onChange={e=>setCode(e.target.value.toUpperCase())}/>
-      <button onClick={()=>{commit(applyCouponToCustomer(db,customer.id,code));setCode('');}}>Kullan</button>
-    </div>
-  </div>;
-}
-
 export function ClubStatusCard({db,customer}){
   const l=db.loyalty[customer.id]||loyaltyTemplate(customer.id);
   const badges=customerBadges(customer,l,db);
@@ -340,34 +326,6 @@ export function DailyCampaignCard({db,setTab}){
     </div>
     <button onClick={()=>setTab&&setTab('campaign')}>Detay</button>
   </div>;
-}
-
-export function DailyRewardCard({db,customer,commit}){
-  const claimed=hasDailyClaim(db,customer.id,'daily_login');
-  return <div className="rewardActionCard">
-    <div>
-      <span>GÜNLÜK GİRİŞ</span>
-      <h3>Bugün uygulamaya geldin</h3>
-      <p>{claimed?'Bugünün +1 damga ödülü alındı.':'Her gün giriş yap, +1 damga kazan.'}</p>
-    </div>
-    <button className={claimed?'ghost':'goldBtn'} onClick={()=>commit(claimDailyLoginReward(db,customer.id))}>{claimed?'Alındı':'+1 Damga'}</button>
-  </div>;
-}
-
-export function FirstOrderBonusCard({db,customer,commit}){
-  const claimed=(db.firstOrderBonuses||[]).some(x=>x.customerId===customer.id);
-  return <div className="rewardActionCard firstOrder">
-    <div>
-      <span>İLK SİPARİŞ</span>
-      <h3>İlk alışveriş bonusu</h3>
-      <p>{claimed?'Bu üyelikte ilk sipariş bonusu kullanıldı.':'İlk siparişinde +3 damga kazan.'}</p>
-    </div>
-    <button className={claimed?'ghost':'goldBtn'} onClick={()=>commit(claimFirstOrderBonus(db,customer.id))}>{claimed?'Kullanıldı':'+3 Damga'}</button>
-  </div>;
-}
-
-export function LuckyWheelCard({db,customer,commit}){
-  return <AnimatedWheel db={db} customer={customer} commit={commit} />;
 }
 
 export function VipBenefitsCard({db,customer}){

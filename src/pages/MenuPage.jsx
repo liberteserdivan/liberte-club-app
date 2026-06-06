@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, UtensilsCrossed } from 'lucide-react';
 import { MenuListRow } from '../components/MenuProductCard.jsx';
 import MenuProductDetailModal from '../components/MenuProductDetailModal.jsx';
 import PageShell from '../components/PageShell.jsx';
@@ -34,22 +33,6 @@ export default function MenuPage({ db, embedded = false }) {
     [cats, allItems, cat]
   );
 
-  // Hero stat şeridi — diğer sayfalarla aynı premium görünüm
-  const heroStats = (
-    <div className="menuProStats pageProStats">
-      <div>
-        <strong><LayoutGrid aria-hidden="true" /></strong>
-        <span>Kategori</span>
-        <em>{cats.length}</em>
-      </div>
-      <div>
-        <strong><UtensilsCrossed aria-hidden="true" /></strong>
-        <span>Ürün</span>
-        <em>{allItems.length}</em>
-      </div>
-    </div>
-  );
-
   const categoryPills = (
     <div className="pageProSticky menuProCats">
       <button
@@ -79,7 +62,6 @@ export default function MenuPage({ db, embedded = false }) {
       eyebrow={embedded ? null : 'Liberte Club'}
       title={embedded ? null : 'Menü'}
       subtitle={embedded ? null : 'Kahve, tatlı, burger ve daha fazlası. Lezzetleri keşfet.'}
-      heroSlot={embedded ? null : heroStats}
       stickySlot={categoryPills}
     >
       {sections.length ? sections.map(({ category, items }) => (
