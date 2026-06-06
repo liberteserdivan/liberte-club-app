@@ -315,19 +315,13 @@ export function getCustomerStreak(db,customerId){
 
 // Ana sayfa günlük görev listesini üretir
 export function getDailyTasks(db,customerId){
-  const day=localDayKey();
   const card=db.loyalty[customerId]||loyaltyTemplate(customerId);
   const categoryStamps=normalizeCategoryStamps(card);
-  const totalStamps=countTotalStamps(categoryStamps);
-  const dailyDone=hasDailyClaim(db,customerId,'daily_login');
-  const wheelDone=(db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day);
-  const firstDone=(db.firstOrderBonuses||[]).some(x=>x.customerId===customerId);
   const nearestRemaining=stampsRemaining(categoryStamps);
+  // Sadakat işlemleri yalnızca kasada/admin tarafından yapılır; müşteriye sadece bilgi gösterilir
   return[
-    {id:'daily',label:'Günlük ödül',desc:dailyDone?'Alındı ✓':'+1 kahve damgası',done:dailyDone,tab:'wheel',icon:'sun'},
-    {id:'wheel',label:'Şans çarkı',desc:wheelDone?'Bugün çevrildi':'Günde 1 çevir',done:wheelDone,tab:'wheel',icon:'sparkles'},
     {id:'stamps',label:'Damga kartı',desc:nearestRemaining===0?'İkram hazır!':`Sonraki ikrama ${nearestRemaining} damga`,done:nearestRemaining===0,tab:'qr',icon:'coffee',progress:stampCardProgress(categoryStamps)},
-    {id:'first',label:'İlk sipariş',desc:firstDone?'Kullanıldı':'+3 kahve damgası',done:firstDone,tab:'wheel',icon:'gift'}
+    {id:'rewards',label:'İkram hakların',desc:(card?.availableRewards||0)>0?`${card.availableRewards} hak hazır`:'Henüz ikram hakkın yok',done:(card?.availableRewards||0)>0,tab:'qr',icon:'gift'}
   ];
 }
 

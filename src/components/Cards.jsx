@@ -111,19 +111,12 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
     if(approved){alert('Google yorum bonusun daha önce işlendi.');return;}
     if(pending){alert('Yorum talebin admin onayı bekliyor.');return;}
     const createdAt=new Date().toLocaleString('tr-TR');
+    // Müşteri yalnızca admin onayı bekleyen talep oluşturur; damga admin onayında verilir
     commit({
       ...db,
       googleReviewRequests:[
         {id:Date.now(),customerId:customer.id,name:customer.name,phone:customer.phone,email:customer.email,status:'pending',createdAt},
         ...requests
-      ],
-      notifications:[
-        {id:Date.now()+1,customerId:customer.id,title:'Google yorum talebi alındı',body:'Yorum bonusun admin onayından sonra hesabına işlenecek.',createdAt},
-        ...(db.notifications||[])
-      ],
-      history:[
-        {id:Date.now()+2,customerId:customer.id,name:customer.name,phone:customer.phone,type:'google_review_request',count:0,source:'Google yorum onay talebi',createdAt},
-        ...(db.history||[])
       ]
     });
     alert('Yorum sayfası açıldı. Yorumu tamamladıktan sonra talebin admin onayına düştü.');

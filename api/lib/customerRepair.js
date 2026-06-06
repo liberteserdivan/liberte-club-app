@@ -7,19 +7,48 @@ import {
   syncCustomerEmailsFromState
 } from './customerEmails.js';
 
-// Bilinen telefon → e-posta eşleşmeleri (eksik e-posta alanlarını onar)
+// Bilinen telefon → kimlik eşleşmeleri (eksik alanları ve yönetici yetkisini onar)
 const BASELINE_CONTACTS = [
-  { phone: '5058665406', email: 'liberteserdivan@gmail.com' },
-  { phone: '5550100001', email: 'demo.customer@liberte.cafe' },
-  { phone: '5550100002', email: 'demo.admin@liberte.cafe' }
+  { id: 1, phone: '5058665406', email: 'liberteserdivan@gmail.com', name: 'Liberte Gastro', isAdmin: true },
+  { id: 900001, phone: '5550100001', email: 'demo.customer@liberte.cafe', name: 'Demo Müşteri', isAdmin: false },
+  { id: 900002, phone: '5550100002', email: 'demo.admin@liberte.cafe', name: 'Demo Yönetici', isAdmin: true }
 ];
 
-// Eksik e-posta alanlarını bilinen kayıtlarla tamamla
+// Yeni müşteri için sadakat kaydı şablonu
+function loyaltyTemplate(id) {
+  return {
+    customerId: id,
+    totalStamps: 0,
+    categoryStamps: { coffee: 0, dessert: 0, burger: 0 },
+    categoryRewards: { coffee: 0, dessert: 0, burger: 0 },
+    availableRewards: 0,
+    usedRewards: 0,
+    lifetimeStamps: 0,
+    level: 'Bronze'
+  };
+}
+
+// Silinmiş bilinen hesabı yeniden oluştur
+function recreateBaselineCustomer(baseline) {
+  return {
+    id: baseline.id,
+    phone: cleanPhone(baseline.phone),
+    name: baseline.name,
+    email: normalizeEmail(baseline.email),
+    isAdmin: Boolean(baseline.isAdmin),
+    createdAt: new Date().toLocaleString('tr-TR'),
+    lastVisit: null,
+    birthDate: ''
+  };
+}
+
+// Eksik e-posta / yönetici yetkisini onar; silinmiş bilinen hesapları geri ekle
 export async function repairCustomerDirectory() {
   const remote = await loadAppState();
   if (!remote.data) return false;
 
   const customers = listCustomers(remote.data);
+  const loyalty = remote.data.loyalty || {};
   let changed = false;
 
   for (const baseline of BASELINE_CONTACTS) {
@@ -27,8 +56,24 @@ export async function repairCustomerDirectory() {
     const email = normalizeEmail(baseline.email);
     const existing = customers.find((c) => cleanPhone(c.phone) === phone);
 
-    if (existing && !normalizeEmail(existing.email) && email) {
+    if (!existing) {
+      // Bilinen hesap silinmişse yeniden oluştur
+      const restored = recreateBaselineCustomer(baseline);
+      customers.push(restored);
+      if (!loyalty[restored.id]) loyalty[restored.id] = loyaltyTemplate(restored.id);
+      changed = true;
+      continue;
+    }
+
+    // Eksik e-postayı tamamla
+    if (!normalizeEmail(existing.email) && email) {
       existing.email = email;
+      changed = true;
+    }
+
+    // Yönetici yetkisi düşmüşse geri ver
+    if (baseline.isAdmin && !existing.isAdmin) {
+      existing.isAdmin = true;
       changed = true;
     }
   }
@@ -36,6 +81,7 @@ export async function repairCustomerDirectory() {
   if (!changed) return false;
 
   remote.data.customers = customers;
+  remote.data.loyalty = loyalty;
   await saveAppState(remote.data);
   await syncCustomerEmailsFromState(remote.data);
   return true;

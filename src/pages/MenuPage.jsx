@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { LayoutGrid, UtensilsCrossed } from 'lucide-react';
 import { MenuListRow } from '../components/MenuProductCard.jsx';
 import MenuProductDetailModal from '../components/MenuProductDetailModal.jsx';
 import PageShell from '../components/PageShell.jsx';
@@ -27,11 +28,26 @@ export default function MenuPage({ db, embedded = false }) {
 
   const cats = db.categories || [];
   const allItems = db.items || [];
-  const settings = db.settings || {};
 
   const sections = useMemo(
     () => buildMenuSections(cats, allItems, cat),
     [cats, allItems, cat]
+  );
+
+  // Hero stat şeridi — diğer sayfalarla aynı premium görünüm
+  const heroStats = (
+    <div className="menuProStats pageProStats">
+      <div>
+        <strong><LayoutGrid aria-hidden="true" /></strong>
+        <span>Kategori</span>
+        <em>{cats.length}</em>
+      </div>
+      <div>
+        <strong><UtensilsCrossed aria-hidden="true" /></strong>
+        <span>Ürün</span>
+        <em>{allItems.length}</em>
+      </div>
+    </div>
   );
 
   const categoryPills = (
@@ -60,9 +76,10 @@ export default function MenuPage({ db, embedded = false }) {
     <PageShell
       variant="menu"
       className={embedded ? 'pagePro--embedded' : ''}
-      eyebrow={embedded ? null : 'Liberte Gastro'}
-      title={embedded ? null : (settings.hero_title || 'Menü')}
-      subtitle={embedded ? null : (settings.hero_subtitle || 'Lezzetlerimizi keşfet.')}
+      eyebrow={embedded ? null : 'Liberte Club'}
+      title={embedded ? null : 'Menü'}
+      subtitle={embedded ? null : 'Kahve, tatlı, burger ve daha fazlası. Lezzetleri keşfet.'}
+      heroSlot={embedded ? null : heroStats}
       stickySlot={categoryPills}
     >
       {sections.length ? sections.map(({ category, items }) => (

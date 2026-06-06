@@ -13,7 +13,6 @@ import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MenuPage from './pages/MenuPage.jsx';
 import QrPage from './pages/QrPage.jsx';
-import WheelPage from './pages/WheelPage.jsx';
 import CampaignPage from './pages/CampaignPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
@@ -134,7 +133,6 @@ export default function App() {
               adminVerified={adminVerified}
             />
           )}
-          {tab === 'wheel' && <WheelPage db={db} customer={customer} commit={commit} />}
           {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
           {tab === 'profile' && (
             <ProfilePage

@@ -1,6 +1,8 @@
 import admin from 'firebase-admin';
 import { parseServiceAccount, validateServiceAccount } from '../lib/serviceAccount.js';
 import { formatPushNotification } from '../lib/pushNotificationText.js';
+import { applyCors } from '../lib/http.js';
+import { requireAdminSession } from '../lib/auth.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -41,13 +43,15 @@ function collectInvalidTokens(tokens, responses) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(req, res, 'POST,OPTIONS');
 
   try {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    // Push gönderimi yalnızca PIN doğrulanmış yönetici oturumuyla yapılır
+    const adminSession = await requireAdminSession(req, res, { pinRequired: true });
+    if (!adminSession) return;
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const { tokens = [], title = '', body: message = 'Yeni kampanya var!' } = body;

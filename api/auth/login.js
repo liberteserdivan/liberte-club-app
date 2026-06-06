@@ -26,13 +26,22 @@ export default async function handler(req, res) {
     if (phone.length < 10) return res.status(400).json({ error: 'Telefon eksik' });
     if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
 
+    // Önce bilinen hesapları onar (yönetici yetkisi / silinmiş kayıt), sonra müşteriyi yükle
+    await repairCustomerDirectory();
     const customer = await findCustomerByPhone(phone);
     if (!customer) {
       return res.status(404).json({ error: 'Bu telefon ile kayıt bulunamadı. Önce kayıt olun.' });
     }
 
+    const expectedRole = customer.isAdmin ? 'admin' : 'user';
     const existing = await getSession(req);
-    if (existing && Number(existing.customerId) === Number(customer.id) && readAuthToken(req)) {
+    // Geçerli oturum varsa ve rol güncelse PIN sorma; rol değiştiyse oturumu yenile
+    if (
+      existing
+      && Number(existing.customerId) === Number(customer.id)
+      && existing.role === expectedRole
+      && readAuthToken(req)
+    ) {
       return res.status(200).json({
         ok: true,
         customerId: customer.id,
@@ -55,10 +64,9 @@ export default async function handler(req, res) {
       });
     }
 
-    await repairCustomerDirectory();
     await indexCustomerEmail(customer);
 
-    const role = customer.isAdmin ? 'admin' : 'user';
+    const role = expectedRole;
     const session = await createSession(res, {
       customerId: customer.id,
       role,

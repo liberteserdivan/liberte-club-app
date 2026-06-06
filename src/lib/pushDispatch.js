@@ -1,5 +1,6 @@
 // Push bildirimi gönder — uygulama içi kayıt + FCM
 import { pruneInvalidPushTokens } from './pushTokens.js';
+import { apiFetch } from './apiClient.js';
 
 export async function dispatchPush(db, commit, { title, body, customerId = null }) {
   const tokens = (db.pushSubscriptions || []).map((x) => x.token).filter(Boolean);
@@ -39,9 +40,8 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
   }
 
   try {
-    const response = await fetch('/api/push/send', {
+    const response = await apiFetch('/api/push/send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokens, title, body })
     });
 

@@ -1,4 +1,4 @@
-import { Crown, Gift, QrCode, ShoppingBag, Sparkles } from 'lucide-react';
+import { Crown, Gift, QrCode, ShoppingBag } from 'lucide-react';
 
 import PageSection from '../components/PageSection.jsx';
 
@@ -109,12 +109,6 @@ export default function HomePage({
             <button type="button" className="homeHubTile" onClick={() => setTab('menu')}>
 
               <ShoppingBag /><b>Menü</b><span>Lezzetleri keşfet</span>
-
-            </button>
-
-            <button type="button" className="homeHubTile" onClick={() => setTab('wheel')}>
-
-              <Sparkles /><b>Şans Çarkı</b><span>Günde 1 çevirme</span>
 
             </button>
 

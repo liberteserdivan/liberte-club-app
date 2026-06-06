@@ -1,9 +1,10 @@
 import React,{useEffect,useState}from'react';
-import{Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
+import{Database,Download,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
 import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,countTotalRewards,countTotalStamps,normalizeCategoryRewards,normalizeCategoryStamps,STAMP_CATEGORIES}from'../lib/db.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
+import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
 
 const ADMIN_TABS=[
@@ -80,6 +81,100 @@ function SettingsAdmin({db,commit}){
   return <div className="adminStack">
     <DesignAdmin db={db} commit={commit}/>
     <CouponsAdmin db={db} commit={commit}/>
+    <BackupAdmin/>
+  </div>;
+}
+
+// Veri yedeği — sunucudan tam yedek indir / yedekten geri yükle (PIN doğrulamalı)
+function BackupAdmin(){
+  const[backups,setBackups]=useState([]);
+  const[busy,setBusy]=useState('');
+  const[status,setStatus]=useState('');
+
+  // Sunucudaki anlık yedek listesini yükle
+  async function loadList(){
+    try{
+      const list=await fetchBackupList();
+      setBackups(list);
+    }catch(e){
+      setStatus(e.message||'Yedek listesi alınamadı.');
+    }
+  }
+
+  useEffect(()=>{loadList();},[]);
+
+  // Tam yedeği JSON olarak indir
+  async function handleDownload(){
+    setBusy('download');setStatus('');
+    try{
+      await downloadBackup();
+      setStatus('Yedek indirildi.');
+    }catch(e){
+      setStatus(e.message||'Yedek indirilemedi.');
+    }finally{setBusy('');}
+  }
+
+  // İndirilen JSON dosyasından geri yükle
+  async function handleFileRestore(event){
+    const file=event.target.files?.[0];
+    event.target.value='';
+    if(!file)return;
+    if(!window.confirm('Mevcut veriler bu dosyadaki yedekle değiştirilecek. Devam edilsin mi?'))return;
+    setBusy('file');setStatus('');
+    try{
+      await restoreBackupFile(file);
+      setStatus('Yedek geri yüklendi. Sayfa yenileniyor...');
+      setTimeout(()=>window.location.reload(),1200);
+    }catch(e){
+      setStatus(e.message||'Geri yükleme başarısız.');
+      setBusy('');
+    }
+  }
+
+  // Sunucudaki anlık yedeği geri yükle
+  async function handleSnapshotRestore(id){
+    if(!window.confirm('Mevcut veriler bu anlık yedekle değiştirilecek. Devam edilsin mi?'))return;
+    setBusy(`snap-${id}`);setStatus('');
+    try{
+      await restoreBackupSnapshot(id);
+      setStatus('Anlık yedek geri yüklendi. Sayfa yenileniyor...');
+      setTimeout(()=>window.location.reload(),1200);
+    }catch(e){
+      setStatus(e.message||'Geri yükleme başarısız.');
+      setBusy('');
+    }
+  }
+
+  return <div className="card adminSectionCard">
+    <div className="adminSectionHead"><div><span>YEDEK</span><h3>Veri yedeği & geri yükleme</h3></div><Database size={18}/></div>
+    <p className="adminHint">Veriler her değişiklikte sunucuda otomatik yedeklenir. Buradan tam yedeği indirebilir veya bir yedekten geri yükleyebilirsin.</p>
+
+    <div className="adminBackupActions">
+      <button type="button" className="goldBtn" disabled={busy==='download'} onClick={handleDownload}>
+        <Download size={16}/> {busy==='download'?'İndiriliyor...':'Yedeği indir'}
+      </button>
+      <label className="ghost adminBackupUpload">
+        <UploadCloud size={16}/> {busy==='file'?'Yükleniyor...':'Dosyadan geri yükle'}
+        <input type="file" accept="application/json" hidden disabled={busy==='file'} onChange={handleFileRestore}/>
+      </label>
+    </div>
+
+    {status&&<p className="adminBackupStatus">{status}</p>}
+
+    {backups.length>0&&<div className="adminBackupList">
+      <h4>Otomatik anlık yedekler</h4>
+      {backups.map(b=>
+        <div className="adminBackupRow" key={b.id}>
+          <div>
+            <b>{new Date(b.createdAt).toLocaleString('tr-TR')}</b>
+            <small>{b.customerCount} üye · {b.reason==='pre-delete'?'silme öncesi':'otomatik'}</small>
+          </div>
+          <button type="button" className="ghost" disabled={busy===`snap-${b.id}`} onClick={()=>handleSnapshotRestore(b.id)}>
+            <RotateCcw size={14}/> Geri yükle
+          </button>
+        </div>
+      )}
+    </div>}
   </div>;
 }
 function OverviewAdmin({db,commit,onManageUsers}){
@@ -107,21 +202,9 @@ function OverviewAdmin({db,commit,onManageUsers}){
     customer_edit:'Üye düzenlendi'
   }[t]||t);
 
-  function exportData(){
-    const payload={customers:db.customers,loyalty:db.loyalty,history:db.history,exportedAt:new Date().toISOString()};
-    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='liberte-club-yedek.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   return <div className="analyticsPage">
     <div className="adminSectionHead">
       <div><span>ÖZET</span><h3>İşletme durumu</h3></div>
-      <button type="button" className="ghost adminExportBtn" onClick={exportData}><ShieldCheck size={16}/> Yedek</button>
     </div>
 
     <div className="analyticsGrid adminMetricsCompact">

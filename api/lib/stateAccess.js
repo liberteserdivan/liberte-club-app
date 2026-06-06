@@ -85,64 +85,132 @@ export function filterStateForAdmin(state) {
   return next;
 }
 
-// Kullanıcı yazmalarını güvenli şekilde birleştir
+// Müşterinin yalnızca güncelleyebileceği güvenli profil alanları
+const SAFE_PROFILE_FIELDS = ['name', 'email', 'birthDate', 'notificationPreferences'];
+
+// Müşteri oturumunun asla yazamayacağı hassas, müşteriye özel satır alanları
+const SENSITIVE_ROW_FIELDS = [
+  'history',
+  'couponUses',
+  'dailyClaims',
+  'wheelSpins',
+  'checkIns',
+  'firstOrderBonuses',
+  'referrals'
+];
+
+// Profil yamasından yalnızca güvenli alanları uygula — isAdmin/role/phone/id korunur
+function applySafeProfile(current, patch) {
+  const next = { ...current };
+  if (typeof patch.name === 'string' && patch.name.trim()) {
+    next.name = patch.name.trim();
+  }
+  if (typeof patch.email === 'string' && patch.email.trim()) {
+    next.email = patch.email.trim().toLowerCase();
+  }
+  if ('birthDate' in patch) {
+    next.birthDate = String(patch.birthDate || '');
+  }
+  if ('notificationPreferences' in patch) {
+    next.notificationPreferences = patch.notificationPreferences;
+  }
+  if ('lastVisit' in patch && patch.lastVisit) {
+    next.lastVisit = patch.lastVisit;
+  }
+  return next;
+}
+
+// Kullanıcının kendi satırlarını client verisiyle değiştir; diğer üyeler korunur
+function replaceOwnRows(canonRows, clientRows, id) {
+  const others = (canonRows || []).filter((row) => row.customerId !== id);
+  const mine = (clientRows || []).filter((row) => row.customerId === id);
+  return [...mine, ...others];
+}
+
+// Müşteri yalnızca YENİ bekleyen talep ekleyebilir; mevcut kayıtlar/durumlar korunur
+function appendNewPendingRequests(canonRows, clientRows, id) {
+  const canon = canonRows || [];
+  const existingIds = new Set(canon.map((row) => row.id));
+  const additions = (clientRows || [])
+    .filter((row) => row.customerId === id && !existingIds.has(row.id))
+    .map((row) => ({ ...row, status: 'pending' }));
+  return [...additions, ...canon];
+}
+
+// Müşteri POST'unda izinsiz alan değişikliği var mı? (403 + loglama için)
+export function findCustomerWriteViolations(canonical, clientState, customerId) {
+  if (!clientState) return [];
+  const id = Number(customerId);
+  const canon = canonical || {};
+  const violations = [];
+
+  // Sadakat kartı (damga/ikram) değiştirme denemesi
+  const canonCard = canon.loyalty?.[id] || canon.loyalty?.[String(id)] || null;
+  const clientCard = clientState.loyalty?.[id] || clientState.loyalty?.[String(id)] || null;
+  if (clientCard && JSON.stringify(clientCard) !== JSON.stringify(canonCard)) {
+    violations.push('loyalty');
+  }
+
+  // Kendi kaydında yönetici/rol yükseltme denemesi
+  const clientCustomer = (clientState.customers || []).find((c) => Number(c.id) === id);
+  if (clientCustomer && (clientCustomer.isAdmin === true || clientCustomer.role)) {
+    violations.push('isAdmin');
+  }
+
+  // Hassas müşteriye özel satırları değiştirme denemesi
+  for (const field of SENSITIVE_ROW_FIELDS) {
+    if (!Array.isArray(clientState[field])) continue;
+    const canonRows = rowsForCustomer(canon[field], id);
+    const clientRows = rowsForCustomer(clientState[field], id);
+    if (JSON.stringify(clientRows) !== JSON.stringify(canonRows)) {
+      violations.push(field);
+    }
+  }
+
+  return violations;
+}
+
+// Müşteri yazmalarını yalnızca güvenli profil alanlarıyla sınırla
+// loyalty/history/rewards/coupon/wheel/daily vb. client'tan ASLA yazılamaz
 export function mergeUserState(canonical, clientState, customerId) {
-  const base = { ...canonical };
+  const base = { ...(canonical || {}) };
   const id = Number(customerId);
 
-  if (clientState.loyalty?.[id] || clientState.loyalty?.[String(id)]) {
-    base.loyalty = {
-      ...(base.loyalty || {}),
-      [id]: clientState.loyalty[id] || clientState.loyalty[String(id)]
-    };
-  }
-
-  const mergeRows = (key) => {
-    const others = (base[key] || []).filter((row) => row.customerId !== id);
-    const mine = rowsForCustomer(clientState[key], id);
-    base[key] = [...mine, ...others];
-  };
-
-  [
-    'history',
-    'feedback',
-    'pushSubscriptions',
-    'dailyClaims',
-    'wheelSpins',
-    'firstOrderBonuses',
-    'checkIns',
-    'couponUses'
-  ].forEach(mergeRows);
-
-  if (clientState.referrals) {
-    const others = (base.referrals || []).filter(
-      (row) => row.customerId !== id && row.referrerId !== id
-    );
-    const mine = (clientState.referrals || []).filter(
-      (row) => row.customerId === id || row.referrerId === id
-    );
-    base.referrals = [...mine, ...others];
-  }
-
-  const customerPatch = (clientState.customers || []).find((c) => Number(c.id) === id);
-  if (customerPatch) {
-    const existing = (base.customers || []).find((c) => Number(c.id) === id);
+  const patch = (clientState?.customers || []).find((c) => Number(c.id) === id);
+  if (patch) {
     base.customers = (base.customers || []).map((c) => (
-      Number(c.id) === id
-        ? {
-          ...c,
-          name: customerPatch.name || c.name,
-          email: customerPatch.email || c.email,
-          birthDate: customerPatch.birthDate ?? c.birthDate,
-          lastVisit: customerPatch.lastVisit || c.lastVisit
-        }
-        : c
+      Number(c.id) === id ? applySafeProfile(c, patch) : c
     ));
-    if (!existing) base.customers = [...(base.customers || []), customerPatch];
   }
+
+  // Yalnızca güvenli, müşteriye özel listeler güncellenebilir
+  base.pushSubscriptions = replaceOwnRows(base.pushSubscriptions, clientState?.pushSubscriptions, id);
+  base.feedback = replaceOwnRows(base.feedback, clientState?.feedback, id);
+
+  // Google yorum bonusu: müşteri yalnızca yeni "pending" talep ekleyebilir
+  // (damga ancak admin onayıyla verilir); mevcut talepler/durumları korunur
+  base.googleReviewRequests = appendNewPendingRequests(
+    base.googleReviewRequests,
+    clientState?.googleReviewRequests,
+    id
+  );
 
   return base;
 }
+
+// Admin yazmalarında sunucuya özel gizli ayarları (cashier_pin) koru
+export function mergeAdminState(canonical, clientState) {
+  const next = { ...(clientState || {}) };
+  const canonSettings = canonical?.settings || {};
+  next.settings = {
+    ...(clientState?.settings || {}),
+    ...(canonSettings.cashier_pin ? { cashier_pin: canonSettings.cashier_pin } : {})
+  };
+  return next;
+}
+
+// Tek tek dışa aktarılan güvenli profil alanı listesi (test/doküman için)
+export { SAFE_PROFILE_FIELDS };
 
 // Hesap silme — sunucu tarafı
 export function deleteCustomerFromState(state, customerId) {

@@ -3484,6 +3484,73 @@ header{
   padding:0 14px!important;
   font-size:12px!important;
 }
+
+/* Veri yedeği bölümü */
+.adminHint{
+  margin:8px 0 14px;
+  font-size:13px;
+  line-height:1.5;
+  color:rgba(255,255,255,.62);
+}
+.adminBackupActions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.adminBackupActions .goldBtn,
+.adminBackupUpload{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+}
+.adminBackupUpload{
+  margin:0;
+}
+.adminBackupStatus{
+  margin-top:12px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--gold);
+}
+.adminBackupList{
+  margin-top:16px;
+  border-top:1px solid rgba(216,194,157,.18);
+  padding-top:12px;
+}
+.adminBackupList h4{
+  margin:0 0 10px;
+  font-size:12px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.7);
+}
+.adminBackupRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.adminBackupRow:last-child{
+  border-bottom:none;
+}
+.adminBackupRow b{
+  display:block;
+  font-size:13px;
+}
+.adminBackupRow small{
+  font-size:11px;
+  color:rgba(255,255,255,.55);
+}
+.adminBackupRow .ghost{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  white-space:nowrap;
+}
 .adminMetricsCompact .metricCard{
   min-height:100px;
   padding:14px 12px;
@@ -5412,6 +5479,60 @@ header{
 
 .pageProStats{
   margin-top:4px;
+}
+
+/* Menü hero stat şeridi — iki sütun, kampanya stilini izler */
+.menuProStats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  position:relative;
+  z-index:1;
+}
+
+.menuProStats div{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 14px;
+  border-radius:18px;
+  background:rgba(255,253,248,.12);
+  border:1px solid rgba(216,194,157,.28);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+
+.menuProStats strong{
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  flex-shrink:0;
+  border-radius:12px;
+  background:rgba(216,194,157,.16);
+}
+
+.menuProStats strong svg{
+  width:18px;
+  height:18px;
+  color:var(--gold);
+}
+
+.menuProStats span{
+  flex:1;
+  font-size:11px;
+  font-weight:800;
+  color:rgba(255,255,255,.82);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.menuProStats em{
+  font-style:normal;
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+  color:#fff;
 }
 
 .pageSection{
