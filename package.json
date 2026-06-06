@@ -21,9 +21,9 @@
     "import:menu": "node scripts/import-menu-from-xlsx.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.4",
-    "@capacitor/cli": "^8.3.4",
-    "@capacitor/core": "^8.3.4",
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
     "@capacitor/splash-screen": "^8.0.1",
     "@neondatabase/serverless": "^1.1.0",
