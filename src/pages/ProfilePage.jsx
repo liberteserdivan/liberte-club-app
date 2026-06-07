@@ -10,7 +10,7 @@ import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
 import { logoutSession } from '../lib/session.js';
-import { supportEmail } from '../lib/constants.js';
+import { supportEmail, CLUB_APP_NAME } from '../lib/constants.js';
 
 // Profil — çıkış, hesap silme, yasal linkler
 export default function ProfilePage({
@@ -65,7 +65,7 @@ export default function ProfilePage({
   return (
     <PageShell
       variant="profile"
-      eyebrow="Liberte Club"
+      eyebrow={CLUB_APP_NAME}
       title="Profilim"
       subtitle="Hesap ayarları, destek ve yasal bilgiler"
       heroSlot={profileHero}

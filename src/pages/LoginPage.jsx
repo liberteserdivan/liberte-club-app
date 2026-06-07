@@ -17,11 +17,15 @@ import {
 import { getDeviceId } from '../lib/deviceId.js';
 import { applyAuthResult } from '../lib/session.js';
 import {
-  addStampToCustomer,
+  STORE_APP_NAME,
+  BRAND_SLOGAN,
+  LOYALTY_PROMO
+} from '../lib/constants.js';
+import {
   findReferrerByCode,
   getReferralCode,
   loyaltyTemplate,
-  makeReferralCode,
+  generateUniqueReferralCode,
   mergeDb,
   norm
 } from '../lib/db.js';
@@ -108,7 +112,7 @@ export default function Login({ db, commit, setSession }) {
       createdAt: new Date().toLocaleString('tr-TR'),
       lastVisit: new Date().toISOString(),
       birthDate: fields.birthDate || '',
-      referralCode: makeReferralCode(fields.nm, fields.ph, Date.now()),
+      referralCode: generateUniqueReferralCode(next.customers),
       referredBy: referrer?.id || null
     };
 
@@ -598,7 +602,9 @@ export default function Login({ db, commit, setSession }) {
         </div>
 
         <div className="loginFooter">
-          <p className="loginFooterLabel">Liberte Gastro Cafe</p>
+          <p className="loginFooterLabel">{STORE_APP_NAME}</p>
+          <p className="loginFooterNote">{BRAND_SLOGAN}</p>
+          <p className="loginFooterNote">{LOYALTY_PROMO}</p>
           <CafeContactBar compact />
           <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
             <ShoppingBag size={20} aria-hidden="true" />

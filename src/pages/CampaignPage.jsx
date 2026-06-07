@@ -27,6 +27,7 @@ import {
 import PremiumSection from '../components/PremiumSection.jsx';
 
 import { levelByStamps, loyaltyTemplate, countTotalRewards, countTotalStamps, normalizeCategoryRewards, normalizeCategoryStamps } from '../lib/db.js';
+import { CLUB_APP_NAME } from '../lib/constants.js';
 
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 
@@ -68,7 +69,7 @@ export default function CampaignPage({ db, customer, commit }) {
 
       variant="campaign"
 
-      eyebrow="Liberte Club"
+      eyebrow={CLUB_APP_NAME}
 
       title="Fırsatlar & Ödüller"
 

@@ -14,6 +14,7 @@ import {
   stampsRemaining
 } from '../lib/db.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
+import { CLUB_APP_NAME } from '../lib/constants.js';
 
 // Kartım — müşteri QR gösterir, yönetici müşteri QR tarar
 export default function QrPage({ db, customer, card, commit, isAdmin = false, adminVerified = false }) {
@@ -49,7 +50,7 @@ function CustomerQrCard({ db, customer, card }) {
     <PageShell
       variant="qr"
       className={`qrPageEnter${entered ? ' isEntered' : ''}`}
-      eyebrow="Liberte Club"
+      eyebrow={CLUB_APP_NAME}
       title="Kasada Göster"
       subtitle="QR kodunu kasiyere göster, damgan hesabına işlensin."
       bodyClassName="qrProBody"

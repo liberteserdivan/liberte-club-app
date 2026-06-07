@@ -9,6 +9,7 @@ import LiberteMarkIcon from '../components/LiberteMarkIcon.jsx';
 import FeaturedSlider from '../components/FeaturedSlider.jsx';
 
 import { getGreeting, levelByStamps, stampCardProgress, countTotalStamps, countTotalRewards, normalizeCategoryStamps, normalizeCategoryRewards } from '../lib/db.js';
+import { DEVICE_APP_NAME } from '../lib/constants.js';
 
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 
@@ -68,7 +69,7 @@ export default function HomePage({
 
             </p>
 
-            <h1>{customer.name.split(' ')[0] || 'Liberte'}</h1>
+            <h1>{customer.name.split(' ')[0] || DEVICE_APP_NAME}</h1>
 
             <div className="homeTimeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
 

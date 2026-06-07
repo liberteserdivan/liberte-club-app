@@ -1,4 +1,5 @@
 import { RefreshCw } from 'lucide-react';
+import { CLUB_APP_NAME } from '../lib/constants.js';
 import Brand from './Brand.jsx';
 
 // Üst bar: logo ve senkron — çıkış yalnızca Profil > Hesap bölümünde
@@ -7,7 +8,7 @@ export default function Header({ db, customer, sync, refreshRemote }) {
     <div className="head">
       <Brand db={db} header />
       <div className="headText">
-        <b>{db.settings.app_name || 'Liberte'}</b>
+        <b>{db.settings.app_name || CLUB_APP_NAME}</b>
         <span>{customer.name} · {sync === 'cloud' ? 'Bulut senkron' : 'Yerel kayıt'}</span>
       </div>
     </div>

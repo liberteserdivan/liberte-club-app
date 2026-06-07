@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DEFAULT_LOGO } from '../lib/constants.js';
+import { DEFAULT_LOGO, STORE_APP_NAME, DEVICE_APP_NAME } from '../lib/constants.js';
 
 // Marka logosu kaynağını çöz — boş veya geçersizse varsayılan
 function resolveLogoSrc(settings) {
@@ -29,7 +29,7 @@ function BrandLogoBox({ className, logoSrc, cafe, onFail }) {
 
 // Kafe marka logosu veya varsayılan L monogramı
 export default function Brand({ db, small = false, admin = false, header = false, login = false }) {
-  const cafe = db.settings?.cafe_name || 'Liberte Gastro Cafe';
+  const cafe = db.settings?.cafe_name || STORE_APP_NAME;
   const logoSrc = resolveLogoSrc(db.settings);
   const [imgFailed, setImgFailed] = useState(false);
   const showLogo = !imgFailed;
@@ -86,7 +86,7 @@ export default function Brand({ db, small = false, admin = false, header = false
   return (
     <div className={small ? 'logo small' : 'logo'}>
       <b>L</b>
-      {!small && <span>Liberte</span>}
+      {!small && <span>{DEVICE_APP_NAME}</span>}
     </div>
   );
 }

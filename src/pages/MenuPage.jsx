@@ -3,6 +3,7 @@ import { MenuListRow } from '../components/MenuProductCard.jsx';
 import MenuProductDetailModal from '../components/MenuProductDetailModal.jsx';
 import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
+import { CLUB_APP_NAME } from '../lib/constants.js';
 
 // Kategoriye göre ürün gruplarını döndür
 function buildMenuSections(categories, items, activeCat) {
@@ -59,7 +60,7 @@ export default function MenuPage({ db, embedded = false }) {
     <PageShell
       variant="menu"
       className={embedded ? 'pagePro--embedded' : ''}
-      eyebrow={embedded ? null : 'Liberte Club'}
+      eyebrow={embedded ? null : CLUB_APP_NAME}
       title={embedded ? null : 'Menü'}
       subtitle={embedded ? null : 'Kahve, tatlı, burger ve daha fazlası. Lezzetleri keşfet.'}
       stickySlot={categoryPills}

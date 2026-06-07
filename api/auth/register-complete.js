@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { findReferrerByInviteCode } from '../lib/referralCode.js';
 import { applyCors, readBody } from '../lib/http.js';
 import { cleanPhone } from '../lib/phone.js';
 import { buildCustomerRecord, createSession, indexCustomerEmail } from '../lib/auth.js';
@@ -76,7 +77,7 @@ async function handleComplete(req, res) {
   const pinConfirm = normalizePin(body.pinConfirm);
   const code = String(body.code || '').replace(/\D/g, '');
   const birthDate = String(body.birthDate || '');
-  const referralCode = String(body.referralCode || '').trim().toUpperCase();
+  const inviteCode = String(body.referralCode || body.inviteCode || '').trim().toUpperCase();
   const deviceId = String(body.deviceId || '').trim();
 
   if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
@@ -116,14 +117,16 @@ async function handleComplete(req, res) {
   });
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
 
+  const referrer = findReferrerByInviteCode(state.customers, inviteCode);
+
   const customer = buildCustomerRecord({
     phone,
     email,
     name,
     birthDate,
-    referralCode,
+    referredBy: referrer?.id || null,
     isAdmin: false
-  });
+  }, state.customers);
 
   state.customers = [...(state.customers || []), customer];
   state.loyalty = { ...(state.loyalty || {}), [customer.id]: loyaltyTemplate(customer.id) };

@@ -9,6 +9,7 @@ import {
   syncCustomerEmailsFromState,
   upsertCustomerEmail
 } from './customerEmails.js';
+import { generateUniqueReferralCode } from './referralCode.js';
 
 export const SESSION_COOKIE = 'liberte_session';
 const SESSION_DAYS = 30;
@@ -216,7 +217,7 @@ export async function indexCustomerEmail(customer) {
 }
 
 // Müşteri kaydını sunucu tarafında oluştur
-export function buildCustomerRecord(payload) {
+export function buildCustomerRecord(payload, existingCustomers = []) {
   const id = Date.now();
   return {
     id,
@@ -227,7 +228,7 @@ export function buildCustomerRecord(payload) {
     createdAt: new Date().toLocaleString('tr-TR'),
     lastVisit: new Date().toISOString(),
     birthDate: String(payload.birthDate || ''),
-    referralCode: String(payload.referralCode || `LC${id}`).slice(0, 12).toUpperCase(),
+    referralCode: generateUniqueReferralCode(existingCustomers),
     referredBy: payload.referredBy || null
   };
 }

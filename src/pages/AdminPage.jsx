@@ -3,6 +3,7 @@ import{Database,Download,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
 import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,countTotalRewards,countTotalStamps,normalizeCategoryRewards,normalizeCategoryStamps,STAMP_CATEGORIES}from'../lib/db.js';
+import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
@@ -30,7 +31,7 @@ export default function AdminPage({db,commit}){
       <div className="adminHeroBrand">
         <Brand db={db} admin />
         <div>
-          <span>{db.settings.cafe_name||'Liberte Gastro Cafe'}</span>
+          <span>{db.settings.cafe_name||STORE_APP_NAME}</span>
           <h2>Yönetim Paneli</h2>
           <p>{db.customers.length} üye · {deviceCount} bildirim cihazı</p>
         </div>

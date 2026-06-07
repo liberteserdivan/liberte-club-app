@@ -1,7 +1,8 @@
 {
   "name": "liberte-club-app",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.7",
+  "description": "Liberte Club — Liberte Gastro Cafe sadakat uygulaması",
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-firebase-sw.mjs && vite",

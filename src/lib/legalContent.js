@@ -1,5 +1,7 @@
 // Gizlilik politikası ve kullanım şartları — App Store / Play Store uyumu
 
+import { LOYALTY_PROMO, CLUB_APP_NAME, STORE_APP_NAME } from './constants.js';
+
 export const LEGAL_UPDATED = '5 Haziran 2026';
 
 export const privacyPolicySections = [
@@ -28,7 +30,7 @@ export const privacyPolicySections = [
 export const termsOfUseSections = [
   {
     title: 'Hizmet',
-    body: 'Liberte Club, Liberte Gastro Cafe müşterilerine sadakat programı, kampanya ve dijital kart hizmeti sunar.'
+    body: `${CLUB_APP_NAME}, ${STORE_APP_NAME} müşterilerine sadakat programı, kampanya ve dijital kart hizmeti sunar.`
   },
   {
     title: 'Üyelik',
@@ -36,7 +38,7 @@ export const termsOfUseSections = [
   },
   {
     title: 'Sadakat ve ödüller',
-    body: 'Damga ve ikram hakları Liberte tarafından belirlenir; kötüye kullanım tespitinde hesap kısıtlanabilir veya kapatılabilir.'
+    body: `Damga ve ikram hakları Liberte tarafından belirlenir: ${LOYALTY_PROMO} Kötüye kullanım tespitinde hesap kısıtlanabilir veya kapatılabilir.`
   },
   {
     title: 'Bildirimler',

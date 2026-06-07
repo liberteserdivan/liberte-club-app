@@ -78,6 +78,15 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   text-transform:uppercase;
   color:rgba(216,194,157,.92);
 }
+.appSplashSlogan{
+  margin:10px 0 0;
+  max-width:240px;
+  font-size:13px;
+  line-height:1.45;
+  font-weight:600;
+  color:rgba(255,255,255,.82);
+  text-align:center;
+}
 @keyframes appSplashIn{
   from{opacity:0;transform:scale(.94) translateY(8px)}
   to{opacity:1;transform:scale(1) translateY(0)}
@@ -5704,6 +5713,18 @@ header{
   letter-spacing:.14em;
   text-transform:uppercase;
   color:rgba(11,47,38,.45);
+}
+
+.loginFooterNote{
+  margin:0 0 8px;
+  text-align:center;
+  font-size:12px;
+  line-height:1.45;
+  color:rgba(11,47,38,.55);
+}
+
+.loginFooterNote:last-of-type{
+  margin-bottom:12px;
 }
 
 .loginFooter .cafeContactBtn{

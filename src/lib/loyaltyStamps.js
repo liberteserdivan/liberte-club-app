@@ -123,8 +123,10 @@ export function applyCategoryThresholds(stamps, rewards) {
   return { categoryStamps: nextStamps, categoryRewards: nextRewards };
 }
 
+import { BRAND_SLOGAN, LOYALTY_PROMO } from './constants.js';
+
 // Sadakat programı tanıtım metinleri
-export const LOYALTY_RULES_TITLE = 'Liberte’de müdavim olmak kazandırır.';
+export const LOYALTY_RULES_TITLE = BRAND_SLOGAN;
 export const LOYALTY_RULES_HIGHLIGHTS = [
   { label: '7. kahven', tone: 'coffee' },
   { label: '7. tatlın', tone: 'dessert' },
@@ -134,6 +136,5 @@ export const LOYALTY_RULES_DETAIL_SUFFIX = 'bizden.';
 
 // Kurallar metni — tek satır özet (geri uyumluluk)
 export function getStampRulesText() {
-  const detail = LOYALTY_RULES_HIGHLIGHTS.map((item) => item.label).join(', ');
-  return `${LOYALTY_RULES_TITLE} ${detail} ${LOYALTY_RULES_DETAIL_SUFFIX}`;
+  return `${LOYALTY_RULES_TITLE} ${LOYALTY_PROMO}`;
 }

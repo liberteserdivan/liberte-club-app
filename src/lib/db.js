@@ -14,6 +14,15 @@ import{
 import { apiJson } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
+import { legacyReferralCode, generateUniqueReferralCode } from './referralCode.js';
+import {
+  STORE_APP_NAME,
+  CLUB_APP_NAME,
+  BRAND_SLOGAN,
+  LOYALTY_PROMO
+} from './constants.js';
+
+export { generateUniqueReferralCode } from './referralCode.js';
 
 // Güncel menü seed'i mi kullanılacak?
 function resolveMenu(x) {
@@ -36,16 +45,16 @@ export const seed={
   settings:{
     stamp_threshold:6,
     reward_description:'Kategori ikramı',
-    cafe_name:'Liberte Gastro Cafe',
-    app_name:'Liberte',
+    cafe_name: STORE_APP_NAME,
+    app_name: CLUB_APP_NAME,
     bg:'#f7fbf8',
     card:'#ffffff',
     accent:'#78dfbb',
     font:'Inter',
     logo:'/liberte-logo-source.png?v=11',
     hero_title:'Bugünün Favorileri',
-    hero_subtitle:'Kahve, tatlı ve burger keyfi Liberte’de.',
-    promo_text:'Liberte’de müdavim olmak kazandırır. 7. kahven, 7. tatlın ve 12. burgerin bizden.',
+    hero_subtitle: BRAND_SLOGAN,
+    promo_text: `${BRAND_SLOGAN} ${LOYALTY_PROMO}`,
     cashier_pin:'5454',
     review_popup:true,
     daily_popup:true,
@@ -249,18 +258,13 @@ export function isBirthdayToday(birthDate){
   return Number(parts[1])===d.getMonth()+1&&Number(parts[2])===d.getDate();
 }
 
-export function makeReferralCode(name='',phone='',id=''){
-  const base=String(name||'LIBERTE')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-zA-Z0-9]/g,'')
-    .toUpperCase()
-    .slice(0,6)||'LIBERTE';
-  const tail=String(phone||id||Date.now()).replace(/\D/g,'').slice(-4)||String(id).slice(-4);
-  return `${base}${tail}`;
+export function makeReferralCode(_name = '', _phone = '', _id = '', customers = []) {
+  return generateUniqueReferralCode(customers);
 }
 
-export function getReferralCode(customer){
-  return customer?.referralCode||makeReferralCode(customer?.name,customer?.phone,customer?.id);
+export function getReferralCode(customer) {
+  if (customer?.referralCode) return String(customer.referralCode).toUpperCase();
+  return legacyReferralCode(customer);
 }
 
 export function findReferrerByCode(db,code){
