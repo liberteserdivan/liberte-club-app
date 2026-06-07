@@ -1,4 +1,5 @@
 import React from 'react';
+import { hideNativeSplash } from '../lib/nativeSplash.js';
 
 // Beklenmeyen hatalarda siyah ekran yerine mesaj gösterir
 export default class ErrorBoundary extends React.Component {
@@ -9,6 +10,10 @@ export default class ErrorBoundary extends React.Component {
 
   static getDerivedStateFromError(error) {
     return { error };
+  }
+
+  componentDidCatch() {
+    hideNativeSplash();
   }
 
   render() {

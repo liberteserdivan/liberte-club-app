@@ -4,6 +4,7 @@ import { bootstrapSession, logoutSession, setMemorySession } from './lib/session
 import { FIREBASE_SW_URL, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { getInitialSplashPhase, markAppSplashSeen } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
+import { isNativeApp } from './lib/platform.js';
 import { useCommit } from './hooks/useCommit.js';
 import AppSplash from './components/AppSplash.jsx';
 import Nav from './components/Nav.jsx';
@@ -62,9 +63,16 @@ export default function App() {
   }, [splashPhase]);
 
   useEffect(() => {
+    // Native WebView'da service worker Capacitor yüklemesini bozabilir
+    if (isNativeApp()) return;
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register(FIREBASE_SW_URL).catch(() => {});
     startPushForegroundListener().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    hideNativeSplash();
   }, []);
 
   async function handleSetSession(next) {

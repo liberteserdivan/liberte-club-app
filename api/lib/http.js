@@ -5,10 +5,21 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .map((v) => v.trim())
   .filter(Boolean);
 
+// Capacitor native uygulama kökenleri — ALLOWED_ORIGINS'ten bağımsız izin verilir
+const NATIVE_APP_ORIGINS = new Set([
+  'https://localhost',
+  'http://localhost',
+  'capacitor://localhost',
+  'ionic://localhost',
+  'https://localhost:8080',
+  'http://localhost:8080'
+]);
+
 // İstek kaynağını doğrula
 export function resolveOrigin(req) {
   const origin = req.headers.origin || '';
   if (!origin) return '';
+  if (NATIVE_APP_ORIGINS.has(origin)) return origin;
   if (ALLOWED_ORIGINS.length === 0) return origin;
   return ALLOWED_ORIGINS.includes(origin) ? origin : '';
 }
