@@ -1,5 +1,5 @@
 # Liberte Club — Capacitor iOS App Store / TestFlight derlemesi
-# Codemagic UI → Environment variable group: app_store_credentials
+# Codemagic UI → Environment variable group: app_store_connect
 #   APP_STORE_CONNECT_ISSUER_ID
 #   APP_STORE_CONNECT_KEY_IDENTIFIER
 #   APP_STORE_CONNECT_PRIVATE_KEY
@@ -15,7 +15,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       groups:
-        - app_store_credentials
+        - app_store_connect
       ios_signing:
         provisioning_profiles:
           - liberte_app_store_profile
