@@ -1,11 +1,12 @@
 # Liberte Club — Capacitor iOS App Store / TestFlight derlemesi
-# Codemagic UI → Environment variable groups:
-#   app_store_credentials:
-#     APP_STORE_CONNECT_ISSUER_ID
-#     APP_STORE_CONNECT_KEY_IDENTIFIER
-#     APP_STORE_CONNECT_PRIVATE_KEY  (.p8 dosyasinin tam icerigi)
-#   certificate_credentials (yeni sertifika olusturma icin):
-#     CERTIFICATE_PRIVATE_KEY  (openssl genrsa 2048 ile uretilen RSA anahtar)
+# Codemagic UI → Environment variable group: app_store_credentials
+#   APP_STORE_CONNECT_ISSUER_ID
+#   APP_STORE_CONNECT_KEY_IDENTIFIER
+#   APP_STORE_CONNECT_PRIVATE_KEY
+#
+# Codemagic UI → Code signing identities:
+#   Certificate reference: liberte_distribution
+#   Provisioning profile reference: liberte_app_store_profile
 
 workflows:
   ios-release:
@@ -15,10 +16,11 @@ workflows:
     environment:
       groups:
         - app_store_credentials
-        - certificate_credentials
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: cafe.liberte.app
+        provisioning_profiles:
+          - liberte_app_store_profile
+        certificates:
+          - liberte_distribution
       vars:
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
@@ -34,22 +36,13 @@ workflows:
         script: npm run build
       - name: Capacitor iOS sync
         script: npx cap sync ios
-      - name: Keychain hazirla
-        script: keychain initialize
-      - name: App Store imza dosyalarini al veya olustur
-        script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-      - name: Sertifikalari keychain'e ekle
-        script: keychain add-certificates
-      - name: Xcode provisioning profile ayarlari
-        script: xcode-project use-profiles
       - name: iOS surum ve build numarasi
         script: |
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
           agvtool new-version -all "$BUILD_NUMBER"
+      - name: Manuel imza dosyalarini Xcode projesine uygula
+        script: xcode-project use-profiles
       - name: iOS archive (IPA)
         script: |
           xcode-project build-ipa \
