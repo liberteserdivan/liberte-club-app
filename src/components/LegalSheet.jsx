@@ -1,10 +1,10 @@
 import { X } from 'lucide-react';
-import { LEGAL_UPDATED, privacyPolicySections, termsOfUseSections } from '../lib/legalContent.js';
+import { LEGAL_UPDATED, PRIVACY_PAGE_TITLE, TERMS_PAGE_TITLE, privacyPolicySections, termsOfUseSections } from '../lib/legalContent.js';
 
 // Yasal metin tam ekran paneli
 export default function LegalSheet({ type, onClose }) {
   const isPrivacy = type === 'privacy';
-  const title = isPrivacy ? 'Gizlilik Politikası' : 'Kullanım Şartları';
+  const title = isPrivacy ? PRIVACY_PAGE_TITLE : TERMS_PAGE_TITLE;
   const sections = isPrivacy ? privacyPolicySections : termsOfUseSections;
 
   return (

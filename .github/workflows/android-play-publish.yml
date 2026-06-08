@@ -1,0 +1,50 @@
+# Play Console'a AAB yukleme — manuel tetikleme
+# Gerekli secret: PLAY_STORE_SERVICE_ACCOUNT_JSON (servis hesabi JSON icerigi)
+
+name: Android Play Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Yayin kanali'
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Android imza bilgileri
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PROPERTIES: ${{ secrets.ANDROID_KEYSTORE_PROPERTIES }}
+        run: |
+          echo "$KEYSTORE_PROPERTIES" > android/keystore.properties
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/liberte-club-release-key.jks
+
+      - name: Play Console kimlik bilgisi
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+        run: echo "$PLAY_JSON" > android/play-console-service-account.json
+
+      - name: Derle ve yukle
+        run: node scripts/publish-android-play.mjs ${{ inputs.track }} --build

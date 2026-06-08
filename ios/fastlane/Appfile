@@ -1,0 +1,3 @@
+# Liberte Club — App Store Connect yapilandirmasi
+app_identifier('cafe.liberte.app')
+team_id(ENV['APPLE_TEAM_ID'])

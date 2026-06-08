@@ -1,7 +1,7 @@
 {
   "name": "liberte-club-app",
   "private": true,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Liberte Club — Liberte Gastro Cafe sadakat uygulaması",
   "type": "module",
   "scripts": {
@@ -19,6 +19,11 @@
     "cap:android": "npm run cap:sync:android && cd android && gradlew.bat assembleDebug",
     "cap:ios": "npm run cap:sync:ios && npx cap open ios",
     "release:android": "npm run build && node scripts/generate-android-icons.mjs && npx cap sync android && cd android && gradlew.bat bundleRelease",
+    "publish:android": "node scripts/publish-android-play.mjs internal",
+    "publish:android:internal": "node scripts/publish-android-play.mjs internal --build",
+    "publish:android:production": "node scripts/publish-android-play.mjs production --build",
+    "release:android:ship": "node scripts/publish-android-play.mjs internal --build",
+    "cap:sync:ios:only": "npx cap sync ios",
     "import:menu": "node scripts/import-menu-from-xlsx.mjs"
   },
   "dependencies": {

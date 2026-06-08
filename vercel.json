@@ -1,9 +1,13 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/gizlilik", "destination": "/privacy", "permanent": true },
+    { "source": "/kullanim-sartlari", "destination": "/terms", "permanent": true }
+  ],
   "rewrites": [
-    { "source": "/gizlilik", "destination": "/gizlilik.html" },
-    { "source": "/kullanim-sartlari", "destination": "/kullanim-sartlari.html" },
+    { "source": "/privacy", "destination": "/index.html" },
+    { "source": "/terms", "destination": "/index.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

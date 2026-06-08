@@ -1,29 +1,37 @@
 // Gizlilik politikası ve kullanım şartları — App Store / Play Store uyumu
 
-import { LOYALTY_PROMO, CLUB_APP_NAME, STORE_APP_NAME } from './constants.js';
+import {
+  LOYALTY_PROMO,
+  CLUB_APP_NAME,
+  STORE_APP_NAME,
+  supportEmail
+} from './constants.js';
 
-export const LEGAL_UPDATED = '5 Haziran 2026';
+export const LEGAL_UPDATED = '7 Haziran 2026';
+
+export const PRIVACY_PAGE_TITLE = 'Liberte Gastro Cafe Gizlilik Politikası';
+export const TERMS_PAGE_TITLE = 'Kullanım Şartları';
 
 export const privacyPolicySections = [
   {
-    title: 'Veri sorumlusu',
-    body: 'Liberte Gastro Cafe (“Liberte”) sadakat uygulaması kapsamında kişisel verileriniz Liberte tarafından işlenir. İletişim: liberteserdivan@gmail.com'
-  },
-  {
-    title: 'Toplanan veriler',
-    body: 'Telefon numarası, ad soyad, e-posta, doğum tarihi (isteğe bağlı), sadakat damgaları, kampanya geçmişi ve bildirim tercihleri. Push bildirimleri için cihaz bildirim tokenı işlenebilir.'
+    title: 'Toplanan bilgiler',
+    body: 'Kayıt ve sadakat hizmeti kapsamında ad soyad, telefon numarası, e-posta adresi, doğum tarihi (isteğe bağlı), sadakat kartı / damga / ikram bilgileri ile kampanya geçmişi işlenebilir. Push bildirimleri için cihaz bildirim izni ve bildirim tokenı alınabilir.'
   },
   {
     title: 'Kullanım amacı',
-    body: 'Sadakat kartı, QR doğrulama, kampanya ve ödül bildirimleri, müşteri desteği ve yasal yükümlülüklerin yerine getirilmesi.'
+    body: 'Toplanan veriler hesap oluşturma, müşteri doğrulama, sadakat kartı yönetimi, kampanya bildirimi ve müşteri desteği amacıyla kullanılır. Yasal yükümlülüklerin yerine getirilmesi için gerekli hallerde de işlenebilir.'
   },
   {
-    title: 'Saklama ve güvenlik',
-    body: 'Veriler güvenli sunucularda saklanır. Hesabınızı sildiğinizde kişisel kayıtlarınız ve sadakat verileriniz sistemden kaldırılır; yasal zorunluluk hariç.'
+    title: 'Veriler üçüncü taraflara satılmaz',
+    body: 'Kişisel verileriniz pazarlama amacıyla üçüncü taraflara satılmaz veya kiralanmaz. Hizmetin sunulması için zorunlu altyapı sağlayıcıları (barındırma, e-posta, bildirim) yalnızca hizmet kapsamında veri işleyebilir.'
   },
   {
-    title: 'Haklarınız',
-    body: 'KVKK kapsamında erişim, düzeltme, silme ve itiraz haklarına sahipsiniz. Uygulama içinden “Hesabımı Sil” veya e-posta ile talepte bulunabilirsiniz.'
+    title: 'Hesabınızı silebilirsiniz',
+    body: 'Uygulama içindeki Profil → Hesabımı Sil seçeneği ile hesabınızı kalıcı olarak silebilirsiniz. Silme sonrası kişisel kayıtlarınız ve sadakat verileriniz sistemden kaldırılır; yasal saklama zorunluluğu olan kayıtlar hariç.'
+  },
+  {
+    title: 'İletişim',
+    body: `Gizlilik talepleriniz için ${supportEmail} adresine yazabilir veya https://app.liberte.cafe üzerinden işletme iletişim bilgilerine ulaşabilirsiniz.`
   }
 ];
 
