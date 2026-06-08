@@ -27,9 +27,15 @@ workflows:
         APP_VERSION: "1.0.0"
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
-      node: 20
+      node: 22
       xcode: latest
     scripts:
+      - name: Node.js 22 hazirla
+        script: |
+          nvm install 22
+          nvm use 22
+          node -v
+          npm -v
       - name: npm install
         script: npm install
       - name: npm run build
