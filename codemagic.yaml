@@ -1,0 +1,58 @@
+# Liberte Club — Capacitor iOS App Store / TestFlight derlemesi
+# Codemagic Team Settings: App Store Connect API anahtari tanimlanmali (integrations.app_store_connect)
+
+workflows:
+  ios-release:
+    name: ios-release
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      # Codemagic UI → Team integrations → Developer Portal → API key adi
+      app_store_connect: liberte_app_store_connect
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: cafe.liberte.app
+      vars:
+        BUNDLE_ID: cafe.liberte.app
+        APP_STORE_APP_NAME: Liberte Gastro Cafe
+        APP_VERSION: "1.0.0"
+        # Capacitor 8 SPM kullanir; App.xcworkspace yok — xcodeproj ile derlenir
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+        # App Store Connect → App → General → Apple ID (sayi)
+        # APP_STORE_APP_ID: 0000000000
+      node: 20
+      xcode: latest
+    scripts:
+      - name: npm install
+        script: npm install
+      - name: npm run build
+        script: npm run build
+      - name: Capacitor iOS sync
+        script: npx cap sync ios
+      - name: iOS surum ve build numarasi
+        script: |
+          cd ios/App
+          agvtool new-marketing-version "$APP_VERSION"
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Xcode imzalama ayarlari
+        script: xcode-project use-profiles
+      - name: iOS archive (IPA)
+        script: |
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
