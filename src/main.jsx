@@ -4,6 +4,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import LegalPublicPage from './pages/LegalPublicPage.jsx';
 import { resolveLegalRoute } from './lib/legalRoutes.js';
 import { patchFirebaseReferrer } from './lib/firebaseReferrerPatch.js';
+import { getFirebaseReferrerOrigin } from './lib/firebasePush.js';
 import { initPwaInstallCapture } from './lib/pwaInstall.js';
 import { scheduleNativeSplashHide } from './lib/nativeSplash.js';
 import './style.css';
@@ -12,7 +13,7 @@ import './style.css';
 const legalRoute = resolveLegalRoute(window.location.pathname);
 
 // Firebase Google API isteklerine referrer ekle (push / installations)
-patchFirebaseReferrer();
+patchFirebaseReferrer(getFirebaseReferrerOrigin());
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) initPwaInstallCapture();
 // Native splash takılmasını önle — yasal sayfalarda gerekmez

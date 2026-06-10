@@ -1,1 +1,1 @@
-Dahili test surumu — Liberte Club guncellemesi.
+Dahili test — Android bildirim izni ve push düzeltmesi (1.0.9).

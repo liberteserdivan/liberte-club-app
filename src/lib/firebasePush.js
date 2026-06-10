@@ -2,11 +2,24 @@ import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, N
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
-import { isIos } from './platform.js';
+import { isIos, isNativeApp } from './platform.js';
+import { ensureAndroidNotificationPermission } from './androidNotificationPermission.js';
 
-// Service worker — sabit yol (sorgu parametresi kayıt çakışması yapar)
+// Service worker yolu — Capacitor WebView'da göreli yol gerekir
+export function getFirebaseSwUrl() {
+  if (isNativeApp()) return './firebase-messaging-sw.js';
+  return '/firebase-messaging-sw.js';
+}
+
 export const FIREBASE_SW_URL = '/firebase-messaging-sw.js';
 export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
+
+// Firebase API key referrer — native uygulama localhost'tan servis edilir
+export function getFirebaseReferrerOrigin() {
+  if (isNativeApp()) return PUSH_SITE_ORIGIN;
+  if (typeof window !== 'undefined') return window.location.origin;
+  return PUSH_SITE_ORIGIN;
+}
 
 // Tarayıcı bildirimi göster — iOS PWA'da yalnızca SW üzerinden çalışır
 export async function showPushNotification(payload) {
@@ -57,7 +70,7 @@ export async function startPushForegroundListener() {
 
   if (!(await isSupported())) return;
 
-  patchFirebaseReferrer();
+  patchFirebaseReferrer(getFirebaseReferrerOrigin());
   const config = await resolveFirebaseConfig();
   const app = getApps().length ? getApps()[0] : initializeApp(config);
   const messaging = getMessaging(app);
@@ -78,7 +91,8 @@ async function ensureServiceWorkerRegistration() {
     return existing;
   }
 
-  const registration = await navigator.serviceWorker.register(FIREBASE_SW_URL, { scope: '/' });
+  const swUrl = getFirebaseSwUrl();
+  const registration = await navigator.serviceWorker.register(swUrl, { scope: './' });
   await registration.update();
   await navigator.serviceWorker.ready;
   return registration;
@@ -199,6 +213,10 @@ function mapPushError(error) {
     return 'Bildirim izni tarayıcı tarafından engellendi.';
   }
 
+  if (message.includes('Android bildirim izni')) {
+    return message;
+  }
+
   return `Bildirim kurulamadı: ${message}`;
 }
 
@@ -277,6 +295,11 @@ export async function enablePush(customer, db, commit) {
     throw new Error('VAPID_INVALID');
   }
 
+  const androidPermission = await ensureAndroidNotificationPermission();
+  if (!androidPermission.ok) {
+    throw new Error(androidPermission.message || 'Android bildirim izni verilmedi.');
+  }
+
   let permission = Notification.permission;
   if (permission !== 'granted') {
     permission = await Notification.requestPermission();
@@ -296,7 +319,7 @@ export async function enablePush(customer, db, commit) {
   }
 
   // HTTP referrer kısıtlı API key ile Firebase Installations için
-  patchFirebaseReferrer();
+  patchFirebaseReferrer(getFirebaseReferrerOrigin());
   const registration = await ensureServiceWorkerRegistration();
 
   const app = initializeApp(config);
@@ -353,7 +376,7 @@ export async function refreshPushTokenIfSubscribed(customer, db, commit) {
       await deleteApp(app);
     }
 
-    patchFirebaseReferrer();
+    patchFirebaseReferrer(getFirebaseReferrerOrigin());
     const app = initializeApp(config);
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {

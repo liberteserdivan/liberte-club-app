@@ -104,7 +104,10 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = event.notification?.data?.url || 'https://app.liberte.cafe';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      const open = list.find((item) => item.url && item.url.includes('app.liberte.cafe'));
+      const open = list.find((item) => {
+        if (!item.url) return false;
+        return item.url.includes('app.liberte.cafe') || item.url.includes('localhost');
+      });
       if (open) {
         if (typeof open.navigate === 'function') {
           open.navigate(targetUrl);
