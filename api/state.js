@@ -1,7 +1,13 @@
-import { applyCors, publicErrorMessage, readBody } from './lib/http.js';
+import { applyCors, publicErrorMessage, readBodySafe } from './lib/http.js';
 import { loadAppState, saveAppState } from './lib/appState.js';
-import { requireAdminSession, requireSession } from './lib/auth.js';
+import { getSession, requireAdminSession, requireSession } from './lib/auth.js';
 import { logServerError } from './lib/logServerError.js';
+import {
+  clearAllErrorLogs,
+  insertErrorLog,
+  listErrorLogs,
+  LOG_RETENTION_DAYS
+} from './lib/errorLogs.js';
 import {
   filterStateForAdmin,
   filterStateForUser,
@@ -19,6 +25,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Hata logları — ayrı function açmamak için mevcut endpoint (Vercel Hobby limiti)
+    if (req.method === 'GET' && req.query?.errorLogs === '1') {
+      return await handleErrorLogList(req, res);
+    }
+
     if (req.method === 'GET') {
       const session = await requireSession(req, res);
       if (!session) return;
@@ -43,7 +54,10 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const body = readBody(req);
+      const body = readBodySafe(req);
+      if (body?.errorLog) return await handleErrorLogCreate(req, res, body.errorLog);
+      if (body?.action === 'clearErrorLogs') return await handleErrorLogClear(req, res);
+
       const data = body?.data;
       if (!data) return res.status(400).json({ error: 'data zorunlu' });
 
@@ -89,4 +103,48 @@ export default async function handler(req, res) {
     });
     return res.status(500).json({ error: publicErrorMessage(err, 'Veritabanı hatası') });
   }
+}
+
+// Yönetici — hata log listesi
+async function handleErrorLogList(req, res) {
+  const session = await requireAdminSession(req, res, { pinRequired: true });
+  if (!session) return;
+
+  const limit = Number(req.query?.limit || 200);
+  const logs = await listErrorLogs(limit);
+
+  return res.status(200).json({
+    ok: true,
+    retentionDays: LOG_RETENTION_DAYS,
+    logs
+  });
+}
+
+// İstemci — hata kaydı (oturum varsa customer_id eklenir)
+async function handleErrorLogCreate(req, res, payload) {
+  if (!payload?.message && !payload?.userMessage) {
+    return res.status(400).json({ error: 'message zorunlu' });
+  }
+
+  const session = await getSession(req);
+  const row = await insertErrorLog({
+    level: payload.level,
+    source: payload.source,
+    message: payload.userMessage || payload.message,
+    code: payload.code,
+    detail: payload.detail,
+    customerId: session?.customerId || payload.customerId || null,
+    platform: payload.platform
+  });
+
+  return res.status(200).json({ ok: true, id: row?.id || null });
+}
+
+// Yönetici — tüm hata loglarını sil
+async function handleErrorLogClear(req, res) {
+  const session = await requireAdminSession(req, res, { pinRequired: true });
+  if (!session) return;
+
+  const removed = await clearAllErrorLogs();
+  return res.status(200).json({ ok: true, removed });
 }

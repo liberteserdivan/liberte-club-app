@@ -1,20 +1,18 @@
-// Hata log API istemcisi
+// Hata log API istemcisi — Vercel function limiti nedeniyle /api/state üzerinden
 import { apiFetch, apiJson } from './apiClient.js';
-
-const ERROR_LOGS_PATH = '/api/error-logs';
 
 // Sunucuya hata kaydı gönder
 export async function submitErrorLog(payload) {
-  const { response } = await apiFetch(ERROR_LOGS_PATH, {
+  const { response } = await apiFetch('/api/state', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ errorLog: payload })
   });
   return response.ok;
 }
 
 // Yönetici — log listesi
 export async function fetchErrorLogs(limit = 200) {
-  const { response, data } = await apiJson(`${ERROR_LOGS_PATH}?limit=${limit}`);
+  const { response, data } = await apiJson(`/api/state?errorLogs=1&limit=${limit}`);
   if (!response.ok) {
     throw new Error(data?.error || 'Log listesi alınamadı');
   }
@@ -26,7 +24,10 @@ export async function fetchErrorLogs(limit = 200) {
 
 // Yönetici — tüm logları sil
 export async function clearErrorLogs() {
-  const { response, data } = await apiJson(ERROR_LOGS_PATH, { method: 'DELETE' });
+  const { response, data } = await apiJson('/api/state', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'clearErrorLogs' })
+  });
   if (!response.ok) {
     throw new Error(data?.error || 'Loglar silinemedi');
   }

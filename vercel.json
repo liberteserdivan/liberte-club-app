@@ -8,7 +8,6 @@
   "rewrites": [
     { "source": "/privacy", "destination": "/index.html" },
     { "source": "/terms", "destination": "/index.html" },
-    { "source": "/api/logs", "destination": "/api/error-logs" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
