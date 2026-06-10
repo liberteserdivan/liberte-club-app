@@ -10,6 +10,8 @@ import AppSplash from './components/AppSplash.jsx';
 import Nav from './components/Nav.jsx';
 import AdminPinGate from './components/AdminPinGate.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
+import ErrorToastHost from './components/ErrorToastHost.jsx';
+import SyncStatusBanner from './components/SyncStatusBanner.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MenuPage from './pages/MenuPage.jsx';
@@ -19,7 +21,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 
 export default function App() {
-  const [db, commit, sync, refreshRemote] = useCommit(load());
+  const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load());
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
@@ -160,6 +162,8 @@ export default function App() {
           <AdminPinGate fullscreen onVerified={handleAdminVerified} />
         )}
 
+        <SyncStatusBanner syncState={syncState} onRetry={retrySave} />
+        <ErrorToastHost />
         <OfflineNotice />
         <Nav tab={tab} setTab={setTab} isAdmin={isAdmin} />
       </main>

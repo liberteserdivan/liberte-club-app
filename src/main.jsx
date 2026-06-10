@@ -3,6 +3,7 @@ import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import LegalPublicPage from './pages/LegalPublicPage.jsx';
 import { resolveLegalRoute } from './lib/legalRoutes.js';
+import { captureException } from './lib/errorHub.js';
 import { patchFirebaseReferrer } from './lib/firebaseReferrerPatch.js';
 import { getFirebaseReferrerOrigin } from './lib/firebasePush.js';
 import { initPwaInstallCapture } from './lib/pwaInstall.js';
@@ -18,6 +19,25 @@ patchFirebaseReferrer(getFirebaseReferrerOrigin());
 if (!legalRoute) initPwaInstallCapture();
 // Native splash takılmasını önle — yasal sayfalarda gerekmez
 if (!legalRoute) scheduleNativeSplashHide();
+
+// Yakalanmamış istemci hatalarını merkezi hub'a ilet
+if (!legalRoute) {
+  window.addEventListener('error', (event) => {
+    captureException(
+      event.error || new Error(event.message || 'window.error'),
+      'window.error',
+      'Beklenmeyen bir hata oluştu.'
+    );
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    captureException(
+      reason instanceof Error ? reason : new Error(String(reason)),
+      'window.unhandledrejection',
+      'İşlem tamamlanamadı.'
+    );
+  });
+}
 
 // Geliştirmede eski önbellek SW'lerini temizle — push SW'sine dokunma
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {

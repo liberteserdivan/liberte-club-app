@@ -1,5 +1,6 @@
 import React from 'react';
 import { hideNativeSplash } from '../lib/nativeSplash.js';
+import { reportError } from '../lib/errorHub.js';
 
 // Beklenmeyen hatalarda siyah ekran yerine mesaj gösterir
 export default class ErrorBoundary extends React.Component {
@@ -12,8 +13,19 @@ export default class ErrorBoundary extends React.Component {
     return { error };
   }
 
-  componentDidCatch() {
+  componentDidCatch(error, info) {
     hideNativeSplash();
+    reportError({
+      source: 'react.errorBoundary',
+      message: error?.message || 'Render error',
+      userMessage: 'Uygulama beklenmedik bir hatayla karşılaştı.',
+      detail: {
+        stack: error?.stack ? String(error.stack).slice(0, 1200) : null,
+        componentStack: info?.componentStack ? String(info.componentStack).slice(0, 1500) : null
+      },
+      showToast: false,
+      persist: true
+    });
   }
 
   render() {

@@ -1,6 +1,7 @@
-import { applyCors, readBody } from './lib/http.js';
+import { applyCors, publicErrorMessage, readBody } from './lib/http.js';
 import { loadAppState, saveAppState } from './lib/appState.js';
 import { requireAdminSession, requireSession } from './lib/auth.js';
+import { logServerError } from './lib/logServerError.js';
 import {
   filterStateForAdmin,
   filterStateForUser,
@@ -81,6 +82,11 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'Database error' });
+    await logServerError({
+      source: 'api.state',
+      error: err,
+      customerId: null
+    });
+    return res.status(500).json({ error: publicErrorMessage(err, 'Veritabanı hatası') });
   }
 }

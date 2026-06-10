@@ -40,3 +40,20 @@ export function applyCors(req, res, methods = 'GET,POST,OPTIONS') {
 export function readBody(req) {
   return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 }
+
+// JSON gövdesini güvenli oku — parse hatasında boş nesne
+export function readBodySafe(req) {
+  try {
+    return readBody(req);
+  } catch {
+    return {};
+  }
+}
+
+// Production'da iç hata detayını gizle
+export function publicErrorMessage(error, fallback = 'Bir hata oluştu. Lütfen tekrar dene.') {
+  if (process.env.NODE_ENV !== 'production' && process.env.VERCEL_ENV !== 'production') {
+    return error?.message || fallback;
+  }
+  return fallback;
+}

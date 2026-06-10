@@ -6,6 +6,7 @@ import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileT
 import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
+import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
 
 const ADMIN_TABS=[
@@ -83,6 +84,7 @@ function SettingsAdmin({db,commit}){
     <DesignAdmin db={db} commit={commit}/>
     <CouponsAdmin db={db} commit={commit}/>
     <BackupAdmin/>
+    <ErrorLogsAdmin/>
   </div>;
 }
 

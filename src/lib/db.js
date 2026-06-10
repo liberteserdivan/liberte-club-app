@@ -202,7 +202,9 @@ export async function loadRemote(){
   if(useLocalAuth())return null;
   try{
     const {response,data:j}=await apiJson('/api/state');
-    if(!response.ok)return null;
+    if(!response.ok){
+      return null;
+    }
     if(!j?.data)return null;
     return{
       data:mergeDb(j.data),
@@ -216,14 +218,33 @@ export async function loadRemote(){
   }
 }
 
+// Buluta kaydet — sonuç döndürür (sessiz hata yok)
 export async function saveRemote(db){
-  if(useLocalAuth())return;
+  if(useLocalAuth())return { ok:true, skipped:true };
+
   try{
-    await apiJson('/api/state',{
+    const {response,data}=await apiJson('/api/state',{
       method:'POST',
       body:JSON.stringify({data:db})
     });
-  }catch{}
+
+    if(!response.ok){
+      return {
+        ok:false,
+        status:response.status,
+        error:data?.error||'Veriler sunucuya kaydedilemedi.',
+        fields:data?.fields||null
+      };
+    }
+
+    return { ok:true };
+  }catch(error){
+    return {
+      ok:false,
+      network:true,
+      error:error?.message||'Sunucuya bağlanılamadı.'
+    };
+  }
 }
 
 export const norm=p=>{

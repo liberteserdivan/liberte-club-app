@@ -1,38 +1,27 @@
-# App Store / TestFlight / Play Store — Yayın rehberi
+# App Store / TestFlight / Play Store — Yedekleme ve yayın rehberi
 
-Liberte Gastro Cafe sadakat uygulaması (`cafe.liberte.app`) için mağaza metadata, TestFlight, Codemagic iOS derlemesi ve Play Store dahili test notları.
+Liberte Gastro Cafe sadakat uygulaması için mağaza bilgileri, CI/CD, imzalama ve release sonrası kontrol listesi.
 
-Apple inceleme notu ayrı dosyada kalır: `APP_STORE_REVIEW.md` (App Store Connect → **App Review Information** alanına kopyalanır).
+Apple inceleme notu ayrı dosyada kalır: `APP_STORE_REVIEW.md` (App Store Connect → **App Review Information**).
+
+**Bu dosyaya asla yazılmaz:** private key içeriği, `.p8` / `.p12` dosya içeriği, sertifika şifreleri, Apple ID şifresi, gerçek müşteri bilgileri.
 
 ---
 
-## App Store Connect metadata
-
-### Temel bilgiler
+## App Store Connect bilgileri
 
 | Alan | Değer |
 |------|--------|
-| Uygulama adı | Liberte Gastro Cafe |
+| App adı | Liberte Gastro Cafe |
 | Bundle ID | `cafe.liberte.app` |
-| SKU | `liberte-club` |
-| Birincil dil | Türkçe veya İngilizce (tercihe göre) |
-| Kategori | Food & Drink (veya Lifestyle) |
+| SKU | `liberte-gastro-cafe-ios` |
+| App Store Connect App ID | `6778118148` |
+| Privacy Policy URL | https://app.liberte.cafe/privacy |
+| Age Rating | 4+ |
+| Pricing | Free |
+| Birincil kategori | Food & Drink (veya Lifestyle) |
 
-### Subtitle (EN, max 30 karakter)
-
-```
-Loyalty & rewards at the cafe
-```
-
-### Subtitle (TR, max 30 karakter)
-
-```
-Sadakat kartı ve ikramlar
-```
-
-### Description (EN)
-
-App Store Connect → **Description** alanına yapıştırın:
+### Mağaza açıklaması (EN — Description)
 
 ```
 This is the official loyalty app for Liberte Gastro Cafe.
@@ -42,20 +31,10 @@ Customers can log in with phone number and PIN, view their loyalty card, show th
 Loyalty stamps and rewards are managed by authorized cafe staff.
 ```
 
-### Description (TR, isteğe bağlı lokalizasyon)
+### Subtitle (EN, max 30 karakter)
 
 ```
-Liberte Gastro Cafe'nin resmi sadakat uygulaması.
-
-Müşteriler telefon numarası ve PIN ile giriş yapabilir, sadakat kartlarını görüntüleyebilir, kafede QR kodlarını gösterebilir, menüyü inceleyebilir, kampanyaları takip edebilir ve profillerini yönetebilir.
-
-Sadakat damgaları ve ikram hakları yetkili kafe personeli tarafından yönetilir.
-```
-
-### Promotional Text (EN, isteğe bağlı, max 170 karakter)
-
-```
-Earn stamps on coffee, dessert & burgers. Show your QR at Liberte Gastro Cafe and unlock free rewards.
+Loyalty & rewards at the cafe
 ```
 
 ### Keywords (EN)
@@ -64,177 +43,101 @@ Earn stamps on coffee, dessert & burgers. Show your QR at Liberte Gastro Cafe an
 loyalty,cafe,coffee,qr,rewards,stamps,liberte,gastro,menu
 ```
 
-### Sadakat metni (uygulama içi / mağaza açıklamasında referans)
+### Sadakat metni (uygulama içi referans)
 
 > Liberte'de müdavim olmak kazandırır. 7. kahven, 7. tatlın ve 12. burgerin bizden.
 
-### Screenshot ve görsel gereksinimleri
-
-- iPhone 6.7" ve 6.5" ekran görüntüleri
-- Uygulama ikonu App Store Connect'e ayrı yüklenir (Xcode asset'lerinden)
-
 ---
 
-## TestFlight bilgileri
-
-### Derleme akışı (Codemagic)
+## Bundle ID
 
 ```
-GitHub main → Codemagic ios-release workflow
-  → npm install / build / cap sync ios
-  → IPA imzalama
-  → App Store Connect → TestFlight (otomatik)
+cafe.liberte.app
 ```
 
-### Codemagic workflow
-
-- **Ad:** `ios-release`
-- **Dosya:** `codemagic.yaml` (repo kökü)
-- **Marketing version:** `1.0.0` (`APP_VERSION`)
-- **Build number:** Codemagic `$BUILD_NUMBER` (her build benzersiz olmalı)
-
-### TestFlight test adımları
-
-1. [App Store Connect](https://appstoreconnect.apple.com) → **TestFlight**
-2. Build durumu **Processing** → **Ready to Test** olana kadar bekle (genelde 5–30 dk)
-3. iPhone'a **TestFlight** uygulamasını kur
-4. **Internal Testing** grubuna test Apple ID ekle
-5. Liberte Gastro Cafe build'ini kur ve test et
-
-### Export Compliance
-
-TestFlight'ta **Export Compliance** sorusu: şifreleme yalnızca standart HTTPS ise **No** seçilebilir.
-
-### App Store incelemesine geçiş
-
-TestFlight testi tamamlandıktan sonra App Store Connect → **Prepare for Submission** → metadata + screenshot → **Submit for Review**.
-
-İnceleme notu için `APP_STORE_REVIEW.md` kullanın; bu dosyadaki demo PIN değerleri Apple'a oradan iletilir.
+Capacitor, Android `applicationId` ve iOS `PRODUCT_BUNDLE_IDENTIFIER` bu değerle eşleşmelidir.
 
 ---
 
-## Privacy Policy bilgileri
+## App adı
 
-### Canlı URL'ler
-
-| Sayfa | URL |
-|-------|-----|
-| Gizlilik Politikası | https://app.liberte.cafe/privacy |
-| Kullanım Şartları | https://app.liberte.cafe/terms |
-
-Eski URL'ler otomatik yönlendirilir: `/gizlilik` → `/privacy`, `/kullanim-sartlari` → `/terms`.
-
-### App Store Connect
-
-- **Privacy Policy URL:** `https://app.liberte.cafe/privacy`
-- **App Privacy** anketi: toplanan veri türlerine göre doldurulmalı (telefon, e-posta OTP, sadakat verisi vb.)
-
-### Uygulama içi erişim
-
-Giriş ve profil ekranlarından Gizlilik Politikası ve Kullanım Şartları herkese açık sayfalara gider.
-
-### Hesap silme (Apple Guideline 5.1.1)
-
-Profil → **Hesabımı Sil** — kalıcı silme sunucu tarafında yapılır.
+| Bağlam | Ad |
+|--------|-----|
+| App Store / mağaza listesi | Liberte Gastro Cafe |
+| iPhone ana ekran (CFBundleDisplayName) | Liberte |
+| Uygulama içi üyelik markası | Liberte Club |
 
 ---
 
-## Demo hesap bilgileri
+## SKU
 
-Yalnızca **test / inceleme** amaçlı hesaplar. Gerçek müşteri bilgileri bu dosyaya yazılmaz.
+```
+liberte-gastro-cafe-ios
+```
 
-PIN değerleri güvenlik nedeniyle repoda tutulmaz; App Store incelemesinde `APP_STORE_REVIEW.md` veya App Store Connect **Notes** alanından Apple'a iletilir.
+---
 
-### Demo müşteri
+## App Store App ID
+
+```
+6778118148
+```
+
+App Store Connect → uygulama URL'sinde görünür. API ve Codemagic yayın adımlarında referans olarak kullanılır.
+
+---
+
+## Codemagic workflow bilgisi
 
 | Alan | Değer |
 |------|--------|
-| Telefon | `5550100001` |
-| PIN | İnceleme notunda ayrı iletilir |
-| Test akışı | Giriş Yap → telefon + PIN → **Kartım** → QR göster |
-
-### Demo yönetici (kasiyer)
-
-| Alan | Değer |
-|------|--------|
-| Telefon | `5550100002` |
-| Müşteri PIN | İnceleme notunda ayrı iletilir |
-| Yönetici kasa PIN | Sunucu ortam değişkeni (`ADMIN_PIN`); repoda ve bu dosyada yok |
-| Test akışı | Giriş → **Yönetici PIN** → **QR Tara** → müşteri QR okut → damga / ikram |
-
-### QR testi
-
-1. Demo müşteri **Kartım** sekmesinde QR gösterir.
-2. Demo yönetici **QR Tara** ile kodu okutur.
-3. Kategori damgası veya ikram işlemi uygulanır.
-
----
-
-## Codemagic iOS build notları
-
-### Ön koşullar
-
-- Codemagic hesabı repo'ya bağlı (`liberteserdivan/liberte-club-app`)
-- Mac gerekmez; build Codemagic macOS runner'da çalışır
+| Workflow adı | `ios-release` |
+| Dosya | `codemagic.yaml` (repo kökü) |
+| Instance | `mac_mini_m2` |
+| Node.js | `22` (Capacitor CLI >= 22) |
+| Xcode | `latest` |
+| Marketing version | `1.0.0` (`APP_VERSION`) |
+| Build number | Codemagic `$BUILD_NUMBER` |
 
 ### Environment variable group
 
-Codemagic UI → **Environment variables** → grup adı: **`app_store_connect`**
+Grup adı: **`app_store_connect`**
 
 | Değişken | Açıklama |
 |----------|----------|
-| `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect API Issuer ID |
+| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID (Codemagic secret) |
 | `APP_STORE_CONNECT_KEY_IDENTIFIER` | API Key ID |
-| `APP_STORE_CONNECT_PRIVATE_KEY` | `.p8` anahtar içeriği (Codemagic secret olarak; repoya yazılmaz) |
+| `APP_STORE_CONNECT_PRIVATE_KEY` | `.p8` içeriği (Codemagic secret; repoda yok) |
 
-### Build adımları (`codemagic.yaml`)
+### API Key ID (public identifier)
 
-1. Node.js 22 (`nvm install 22` — Capacitor CLI >= 22 gereksinimi)
-2. `npm install`
-3. `npm run build`
-4. `npx cap sync ios`
-5. `agvtool` ile sürüm / build numarası
-6. `xcode-project use-profiles` — manuel imza profillerini uygula
-7. `xcode-project build-ipa` — archive + IPA
-8. App Store Connect → TestFlight yükleme (`submit_to_testflight: true`)
+```
+6PVPHHT2VT
+```
 
-### Xcode projesi
+Yalnızca Key ID; private key içeriği repoda ve bu dosyada tutulmaz.
+
+### Build adımları
+
+1. Node.js 22 (`nvm install 22` / `nvm use 22`)
+2. `npm install` → `npm run build` → `npx cap sync ios`
+3. `agvtool` ile sürüm / build numarası
+4. `xcode-project use-profiles`
+5. `xcode-project build-ipa`
+6. TestFlight yükleme (`submit_to_testflight: true`)
+
+### Xcode
 
 | Alan | Değer |
 |------|--------|
 | Proje | `ios/App/App.xcodeproj` |
 | Scheme | `App` |
-| Instance | `mac_mini_m2` |
-
-### Sürüm numaraları
-
-| Alan | Kaynak | Not |
-|------|--------|-----|
-| Marketing version | `APP_VERSION` (`1.0.0`) | Codemagic build'de agvtool ile set edilir |
-| Build | `$BUILD_NUMBER` | Her Codemagic build'de otomatik artar |
-
-Yerel `project.pbxproj` sürümü build anında güncellenir; repo'daki değer referans amaçlıdır.
-
-### Sorun giderme
-
-| Hata | Olası çözüm |
-|------|-------------|
-| Unknown variable group | `codemagic.yaml` → `app_store_connect` grup adı Codemagic UI ile eşleşmeli |
-| NodeJS >= 22 | `node: 22` ve nvm adımı aktif olmalı |
-| Code signing / profile | Codemagic'te sertifika ve profil referans isimleri doğru mu kontrol et |
-| Duplicate build | App Store Connect'te aynı build numarası kullanılmış; yeni build tetikle |
-
-### Alternatif: GitHub Actions
-
-Repo'da `.github/workflows/ios-testflight.yml` ve `ios/fastlane/` mevcuttur. Birincil iOS CI yolu **Codemagic** olarak kullanılmaktadır.
 
 ---
 
-## Signing bilgileri
+## Signing reference bilgileri
 
-Manuel code signing — Codemagic UI → **Code signing identities** üzerinden yüklenir. Şifreler ve anahtar dosya içerikleri repoda tutulmaz.
-
-### Referans isimleri (Codemagic)
+Codemagic UI → **Code signing identities** (manuel yükleme).
 
 | Tür | Reference name |
 |-----|----------------|
@@ -251,74 +154,166 @@ ios_signing:
     - liberte_distribution
 ```
 
-### Apple Developer
+### Distribution
 
-| Alan | Değer |
-|------|--------|
-| Bundle ID | `cafe.liberte.app` |
-| Distribution | App Store |
+App Store (TestFlight + App Store incelemesi).
 
-### Repoda olmaması gerekenler
+### Repoda ignore edilen imza dosyaları
 
-- `.p12` / `.p8` dosyaları ve içerikleri
-- Sertifika veya profil şifreleri
-- Apple ID şifresi
-- Private key metni
+`.p8`, `.p12`, `.key`, `.mobileprovision`, `.cer`, `.csr`, `.pem`, `.jks`, `.keystore` — `.gitignore` ile hariç tutulur.
 
-Bu dosyalar yalnızca Codemagic UI veya güvenli yerel depolamada tutulur; `.gitignore` ile repodan hariç tutulur.
+---
+
+## Privacy Policy URL
+
+| Sayfa | URL |
+|-------|-----|
+| Gizlilik Politikası | https://app.liberte.cafe/privacy |
+| Kullanım Şartları | https://app.liberte.cafe/terms |
+
+Eski yönlendirmeler: `/gizlilik` → `/privacy`, `/kullanim-sartlari` → `/terms`.
+
+### Politikada beyan edilen veriler
+
+- Ad soyad
+- Telefon
+- E-posta
+- Doğum tarihi (isteğe bağlı)
+- Sadakat kartı / damga / ikram bilgileri
+- Kampanya geçmişi
+- Push bildirim tokenı (bildirim amacıyla)
+
+### Uygulama davranışı ile uyum notu
+
+Yukarıdaki liste uygulama ile uyumludur. Ek olarak:
+
+- **Cihaz kimliği (`deviceId`):** Oturum güvenliği için; gizlilik metninde açıkça adlandırılmamış, operasyonel teknik veri.
+- **Davet kodu:** Sadakat programı kapsamında; kampanya / üyelik verisi ile ilişkili.
+- **Kamera:** Yalnızca yönetici QR tarama ekranında; konum veya galeri erişimi yok.
+
+---
+
+## App Review demo hesap notları
+
+Demo bilgileri **repoda placeholder** olarak tutulur. Gerçek PIN App Store Connect **Notes** alanından Apple'a iletilir.
+
+`APP_STORE_REVIEW.md` dosyasındaki İngilizce kısa not kopyalanır:
+
+```
+Demo account:
+Phone: [DEMO_PHONE]
+PIN: [DEMO_PIN]
+```
+
+Test akışı: Giriş → **Kartım** → QR göster. Yönetici akışı için ayrı demo hesap App Store Connect notlarında belirtilir.
+
+---
+
+## TestFlight bilgileri
+
+### Akış
+
+```
+GitHub main → Codemagic ios-release → IPA → App Store Connect → TestFlight
+```
+
+### Test adımları
+
+1. App Store Connect → **TestFlight** → build **Ready to Test**
+2. iPhone'a TestFlight uygulamasını kur
+3. Internal Testing grubuna test Apple ID ekle
+4. Giriş, QR, menü, profil, hesap silme akışlarını doğrula
+
+### Export Compliance
+
+Standart HTTPS şifreleme dışında özel şifreleme yoksa **No** seçilebilir.
+
+### App Store incelemesine geçiş
+
+TestFlight testi sonrası → **Prepare for Submission** → screenshot + metadata → **Submit for Review**.
+
+---
+
+## iPad/iPhone screenshot ölçüleri
+
+App Store Connect'e yüklenen ekran görüntüsü boyutları (piksel, portrait):
+
+### iPhone (zorunlu önerilen)
+
+| Cihaz | Boyut |
+|-------|--------|
+| iPhone 6.9" / 6.7" (ör. 15 Pro Max) | 1290 × 2796 |
+| iPhone 6.5" (ör. 11 Pro Max) | 1242 × 2688 |
+| iPhone 6.3" / 6.1" (ör. 15 Pro) | 1179 × 2556 |
+
+### iPad (uygulama iPad'de destekleniyorsa)
+
+| Cihaz | Boyut |
+|-------|--------|
+| iPad Pro 12.9" (6. nesil) | 2048 × 2732 |
+| iPad Pro 12.9" (2. nesil) | 2048 × 2732 |
+| iPad 10.5" | 1668 × 2224 |
+
+En az bir iPhone 6.7" ve bir iPhone 6.5" seti yüklenmesi önerilir.
 
 ---
 
 ## Play Store kapalı test notları
 
-Android tarafı ayrıntılı rehber: `docs/PLAY_STORE_YUKLEME.md`.
-
-### Temel bilgiler
+Ayrıntılı rehber: `docs/PLAY_STORE_YUKLEME.md`.
 
 | Alan | Değer |
 |------|--------|
 | Paket adı | `cafe.liberte.app` |
 | Mağaza adı | Liberte Gastro Cafe |
-| Güncel sürüm (referans) | `1.0.8` (versionCode `9`) |
+| Referans sürüm | `1.0.8` (versionCode `9`) |
 
-### Dahili test (internal / kapalı test)
+### Dahili test komutu
 
 ```powershell
 npm run publish:android:internal
 ```
 
-- Gradle Play Publisher ile AAB derlenir ve **internal** kanalına yüklenir
 - Servis hesabı JSON: `android/play-console-service-account.json` (git'e eklenmez)
-- İlk yüklemeden önce Play Console'da uygulama kaydı tamamlanmış olmalı
+- Gizlilik URL: https://app.liberte.cafe/privacy
+- Her yüklemede `versionCode` +1 (`android/app/build.gradle`)
 
-### Surum notları
+---
 
-```
-android/app/src/main/play/release-notes/tr-TR/
-  default.txt
-  internal.txt
-  production.txt
-```
+## Release sonrası kontrol listesi
 
-Her yeni yüklemede `versionCode` +1 zorunludur (`android/app/build.gradle`).
+### App Store (onay / yayın sonrası)
 
-### Play Console zorunlu alanlar
+- [ ] App Store Connect durumu: **Ready for Sale** veya **Pending Developer Release**
+- [ ] Canlı uygulama: giriş, QR, menü, kampanyalar, profil
+- [ ] **Hesabımı Sil** akışı production'da çalışıyor
+- [ ] Privacy URL canlı: https://app.liberte.cafe/privacy
+- [ ] Terms URL canlı: https://app.liberte.cafe/terms
+- [ ] Push bildirim izni ve kampanya bildirimi test edildi
+- [ ] App Store sayfasındaki açıklama ve screenshot güncel
 
-- Gizlilik politikası URL: `https://app.liberte.cafe/privacy`
-- Veri güvenliği formu
-- İçerik derecelendirmesi
+### TestFlight / CI
 
-### Dahili test kontrol listesi
+- [ ] Codemagic `ios-release` son build başarılı
+- [ ] `app_store_connect` env group değişkenleri Codemagic'te tanımlı
+- [ ] Signing referansları (`liberte_distribution`, `liberte_app_store_profile`) geçerli
+- [ ] Node 22 build adımı log'da doğrulanmış
 
-1. Play Console → **Internal testing** → tester e-postaları ekle
-2. Opt-in link ile test cihazında yükle
-3. Giriş, QR, menü, profil ve hesap silme akışlarını doğrula
-4. Production'a geçmeden önce kapalı test geri bildirimlerini topla
+### Güvenlik / repo
 
-### Sorun giderme (özet)
+- [ ] `.p8`, `.p12`, `.key`, `.cer`, `.pem`, `.env` dosyaları commit edilmemiş
+- [ ] `.gitignore` imza ve ortam dosyalarını kapsıyor
+- [ ] API Key private key yalnızca Codemagic secret'ta
+- [ ] Play Console servis hesabı JSON repoda yok
 
-| Hata | Çözüm |
-|------|--------|
-| `403 Forbidden` | Servis hesabı Play Console'da yetkilendirilmemiş |
-| Version code already used | `versionCode` artır |
-| API not enabled | Google Play Android Developer API etkinleştir |
+### Play Store (Android)
+
+- [ ] Dahili test build yüklü ve tester'lar erişebiliyor
+- [ ] `versionCode` bir sonraki yükleme için artırılmaya hazır
+- [ ] Veri güvenliği formu privacy policy ile uyumlu
+
+### İşletme
+
+- [ ] Demo / inceleme hesapları production'da aktif (Apple red sonrası yeniden test)
+- [ ] Destek e-postası (`liberteserdivan@gmail.com`) izleniyor
+- [ ] Apple inceleme / kullanıcı geri bildirimleri için yanıt planı hazır

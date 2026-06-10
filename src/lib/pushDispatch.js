@@ -1,6 +1,7 @@
 // Push bildirimi gönder — uygulama içi kayıt + FCM
 import { pruneInvalidPushTokens } from './pushTokens.js';
 import { apiFetch } from './apiClient.js';
+import { reportApiError, reportError } from './errorHub.js';
 
 export async function dispatchPush(db, commit, { title, body, customerId = null }) {
   const tokens = (db.pushSubscriptions || []).map((x) => x.token).filter(Boolean);
@@ -60,6 +61,17 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       || result.error
       || `${result.sent || 0} cihaza iletildi${result.failed ? `, ${result.failed} başarısız` : ''}.`;
 
+    if (!response.ok || result.ok === false) {
+      reportApiError({
+        source: 'push.dispatch',
+        response,
+        data: result,
+        userMessage: note,
+        level: result.failed ? 'warn' : 'error',
+        showToast: false
+      });
+    }
+
     const { subscriptions, removed } = pruneInvalidPushTokens(
       next.pushSubscriptions || [],
       result.invalidTokens || []
@@ -79,7 +91,14 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
     });
 
     return { ok: response.ok && result.ok !== false, sent: result.sent || 0, note, removedInvalid: removed };
-  } catch {
+  } catch (error) {
+    reportError({
+      source: 'push.dispatch',
+      message: error?.message || 'Push request failed',
+      userMessage: 'Push sunucusuna ulaşılamadı.',
+      showToast: false,
+      persist: true
+    });
     return { ok: false, sent: 0, note: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.' };
   }
 }
