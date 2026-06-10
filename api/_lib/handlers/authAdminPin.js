@@ -2,11 +2,11 @@ import { applyCors, readBody } from '../http.js';
 import {
   getSession,
   markAdminVerified,
-  requireSession,
-  verifyAdminPin
+  requireSession
 } from '../auth.js';
+import { verifyAdminPinAttempt } from '../adminPinAuth.js';
 
-// Yönetici PIN doğrulama
+// Yönetici PIN doğrulama — brute force korumalı
 export async function handleAuthAdminPin(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -23,8 +23,13 @@ export async function handleAuthAdminPin(req, res) {
 
     const body = readBody(req);
     const pin = String(body.pin || '').trim();
-    if (!verifyAdminPin(pin)) {
-      return res.status(401).json({ error: 'Yönetici PIN hatalı' });
+    const attempt = await verifyAdminPinAttempt(req, pin);
+
+    if (!attempt.ok) {
+      return res.status(attempt.status || 401).json({
+        error: attempt.error,
+        lockedUntil: attempt.lockedUntil || null
+      });
     }
 
     await markAdminVerified(req);

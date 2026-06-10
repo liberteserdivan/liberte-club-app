@@ -139,6 +139,7 @@ export default function App() {
               customer={customer}
               card={card}
               commit={commit}
+              refreshRemote={refreshRemote}
               isAdmin={isAdmin}
               adminVerified={adminVerified}
             />

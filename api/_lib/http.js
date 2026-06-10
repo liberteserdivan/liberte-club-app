@@ -20,7 +20,15 @@ export function resolveOrigin(req) {
   const origin = req.headers.origin || '';
   if (!origin) return '';
   if (NATIVE_APP_ORIGINS.has(origin)) return origin;
-  if (ALLOWED_ORIGINS.length === 0) return origin;
+
+  // Production'da boş whitelist ile tüm origin'lere izin verme
+  if (ALLOWED_ORIGINS.length === 0) {
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
+      return '';
+    }
+    return origin;
+  }
+
   return ALLOWED_ORIGINS.includes(origin) ? origin : '';
 }
 

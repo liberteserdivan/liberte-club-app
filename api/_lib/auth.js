@@ -31,6 +31,8 @@ async function ensureSessionTable(sql) {
     expires_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
   )`;
+  await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_failed int NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_locked_until timestamptz`;
 }
 
 // SQL bağlantısı
@@ -92,13 +94,73 @@ export async function getSession(req) {
   const row = rows[0];
   if (!row) return null;
 
-  return {
+  const session = {
     customerId: Number(row.customer_id),
     role: row.role,
     isAdmin: row.role === 'admin',
     adminVerified: Boolean(row.admin_verified),
     expiresAt: row.expires_at
   };
+
+  return syncSessionWithCustomer(req, session);
+}
+
+// Oturumu veritabanından sil — yanıt gövdesi yazmadan
+export async function invalidateCurrentSession(req) {
+  const token = readAuthToken(req);
+  if (!token) return;
+
+  const sql = getSql();
+  if (!sql) return;
+
+  await ensureSessionTable(sql);
+  await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
+}
+
+// Oturum satırını veritabanında güncelle
+async function persistSessionRole(token, { role, adminVerified }) {
+  const sql = getSql();
+  if (!sql || !token) return;
+
+  await ensureSessionTable(sql);
+  await sql`
+    UPDATE auth_sessions
+    SET role = ${role},
+        admin_verified = ${Boolean(adminVerified)}
+    WHERE token_hash = ${hashToken(token)}
+      AND expires_at > now()
+  `;
+}
+
+// Oturumu canlı kayıtla doğrula — rol düşürüldüyse admin yetkisini kapat
+export async function syncSessionWithCustomer(req, session) {
+  if (!session) return null;
+
+  const { data } = await loadAppState();
+  const customer = listCustomers(data).find(
+    (row) => Number(row.id) === Number(session.customerId)
+  );
+
+  if (!customer) {
+    await invalidateCurrentSession(req);
+    return null;
+  }
+
+  const liveRole = customer.isAdmin ? 'admin' : 'user';
+  const needsUpdate = liveRole !== session.role
+    || (session.isAdmin && !customer.isAdmin)
+    || (session.adminVerified && liveRole !== 'admin');
+
+  if (needsUpdate) {
+    const token = readAuthToken(req);
+    const nextVerified = liveRole === 'admin' ? session.adminVerified : false;
+    await persistSessionRole(token, { role: liveRole, adminVerified: nextVerified });
+    session.role = liveRole;
+    session.isAdmin = liveRole === 'admin';
+    session.adminVerified = nextVerified;
+  }
+
+  return session;
 }
 
 // Yeni oturum oluştur

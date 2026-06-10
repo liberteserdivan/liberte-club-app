@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Crown } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PageShell from '../components/PageShell.jsx';
@@ -15,24 +15,36 @@ import {
 } from '../lib/db.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
+import { fetchCustomerQrToken, formatSignedQrValue, isSignedQrRequired } from '../lib/qrClient.js';
 
 // Kartım — müşteri QR gösterir, yönetici müşteri QR tarar
-export default function QrPage({ db, customer, card, commit, isAdmin = false, adminVerified = false }) {
+export default function QrPage({
+  db,
+  customer,
+  card,
+  commit,
+  refreshRemote,
+  isAdmin = false,
+  adminVerified = false
+}) {
   if (isAdmin && adminVerified) {
-    return <CustomerQrScanner db={db} commit={commit} />;
+    return <CustomerQrScanner db={db} commit={commit} refreshRemote={refreshRemote} />;
   }
 
   if (isAdmin && !adminVerified) {
     return null;
   }
 
-  return <CustomerQrCard db={db} customer={customer} card={card} />;
+  return <CustomerQrCard customer={customer} card={card} />;
 }
 
 // Müşteri sadakat kartı QR görünümü
-function CustomerQrCard({ db, customer, card }) {
+function CustomerQrCard({ customer, card }) {
   const [entered, setEntered] = useState(false);
-  const value = JSON.stringify({ type: 'liberte-customer', id: customer.id, phone: customer.phone });
+  const [qrValue, setQrValue] = useState('');
+  const [qrError, setQrError] = useState('');
+  const signedQrRequired = isSignedQrRequired();
+
   const categoryStamps = normalizeCategoryStamps(card);
   const categoryRewards = normalizeCategoryRewards(card);
   const totalStamps = countTotalStamps(categoryStamps);
@@ -41,10 +53,33 @@ function CustomerQrCard({ db, customer, card }) {
   const progress = stampCardProgress(categoryStamps);
   const level = card.level || levelByStamps(card.lifetimeStamps || 0);
 
+  const refreshSignedQr = useCallback(async () => {
+    if (!signedQrRequired) {
+      setQrValue(JSON.stringify({ type: 'liberte-customer', id: customer.id, phone: customer.phone }));
+      return;
+    }
+
+    try {
+      const issued = await fetchCustomerQrToken();
+      setQrValue(formatSignedQrValue(issued.token));
+      setQrError('');
+    } catch (error) {
+      setQrError(error?.message || 'QR kodu yüklenemedi');
+    }
+  }, [customer.id, customer.phone, signedQrRequired]);
+
   useEffect(() => {
     const t = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(t);
   }, []);
+
+  useEffect(() => {
+    refreshSignedQr();
+    if (!signedQrRequired) return undefined;
+
+    const timer = setInterval(refreshSignedQr, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [refreshSignedQr, signedQrRequired]);
 
   return (
     <PageShell
@@ -66,7 +101,11 @@ function CustomerQrCard({ db, customer, card }) {
 
         <div className="qrPassFrame">
           <div className="qrPassPulse" aria-hidden="true" />
-          <QRCodeCanvas value={value} size={196} level="H" includeMargin={false} />
+          {qrValue ? (
+            <QRCodeCanvas value={qrValue} size={196} level="H" includeMargin={false} />
+          ) : (
+            <p className="qrPassTip">{qrError || 'QR hazırlanıyor...'}</p>
+          )}
         </div>
 
         <div className="qrPassMeta">
@@ -97,7 +136,11 @@ function CustomerQrCard({ db, customer, card }) {
           <StampRulesInline />
         </div>
 
-        <p className="qrPassTip">Ekran parlaklığını açık tut, kasada birkaç saniye göster.</p>
+        <p className="qrPassTip">
+          {signedQrRequired
+            ? 'QR kodu kısa sürede yenilenir. Kasada birkaç saniye göster.'
+            : 'Ekran parlaklığını açık tut, kasada birkaç saniye göster.'}
+        </p>
       </article>
     </PageShell>
   );

@@ -7,7 +7,12 @@ import {
   syncCustomerEmailsFromState
 } from './customerEmails.js';
 
-// Bilinen telefon → kimlik eşleşmeleri (eksik alanları ve yönetici yetkisini onar)
+// Production ortamı mı?
+function isProductionEnv() {
+  return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+// Bilinen telefon → kimlik eşleşmeleri (yalnızca geliştirme / staging onarımı)
 const BASELINE_CONTACTS = [
   { id: 1, phone: '5058665406', email: 'liberteserdivan@gmail.com', name: 'Liberte Gastro', isAdmin: true },
   { id: 900001, phone: '5550100001', email: 'demo.customer@liberte.cafe', name: 'Demo Müşteri', isAdmin: false },
@@ -44,6 +49,9 @@ function recreateBaselineCustomer(baseline) {
 
 // Eksik e-posta / yönetici yetkisini onar; silinmiş bilinen hesapları geri ekle
 export async function repairCustomerDirectory() {
+  // Production'da silinen hesapları geri getirme — güvenlik riski
+  if (isProductionEnv()) return false;
+
   const remote = await loadAppState();
   if (!remote.data) return false;
 

@@ -1,12 +1,15 @@
 import { handleAdminBackup } from './_lib/handlers/adminBackup.js';
 import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
 import { handleAdminAccountDelete } from './_lib/handlers/adminAccountDelete.js';
+import { handleAdminLoyaltyAction, handleAdminQrVerify } from './_lib/handlers/adminLoyalty.js';
 
 // Yönetici ve hesap işlemleri — Vercel Hobby 12 function limiti
 const ADMIN_RESOURCES = {
   backup: handleAdminBackup,
   'push-send': handleAdminPushSend,
-  'account-delete': handleAdminAccountDelete
+  'account-delete': handleAdminAccountDelete,
+  'qr-verify': handleAdminQrVerify,
+  'loyalty-action': handleAdminLoyaltyAction
 };
 
 export default async function handler(req, res) {

@@ -16,9 +16,14 @@ import {
   normalizeCategoryStamps,
   redeemCategoryRewardForCustomer
 } from '../lib/db.js';
-
-// QR metninden müşteriyi bul
-function findCustomerFromQr(db, rawText) {
+import {
+  isSignedQrRequired,
+  parseQrScanText,
+  postLoyaltyAction,
+  verifyCustomerQr
+} from '../lib/qrClient.js';
+// QR metninden müşteriyi bul — yalnızca yerel geliştirme
+function findCustomerFromLegacyQr(db, rawText) {
   const data = JSON.parse(rawText);
   if (data?.type !== 'liberte-customer') return null;
 
@@ -28,17 +33,20 @@ function findCustomerFromQr(db, rawText) {
 }
 
 // Kasiyer — müşteri QR tarama ve damga işlemleri
-export default function CustomerQrScanner({ db, commit }) {
+export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const readerId = useId().replace(/:/g, '');
   const hostRef = useRef(null);
   const scannerRef = useRef(null);
   const startingRef = useRef(false);
+  const signedQrRequired = isSignedQrRequired();
 
   const [active, setActive] = useState(false);
   const [scanRequested, setScanRequested] = useState(false);
   const [found, setFound] = useState(null);
+  const [scannedToken, setScannedToken] = useState('');
   const [msg, setMsg] = useState('');
   const [success, setSuccess] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const stopScanner = useCallback(async () => {
     startingRef.current = false;
@@ -58,27 +66,47 @@ export default function CustomerQrScanner({ db, commit }) {
     setActive(false);
   }, []);
 
-  const onScanSuccess = useCallback((txt) => {
-    try {
-      const customer = findCustomerFromQr(db, txt);
-      if (!customer) {
-        setMsg('Müşteri bulunamadı.');
-        return;
-      }
+  const resolveCustomerFromScan = useCallback(async (txt) => {
+    const parsed = parseQrScanText(txt);
 
+    if (parsed.type === 'signed') {
+      const customer = await verifyCustomerQr(parsed.token);
+      return { customer, token: parsed.token };
+    }
+
+    if (parsed.type === 'legacy') {
+      if (signedQrRequired) {
+        throw new Error('Eski QR formatı artık geçerli değil. Müşteri ekranı yenilesin.');
+      }
+      const customer = findCustomerFromLegacyQr(db, txt);
+      if (!customer) throw new Error('Müşteri bulunamadı.');
+      return { customer, token: '' };
+    }
+
+    throw new Error('Geçerli Liberte QR kodu okut.');
+  }, [db, signedQrRequired]);
+
+  const onScanSuccess = useCallback(async (txt) => {
+    try {
+      setBusy(true);
+      const { customer, token } = await resolveCustomerFromScan(txt);
       setFound(customer);
+      setScannedToken(token);
       setSuccess(true);
       setMsg('Müşteri bulundu!');
-      stopScanner();
-    } catch {
-      setMsg('Geçerli Liberte QR kodu okut.');
+      await stopScanner();
+    } catch (error) {
+      setMsg(error?.message || 'Geçerli Liberte QR kodu okut.');
+    } finally {
+      setBusy(false);
     }
-  }, [db, stopScanner]);
+  }, [resolveCustomerFromScan, stopScanner]);
 
   // Kamera alanı DOM'da hazır olduktan sonra tarayıcıyı başlat
   const requestScan = useCallback(() => {
     if (startingRef.current) return;
     setFound(null);
+    setScannedToken('');
     setSuccess(false);
     setMsg('Kamera açılıyor...');
     setActive(true);
@@ -95,7 +123,6 @@ export default function CustomerQrScanner({ db, commit }) {
       startingRef.current = true;
 
       try {
-        // Önceki oturum varsa kapat; ilk açılışta active durumunu bozma
         if (scannerRef.current) {
           await stopScanner();
           if (cancelled) return;
@@ -123,7 +150,7 @@ export default function CustomerQrScanner({ db, commit }) {
         await scanner.start(
           cameraId || { facingMode: 'environment' },
           { fps: 10, qrbox, aspectRatio: 1 },
-          onScanSuccess
+          (decoded) => { onScanSuccess(decoded); }
         );
 
         if (!cancelled) {
@@ -154,33 +181,62 @@ export default function CustomerQrScanner({ db, commit }) {
   async function rescan() {
     await stopScanner();
     setFound(null);
+    setScannedToken('');
     setSuccess(false);
     setMsg('');
     requestScan();
   }
 
-  function addCategory(category) {
-    if (!found) return;
-    commit(addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera'));
+  // Sunucu veya yerel state üzerinde sadakat işlemi
+  async function runLoyaltyAction(action, category) {
+    if (!found || busy) return;
+
+    if (signedQrRequired && scannedToken) {
+      setBusy(true);
+      try {
+        const result = await postLoyaltyAction({ token: scannedToken, action, category });
+        if (result.customer) setFound(result.customer);
+        if (refreshRemote) await refreshRemote(true);
+      } catch (error) {
+        setMsg(error?.message || 'İşlem yapılamadı');
+        return;
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (action === 'stamp') {
+      commit(addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera'));
+    } else if (action === 'remove') {
+      commit(addCategoryStampToCustomer(db, found.id, category, -1, 'QR düzeltme'));
+    } else if (action === 'redeem') {
+      commit(redeemCategoryRewardForCustomer(db, found.id, category, 'QR kasiyer'));
+    } else if (action === 'checkin') {
+      commit(checkInCustomer(db, found.id, 'Kasa QR check-in'));
+    }
+  }
+
+  async function addCategory(category) {
+    await runLoyaltyAction('stamp', category);
     setMsg(`${STAMP_CATEGORIES.find((c) => c.id === category)?.label || category} damgası eklendi.`);
   }
 
-  function removeCategory(category) {
-    if (!found) return;
-    commit(addCategoryStampToCustomer(db, found.id, category, -1, 'QR düzeltme'));
+  async function removeCategory(category) {
+    await runLoyaltyAction('remove', category);
     setMsg(`${STAMP_CATEGORIES.find((c) => c.id === category)?.label || category} damgası silindi.`);
   }
 
-  function redeemCategory(category) {
-    if (!found) return;
+  async function redeemCategory(category) {
     const catLabel = STAMP_CATEGORIES.find((c) => c.id === category)?.label || category;
     const ok = confirm(`${found.name} için 1 ${catLabel.toLowerCase()} ikramı kullanılsın mı?`);
     if (!ok) return;
-    commit(redeemCategoryRewardForCustomer(db, found.id, category, 'QR kasiyer'));
+    await runLoyaltyAction('redeem', category);
     setMsg(`${catLabel} ikramı kullanıldı.`);
   }
 
-  const loyalty = found ? (db.loyalty[found.id] || loyaltyTemplate(found.id)) : null;
+  const loyaltySource = found?.loyalty || (found ? db.loyalty[found.id] : null);
+  const loyalty = loyaltySource || (found ? loyaltyTemplate(found.id) : null);
   const categoryStamps = loyalty ? normalizeCategoryStamps(loyalty) : null;
   const categoryRewards = loyalty ? normalizeCategoryRewards(loyalty) : null;
   const totalStamps = categoryStamps ? countTotalStamps(categoryStamps) : 0;
@@ -199,11 +255,11 @@ export default function CustomerQrScanner({ db, commit }) {
       }
       heroSlot={
         found ? (
-          <button type="button" className="ghost scanRescanBtn scanRescanBtn--hero" onClick={rescan}>
+          <button type="button" className="ghost scanRescanBtn scanRescanBtn--hero" onClick={rescan} disabled={busy}>
             <ScanLine size={16} /> Yeniden Tara
           </button>
         ) : !active ? (
-          <button type="button" className="goldBtn scanStartBtn scanStartBtn--hero" onClick={requestScan}>
+          <button type="button" className="goldBtn scanStartBtn scanStartBtn--hero" onClick={requestScan} disabled={busy}>
             <ScanLine size={18} /> Kamerayı Aç
           </button>
         ) : null
@@ -231,7 +287,7 @@ export default function CustomerQrScanner({ db, commit }) {
               <h3>Kamera</h3>
             </div>
             {active && (
-              <button type="button" className="ghost scanRescanBtn" onClick={rescan}>
+              <button type="button" className="ghost scanRescanBtn" onClick={rescan} disabled={busy}>
                 <ScanLine size={16} /> İptal
               </button>
             )}
@@ -270,8 +326,9 @@ export default function CustomerQrScanner({ db, commit }) {
             <button
               type="button"
               className="ghost"
-              onClick={() => {
-                commit(checkInCustomer(db, found.id, 'Kasa QR check-in'));
+              disabled={busy}
+              onClick={async () => {
+                await runLoyaltyAction('checkin');
                 setMsg('Check-in kaydedildi.');
               }}
             >

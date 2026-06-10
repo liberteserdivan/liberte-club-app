@@ -1,6 +1,7 @@
 import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
 import { loadAppState, saveAppState } from './_lib/appState.js';
 import { getSession, requireAdminSession, requireSession } from './_lib/auth.js';
+import { createCustomerQrToken } from './_lib/qrToken.js';
 import { logServerError } from './_lib/logServerError.js';
 import {
   clearAllErrorLogs,
@@ -28,6 +29,11 @@ export default async function handler(req, res) {
     // Hata logları — ayrı function açmamak için mevcut endpoint (Vercel Hobby limiti)
     if (req.method === 'GET' && req.query?.errorLogs === '1') {
       return await handleErrorLogList(req, res);
+    }
+
+    // Müşteri imzalı QR token — kasada gösterilecek kısa ömürlü kod
+    if (req.method === 'GET' && req.query?.qrToken === '1') {
+      return await handleCustomerQrToken(req, res);
     }
 
     if (req.method === 'GET') {
@@ -102,6 +108,30 @@ export default async function handler(req, res) {
       customerId: null
     });
     return res.status(500).json({ error: publicErrorMessage(err, 'Veritabanı hatası') });
+  }
+}
+
+// Müşteri — imzalı QR token üret
+async function handleCustomerQrToken(req, res) {
+  const session = await requireSession(req, res);
+  if (!session) return;
+
+  if (session.isAdmin) {
+    return res.status(403).json({ error: 'Yönetici hesabı QR üretemez' });
+  }
+
+  try {
+    const issued = createCustomerQrToken(session.customerId);
+    return res.status(200).json({
+      ok: true,
+      token: issued.token,
+      expiresAt: issued.expiresAt,
+      ttlSeconds: issued.ttlSeconds
+    });
+  } catch (error) {
+    return res.status(503).json({
+      error: publicErrorMessage(error, 'QR token üretilemedi')
+    });
   }
 }
 
