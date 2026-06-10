@@ -1,12 +1,12 @@
 import { neon } from '@neondatabase/serverless';
-import { findReferrerByInviteCode } from '../lib/referralCode.js';
-import { applyCors, readBody } from '../lib/http.js';
-import { cleanPhone } from '../lib/phone.js';
-import { buildCustomerRecord, createSession, indexCustomerEmail } from '../lib/auth.js';
-import { loadAppState, saveAppState } from '../lib/appState.js';
-import { verifyEmailCode } from '../lib/emailCodes.js';
-import { sendVerificationCode } from '../lib/verificationMail.js';
-import { isValidPinFormat, normalizePin, saveCustomerPin } from '../lib/pinAuth.js';
+import { findReferrerByInviteCode } from '../referralCode.js';
+import { applyCors, readBody } from '../http.js';
+import { cleanPhone } from '../phone.js';
+import { buildCustomerRecord, createSession, indexCustomerEmail } from '../auth.js';
+import { loadAppState, saveAppState } from '../appState.js';
+import { verifyEmailCode } from '../emailCodes.js';
+import { sendVerificationCode } from '../verificationMail.js';
+import { isValidPinFormat, normalizePin, saveCustomerPin } from '../pinAuth.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
@@ -165,7 +165,7 @@ async function handleComplete(req, res) {
 }
 
 // Kayıt — kod gönder veya doğrulayıp tamamla
-export default async function handler(req, res) {
+export async function handleAuthRegisterComplete(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

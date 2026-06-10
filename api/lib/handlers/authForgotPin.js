@@ -1,15 +1,15 @@
 import { neon } from '@neondatabase/serverless';
-import { applyCors, readBody } from '../lib/http.js';
-import { verifyEmailCode } from '../lib/emailCodes.js';
-import { sendVerificationCode } from '../lib/verificationMail.js';
-import { upsertCustomerEmail } from '../lib/customerEmails.js';
-import { getSql } from '../lib/appState.js';
-import { resolveRecoveryCustomer } from '../lib/customerRepair.js';
+import { applyCors, readBody } from '../http.js';
+import { verifyEmailCode } from '../emailCodes.js';
+import { sendVerificationCode } from '../verificationMail.js';
+import { upsertCustomerEmail } from '../customerEmails.js';
+import { getSql } from '../appState.js';
+import { resolveRecoveryCustomer } from '../customerRepair.js';
 import {
   isValidPinFormat,
   normalizePin,
   saveCustomerPin
-} from '../lib/pinAuth.js';
+} from '../pinAuth.js';
 
 // İstek gövdesinden tanımlayıcıyı oku (e-posta veya telefon)
 function readIdentifier(body) {
@@ -94,8 +94,8 @@ async function handleReset(req, res) {
   return res.status(200).json({ ok: true });
 }
 
-// PIN sıfırlama — tek endpoint (Vercel Hobby function limiti)
-export default async function handler(req, res) {
+// PIN sıfırlama
+export async function handleAuthForgotPin(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

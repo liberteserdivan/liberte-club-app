@@ -1,8 +1,8 @@
 import admin from 'firebase-admin';
-import { parseServiceAccount, validateServiceAccount } from '../lib/serviceAccount.js';
-import { formatPushNotification } from '../lib/pushNotificationText.js';
-import { applyCors } from '../lib/http.js';
-import { requireAdminSession } from '../lib/auth.js';
+import { parseServiceAccount, validateServiceAccount } from '../serviceAccount.js';
+import { formatPushNotification } from '../pushNotificationText.js';
+import { applyCors } from '../http.js';
+import { requireAdminSession } from '../auth.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -42,14 +42,14 @@ function collectInvalidTokens(tokens, responses) {
   return [...new Set(invalid)];
 }
 
-export default async function handler(req, res) {
+// Push bildirimi gönder
+export async function handleAdminPushSend(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
 
   try {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    // Push gönderimi yalnızca PIN doğrulanmış yönetici oturumuyla yapılır
     const adminSession = await requireAdminSession(req, res, { pinRequired: true });
     if (!adminSession) return;
 
@@ -72,7 +72,6 @@ export default async function handler(req, res) {
     const iconUrl = `${SITE_ORIGIN}/icon-192.png?v=8`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
 
-    // Veri odaklı push — iOS SW event.waitUntil ile gösterir (webpush.notification sessiz sayılabilir)
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
       data: {

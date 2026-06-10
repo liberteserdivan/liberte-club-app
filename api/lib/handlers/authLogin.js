@@ -1,18 +1,18 @@
 import { neon } from '@neondatabase/serverless';
-import { applyCors, readBody } from '../lib/http.js';
-import { cleanPhone } from '../lib/phone.js';
+import { applyCors, readBody } from '../http.js';
+import { cleanPhone } from '../phone.js';
 import {
   createSession,
   findCustomerByPhone,
   getSession,
   indexCustomerEmail,
   readAuthToken
-} from '../lib/auth.js';
-import { repairCustomerDirectory } from '../lib/customerRepair.js';
-import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../lib/pinAuth.js';
+} from '../auth.js';
+import { repairCustomerDirectory } from '../customerRepair.js';
+import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js';
 
 // Giriş — telefon + PIN; geçerli oturum varsa PIN isteme
-export default async function handler(req, res) {
+export async function handleAuthLogin(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -26,7 +26,6 @@ export default async function handler(req, res) {
     if (phone.length < 10) return res.status(400).json({ error: 'Telefon eksik' });
     if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
 
-    // Önce bilinen hesapları onar (yönetici yetkisi / silinmiş kayıt), sonra müşteriyi yükle
     await repairCustomerDirectory();
     const customer = await findCustomerByPhone(phone);
     if (!customer) {
@@ -35,7 +34,6 @@ export default async function handler(req, res) {
 
     const expectedRole = customer.isAdmin ? 'admin' : 'user';
     const existing = await getSession(req);
-    // Geçerli oturum varsa ve rol güncelse PIN sorma; rol değiştiyse oturumu yenile
     if (
       existing
       && Number(existing.customerId) === Number(customer.id)

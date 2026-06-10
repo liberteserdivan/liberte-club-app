@@ -1,10 +1,10 @@
-import { applyCors } from '../lib/http.js';
-import { destroySession, requireSession } from '../lib/auth.js';
-import { loadAppState, saveAppState } from '../lib/appState.js';
-import { deleteCustomerFromState } from '../lib/stateAccess.js';
+import { applyCors } from '../http.js';
+import { destroySession, requireSession } from '../auth.js';
+import { loadAppState, saveAppState } from '../appState.js';
+import { deleteCustomerFromState } from '../stateAccess.js';
 
 // Hesap silme — App Store uyumu
-export default async function handler(req, res) {
+export async function handleAdminAccountDelete(req, res) {
   applyCors(req, res, 'POST,DELETE,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST' && req.method !== 'DELETE') {

@@ -1,24 +1,6 @@
-import { applyCors, readBody } from './lib/http.js';
-import { requireAdminSession } from './lib/auth.js';
-import { loadAppState, saveAppState, listBackups, restoreBackup } from './lib/appState.js';
-
-// Veri yedekleme — yalnızca PIN doğrulanmış yönetici erişebilir
-export default async function handler(req, res) {
-  applyCors(req, res, 'GET,POST,OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  // Tüm yedek işlemleri admin + adminVerified gerektirir
-  const session = await requireAdminSession(req, res, { pinRequired: true });
-  if (!session) return;
-
-  try {
-    if (req.method === 'GET') return await handleGet(req, res);
-    if (req.method === 'POST') return await handleRestore(req, res);
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    return res.status(500).json({ error: error?.message || 'Yedek işlemi başarısız' });
-  }
-}
+import { applyCors, readBody } from '../http.js';
+import { requireAdminSession } from '../auth.js';
+import { loadAppState, saveAppState, listBackups, restoreBackup } from '../appState.js';
 
 // GET — yedek listesini ya da indirilebilir tam yedeği döndür
 async function handleGet(req, res) {
@@ -39,14 +21,12 @@ async function handleGet(req, res) {
 async function handleRestore(req, res) {
   const body = readBody(req);
 
-  // 1) Sunucudaki anlık yedekten geri yükleme
   if (body.snapshotId != null) {
     const ok = await restoreBackup(Number(body.snapshotId));
     if (!ok) return res.status(404).json({ error: 'Yedek bulunamadı' });
     return res.status(200).json({ ok: true, restored: 'snapshot' });
   }
 
-  // 2) İndirilen JSON dosyasından geri yükleme
   const data = body.data;
   if (!data || typeof data !== 'object' || !Array.isArray(data.customers)) {
     return res.status(400).json({ error: 'Geçersiz yedek dosyası' });
@@ -54,4 +34,21 @@ async function handleRestore(req, res) {
 
   await saveAppState(data);
   return res.status(200).json({ ok: true, restored: 'file' });
+}
+
+// Veri yedekleme — yalnızca PIN doğrulanmış yönetici
+export async function handleAdminBackup(req, res) {
+  applyCors(req, res, 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const session = await requireAdminSession(req, res, { pinRequired: true });
+  if (!session) return;
+
+  try {
+    if (req.method === 'GET') return await handleGet(req, res);
+    if (req.method === 'POST') return await handleRestore(req, res);
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || 'Yedek işlemi başarısız' });
+  }
 }

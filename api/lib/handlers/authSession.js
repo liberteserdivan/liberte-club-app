@@ -1,8 +1,9 @@
-import { applyCors } from '../lib/http.js';
-import { destroySession, getSession } from '../lib/auth.js';
-import { loadAppState } from '../lib/appState.js';
+import { applyCors } from '../http.js';
+import { destroySession, getSession } from '../auth.js';
+import { loadAppState } from '../appState.js';
 
-export default async function handler(req, res) {
+// Oturum okuma ve çıkış
+export async function handleAuthSession(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 

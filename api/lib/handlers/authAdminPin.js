@@ -1,12 +1,13 @@
-import { applyCors, readBody } from '../lib/http.js';
+import { applyCors, readBody } from '../http.js';
 import {
   getSession,
   markAdminVerified,
   requireSession,
   verifyAdminPin
-} from '../lib/auth.js';
+} from '../auth.js';
 
-export default async function handler(req, res) {
+// Yönetici PIN doğrulama
+export async function handleAuthAdminPin(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

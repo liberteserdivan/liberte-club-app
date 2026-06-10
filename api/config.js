@@ -65,7 +65,7 @@ function handlePushStatus(res) {
   });
 }
 
-// Runtime config — tek endpoint (Vercel Hobby function limiti)
+// Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
 export default async function handler(req, res) {
   applyPublicCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
