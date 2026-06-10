@@ -1,1 +1,1 @@
-Dahili test — Android bildirim izni ve push düzeltmesi (1.0.9).
+Dahili test — imzalı QR kasa akışı ve güvenlik güncellemeleri (1.0.10).

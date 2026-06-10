@@ -1,1 +1,1 @@
-Liberte Club guncellemesi: marka metinleri, davet kodlari ve genel iyilestirmeler.
+Güvenlik ve kasa QR güncellemesi: imzalı QR kodu, yönetici PIN koruması ve genel iyileştirmeler.
