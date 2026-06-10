@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import LegalPublicPage from './pages/LegalPublicPage.jsx';
+import SupportPublicPage from './pages/SupportPublicPage.jsx';
 import { resolveLegalRoute } from './lib/legalRoutes.js';
 import { captureException } from './lib/errorHub.js';
 import { patchFirebaseReferrer } from './lib/firebaseReferrerPatch.js';
@@ -51,7 +52,9 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 }
 
 createRoot(document.getElementById('root')).render(
-  legalRoute ? (
+  legalRoute === 'support' ? (
+    <SupportPublicPage />
+  ) : legalRoute ? (
     <LegalPublicPage type={legalRoute} />
   ) : (
     <ErrorBoundary>

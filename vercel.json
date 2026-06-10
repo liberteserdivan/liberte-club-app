@@ -16,6 +16,7 @@
     { "source": "/api/account/delete", "destination": "/api/admin?resource=account-delete" },
     { "source": "/privacy", "destination": "/index.html" },
     { "source": "/terms", "destination": "/index.html" },
+    { "source": "/support", "destination": "/support.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
