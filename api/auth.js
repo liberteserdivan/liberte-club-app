@@ -1,8 +1,8 @@
-import { handleAuthLogin } from './lib/handlers/authLogin.js';
-import { handleAuthSession } from './lib/handlers/authSession.js';
-import { handleAuthRegisterComplete } from './lib/handlers/authRegisterComplete.js';
-import { handleAuthForgotPin } from './lib/handlers/authForgotPin.js';
-import { handleAuthAdminPin } from './lib/handlers/authAdminPin.js';
+import { handleAuthLogin } from './_lib/handlers/authLogin.js';
+import { handleAuthSession } from './_lib/handlers/authSession.js';
+import { handleAuthRegisterComplete } from './_lib/handlers/authRegisterComplete.js';
+import { handleAuthForgotPin } from './_lib/handlers/authForgotPin.js';
+import { handleAuthAdminPin } from './_lib/handlers/authAdminPin.js';
 
 // Kimlik doğrulama yönlendirici — Vercel Hobby 12 function limiti
 const AUTH_ACTIONS = {

@@ -1,6 +1,6 @@
-import { handleAdminBackup } from './lib/handlers/adminBackup.js';
-import { handleAdminPushSend } from './lib/handlers/adminPushSend.js';
-import { handleAdminAccountDelete } from './lib/handlers/adminAccountDelete.js';
+import { handleAdminBackup } from './_lib/handlers/adminBackup.js';
+import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
+import { handleAdminAccountDelete } from './_lib/handlers/adminAccountDelete.js';
 
 // Yönetici ve hesap işlemleri — Vercel Hobby 12 function limiti
 const ADMIN_RESOURCES = {

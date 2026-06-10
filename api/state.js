@@ -1,20 +1,20 @@
-import { applyCors, publicErrorMessage, readBodySafe } from './lib/http.js';
-import { loadAppState, saveAppState } from './lib/appState.js';
-import { getSession, requireAdminSession, requireSession } from './lib/auth.js';
-import { logServerError } from './lib/logServerError.js';
+import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
+import { loadAppState, saveAppState } from './_lib/appState.js';
+import { getSession, requireAdminSession, requireSession } from './_lib/auth.js';
+import { logServerError } from './_lib/logServerError.js';
 import {
   clearAllErrorLogs,
   insertErrorLog,
   listErrorLogs,
   LOG_RETENTION_DAYS
-} from './lib/errorLogs.js';
+} from './_lib/errorLogs.js';
 import {
   filterStateForAdmin,
   filterStateForUser,
   findCustomerWriteViolations,
   mergeAdminState,
   mergeUserState
-} from './lib/stateAccess.js';
+} from './_lib/stateAccess.js';
 
 export default async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');

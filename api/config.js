@@ -1,6 +1,6 @@
-import { readFirebaseWebConfig } from './lib/firebaseConfig.js';
-import { isValidVapidPublicKey, normalizeVapidKey, readVapidKeyFromEnv } from './lib/vapid.js';
-import { getServiceAccountStatus } from './lib/serviceAccount.js';
+import { readFirebaseWebConfig } from './_lib/firebaseConfig.js';
+import { isValidVapidPublicKey, normalizeVapidKey, readVapidKeyFromEnv } from './_lib/vapid.js';
+import { getServiceAccountStatus } from './_lib/serviceAccount.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
