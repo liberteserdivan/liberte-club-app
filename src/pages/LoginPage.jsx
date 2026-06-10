@@ -606,11 +606,14 @@ export default function Login({ db, commit, setSession }) {
           <p className="loginFooterNote">{BRAND_SLOGAN}</p>
           <p className="loginFooterNote">{LOYALTY_PROMO}</p>
           <CafeContactBar compact />
-          <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
-            <ShoppingBag size={20} aria-hidden="true" />
-            Menüyü Gör
-          </button>
         </div>
+      </div>
+
+      <div className="loginMenuDock">
+        <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
+          <ShoppingBag size={20} aria-hidden="true" />
+          Menüyü Gör
+        </button>
       </div>
 
       {menuOpen && (

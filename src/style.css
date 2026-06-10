@@ -3815,14 +3815,17 @@ header{
   display:flex!important;
   flex-direction:column!important;
   align-items:center!important;
-  justify-content:center!important;
-  padding:max(12px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom))!important;
+  justify-content:flex-start!important;
+  padding:max(12px, env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom))!important;
+  overflow-y:auto;
 }
 
 .loginPageStack{
   width:min(430px,100%);
   position:relative;
   z-index:2;
+  margin:auto 0;
+  padding-bottom:8px;
 }
 .loginCard{
   width:min(430px,100%)!important;
@@ -5920,12 +5923,29 @@ header{
   background:#fff;
 }
 
+/* Giriş ekranı — menü kısayolu (sabit alt çubuk) */
+.loginMenuDock{
+  position:fixed;
+  left:50%;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  width:min(430px,calc(100% - 24px));
+  z-index:60;
+  padding:8px 10px;
+  border-radius:22px;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(11,47,38,.08);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 14px 36px rgba(11,47,38,.14);
+}
+
 .loginMenuBtn{
   width:100%;
-  margin-top:12px;
-  min-height:54px;
-  padding:14px 20px;
-  border-radius:18px;
+  margin:0;
+  min-height:52px;
+  padding:12px 18px;
+  border-radius:16px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -5934,7 +5954,11 @@ header{
   color:#fff;
   font-size:15px;
   font-weight:850;
-  box-shadow:0 12px 28px rgba(11,47,38,.18);
+  box-shadow:0 8px 20px rgba(11,47,38,.16);
+}
+
+.loginMenuBtn:active{
+  transform:scale(.985);
 }
 
 .loginMenuBtn svg{

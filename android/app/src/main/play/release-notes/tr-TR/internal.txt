@@ -1,1 +1,1 @@
-Dahili test — imzalı QR kasa akışı ve güvenlik güncellemeleri (1.0.10).
+Dahili test — acilis ekrani duzeltmesi ve QR guvenlik guncellemeleri (1.0.11).
