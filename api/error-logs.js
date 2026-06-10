@@ -8,7 +8,7 @@ import {
   LOG_RETENTION_DAYS
 } from './lib/errorLogs.js';
 
-// İstemci ve sunucu hata logları
+// İstemci ve sunucu hata logları (/api/logs Vercel'de 404 verdiği için ayrı yol)
 export default async function handler(req, res) {
   applyCors(req, res, 'GET,POST,DELETE,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') return await handleClear(req, res);
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    await logServerError({ source: 'api.logs', error });
+    await logServerError({ source: 'api.error-logs', error });
     return res.status(500).json({ error: publicErrorMessage(error, 'Log işlemi başarısız') });
   }
 }
