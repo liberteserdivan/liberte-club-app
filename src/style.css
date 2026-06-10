@@ -93,6 +93,7 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
 }
 .app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;padding:0 0 calc(116px + env(safe-area-inset-bottom));background:var(--cream);position:relative;overflow-x:hidden}
 .appBoot{width:100%;max-width:430px;margin:0 auto;min-height:100vh;background:var(--cream)}
+.appBoot--splash{background:#0B2F26}
 .app:before{content:"";position:fixed;inset:0;z-index:-1;background:var(--cream)}
 .errorFallback{min-height:100vh;display:grid;place-content:center;gap:12px;padding:24px;text-align:center;background:var(--cream);color:var(--forest)}
 .errorFallback h1{font-family:var(--font-display);margin:0}

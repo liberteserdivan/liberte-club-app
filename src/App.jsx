@@ -60,9 +60,16 @@ export default function App() {
   }, [splashPhase]);
 
   useEffect(() => {
-    if (splashPhase !== 'hidden') return;
+    // Native: oturum hazır olunca tek splash kapanır — erken kapanma krem boş ekran gösterir
+    if (!isNativeApp() || !authReady) return;
     hideNativeSplash();
-  }, [splashPhase]);
+  }, [authReady]);
+
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    const safety = setTimeout(() => hideNativeSplash(), 8000);
+    return () => clearTimeout(safety);
+  }, []);
 
   useEffect(() => {
     // iOS native WebView'da SW erken kaydı sorun çıkarabilir; Android native push için gerekli
@@ -70,11 +77,6 @@ export default function App() {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register(getFirebaseSwUrl()).catch(() => {});
     startPushForegroundListener().catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!isNativeApp()) return;
-    hideNativeSplash();
   }, []);
 
   async function handleSetSession(next) {
@@ -117,8 +119,10 @@ export default function App() {
   const theme = cssVars(db.settings);
 
   let mainContent;
+  const bootClass = isNativeApp() ? 'appBoot appBoot--splash' : 'appBoot';
+
   if (!authReady) {
-    mainContent = <main className="appBoot" style={theme} />;
+    mainContent = <main className={bootClass} style={theme} aria-busy="true" />;
   } else if (!session || !customer) {
     mainContent = (
       <main className="appBoot" style={theme}>
