@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { BRAND_CREAM_RGB, BRAND_FOREST_RGB } from './iconBrand.mjs';
+import { BRAND_FOREST_RGB } from './iconBrand.mjs';
 
 // iOS uygulama ikonu ve açılış (splash) görsellerini logodan üretir.
 // App Store kuralı: uygulama ikonu alfa/şeffaflık içeremez (düz zemin gerekir).
@@ -10,7 +10,6 @@ import { BRAND_CREAM_RGB, BRAND_FOREST_RGB } from './iconBrand.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // İkon için beyaz zeminli logo, splash için şeffaf zeminli logo kullanılır
 const logoSource = join(root, 'public', 'liberte-logo-source.png');
-const splashLogoSource = join(root, 'public', 'liberte-logo.png');
 const assetsRoot = join(root, 'ios', 'App', 'App', 'Assets.xcassets');
 const appIconDir = join(assetsRoot, 'AppIcon.appiconset');
 const splashDir = join(assetsRoot, 'Splash.imageset');
@@ -42,37 +41,8 @@ async function buildAppIcon(dest) {
     .toFile(dest);
 }
 
-// Orman yeşili zemin üzerinde beyaz daire içinde ortalanmış logo (splash).
-// Koyu yeşil logoyu okunur kılmak için beyaz daire rozet kullanılır.
+// Düz orman yeşili — React splash ile aynı zemin
 async function buildSplash(dest) {
-  const logoSize = Math.round(SPLASH_SIZE * 0.22);
-  const circleSize = Math.round(logoSize * 1.42);
-
-  // Şeffaf zeminli logo
-  const logoBuf = await sharp(splashLogoSource)
-    .resize(logoSize, logoSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png()
-    .toBuffer();
-
-  // Beyaz daire maskesi
-  const circleMask = Buffer.from(
-    `<svg width="${circleSize}" height="${circleSize}"><circle cx="${circleSize / 2}" cy="${circleSize / 2}" r="${circleSize / 2}" fill="#fff"/></svg>`
-  );
-  const circleBuf = await sharp({
-    create: {
-      width: circleSize,
-      height: circleSize,
-      channels: 4,
-      background: { r: 255, g: 255, b: 255, alpha: 1 }
-    }
-  })
-    .composite([
-      { input: circleMask, blend: 'dest-in' },
-      { input: logoBuf, gravity: 'center' }
-    ])
-    .png()
-    .toBuffer();
-
   await sharp({
     create: {
       width: SPLASH_SIZE,
@@ -81,7 +51,6 @@ async function buildSplash(dest) {
       background: BRAND_FOREST_RGB
     }
   })
-    .composite([{ input: circleBuf, gravity: 'center' }])
     .png({ compressionLevel: 9, force: true })
     .toFile(dest);
 }

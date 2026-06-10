@@ -12,8 +12,6 @@ import './style.css';
 
 // Herkese acik yasal sayfalar — giris ve splash olmadan
 const legalRoute = resolveLegalRoute(window.location.pathname);
-
-// Firebase Google API isteklerine referrer ekle (push / installations)
 patchFirebaseReferrer(getFirebaseReferrerOrigin());
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) initPwaInstallCapture();

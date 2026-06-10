@@ -2,12 +2,11 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { BRAND_FOREST_RGB } from './iconBrand.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const source = join(root, 'public', 'liberte-logo.png');
-const forest = { r: 11, g: 47, b: 38 };
 
-// iOS PWA açılış görselleri — portrait
+// iOS PWA açılış görselleri — portrait, logo yok
 const IOS_SPLASH_SCREENS = [
   {
     w: 1290,
@@ -53,44 +52,16 @@ const IOS_SPLASH_SCREENS = [
   }
 ];
 
-// Yeşil zemin üzerine ortalanmış logo
+// Düz orman yeşili — React splash ile aynı zemin
 async function buildSplashCanvas(width, height, dest) {
-  const logoSize = Math.round(Math.min(width, height) * 0.26);
-  const logoBuf = await sharp(source)
-    .resize(logoSize, logoSize, { fit: 'contain', background: { ...forest, alpha: 1 } })
-    .png()
-    .toBuffer();
-
   await sharp({
     create: {
       width,
       height,
       channels: 3,
-      background: forest
+      background: BRAND_FOREST_RGB
     }
   })
-    .composite([{ input: logoBuf, gravity: 'center' }])
-    .png({ compressionLevel: 9 })
-    .toFile(dest);
-}
-
-// Android merkez ikonu
-async function buildAndroidSplashLogo(dest, size = 512) {
-  const logoSize = Math.round(size * 0.72);
-  const logoBuf = await sharp(source)
-    .resize(logoSize, logoSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png()
-    .toBuffer();
-
-  await sharp({
-    create: {
-      width: size,
-      height: size,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
-    }
-  })
-    .composite([{ input: logoBuf, gravity: 'center' }])
     .png({ compressionLevel: 9 })
     .toFile(dest);
 }
@@ -108,7 +79,6 @@ async function patchIndexHtml() {
   const html = await readFile(indexPath, 'utf8');
   const start = '  <!-- SPLASH-LINKS-START -->';
   const end = '  <!-- SPLASH-LINKS-END -->';
-  const block = `${start}\n${buildIosLinkTags()}\n  ${end}`;
 
   if (!html.includes(start)) {
     throw new Error('index.html içinde SPLASH-LINKS işaretçileri bulunamadı.');
@@ -120,18 +90,13 @@ async function patchIndexHtml() {
 
 async function main() {
   const splashDir = join(root, 'public', 'splash');
-  const androidDrawable = join(root, 'android', 'app', 'src', 'main', 'res', 'drawable');
   await mkdir(splashDir, { recursive: true });
-  await mkdir(androidDrawable, { recursive: true });
 
   for (const row of IOS_SPLASH_SCREENS) {
     const dest = join(splashDir, row.file);
     await buildSplashCanvas(row.w, row.h, dest);
     console.log(`splash/${row.file}`);
   }
-
-  await buildAndroidSplashLogo(join(androidDrawable, 'splash_logo.png'));
-  console.log('android drawable/splash_logo.png');
 
   await patchIndexHtml();
   console.log('index.html iOS startup linkleri güncellendi.');

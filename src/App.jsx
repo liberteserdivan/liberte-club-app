@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { applyBirthdayReward, cssVars, load } from './lib/db.js';
 import { bootstrapSession, logoutSession, setMemorySession } from './lib/session.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
-import { getInitialSplashPhase, markAppSplashSeen } from './lib/appSplash.js';
+import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
 import { isIos, isNativeApp } from './lib/platform.js';
 import { useCommit } from './hooks/useCommit.js';
@@ -20,12 +20,17 @@ import CampaignPage from './pages/CampaignPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 
+const SPLASH_MIN_MS = 1000;
+const SPLASH_FADE_MS = 880;
+const SPLASH_TOTAL_MS = 1280;
+
 export default function App() {
   const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load());
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
+  const splashStartRef = useRef(Date.now());
 
   useEffect(() => {
     bootstrapSession().then((active) => {
@@ -39,40 +44,28 @@ export default function App() {
     refreshRemote(true);
   }, [session?.customerId, refreshRemote]);
 
+  // Native yeşil zemin → React splash ile birleşsin
   useEffect(() => {
-    if (splashPhase !== 'visible') return undefined;
+    hideNativeSplash();
+  }, []);
 
-    const fadeTimer = setTimeout(() => setSplashPhase('fade'), 880);
-    const hideTimer = setTimeout(() => {
-      markAppSplashSeen();
-      setSplashPhase('hidden');
-    }, 1280);
-    const safetyTimer = setTimeout(() => {
-      markAppSplashSeen();
-      setSplashPhase('hidden');
-    }, 2500);
+  // Oturum hazır + minimum süre sonrası splash kapanır
+  useEffect(() => {
+    if (!authReady || splashPhase !== 'visible') return undefined;
+
+    const elapsed = Date.now() - splashStartRef.current;
+    const delay = Math.max(0, SPLASH_MIN_MS - elapsed);
+
+    const fadeTimer = setTimeout(() => setSplashPhase('fade'), delay + SPLASH_FADE_MS);
+    const hideTimer = setTimeout(() => setSplashPhase('hidden'), delay + SPLASH_TOTAL_MS);
 
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
-      clearTimeout(safetyTimer);
     };
-  }, [splashPhase]);
+  }, [authReady, splashPhase]);
 
   useEffect(() => {
-    // Native: oturum hazır olunca tek splash kapanır — erken kapanma krem boş ekran gösterir
-    if (!isNativeApp() || !authReady) return;
-    hideNativeSplash();
-  }, [authReady]);
-
-  useEffect(() => {
-    if (!isNativeApp()) return undefined;
-    const safety = setTimeout(() => hideNativeSplash(), 8000);
-    return () => clearTimeout(safety);
-  }, []);
-
-  useEffect(() => {
-    // iOS native WebView'da SW erken kaydı sorun çıkarabilir; Android native push için gerekli
     if (isNativeApp() && isIos()) return;
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register(getFirebaseSwUrl()).catch(() => {});
@@ -115,14 +108,13 @@ export default function App() {
     refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
   }, [customer?.id]);
 
-  const shellClass = splashPhase === 'visible' ? 'appShell appShell--booting' : 'appShell';
   const theme = cssVars(db.settings);
+  const splashActive = splashPhase !== 'hidden';
+  const shellClass = splashActive ? 'appShell appShell--booting' : 'appShell';
 
   let mainContent;
-  const bootClass = isNativeApp() ? 'appBoot appBoot--splash' : 'appBoot';
-
   if (!authReady) {
-    mainContent = <main className={bootClass} style={theme} aria-busy="true" />;
+    mainContent = <main className="appBoot appBoot--splash" style={theme} aria-busy="true" />;
   } else if (!session || !customer) {
     mainContent = (
       <main className="appBoot" style={theme}>
