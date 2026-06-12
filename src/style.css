@@ -4736,17 +4736,31 @@ header{
   cursor:pointer;
 }
 
+html.menuDetailOpen,
+body.menuDetailOpen{
+  overflow:hidden;
+  height:100%;
+}
+
+body.menuDetailOpen{
+  position:fixed;
+  width:100%;
+  left:0;
+  right:0;
+}
+
 .menuDetailBackdrop{
   position:fixed;
   inset:0;
-  z-index:200;
-  background:rgba(11,47,38,.55);
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  display:grid;
-  place-items:end center;
+  z-index:10120;
+  background:rgba(11,47,38,.78);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
   padding:18px 18px calc(24px + env(safe-area-inset-bottom));
   animation:menuDetailFade .22s ease both;
+  touch-action:none;
+  overscroll-behavior:none;
 }
 
 @keyframes menuDetailFade{
@@ -4756,12 +4770,15 @@ header{
 
 .menuDetailModal{
   width:min(100%,420px);
-  max-height:min(88svh,720px);
+  max-height:min(88vh,88dvh,720px);
   overflow:auto;
+  -webkit-overflow-scrolling:touch;
   border-radius:28px 28px 24px 24px;
   background:#fff;
   box-shadow:0 24px 60px rgba(11,47,38,.28);
   position:relative;
+  opacity:1;
+  flex-shrink:0;
   animation:menuDetailSlide .28s cubic-bezier(.22,1,.36,1) both;
 }
 
@@ -4868,6 +4885,34 @@ header{
   font-size:14px;
   font-weight:800;
   text-decoration:none;
+}
+
+/* iPad / tablet — modal ortada, içerik her zaman görünür */
+@media (min-width:768px){
+  .menuDetailBackdrop{
+    align-items:center;
+    padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));
+  }
+
+  .menuDetailModal{
+    width:min(100%,480px);
+    max-height:min(90vh,90dvh,760px);
+    border-radius:28px;
+  }
+}
+
+@media (min-width:768px) and (orientation:landscape){
+  .menuDetailModal{
+    max-height:min(86vh,86dvh,680px);
+  }
+
+  .menuDetailVisual{
+    min-height:160px;
+  }
+
+  .menuDetailVisual img{
+    min-height:160px;
+  }
 }
 
 /* Statik sadakat bardağı — boyut üst kapsayıcıdan gelir */

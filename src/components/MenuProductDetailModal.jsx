@@ -1,35 +1,61 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MapPin, MessageCircle, ShoppingBag, X } from 'lucide-react';
 import { instagramUrl, mapsUrl, yemeksepetiUrl } from '../lib/constants.js';
 import { money, productImageSrc } from '../lib/db.js';
+
+const BODY_LOCK_CLASS = 'menuDetailOpen';
+
+// iPad Safari/WebView kaydırma kilidi — body overflow tek başına yeterli değil
+function lockPageScroll() {
+  const scrollY = window.scrollY;
+  document.documentElement.classList.add(BODY_LOCK_CLASS);
+  document.body.classList.add(BODY_LOCK_CLASS);
+  document.body.style.top = `-${scrollY}px`;
+  return scrollY;
+}
+
+function unlockPageScroll(scrollY) {
+  document.documentElement.classList.remove(BODY_LOCK_CLASS);
+  document.body.classList.remove(BODY_LOCK_CLASS);
+  document.body.style.top = '';
+  window.scrollTo(0, scrollY);
+}
 
 // WhatsApp sipariş mesajını oluştur
 function buildOrderMessage(item) {
   return encodeURIComponent(`Merhaba Liberte, ${item.name} sipariş etmek istiyorum.`);
 }
 
-// Menü ürün detay modalı
+// Menü ürün detay modalı — document.body portal (iPad overflow/stacking sorunu)
 export default function MenuProductDetailModal({ item, onClose }) {
   useEffect(() => {
+    if (!item) return undefined;
+
+    const scrollY = lockPageScroll();
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
+
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      unlockPageScroll(scrollY);
     };
-  }, [onClose]);
+  }, [item, onClose]);
 
   if (!item) return null;
 
   const whatsappUrl = `https://wa.me/905058665406?text=${buildOrderMessage(item)}`;
+  const titleId = `menu-detail-${item.id}`;
 
-  return (
+  return createPortal(
     <div className="menuDetailBackdrop" onClick={onClose} role="presentation">
       <article
         className="menuDetailModal"
         style={{ '--tone': item.tone || '#b9f5d0' }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <button type="button" className="menuDetailClose" onClick={onClose} aria-label="Kapat">
           <X />
@@ -46,7 +72,7 @@ export default function MenuProductDetailModal({ item, onClose }) {
 
         <div className="menuDetailBody">
           <div className="menuDetailTop">
-            <h2>{item.name}</h2>
+            <h2 id={titleId}>{item.name}</h2>
             <strong>{money(item.price)}</strong>
           </div>
           <p>{item.description}</p>
@@ -67,6 +93,7 @@ export default function MenuProductDetailModal({ item, onClose }) {
           </div>
         </div>
       </article>
-    </div>
+    </div>,
+    document.body
   );
 }
