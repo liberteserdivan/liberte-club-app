@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { buildSplashFromMaster } from './splashArt.mjs';
+import { buildGreenNativeSplash, buildSplashFromMaster } from './splashArt.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const logoSource = join(root, 'public', 'liberte-logo-source.png');
@@ -42,10 +42,10 @@ async function main() {
   console.log('iOS app ikonu hazır: AppIcon-512@2x.png');
 
   const splashDest = join(splashDir, 'splash-2732x2732.png');
-  await buildSplashFromMaster(SPLASH_SIZE, SPLASH_SIZE, splashDest);
+  await buildGreenNativeSplash(SPLASH_SIZE, SPLASH_SIZE, splashDest);
   await sharp(splashDest).toFile(join(splashDir, 'splash-2732x2732-1.png'));
   await sharp(splashDest).toFile(join(splashDir, 'splash-2732x2732-2.png'));
-  console.log('iOS splash görselleri hazır.');
+  console.log('iOS native splash: yalnizca yesil zemin');
 }
 
 main().catch((error) => {

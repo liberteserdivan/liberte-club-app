@@ -1,19 +1,22 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { buildSplashFromMaster } from './splashArt.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Android portrait splash boyutları + varsayılan fallback
-const ANDROID_SPLASH_SIZES = [
-  { folder: 'drawable', w: 720, h: 1280 },
-  { folder: 'drawable-port-mdpi', w: 320, h: 480 },
-  { folder: 'drawable-port-hdpi', w: 480, h: 800 },
-  { folder: 'drawable-port-xhdpi', w: 720, h: 1280 },
-  { folder: 'drawable-port-xxhdpi', w: 960, h: 1600 },
-  { folder: 'drawable-port-xxxhdpi', w: 1280, h: 1920 }
+const SPLASH_XML = `<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+</layer-list>`;
+
+const SPLASH_FOLDERS = [
+  'drawable',
+  'drawable-port-mdpi',
+  'drawable-port-hdpi',
+  'drawable-port-xhdpi',
+  'drawable-port-xxhdpi',
+  'drawable-port-xxxhdpi'
 ];
 
 // Android 12+ sistem splash ikonunu gizlemek için şeffaf piksel
@@ -30,19 +33,28 @@ async function writeEmptySplashIcon(dest) {
     .toFile(dest);
 }
 
+// Eski tam ekran PNG splash dosyalarını temizle
+async function removeLegacySplashPng(resRoot, folder) {
+  try {
+    await rm(join(resRoot, folder, 'splash.png'));
+    console.log(`silindi: android/${folder}/splash.png`);
+  } catch {
+    // Dosya yoksa geç
+  }
+}
+
 async function main() {
   const resRoot = join(root, 'android', 'app', 'src', 'main', 'res');
-
-  for (const row of ANDROID_SPLASH_SIZES) {
-    const dir = join(resRoot, row.folder);
-    await mkdir(dir, { recursive: true });
-    const dest = join(dir, 'splash.png');
-    await buildSplashFromMaster(row.w, row.h, dest);
-    console.log(`android/${row.folder}/splash.png`);
-  }
-
   const drawableDir = join(resRoot, 'drawable');
   await mkdir(drawableDir, { recursive: true });
+
+  for (const folder of SPLASH_FOLDERS) {
+    await removeLegacySplashPng(resRoot, folder);
+  }
+
+  await writeFile(join(drawableDir, 'splash.xml'), SPLASH_XML, 'utf8');
+  console.log('android/drawable/splash.xml (yalnizca yesil zemin)');
+
   await writeEmptySplashIcon(join(drawableDir, 'splash_icon_empty.png'));
   console.log('android/drawable/splash_icon_empty.png');
 }

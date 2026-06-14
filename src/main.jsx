@@ -8,7 +8,6 @@ import { captureException } from './lib/errorHub.js';
 import { patchFirebaseReferrer } from './lib/firebaseReferrerPatch.js';
 import { getFirebaseReferrerOrigin } from './lib/firebasePush.js';
 import { initPwaInstallCapture } from './lib/pwaInstall.js';
-import { scheduleNativeSplashHide } from './lib/nativeSplash.js';
 import './style.css';
 
 // Herkese acik yasal sayfalar — giris ve splash olmadan
@@ -17,7 +16,6 @@ patchFirebaseReferrer(getFirebaseReferrerOrigin());
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) {
   initPwaInstallCapture();
-  scheduleNativeSplashHide();
 }
 // Yakalanmamış istemci hatalarını merkezi hub'a ilet
 if (!legalRoute) {

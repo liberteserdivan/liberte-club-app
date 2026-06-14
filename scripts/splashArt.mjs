@@ -20,7 +20,34 @@ export function getSplashMasterPath() {
   return join(root, 'public', SPLASH_MASTER_FILE);
 }
 
-// Daire rozet — beyaz zemin + yeşil halka (referans görsel)
+// Yeşil zemin SVG — native açılış (logo/metin React CSS'te)
+function buildGreenSplashSvg(width, height) {
+  return Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="mintOrb" cx="18%" cy="8%" r="42%">
+      <stop offset="0%" stop-color="#9FDCC7" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#9FDCC7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="goldOrb" cx="88%" cy="92%" r="46%">
+      <stop offset="0%" stop-color="#D8C29D" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#D8C29D" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="${BRAND_FOREST}"/>
+  <rect width="100%" height="100%" fill="url(#mintOrb)"/>
+  <rect width="100%" height="100%" fill="url(#goldOrb)"/>
+</svg>`);
+}
+
+// Native iOS/Android — yalnızca yeşil zemin (metin React'ta)
+export async function buildGreenNativeSplash(width, height, dest) {
+  await sharp(buildGreenSplashSvg(width, height))
+    .png({ compressionLevel: 9, force: true })
+    .toFile(dest);
+}
+
+// Daire rozet — PWA startup görselleri için
 function buildBadgeSvg(diameter) {
   const r = diameter / 2;
   const stroke = Math.max(2, Math.round(diameter * 0.012));

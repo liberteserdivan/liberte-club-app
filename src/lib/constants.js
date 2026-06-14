@@ -25,8 +25,8 @@ export const supportUrl = 'https://app.liberte.cafe/support';
 // Varsayılan marka logosu (public klasörü)
 export const DEFAULT_LOGO = '/liberte-logo-source.png?v=11';
 
-// Açılış rozeti — kaynak dosyadaki daireli marka (referans splash ile aynı)
-export const SPLASH_LOGO = '/liberte-logo-source.png?v=13';
+// Açılış rozeti — şeffaf arka planlı logo
+export const SPLASH_LOGO = '/liberte-logo.png?v=13';
 
 // Native / PWA startup görselleri
 export const SPLASH_IMAGE = '/liberte-club-splash-master.png?v=3';

@@ -6,8 +6,14 @@ import assert from 'node:assert/strict';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Android native splash görselleri üretilmiş olmalı
-test('Android splash PNG dosyaları mevcut', () => {
+test('Android native splash yalnizca yesil zemin XML', () => {
+  const splashXml = join(root, 'android', 'app', 'src', 'main', 'res', 'drawable', 'splash.xml');
+  assert.equal(existsSync(splashXml), true);
+  const xml = readFileSync(splashXml, 'utf8');
+  assert.match(xml, /splash_background/);
+});
+
+test('Android tam ekran splash PNG kullanilmiyor', () => {
   const folders = [
     'drawable',
     'drawable-port-mdpi',
@@ -19,7 +25,7 @@ test('Android splash PNG dosyaları mevcut', () => {
 
   for (const folder of folders) {
     const path = join(root, 'android', 'app', 'src', 'main', 'res', folder, 'splash.png');
-    assert.equal(existsSync(path), true, `${folder}/splash.png eksik`);
+    assert.equal(existsSync(path), false, `${folder}/splash.png kaldirilmali`);
   }
 });
 
@@ -30,17 +36,17 @@ test('Android 12 sistem splash ikonu şeffaf', () => {
 
 test('Android sürüm numarası güncel', () => {
   const gradle = readFileSync(join(root, 'android', 'app', 'build.gradle'), 'utf8');
-  assert.match(gradle, /versionCode 13/);
-  assert.match(gradle, /versionName "1\.0\.12"/);
+  assert.match(gradle, /versionCode 14/);
+  assert.match(gradle, /versionName "1\.0\.13"/);
 });
 
-test('Capacitor splash yeşil zemin ve splash kaynağı', () => {
+test('Capacitor splash yeşil zemin', () => {
   const config = readFileSync(join(root, 'capacitor.config.json'), 'utf8');
   assert.match(config, /"backgroundColor": "#0B2F26"/);
-  assert.match(config, /"androidSplashResourceName": "splash"/);
+  assert.match(config, /"launchAutoHide": false/);
 });
 
-test('Android splash.xml kaldırıldı — PNG kullanılıyor', () => {
-  const splashXml = join(root, 'android', 'app', 'src', 'main', 'res', 'drawable', 'splash.xml');
-  assert.equal(existsSync(splashXml), false);
+test('React splash şeffaf logo kullanır', () => {
+  const constants = readFileSync(join(root, 'src', 'lib', 'constants.js'), 'utf8');
+  assert.match(constants, /SPLASH_LOGO = '\/liberte-logo\.png/);
 });
