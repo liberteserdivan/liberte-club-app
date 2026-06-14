@@ -4,7 +4,7 @@ import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth, verifyDevAdminPin } from '../lib/devAuth.js';
 
 // Yönetici PIN doğrulama ekranı
-export default function AdminPinGate({ onVerified, fullscreen = false }) {
+export default function AdminPinGate({ onVerified, onSkip, fullscreen = false }) {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,6 +63,11 @@ export default function AdminPinGate({ onVerified, fullscreen = false }) {
           </button>
         </form>
         {error && <p className="adminPinError">{error}</p>}
+        {onSkip && (
+          <button type="button" className="ghost adminPinSkip" onClick={onSkip}>
+            Müşteri modunda devam et
+          </button>
+        )}
       </div>
     </div>
   );

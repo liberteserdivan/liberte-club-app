@@ -2,30 +2,48 @@
 
 App Store Connect → **App Review Information** → **Notes** alanına aşağıdaki metni kopyalayın.
 
-PIN değerini repoda tutmayın; `[DEMO_PIN]` yerine gerçek test PIN'ini yalnızca App Store Connect notlarında yazın.
-
 ---
 
 ## Review note (EN)
 
 ```
-This is the official loyalty app for Liberte Gastro Cafe.
+This is the official loyalty app for Liberte Gastro Cafe (iPhone + iPad).
 
-Customers can log in with phone number and PIN, view their loyalty card, show their QR code at the cafe, browse menu items, view campaigns, and manage their profile.
+Customers log in with phone number and PIN, view loyalty card, show QR code, browse menu, view campaigns, and manage profile.
 
-Loyalty stamps and rewards are managed by authorized cafe staff.
+Admin features (QR scan, admin panel) require a separate admin PIN after login — use "Continue as customer" to skip admin mode during review.
 
-Account deletion: Profile → Delete Account (Hesabımı Sil). Deletion is permanent and processed on the server.
+Account deletion: Profile → Delete Account (Hesabımı Sil). Permanent server-side deletion.
 
 Privacy Policy: https://app.liberte.cafe/privacy
 Terms of Use: https://app.liberte.cafe/terms
+Support: https://app.liberte.cafe/support
 
-Demo account:
-Phone: [DEMO_PHONE]
-PIN: [DEMO_PIN]
+Demo account (customer — recommended for review):
+Phone: 5550100001
+PIN: [Set in App Store Connect only — do not commit real PIN to git]
 
-Test flow: Log in → Card tab → show QR code at the cafe.
+Test flow:
+1. Launch app → splash screen → login
+2. Enter demo phone + PIN → Home / Card tab → QR code
+3. Menu tab → tap product → detail modal opens (close with X)
+4. Profile → legal links open in-app
+
+iPad: app uses phone-optimized layout centered on screen. Push notifications are web/PWA only; native iOS app does not show broken push prompts.
+
+Camera: only used when admin enters admin PIN and opens QR scanner.
 ```
+
+---
+
+## App Store Connect checklist
+
+- [ ] Demo PIN written in Review Notes (not in git)
+- [ ] Demo account active on production API
+- [ ] Privacy Policy URL loads without JavaScript
+- [ ] Support URL: https://app.liberte.cafe/support
+- [ ] Export compliance: No (standard HTTPS only)
+- [ ] iPad screenshots uploaded OR iPhone-only if device family changed
 
 ---
 

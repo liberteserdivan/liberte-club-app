@@ -1,4 +1,5 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
+import { apiFetch } from './apiClient.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
@@ -125,7 +126,7 @@ export async function resolveFirebaseConfig() {
   if (cachedFirebaseConfig) return cachedFirebaseConfig;
 
   try {
-    const response = await fetch('/api/config?resource=firebase');
+    const response = await apiFetch('/api/config?resource=firebase');
     if (response.ok) {
       const data = await response.json();
       if (data?.apiKey) {
@@ -155,7 +156,7 @@ export async function resolveVapidKey() {
   if (cachedVapidKey && isValidVapidPublicKey(cachedVapidKey)) return cachedVapidKey;
 
   try {
-    const response = await fetch('/api/config?resource=push');
+    const response = await apiFetch('/api/config?resource=push');
     if (response.ok) {
       const data = await response.json();
       cachedVapidKey = String(data.vapidKey || '').trim();

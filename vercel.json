@@ -5,6 +5,17 @@
     { "source": "/gizlilik", "destination": "/privacy", "permanent": true },
     { "source": "/kullanim-sartlari", "destination": "/terms", "permanent": true }
   ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/auth/login", "destination": "/api/auth?action=login" },
     { "source": "/api/auth/session", "destination": "/api/auth?action=session" },
@@ -14,8 +25,8 @@
     { "source": "/api/backup", "destination": "/api/admin?resource=backup" },
     { "source": "/api/push/send", "destination": "/api/admin?resource=push-send" },
     { "source": "/api/account/delete", "destination": "/api/admin?resource=account-delete" },
-    { "source": "/privacy", "destination": "/index.html" },
-    { "source": "/terms", "destination": "/index.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
     { "source": "/support", "destination": "/support.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

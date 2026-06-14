@@ -27,7 +27,8 @@ import {
   loyaltyTemplate,
   generateUniqueReferralCode,
   mergeDb,
-  norm
+  norm,
+  addStampToCustomer
 } from '../lib/db.js';
 
 export default function Login({ db, commit, setSession }) {

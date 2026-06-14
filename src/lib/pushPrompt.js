@@ -1,4 +1,4 @@
-import { isIos, isStandalonePwa } from './platform.js';
+import { isIos, isNativeApp, isStandalonePwa } from './platform.js';
 
 // Üye bazlı bildirim isteği anahtarları
 function dismissKey(customerId) {
@@ -53,8 +53,9 @@ export function getPushPromptHint() {
   return 'Damga, çark ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.';
 }
 
-// Bildirim açmadan önce iOS kontrolü
+// Bildirim açmadan önce cihaz desteği kontrolü
 export function canRequestPushOnThisDevice() {
+  if (isNativeApp() && isIos()) return false;
   if (isIos() && !isStandalonePwa()) return false;
   return true;
 }

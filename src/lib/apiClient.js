@@ -1,8 +1,30 @@
 import { isNativeApp } from './platform.js';
 
 const TOKEN_KEY = 'liberteAuthToken';
-// Native uygulama localhost'tan servis edilir; API istekleri canlı sunucuya gider
 const NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+
+let onUnauthorized = null;
+
+// 401 yanıtında oturumu sonlandır
+export function setUnauthorizedHandler(handler) {
+  onUnauthorized = typeof handler === 'function' ? handler : null;
+}
+
+// Native token depolama — localStorage soğuk açılışta kalır
+function authStorage() {
+  if (isNativeApp()) {
+    try {
+      return localStorage;
+    } catch {
+      return null;
+    }
+  }
+  try {
+    return sessionStorage;
+  } catch {
+    return null;
+  }
+}
 
 // İstek yolunu tam URL'ye çevir
 function resolveApiUrl(path) {
@@ -14,11 +36,11 @@ function resolveApiUrl(path) {
   return path;
 }
 
-// Native uygulamada httpOnly cookie yedek token
+// Native uygulamada Bearer token sakla
 export function saveNativeAuthToken(token) {
   if (!token || !isNativeApp()) return;
   try {
-    sessionStorage.setItem(TOKEN_KEY, token);
+    authStorage()?.setItem(TOKEN_KEY, token);
   } catch {
     // Sessizce geç
   }
@@ -26,7 +48,9 @@ export function saveNativeAuthToken(token) {
 
 export function clearNativeAuthToken() {
   try {
+    authStorage()?.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   } catch {
     // Sessizce geç
   }
@@ -34,7 +58,13 @@ export function clearNativeAuthToken() {
 
 function readNativeAuthToken() {
   try {
-    return sessionStorage.getItem(TOKEN_KEY) || '';
+    const store = authStorage();
+    let token = store?.getItem(TOKEN_KEY) || '';
+    if (!token && isNativeApp()) {
+      token = sessionStorage.getItem(TOKEN_KEY) || '';
+      if (token) store?.setItem(TOKEN_KEY, token);
+    }
+    return token;
   } catch {
     return '';
   }
@@ -74,9 +104,13 @@ export async function apiFetch(path, options = {}) {
     const response = await fetchWithTimeout(url, {
       ...options,
       headers,
-      // Native uygulama Bearer token kullanır; çapraz köken cookie gönderilmez
       credentials: native ? 'omit' : 'include'
     });
+
+    if (response.status === 401 && onUnauthorized) {
+      onUnauthorized();
+    }
+
     return response;
   } catch (error) {
     if (error?.name === 'AbortError') {

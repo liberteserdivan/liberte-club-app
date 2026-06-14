@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { applyBirthdayReward, cssVars, load } from './lib/db.js';
 import { logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
+import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
+import { canRequestPushOnThisDevice } from './lib/pushPrompt.js';
 import { isIos, isNativeApp } from './lib/platform.js';
 import { useCommit } from './hooks/useCommit.js';
 import AppSplash from './components/AppSplash.jsx';
@@ -25,6 +27,7 @@ const SPLASH_MIN_MS = 1000;
 const SPLASH_FADE_MS = 880;
 const SPLASH_TOTAL_MS = 1280;
 const SPLASH_FORCE_MS = 4500;
+const CUSTOMER_HYDRATE_MS = 8000;
 
 export default function App() {
   const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load());
@@ -33,7 +36,19 @@ export default function App() {
   const [tab, setTab] = useState('home');
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
   const [splashImageReady, setSplashImageReady] = useState(false);
+  const [adminGateSkipped, setAdminGateSkipped] = useState(false);
+  const [hydratingCustomer, setHydratingCustomer] = useState(false);
   const splashStartRef = useRef(Date.now());
+  const hydrateStartedRef = useRef(0);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void logoutSession();
+      setMemorySession(null);
+      setSession(null);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     bootstrapSessionWithTimeout().then((active) => {
@@ -47,7 +62,6 @@ export default function App() {
     refreshRemote(true);
   }, [session?.customerId, refreshRemote]);
 
-  // Native splash — React splash görseli hazır olunca kapat (aynı PNG, geçiş yok)
   useEffect(() => {
     if (!splashImageReady) return;
     hideNativeSplash();
@@ -58,7 +72,6 @@ export default function App() {
     hideNativeSplash();
   }, [splashPhase]);
 
-  // Oturum hazır + minimum süre sonrası splash kapanır
   useEffect(() => {
     if (!authReady || splashPhase !== 'visible') return undefined;
 
@@ -74,7 +87,6 @@ export default function App() {
     };
   }, [authReady, splashPhase]);
 
-  // Auth takılsa bile en geç bu sürede giriş ekranına geç
   useEffect(() => {
     const forceTimer = setTimeout(() => {
       setAuthReady(true);
@@ -103,10 +115,12 @@ export default function App() {
       await logoutSession();
       setMemorySession(null);
       setSession(null);
+      setAdminGateSkipped(false);
       return;
     }
     setMemorySession(next);
     setSession(next);
+    setAdminGateSkipped(false);
   }
 
   const customer = session
@@ -115,12 +129,45 @@ export default function App() {
 
   const isAdmin = Boolean(session?.isAdmin);
   const adminVerified = Boolean(session?.adminVerified);
+  const awaitingCustomer = Boolean(session?.customerId && !customer);
+
+  // Oturum var ama müşteri henüz yüklenmediyse giriş ekranı gösterme
+  useEffect(() => {
+    if (!awaitingCustomer) {
+      setHydratingCustomer(false);
+      return undefined;
+    }
+
+    setHydratingCustomer(true);
+    hydrateStartedRef.current = Date.now();
+    refreshRemote(true);
+
+    const timer = setTimeout(async () => {
+      setHydratingCustomer(false);
+      await logoutSession();
+      setMemorySession(null);
+      setSession(null);
+    }, CUSTOMER_HYDRATE_MS);
+
+    return () => clearTimeout(timer);
+  }, [awaitingCustomer, session?.customerId, refreshRemote]);
+
+  useEffect(() => {
+    if (!awaitingCustomer || !customer) return;
+    setHydratingCustomer(false);
+  }, [awaitingCustomer, customer]);
 
   function handleAdminVerified() {
     const next = { ...session, adminVerified: true };
     setMemorySession(next);
     setSession(next);
+    setAdminGateSkipped(false);
     refreshRemote(true);
+  }
+
+  function handleAdminSkip() {
+    setAdminGateSkipped(true);
+    setTab('home');
   }
 
   useEffect(() => {
@@ -131,6 +178,7 @@ export default function App() {
 
   useEffect(() => {
     if (!customer?.id) return;
+    if (!canRequestPushOnThisDevice()) return;
     refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
   }, [customer?.id]);
 
@@ -141,6 +189,12 @@ export default function App() {
   let mainContent;
   if (!authReady) {
     mainContent = <main className="appBoot" style={theme} aria-busy="true" aria-hidden="true" />;
+  } else if (awaitingCustomer && hydratingCustomer) {
+    mainContent = (
+      <main className="appBoot appBoot--hydrate" style={theme} aria-busy="true">
+        <p className="appBootHint">Hesabın yükleniyor…</p>
+      </main>
+    );
   } else if (!session || !customer) {
     mainContent = (
       <main className="appBoot" style={theme}>
@@ -181,8 +235,8 @@ export default function App() {
           {tab === 'admin' && isAdmin && adminVerified && <AdminPage db={db} commit={commit} />}
         </div>
 
-        {isAdmin && !adminVerified && (
-          <AdminPinGate fullscreen onVerified={handleAdminVerified} />
+        {isAdmin && !adminVerified && !adminGateSkipped && (
+          <AdminPinGate fullscreen onVerified={handleAdminVerified} onSkip={handleAdminSkip} />
         )}
 
         <SyncStatusBanner syncState={syncState} onRetry={retrySave} />

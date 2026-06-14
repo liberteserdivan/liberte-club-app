@@ -60,6 +60,7 @@ export function filterStateForUser(state, customerId) {
     history: rowsForCustomer(state.history, customerId),
     feedback: rowsForCustomer(state.feedback, customerId),
     pushSubscriptions: rowsForCustomer(state.pushSubscriptions, customerId),
+    googleReviewRequests: rowsForCustomer(state.googleReviewRequests, customerId),
     dailyClaims: rowsForCustomer(state.dailyClaims, customerId),
     wheelSpins: rowsForCustomer(state.wheelSpins, customerId),
     firstOrderBonuses: rowsForCustomer(state.firstOrderBonuses, customerId),
@@ -130,6 +131,12 @@ function replaceOwnRows(canonRows, clientRows, id) {
 // Müşteri yalnızca YENİ bekleyen talep ekleyebilir; mevcut kayıtlar/durumlar korunur
 function appendNewPendingRequests(canonRows, clientRows, id) {
   const canon = canonRows || [];
+  const hasOpen = canon.some(
+    (row) => Number(row.customerId) === Number(id)
+      && (row.status === 'pending' || row.status === 'approved')
+  );
+  if (hasOpen) return canon;
+
   const existingIds = new Set(canon.map((row) => row.id));
   const additions = (clientRows || [])
     .filter((row) => row.customerId === id && !existingIds.has(row.id))
