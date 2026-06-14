@@ -42,63 +42,67 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   z-index:10000;
   display:grid;
   place-items:center;
-  background:radial-gradient(circle at 18% 8%,rgba(159,220,199,.18),transparent 34%),radial-gradient(circle at 88% 92%,rgba(216,194,157,.16),transparent 36%),#0B2F26;
+  overflow:hidden;
+  background:radial-gradient(circle at 18% 8%,rgba(159,220,199,.22),transparent 42%),radial-gradient(circle at 88% 92%,rgba(216,194,157,.18),transparent 46%),#0B2F26;
   transition:opacity .42s ease;
 }
-.appSplash--full{
-  display:block;
-  background:#0B2F26;
+.appSplash--fade{opacity:0;pointer-events:none}
+.appSplashOrb{position:absolute;border-radius:999px;filter:blur(32px);pointer-events:none}
+.appSplashOrb--mint{width:min(58vw,240px);height:min(58vw,240px);background:rgba(159,220,199,.45);left:-12%;top:6%;opacity:.55}
+.appSplashOrb--gold{width:min(64vw,280px);height:min(64vw,280px);background:rgba(216,194,157,.38);right:-14%;bottom:8%;opacity:.42}
+.appSplashCore{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:min(100%,380px);
+  padding:24px 20px;
+  transform:translateY(-3%);
 }
-.appSplashImage{
+.appSplashLogoWrap{
+  width:min(42vw,168px);
+  height:min(42vw,168px);
+  border-radius:50%;
+  overflow:hidden;
+  background:#fff;
+  border:2.5px solid #0B2F26;
+  box-shadow:0 20px 50px rgba(0,0,0,.28);
+  flex-shrink:0;
+}
+.appSplashLogo{
   width:100%;
   height:100%;
   object-fit:cover;
   object-position:center center;
   display:block;
-  user-select:none;
-  -webkit-user-drag:none;
-}
-.appSplash--fade{opacity:0;pointer-events:none}
-.appSplashOrb{position:absolute;border-radius:999px;filter:blur(28px);opacity:.45}
-.appSplashOrb--mint{width:220px;height:220px;background:#9FDCC7;left:-70px;top:12%}
-.appSplashOrb--gold{width:260px;height:260px;background:#D8C29D;right:-90px;bottom:10%;opacity:.28}
-.appSplashCore{
-  position:relative;
-  z-index:1;
-  display:grid;
-  justify-items:center;
-  gap:10px;
-  padding:24px;
-  animation:appSplashIn .72s ease both;
-}
-.appSplashLogo{
-  width:min(42vw,168px);
-  height:min(42vw,168px);
-  border-radius:50%;
-  object-fit:cover;
-  box-shadow:0 18px 48px rgba(0,0,0,.28);
 }
 .appSplashTag{
-  margin:6px 0 0;
+  margin:22px 0 0;
   font-family:var(--font-display);
-  font-size:28px;
+  font-size:clamp(28px,7.8vw,34px);
+  font-weight:700;
   letter-spacing:-.02em;
+  line-height:1.1;
   color:#fff;
+  text-align:center;
 }
 .appSplashSub{
-  font-size:12px;
+  margin-top:8px;
+  font-size:clamp(11px,2.8vw,12px);
   font-weight:800;
-  letter-spacing:.22em;
+  letter-spacing:.28em;
   text-transform:uppercase;
-  color:rgba(216,194,157,.92);
+  color:#D8C29D;
+  text-align:center;
 }
 .appSplashSlogan{
-  margin:10px 0 0;
-  max-width:240px;
-  font-size:13px;
+  margin:18px 0 0;
+  max-width:min(92vw,340px);
+  font-size:clamp(12px,3.2vw,13px);
   line-height:1.45;
   font-weight:600;
-  color:rgba(255,255,255,.82);
+  color:#D1D1D1;
   text-align:center;
 }
 @keyframes appSplashIn{

@@ -183,7 +183,7 @@ export default function App() {
   }, [customer?.id]);
 
   const theme = cssVars(db.settings);
-  const shellBooting = splashPhase === 'visible';
+  const shellBooting = splashPhase !== 'hidden';
   const shellClass = shellBooting ? 'appShell appShell--booting' : 'appShell';
 
   let mainContent;
