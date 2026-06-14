@@ -1,1 +1,1 @@
-Güvenlik ve kasa QR güncellemesi: imzalı QR kodu, yönetici PIN koruması ve genel iyileştirmeler.
+Açılış ekranı Liberte Club referans tasarımına güncellendi. Genel iyileştirmeler.

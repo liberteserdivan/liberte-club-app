@@ -1,1 +1,1 @@
-Dahili test — acilis ekrani duzeltmesi ve QR guvenlik guncellemeleri (1.0.11).
+Açılış ekranı Liberte Club referans tasarımına güncellendi (1.0.12).

@@ -1,1 +1,1 @@
-Marka ve sadakat metinleri guncellendi. Davet kodu sistemi iyilestirildi. Genel performans ve kararlilik duzeltmeleri.
+Açılış ekranı Liberte Club referans tasarımına güncellendi (1.0.12).
