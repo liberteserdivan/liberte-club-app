@@ -1,12 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import sharp from 'sharp';
-import { BRAND_FOREST_RGB } from './iconBrand.mjs';
+import { buildSplashFromMaster, buildSplashMaster, ensureSplashMaster } from './splashArt.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// iOS PWA açılış görselleri — portrait, logo yok
 const IOS_SPLASH_SCREENS = [
   {
     w: 1290,
@@ -52,20 +50,6 @@ const IOS_SPLASH_SCREENS = [
   }
 ];
 
-// Düz orman yeşili — React splash ile aynı zemin
-async function buildSplashCanvas(width, height, dest) {
-  await sharp({
-    create: {
-      width,
-      height,
-      channels: 3,
-      background: BRAND_FOREST_RGB
-    }
-  })
-    .png({ compressionLevel: 9 })
-    .toFile(dest);
-}
-
 function buildIosLinkTags() {
   const lines = IOS_SPLASH_SCREENS.map(
     (row) => `  <link rel="apple-touch-startup-image" href="/splash/${row.file}" media="${row.media}" />`
@@ -89,12 +73,15 @@ async function patchIndexHtml() {
 }
 
 async function main() {
+  await buildSplashMaster();
+  console.log(`public/liberte-club-splash-master.png`);
+
   const splashDir = join(root, 'public', 'splash');
   await mkdir(splashDir, { recursive: true });
 
   for (const row of IOS_SPLASH_SCREENS) {
     const dest = join(splashDir, row.file);
-    await buildSplashCanvas(row.w, row.h, dest);
+    await buildSplashFromMaster(row.w, row.h, dest);
     console.log(`splash/${row.file}`);
   }
 

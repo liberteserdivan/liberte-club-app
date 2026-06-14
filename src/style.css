@@ -45,6 +45,19 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   background:radial-gradient(circle at 18% 8%,rgba(159,220,199,.18),transparent 34%),radial-gradient(circle at 88% 92%,rgba(216,194,157,.16),transparent 36%),#0B2F26;
   transition:opacity .42s ease;
 }
+.appSplash--full{
+  display:block;
+  background:#0B2F26;
+}
+.appSplashImage{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center center;
+  display:block;
+  user-select:none;
+  -webkit-user-drag:none;
+}
 .appSplash--fade{opacity:0;pointer-events:none}
 .appSplashOrb{position:absolute;border-radius:999px;filter:blur(28px);opacity:.45}
 .appSplashOrb--mint{width:220px;height:220px;background:#9FDCC7;left:-70px;top:12%}

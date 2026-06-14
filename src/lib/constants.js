@@ -25,6 +25,9 @@ export const supportUrl = 'https://app.liberte.cafe/support';
 // Varsayılan marka logosu (public klasörü)
 export const DEFAULT_LOGO = '/liberte-logo-source.png?v=11';
 
+// Açılış ekranı — native ve React aynı PNG
+export const SPLASH_IMAGE = '/liberte-club-splash-master.png?v=1';
+
 // Push bildirim görselleri — badge liberte-logo silueti
 export const NOTIFICATION_ICON = '/icon-192.png?v=11';
 export const NOTIFICATION_BADGE = '/notification-badge.png';

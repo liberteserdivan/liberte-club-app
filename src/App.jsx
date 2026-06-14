@@ -32,6 +32,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
+  const [splashImageReady, setSplashImageReady] = useState(false);
   const splashStartRef = useRef(Date.now());
 
   useEffect(() => {
@@ -46,7 +47,12 @@ export default function App() {
     refreshRemote(true);
   }, [session?.customerId, refreshRemote]);
 
-  // Native splash — React splash hazır olana kadar açık kalsın (boş ekran önlemi)
+  // Native splash — React splash görseli hazır olunca kapat (aynı PNG, geçiş yok)
+  useEffect(() => {
+    if (!splashImageReady) return;
+    hideNativeSplash();
+  }, [splashImageReady]);
+
   useEffect(() => {
     if (splashPhase !== 'fade' && splashPhase !== 'hidden') return;
     hideNativeSplash();
@@ -134,7 +140,7 @@ export default function App() {
 
   let mainContent;
   if (!authReady) {
-    mainContent = <main className="appBoot appBoot--splash" style={theme} aria-busy="true" />;
+    mainContent = <main className="appBoot" style={theme} aria-busy="true" aria-hidden="true" />;
   } else if (!session || !customer) {
     mainContent = (
       <main className="appBoot" style={theme}>
@@ -189,7 +195,7 @@ export default function App() {
 
   return (
     <>
-      <AppSplash phase={splashPhase} />
+      <AppSplash phase={splashPhase} onImageReady={() => setSplashImageReady(true)} />
       <div className={shellClass}>{mainContent}</div>
     </>
   );
