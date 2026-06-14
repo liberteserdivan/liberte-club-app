@@ -7,7 +7,9 @@ App Store Connect → **App Review Information** → **Notes** alanına aşağı
 ## Review note (EN)
 
 ```
-This is the official loyalty app for Liberte Gastro Cafe (iPhone only).
+This is the official loyalty app for Liberte Gastro Cafe.
+
+**Device support: iPhone only** (not optimized for iPad; iPad screenshots not required).
 
 Customers log in with phone number and PIN, view loyalty card, show QR code, browse menu, view campaigns, and manage profile.
 
