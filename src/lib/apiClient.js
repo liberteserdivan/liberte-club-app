@@ -40,6 +40,23 @@ function readNativeAuthToken() {
   }
 }
 
+const FETCH_TIMEOUT_MS = 12000;
+
+// Fetch isteğine üst zaman sınırı ekle
+function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const { signal: userSignal, ...rest } = options;
+  if (userSignal) {
+    userSignal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
+  return fetch(url, { ...rest, signal: controller.signal }).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
 // Kimlik bilgili API isteği
 export async function apiFetch(path, options = {}) {
   const headers = {
@@ -54,7 +71,7 @@ export async function apiFetch(path, options = {}) {
   const url = resolveApiUrl(path);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       ...options,
       headers,
       // Native uygulama Bearer token kullanır; çapraz köken cookie gönderilmez
@@ -62,6 +79,9 @@ export async function apiFetch(path, options = {}) {
     });
     return response;
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Sunucu yanıt vermedi. Bağlantını kontrol edip tekrar dene.');
+    }
     if (native && error?.message === 'Failed to fetch') {
       throw new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.');
     }

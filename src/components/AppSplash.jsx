@@ -1,10 +1,11 @@
+import { createPortal } from 'react-dom';
 import { DEFAULT_LOGO, CLUB_APP_NAME, BRAND_SLOGAN } from '../lib/constants.js';
 
-// Soğuk açılış — yeşil zemin + logo fade
+// Soğuk açılış — yeşil zemin + logo (document.body portal, iPad clipping önlemi)
 export default function AppSplash({ phase = 'visible' }) {
   if (phase === 'hidden') return null;
 
-  return (
+  return createPortal(
     <div className={`appSplash${phase === 'fade' ? ' appSplash--fade' : ''}`} aria-hidden="true">
       <div className="appSplashOrb appSplashOrb--mint" />
       <div className="appSplashOrb appSplashOrb--gold" />
@@ -14,6 +15,7 @@ export default function AppSplash({ phase = 'visible' }) {
         <span className="appSplashSub">Gastro Cafe</span>
         <p className="appSplashSlogan">{BRAND_SLOGAN}</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

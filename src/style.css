@@ -19,8 +19,9 @@
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth;background:var(--cream)}
+html{scroll-behavior:smooth;background:#0B2F26}
 body{margin:0;min-height:100vh;background:var(--cream);color:var(--text);font-family:var(--font-body);font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+body.app-ui-ready{background:var(--cream)}
 h1,h2,h3,.pageHero h2,.homeWelcome h1,.loginCard h1,.v4MemberCard h2,.walletTop h2{font-family:var(--font-display);font-optical-sizing:auto;letter-spacing:-.02em}
 button,input,textarea,select{font:inherit}
 button{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:18px;padding:14px 18px;background:linear-gradient(135deg,var(--forest),var(--forest-3));color:#fff;font-weight:900;box-shadow:var(--soft-shadow);transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease}
@@ -4898,6 +4899,15 @@ body.menuDetailOpen{
     width:min(100%,480px);
     max-height:min(90vh,90dvh,760px);
     border-radius:28px;
+  }
+
+  .appBoot,
+  .loginPage,
+  .errorFallback{
+    width:100%;
+    max-width:min(100%,520px);
+    margin-left:auto;
+    margin-right:auto;
   }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyBirthdayReward, cssVars, load } from './lib/db.js';
-import { bootstrapSession, logoutSession, setMemorySession } from './lib/session.js';
+import { logoutSession, setMemorySession } from './lib/session.js';
+import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
@@ -23,6 +24,7 @@ import AdminPage from './pages/AdminPage.jsx';
 const SPLASH_MIN_MS = 1000;
 const SPLASH_FADE_MS = 880;
 const SPLASH_TOTAL_MS = 1280;
+const SPLASH_FORCE_MS = 4500;
 
 export default function App() {
   const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load());
@@ -33,7 +35,7 @@ export default function App() {
   const splashStartRef = useRef(Date.now());
 
   useEffect(() => {
-    bootstrapSession().then((active) => {
+    bootstrapSessionWithTimeout().then((active) => {
       if (active) setSession(active);
       setAuthReady(true);
     });
@@ -44,10 +46,11 @@ export default function App() {
     refreshRemote(true);
   }, [session?.customerId, refreshRemote]);
 
-  // Native yeşil zemin → React splash ile birleşsin
+  // Native splash — React splash hazır olana kadar açık kalsın (boş ekran önlemi)
   useEffect(() => {
+    if (splashPhase !== 'fade' && splashPhase !== 'hidden') return;
     hideNativeSplash();
-  }, []);
+  }, [splashPhase]);
 
   // Oturum hazır + minimum süre sonrası splash kapanır
   useEffect(() => {
@@ -63,6 +66,23 @@ export default function App() {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
     };
+  }, [authReady, splashPhase]);
+
+  // Auth takılsa bile en geç bu sürede giriş ekranına geç
+  useEffect(() => {
+    const forceTimer = setTimeout(() => {
+      setAuthReady(true);
+      setSplashPhase('hidden');
+      hideNativeSplash();
+      document.body.classList.add('app-ui-ready');
+    }, SPLASH_FORCE_MS);
+
+    return () => clearTimeout(forceTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!authReady || splashPhase !== 'hidden') return;
+    document.body.classList.add('app-ui-ready');
   }, [authReady, splashPhase]);
 
   useEffect(() => {
@@ -109,8 +129,8 @@ export default function App() {
   }, [customer?.id]);
 
   const theme = cssVars(db.settings);
-  const splashActive = splashPhase !== 'hidden';
-  const shellClass = splashActive ? 'appShell appShell--booting' : 'appShell';
+  const shellBooting = splashPhase === 'visible';
+  const shellClass = shellBooting ? 'appShell appShell--booting' : 'appShell';
 
   let mainContent;
   if (!authReady) {
