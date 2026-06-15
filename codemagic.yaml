@@ -6,10 +6,10 @@
 #
 # Codemagic UI → Code signing identities:
 #   Certificate reference: liberte_distribution
-#   (Provisioning profile: App Store Connect API ile otomatik — distribution_type: app_store)
+#   Provisioning profile reference: liberte_app_store_profile
 #
-# Push Notifications icin Apple Developer → Identifiers → cafe.liberte.app
-#   → Push Notifications acik olmali. Eski manuel profile push icermiyorsa archive 65 verir.
+# Push Notifications (1.1.1+): Apple Developer → cafe.liberte.app → Push ac;
+# sonra fetch-signing-files yeni profile olusturur; App.entitlements tekrar baglanir.
 
 workflows:
   ios-release:
@@ -20,8 +20,8 @@ workflows:
       groups:
         - app_store_connect
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: cafe.liberte.app
+        provisioning_profiles:
+          - liberte_app_store_profile
         certificates:
           - liberte_distribution
       vars:
@@ -47,7 +47,6 @@ workflows:
         script: npx cap sync ios
       - name: SPM yollarini macOS uyumlu yap
         script: |
-          # Windows cap sync bazen ters slash birakir; Mac archive bunu cozemez
           sed -i '' 's/\\/\//g' ios/App/CapApp-SPM/Package.swift 2>/dev/null || \
           sed -i 's/\\/\//g' ios/App/CapApp-SPM/Package.swift
           grep -n "node_modules" ios/App/CapApp-SPM/Package.swift
@@ -56,13 +55,30 @@ workflows:
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
           agvtool new-version -all "$BUILD_NUMBER"
+      - name: App Store Connect imza dosyalari
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --verbose
       - name: Manuel imza dosyalarini Xcode projesine uygula
         script: xcode-project use-profiles
+      - name: Imza ayarlarini dogrula
+        script: |
+          xcodebuild -project "$CM_BUILD_DIR/$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings \
+            | grep -E 'PROVISIONING_PROFILE|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM' \
+            | head -20
       - name: iOS archive (IPA)
         script: |
+          set -eo pipefail
           xcode-project build-ipa \
             --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME"
+            --scheme "$XCODE_SCHEME" \
+            || {
+              echo "=== xcodebuild log (son 150 satir) ==="
+              tail -150 /tmp/xcodebuild_logs/*.log 2>/dev/null || true
+              exit 1
+            }
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
