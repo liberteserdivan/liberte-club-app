@@ -8,12 +8,10 @@ import {
   STAMP_CATEGORIES,
   addCategoryStampToCustomer,
   checkInCustomer,
-  countTotalRewards,
-  countTotalStamps,
+  getLpBalance,
+  getRedeemableRewards,
   loyaltyTemplate,
   norm,
-  normalizeCategoryRewards,
-  normalizeCategoryStamps,
   redeemCategoryRewardForCustomer
 } from '../lib/db.js';
 import {
@@ -219,28 +217,30 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
 
   async function addCategory(category) {
     await runLoyaltyAction('stamp', category);
-    setMsg(`${STAMP_CATEGORIES.find((c) => c.id === category)?.label || category} damgası eklendi.`);
+    const cat = STAMP_CATEGORIES.find((c) => c.id === category);
+    setMsg(`${cat?.label || category} için +${cat?.lpGain || 1} LP eklendi.`);
   }
 
   async function removeCategory(category) {
     await runLoyaltyAction('remove', category);
-    setMsg(`${STAMP_CATEGORIES.find((c) => c.id === category)?.label || category} damgası silindi.`);
+    const cat = STAMP_CATEGORIES.find((c) => c.id === category);
+    setMsg(`${cat?.label || category} için LP geri alındı.`);
   }
 
   async function redeemCategory(category) {
-    const catLabel = STAMP_CATEGORIES.find((c) => c.id === category)?.label || category;
-    const ok = confirm(`${found.name} için 1 ${catLabel.toLowerCase()} ikramı kullanılsın mı?`);
+    const cat = STAMP_CATEGORIES.find((c) => c.id === category);
+    const catLabel = cat?.label || category;
+    const cost = cat?.rewardCost || 0;
+    const ok = confirm(`${found.name} için ${cat?.rewardLabel || catLabel} ödülü (${cost} LP) kullanılsın mı?`);
     if (!ok) return;
     await runLoyaltyAction('redeem', category);
-    setMsg(`${catLabel} ikramı kullanıldı.`);
+    setMsg(`${catLabel} ödülü kullanıldı.`);
   }
 
   const loyaltySource = found?.loyalty || (found ? db.loyalty[found.id] : null);
   const loyalty = loyaltySource || (found ? loyaltyTemplate(found.id) : null);
-  const categoryStamps = loyalty ? normalizeCategoryStamps(loyalty) : null;
-  const categoryRewards = loyalty ? normalizeCategoryRewards(loyalty) : null;
-  const totalStamps = categoryStamps ? countTotalStamps(categoryStamps) : 0;
-  const totalRewards = categoryRewards ? countTotalRewards(categoryRewards) : 0;
+  const lpBalance = loyalty ? getLpBalance(loyalty) : 0;
+  const redeemableCount = loyalty ? getRedeemableRewards(loyalty).length : 0;
   const memberRef = found ? `LC-${String(found.id).slice(-6)}` : '';
 
   return (
@@ -251,7 +251,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       subtitle={
         found
           ? `${memberRef} · ${found.phone}`
-          : 'Müşterinin kartındaki QR kodu okut, damga veya ikram işle.'
+          : 'Müşterinin kartındaki QR kodu okut, LP veya ödül işle.'
       }
       heroSlot={
         found ? (
@@ -294,7 +294,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           </div>
 
           <p className={`scanMsg${success ? ' isSuccess' : ''}`}>
-            {msg || 'Müşteri QR gösterir → okut → kategori damgası veya ikram uygula.'}
+            {msg || 'Müşteri QR gösterir → okut → LP ekle veya ödül kullandır.'}
           </p>
         </div>
       ) : (
@@ -307,16 +307,15 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
 
           <PageSection label="Özet" tight>
             <div className="scanResultStats">
-              <div><span>Damga</span><b>{totalStamps}</b></div>
-              <div><span>İkram</span><b>{totalRewards}</b></div>
+              <div><span>Toplam LP</span><b>{lpBalance}</b></div>
+              <div><span>Ödül</span><b>{redeemableCount}</b></div>
               <div><span>Kullanılan</span><b>{loyalty.usedRewards || 0}</b></div>
             </div>
           </PageSection>
 
           <StampCategoryPanel
             mode="cashier"
-            categoryStamps={categoryStamps}
-            categoryRewards={categoryRewards}
+            lpBalance={lpBalance}
             onAdd={addCategory}
             onRemove={removeCategory}
             onRedeem={redeemCategory}

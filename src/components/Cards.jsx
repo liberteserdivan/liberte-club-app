@@ -8,7 +8,9 @@ import{
   markPushDismissed,
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
-import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,calculateCoins,customerBadges,redeemRewardForCustomer}from'../lib/db.js';
+import{getPushSettingsHint}from'../lib/nativePush.js';
+import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,customerBadges,redeemRewardForCustomer,getLpBalance,getRedeemableRewards}from'../lib/db.js';
+import{historyTypeLabel,historyAmountLabel}from'../lib/loyaltyStamps.js';
 import{isNativeApp,isAndroid,isIos}from'../lib/platform.js';
 import{
   getDeferredPwaPrompt,
@@ -20,28 +22,9 @@ import{
 export function CustomerHistoryCard({db,customer}){
   const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,5);
 
-  const label=h=>({
-    stamp_add:'Damga eklendi',
-    stamp_remove:'Damga silindi',
-    reward_redeem:'İkram kullanıldı',
-    birthday_reward:'Doğum günü hediyesi',
-    welcome_bonus:'Hoş geldin bonusu',
-    google_review_bonus:'Google yorum bonusu',
-    register:'Kayıt oluşturuldu',
-    referral_bonus:'Referans bonusu',
-    wheel_spin:'Şans çarkı',
-    daily_login:'Günlük giriş ödülü',
-    first_order_bonus:'İlk sipariş bonusu',
-    login:'Giriş yapıldı'
-  }[h.type]||h.source||'İşlem');
+  const label=(h)=>historyTypeLabel(h.type);
 
-  const badge=h=>{
-    if(h.type==='reward_redeem')return 'Hak';
-    if(h.type==='birthday_reward')return '+1';
-    if(h.type==='google_review_bonus')return '+3';
-    if(h.count>0)return `+${h.count}`;
-    return h.count||'•';
-  };
+  const badge=(h)=>historyAmountLabel(h);
 
   return <div className="customerHistory card">
     <div className="historyTitle">
@@ -59,7 +42,7 @@ export function CustomerHistoryCard({db,customer}){
         </div>
         <strong>{badge(h)}</strong>
       </div>
-    ):<p className="emptySmall">Henüz işlem geçmişi yok. İlk damganı kasada QR ile alabilirsin.</p>}
+    ):<p className="emptySmall">Henüz işlem geçmişi yok. İlk LP&apos;ni kasada QR ile kazanabilirsin.</p>}
   </div>;
 }
 
@@ -266,7 +249,7 @@ export function PushWelcomeBanner({customer,db,commit}){
 
     const result=await tryEnablePush(customer,db,commit);
     if(result.ok)setVisible(false);
-    else alert(result.message);
+    else alert(result.message?.includes('kapalı') ? result.message : `${result.message}${isNativeApp() ? `\n\n${getPushSettingsHint()}` : ''}`);
   }
 
   if(!visible)return null;
@@ -305,9 +288,10 @@ export function Product({item}){
 export function ClubStatusCard({db,customer}){
   const l=db.loyalty[customer.id]||loyaltyTemplate(customer.id);
   const badges=customerBadges(customer,l,db);
+  const lp=getLpBalance(l);
   return <div className="card clubStatusCard">
-    <div className="clubTop"><div><span>LIBERTE COIN</span><b>{calculateCoins(l)}</b></div><Crown/></div>
-    <p>Rozetlerin ve coinlerin Liberte Club seviyeni güçlendirir.</p>
+    <div className="clubTop"><div><span>LIBERTE PUAN</span><b>{lp} LP</b></div><Crown/></div>
+    <p>Rozetlerin ve LP&apos;nin Liberte Club seviyeni güçlendirir.</p>
     <div className="badgeGrid">
       {badges.map(b=><div className="badgePill" key={b.title}><strong>{b.emoji}</strong><span>{b.title}</span><small>{b.desc}</small></div>)}
     </div>
@@ -341,35 +325,33 @@ export function VipBenefitsCard({db,customer}){
 
 
 
-export function RewardsCenterCard({db,customer,card,commit}){
-  const rewards=card?.availableRewards||0;
+export function RewardsCenterCard({db,customer,card}){
+  const lp=getLpBalance(card);
+  const redeemable=getRedeemableRewards(card);
   const birthday=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='birthday_reward');
-  const rewardName=db.settings?.reward_description||'1 Bedava İçecek';
   const rows=[
-    {title:rewardName,count:rewards,desc:'Kasada QR göstererek admin tarafından kullandırılır.'},
+    ...redeemable.map((cat)=>({title:cat.rewardLabel,count:1,desc:'Kasada QR göstererek kullandırılır.'})),
     {title:'Doğum günü hediyesi',count:birthday?1:0,desc:'Doğum gününde hesabına tanımlanan özel ikram.'}
   ].filter(x=>x.count>0);
   return <div className="rewardsCenter card">
     <div className="centerHead">
-      <div><span>ÖDÜL MERKEZİ</span><h3>Kazandığım Ödüller</h3></div>
+      <div><span>ÖDÜL MERKEZİ</span><h3>Kazanılabilir Ödüller</h3></div>
       <Gift/>
     </div>
     {rows.length?rows.map((r,i)=><div className="rewardLine" key={i}>
       <div><b>{r.title}</b><p>{r.desc}</p></div><strong>{r.count}</strong>
-    </div>):<p className="emptySmall">Henüz kullanılabilir ödülün yok. Damga biriktirmeye devam et.</p>}
+    </div>):<p className="emptySmall">Henüz kullanılabilir ödülün yok. LP biriktirmeye devam et. ({lp} LP)</p>}
   </div>;
 }
 
 export function FullHistoryCard({db,customer}){
   const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,30);
-  const label=t=>({
-    stamp_add:'Damga eklendi',stamp_remove:'Damga silindi',reward_redeem:'İkram kullanıldı',birthday_reward:'Doğum günü hediyesi',welcome_bonus:'Hoş geldin bonusu',google_review_bonus:'Google yorum bonusu',google_review_request:'Yorum onay talebi',referral_bonus:'Referans bonusu',wheel_spin:'Şans çarkı',daily_login:'Günlük giriş ödülü',first_order_bonus:'İlk sipariş bonusu',check_in:'Check-in',coupon_use:'Kupon kullanıldı',login:'Giriş yapıldı'
-  }[t]||t);
+  const label=(t)=>historyTypeLabel(t);
   return <div className="fullHistory card">
-    <div className="centerHead"><div><span>İŞLEM GEÇMİŞİ</span><h3>Damga ve Hak Hareketleri</h3></div><ShieldCheck/></div>
+    <div className="centerHead"><div><span>İŞLEM GEÇMİŞİ</span><h3>LP Hareketleri</h3></div><ShieldCheck/></div>
     {rows.length?rows.map(h=><div className="historyLine" key={h.id}>
-      <div><b>{label(h.type)}</b><p>{h.createdAt} · {h.source||'Liberte Club'}</p></div>
-      <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count||'•'}</strong>
+      <div><b>{label(h.type)}</b><p>{h.createdAt} · {h.source||h.categoryLabel||'Liberte Club'}</p></div>
+      <strong>{historyAmountLabel(h)}</strong>
     </div>):<p className="emptySmall">Henüz işlem geçmişi yok.</p>}
   </div>;
 }
@@ -430,10 +412,10 @@ export function CustomerCardsAdmin({db,commit}){
     </div>
     <div className="customerDetailCard">
       <div><span>ÜYE</span><h2>{customer.name}</h2><p>{customer.phone} · {customer.email||'mail yok'}</p></div>
-      <div className="detailStats"><div><span>Damga</span><b>{l.totalStamps||0}</b></div><div><span>Hak</span><b>{l.availableRewards||0}</b></div><div><span>Seviye</span><b>{l.level||'Bronze'}</b></div><div><span>Coin</span><b>{calculateCoins(l)}</b></div></div>
+      <div className="detailStats"><div><span>LP</span><b>{getLpBalance(l)}</b></div><div><span>Ödül</span><b>{getRedeemableRewards(l).length}</b></div><div><span>Seviye</span><b>{l.level||'Bronze'}</b></div><div><span>Toplam</span><b>{l.lpLifetime||l.lifetimeStamps||0}</b></div></div>
       {notes&&<p className="customerNote big">Not: {notes}</p>}
-      <div className="adminActions"><button onClick={()=>commit(addStampToCustomer(db,customer.id,1,'Müşteri kartı'))}><Plus/> Damga</button><button className="goldBtn" onClick={()=>commit(redeemRewardForCustomer(db,customer.id,'Müşteri kartı'))}><Gift/> Hak Kullan</button><button className="ghost" onClick={()=>commit(checkInCustomer(db,customer.id,'Müşteri kartı'))}><QrCode/> Check-in</button></div>
+      <div className="adminActions"><button onClick={()=>commit(addStampToCustomer(db,customer.id,1,'Müşteri kartı'))}><Plus/> +1 LP</button><button className="goldBtn" onClick={()=>commit(redeemRewardForCustomer(db,customer.id,'Müşteri kartı','coffee'))}><Gift/> Ödül Kullan</button><button className="ghost" onClick={()=>commit(checkInCustomer(db,customer.id,'Müşteri kartı'))}><QrCode/> Check-in</button></div>
     </div>
-    <div className="card"><h3>Son Hareketler</h3>{history.length?history.map(h=><div className="historyMini" key={h.id}><div><b>{h.type}</b><p>{h.createdAt} · {h.source}</p></div><strong>{h.count>0?`+${h.count}`:h.count||'•'}</strong></div>):<p className="emptySmall">Geçmiş yok.</p>}</div>
+    <div className="card"><h3>Son Hareketler</h3>{history.length?history.map(h=><div className="historyMini" key={h.id}><div><b>{historyTypeLabel(h.type)}</b><p>{h.createdAt} · {h.source}</p></div><strong>{historyAmountLabel(h)}</strong></div>):<p className="emptySmall">Geçmiş yok.</p>}</div>
   </div>;
 }

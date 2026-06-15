@@ -52,4 +52,4 @@ export const STORE_APP_NAME = 'Liberte Gastro Cafe';
 export const DEVICE_APP_NAME = 'Liberte';
 export const CLUB_APP_NAME = 'Liberte Club';
 export const BRAND_SLOGAN = 'Liberte\'de müdavim olmak kazandırır.';
-export const LOYALTY_PROMO = '7. kahven, 7. tatlın ve 12. burgerin bizden.';
+export const LOYALTY_PROMO = 'Kahve +1 LP, tatlı +2 LP, burger +3 LP. 7 LP kahve, 15 LP tatlı, 20 LP burger ikramı.';

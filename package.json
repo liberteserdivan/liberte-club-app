@@ -1,12 +1,12 @@
 {
   "name": "liberte-club-app",
   "private": true,
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Liberte Club — Liberte Gastro Cafe sadakat uygulaması",
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-firebase-sw.mjs && vite",
-    "build": "node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/prepare-transparent-logo.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-ios-assets.mjs && node scripts/generate-android-splash.mjs && node scripts/generate-notification-badge.mjs && node scripts/generate-legal-pages.mjs && vite build && node --test tests/ios-iphone-only.test.mjs tests/android-splash.test.mjs",
+    "build": "node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/prepare-transparent-logo.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-ios-assets.mjs && node scripts/generate-android-splash.mjs && node scripts/generate-notification-badge.mjs && node scripts/generate-legal-pages.mjs && vite build && node --test tests/ios-iphone-only.test.mjs tests/android-splash.test.mjs tests/loyalty-lp.test.mjs",
     "preview": "vite preview",
     "optimize-cup": "node scripts/optimize-cup-glb.mjs Liberte_Cup_Luwai.glb Liberte_Cup_Luwai_App.glb",
     "import-luwai-cup": "node scripts/import-luwai-cup.mjs",
@@ -31,6 +31,7 @@
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
+    "@capacitor/push-notifications": "^8.1.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@neondatabase/serverless": "^1.1.0",
     "firebase": "^11.0.0",

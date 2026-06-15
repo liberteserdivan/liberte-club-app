@@ -36,8 +36,8 @@ test('Android 12 sistem splash ikonu şeffaf', () => {
 
 test('Android sürüm numarası güncel', () => {
   const gradle = readFileSync(join(root, 'android', 'app', 'build.gradle'), 'utf8');
-  assert.match(gradle, /versionCode 14/);
-  assert.match(gradle, /versionName "1\.0\.13"/);
+  assert.match(gradle, /versionCode 15/);
+  assert.match(gradle, /versionName "1\.1\.0"/);
 });
 
 test('Capacitor splash yeşil zemin', () => {

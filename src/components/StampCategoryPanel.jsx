@@ -1,30 +1,31 @@
 import { Gift, Minus, Plus } from 'lucide-react';
-import { STAMP_CATEGORIES } from '../lib/loyaltyStamps.js';
+import { LP_CATEGORIES, getLpBalance, canRedeemLpReward } from '../lib/loyaltyStamps.js';
 
-// Kasiyer — kategori damga ve ikram işlemleri
+// Kasiyer — LP ekleme ve ödül kullandırma
 export default function StampCategoryPanel({
-  categoryStamps,
-  categoryRewards,
+  lpBalance = 0,
   onAdd,
   onRemove,
   onRedeem,
   mode = 'cashier'
 }) {
+  const balance = lpBalance || 0;
+
   return (
     <div className="stampCategoryPanel">
       <div className="stampCategoryPanelHead">
-        <h4>{mode === 'cashier' ? 'Bugün ne aldı?' : 'Kategori damgaları'}</h4>
+        <h4>{mode === 'cashier' ? 'Bugün ne aldı?' : 'Liberte Puan işlemleri'}</h4>
         <p>
           {mode === 'cashier'
-            ? 'QR okutuldu. Aldığı ürünün kategorisine damga bas.'
-            : 'Her kategori ayrı sayılır; eşik dolunca o kategoriden ikram hakkı oluşur.'}
+            ? `QR okutuldu. Toplam LP: ${balance}. Ürün kategorisine göre LP ekle veya ödül kullandır.`
+            : 'Kahve +1 LP, tatlı +2 LP, burger +3 LP. Ödüller LP ile kullanılır.'}
         </p>
       </div>
 
       <div className={`stampCategoryGrid${mode === 'cashier' ? ' stampCategoryGrid--cashier' : ''}`}>
-        {STAMP_CATEGORIES.map((cat) => {
-          const count = categoryStamps?.[cat.id] || 0;
-          const ikram = categoryRewards?.[cat.id] || 0;
+        {LP_CATEGORIES.map((cat) => {
+          const canRedeem = canRedeemLpReward({ lpBalance: balance }, cat.id);
+          const canUndo = balance >= cat.lpGain;
 
           return (
             <div className={`stampCategoryCard${mode === 'cashier' ? ' stampCategoryCard--cashier' : ''}`} key={cat.id}>
@@ -36,21 +37,21 @@ export default function StampCategoryPanel({
                 />
                 <div className="stampCategoryCardBody">
                   <strong>{cat.label}</strong>
-                  <span>{count}/{cat.threshold} damga · {ikram} ikram</span>
+                  <span>+{cat.lpGain} LP · {cat.rewardLabel}</span>
                 </div>
               </div>
 
               {mode === 'cashier' ? (
                 <div className="stampCategoryCardActions">
                   <button type="button" className="stampCategoryMainBtn stampCategoryMainBtn--compact" onClick={() => onAdd?.(cat.id)}>
-                    +1 {cat.shortLabel}
+                    +{cat.lpGain} LP {cat.shortLabel}
                   </button>
-                  {ikram > 0 && (
+                  {canRedeem && (
                     <button type="button" className="stampCategoryRedeemBtn stampCategoryRedeemBtn--compact" onClick={() => onRedeem?.(cat.id)}>
-                      <Gift size={14} /> İkram
+                      <Gift size={14} /> {cat.rewardLabel}
                     </button>
                   )}
-                  {count > 0 && (
+                  {canUndo && (
                     <button type="button" className="stampCategoryUndoBtn stampCategoryUndoBtn--compact" onClick={() => onRemove?.(cat.id)}>
                       Geri al
                     </button>
@@ -58,9 +59,9 @@ export default function StampCategoryPanel({
                 </div>
               ) : (
                 <div className="stampCategoryBtns">
-                  <button type="button" onClick={() => onAdd?.(cat.id)} title="Damga ekle"><Plus size={14} /></button>
-                  <button type="button" className="ghost" onClick={() => onRemove?.(cat.id)} disabled={!count} title="Damga sil"><Minus size={14} /></button>
-                  <button type="button" className="goldBtn" onClick={() => onRedeem?.(cat.id)} disabled={!ikram} title="İkram kullan"><Gift size={14} /></button>
+                  <button type="button" onClick={() => onAdd?.(cat.id)} title="LP ekle"><Plus size={14} /></button>
+                  <button type="button" className="ghost" onClick={() => onRemove?.(cat.id)} disabled={!canUndo} title="LP geri al"><Minus size={14} /></button>
+                  <button type="button" className="goldBtn" onClick={() => onRedeem?.(cat.id)} disabled={!canRedeem} title="Ödül kullan"><Gift size={14} /></button>
                 </div>
               )}
             </div>

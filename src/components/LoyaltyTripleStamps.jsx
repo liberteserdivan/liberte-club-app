@@ -1,33 +1,30 @@
 import { Gift } from 'lucide-react';
 import {
-  STAMP_CATEGORIES,
-  categoryProgress,
-  countTotalRewards,
-  countTotalStamps,
-  normalizeCategoryRewards,
-  normalizeCategoryStamps
+  LP_CATEGORIES,
+  getLpBalance,
+  getRedeemableRewards,
+  lpProgressPercent,
+  canRedeemLpReward
 } from '../lib/loyaltyStamps.js';
 import { StampRulesBanner } from './StampRulesCopy.jsx';
 
 const RING = 2 * Math.PI * 46;
 
-// Üç kategori damgası — ortada hizalı kart düzeni
+// Liberte Puan (LP) — kategori ödül ilerlemesi
 export default function LoyaltyTripleStamps({ card, level = 'Bronze' }) {
-  const stamps = normalizeCategoryStamps(card);
-  const rewards = normalizeCategoryRewards(card);
-  const totalStamps = countTotalStamps(stamps);
-  const totalRewards = countTotalRewards(rewards);
+  const lpBalance = getLpBalance(card);
+  const redeemable = getRedeemableRewards(card);
 
   return (
     <div className="loyaltyTripleWrap">
       <div className="loyaltyTripleStats">
         <div className="loyaltyTripleStatPill">
-          <span>Toplam damga</span>
-          <strong>{totalStamps}</strong>
+          <span>Toplam LP</span>
+          <strong>{lpBalance}</strong>
         </div>
         <div className="loyaltyTripleStatPill">
-          <span>İkram hakkı</span>
-          <strong>{totalRewards}</strong>
+          <span>Kazanılabilir ödüller</span>
+          <strong>{redeemable.length}</strong>
         </div>
         <div className="loyaltyTripleStatPill">
           <span>Seviye</span>
@@ -35,20 +32,18 @@ export default function LoyaltyTripleStamps({ card, level = 'Bronze' }) {
         </div>
       </div>
 
-      <div className="loyaltyTripleStamps" role="list" aria-label="Sadakat damgaları">
-        {STAMP_CATEGORIES.map((cat, index) => {
-          const count = stamps[cat.id] || 0;
-          const ikram = rewards[cat.id] || 0;
-          const progress = categoryProgress(stamps, cat.id);
+      <div className="loyaltyTripleStamps" role="list" aria-label="Liberte Puan ödülleri">
+        {LP_CATEGORIES.map((cat, index) => {
+          const progress = lpProgressPercent(lpBalance, cat.rewardCost);
           const dashOffset = RING - (progress / 100) * RING;
-          const ready = ikram > 0;
+          const ready = canRedeemLpReward(card, cat.id);
 
           return (
             <article
               key={cat.id}
-              className={`loyaltyStampCard${ready ? ' isReady' : ''}${count > 0 ? ' hasProgress' : ''}`}
+              className={`loyaltyStampCard${ready ? ' isReady' : ''}${lpBalance > 0 ? ' hasProgress' : ''}`}
               role="listitem"
-              aria-label={`${cat.label} ${count}/${cat.threshold} damga, ${ikram} ikram hakkı`}
+              aria-label={`${cat.label} ${cat.rewardLabel}, ${lpBalance} LP`}
             >
               <span className="loyaltyStampIndex">{index + 1}</span>
 
@@ -80,10 +75,10 @@ export default function LoyaltyTripleStamps({ card, level = 'Bronze' }) {
               </div>
 
               <div className="loyaltyStampMeta">
-                <strong>{cat.shortLabel}</strong>
-                <span>{count}/{cat.threshold} damga</span>
-                {ikram > 0 && (
-                  <em><Gift aria-hidden="true" /> {ikram} ikram</em>
+                <strong>{cat.rewardLabel}</strong>
+                <span>+{cat.lpGain} LP · {lpBalance}/{cat.rewardCost}</span>
+                {ready && (
+                  <em><Gift aria-hidden="true" /> Hazır</em>
                 )}
               </div>
             </article>

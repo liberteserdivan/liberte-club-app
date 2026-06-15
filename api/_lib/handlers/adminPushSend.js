@@ -74,10 +74,37 @@ export async function handleAdminPushSend(req, res) {
 
     const result = await fb.messaging().sendEachForMulticast({
       tokens: clean,
+      notification: {
+        title: pushText.title,
+        body: pushText.body || ''
+      },
       data: {
         title: pushText.title,
         body: pushText.body || '',
         url: SITE_ORIGIN
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'liberte_campaign',
+          icon: 'notification_icon',
+          color: '#0B2F26'
+        }
+      },
+      apns: {
+        headers: {
+          'apns-priority': '10'
+        },
+        payload: {
+          aps: {
+            alert: {
+              title: pushText.title,
+              body: pushText.body || ''
+            },
+            sound: 'default',
+            badge: 1
+          }
+        }
       },
       webpush: {
         headers: {

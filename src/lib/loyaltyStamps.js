@@ -1,140 +1,145 @@
-// Kategori damgaları — sıra: tatlı, kahve, burger
-export const STAMP_CATEGORIES = [
-  {
-    id: 'dessert',
-    label: 'Tatlı',
-    shortLabel: 'Tatlı',
-    image: '/stamps/dessert.png?v=7',
-    imagePosition: 'center center',
-    threshold: 6,
-    rewardLabel: '1 ikram tatlı',
-    ikramShort: 'Tatlı ikramı'
-  },
-  {
-    id: 'coffee',
-    label: 'Kahve',
-    shortLabel: 'Kahve',
-    image: '/stamps/coffee.png?v=7',
-    imagePosition: 'center center',
-    threshold: 6,
-    rewardLabel: '1 ikram içecek',
-    ikramShort: 'Kahve ikramı'
-  },
-  {
-    id: 'burger',
-    label: 'Burger',
-    shortLabel: 'Burger',
-    image: '/stamps/burger.png?v=7',
-    imagePosition: 'center center',
-    threshold: 12,
-    rewardLabel: '1 ikram burger',
-    ikramShort: 'Burger ikramı'
-  }
-];
-
-export const STAMP_SLOT_COUNT = STAMP_CATEGORIES.length;
-
-// Boş damga sayaçları
-export function emptyCategoryStamps() {
-  return { dessert: 0, coffee: 0, burger: 0 };
-}
-
-// Boş kategori ikram hakları
-export function emptyCategoryRewards() {
-  return { dessert: 0, coffee: 0, burger: 0 };
-}
-
-// Damga sayaçlarını normalize eder
-export function normalizeCategoryStamps(card) {
-  if (card?.categoryStamps) {
-    return {
-      dessert: Math.max(0, Math.trunc(card.categoryStamps.dessert || 0)),
-      coffee: Math.max(0, Math.trunc(card.categoryStamps.coffee || 0)),
-      burger: Math.max(0, Math.trunc(card.categoryStamps.burger || 0))
-    };
-  }
-
-  const legacy = Math.max(0, Math.trunc(card?.totalStamps || 0));
-  const next = emptyCategoryStamps();
-  if (legacy > 0) next.coffee = Math.min(STAMP_CATEGORIES[1].threshold - 1, legacy);
-  return next;
-}
-
-// Kategori ikram haklarını normalize eder
-export function normalizeCategoryRewards(card) {
-  if (card?.categoryRewards) {
-    return {
-      dessert: Math.max(0, Math.trunc(card.categoryRewards.dessert || 0)),
-      coffee: Math.max(0, Math.trunc(card.categoryRewards.coffee || 0)),
-      burger: Math.max(0, Math.trunc(card.categoryRewards.burger || 0))
-    };
-  }
-
-  const legacy = Math.max(0, Math.trunc(card?.availableRewards || 0));
-  return { dessert: 0, coffee: legacy, burger: 0 };
-}
-
-// Toplam kullanılabilir ikram
-export function countTotalRewards(rewards) {
-  return STAMP_CATEGORIES.reduce((sum, cat) => sum + (rewards[cat.id] || 0), 0);
-}
-
-// Toplam aktif damga
-export function countTotalStamps(stamps) {
-  return STAMP_CATEGORIES.reduce((sum, cat) => sum + (stamps[cat.id] || 0), 0);
-}
-
-// Kategori eşiğini döndürür
-export function getCategoryThreshold(categoryId) {
-  return STAMP_CATEGORIES.find((cat) => cat.id === categoryId)?.threshold || 6;
-}
-
-// Kategori ilerleme yüzdesi
-export function categoryProgress(stamps, categoryId) {
-  const threshold = getCategoryThreshold(categoryId);
-  const count = stamps[categoryId] || 0;
-  return Math.min(100, Math.round((count / threshold) * 100));
-}
-
-// Genel kart ilerlemesi — kategorilerin ortalaması
-export function stampCardProgress(stamps) {
-  const total = STAMP_CATEGORIES.reduce((sum, cat) => sum + categoryProgress(stamps, cat.id), 0);
-  return Math.round(total / STAMP_SLOT_COUNT);
-}
-
-// Bir sonraki ikrama kalan damga (en yakın kategori)
-export function stampsRemaining(stamps) {
-  const remainders = STAMP_CATEGORIES.map((cat) => Math.max(0, cat.threshold - (stamps[cat.id] || 0)));
-  return Math.min(...remainders);
-}
-
-// Eşik aşıldığında ikram hakkı üretir
-export function applyCategoryThresholds(stamps, rewards) {
-  const nextStamps = { ...stamps };
-  const nextRewards = { ...rewards };
-
-  STAMP_CATEGORIES.forEach((cat) => {
-    while ((nextStamps[cat.id] || 0) >= cat.threshold) {
-      nextStamps[cat.id] -= cat.threshold;
-      nextRewards[cat.id] = (nextRewards[cat.id] || 0) + 1;
-    }
-  });
-
-  return { categoryStamps: nextStamps, categoryRewards: nextRewards };
-}
-
+// Liberte Puan (LP) — müşteri arayüzü sabitleri ve geri uyumluluk
 import { BRAND_SLOGAN, LOYALTY_PROMO } from './constants.js';
+import {
+  LP_CATEGORIES,
+  LP_SLOT_COUNT,
+  emptyCategoryStamps,
+  emptyCategoryRewards,
+  migrateLoyaltyCard,
+  getLpBalance,
+  getLpLifetime,
+  getRedeemableRewards,
+  lpProgressPercent,
+  lpToNextReward,
+  levelByLp,
+  canRedeemLpReward,
+  getCategoryLpGain,
+  getCategoryRewardCost
+} from './loyaltyPoints.js';
 
-// Sadakat programı tanıtım metinleri
-export const LOYALTY_RULES_TITLE = BRAND_SLOGAN;
+export {
+  LP_CATEGORIES,
+  LP_SLOT_COUNT,
+  emptyCategoryStamps,
+  emptyCategoryRewards,
+  migrateLoyaltyCard,
+  getLpBalance,
+  getLpLifetime,
+  getRedeemableRewards,
+  lpProgressPercent,
+  lpToNextReward,
+  levelByLp,
+  canRedeemLpReward,
+  getCategoryLpGain,
+  getCategoryRewardCost
+};
+
+// Geri uyumluluk — eski import adları
+export const STAMP_CATEGORIES = LP_CATEGORIES;
+export const STAMP_SLOT_COUNT = LP_SLOT_COUNT;
+
+export function normalizeCategoryStamps(card) {
+  return migrateLoyaltyCard(card)?._legacy?.categoryStamps || emptyCategoryStamps();
+}
+
+export function normalizeCategoryRewards(card) {
+  return migrateLoyaltyCard(card)?._legacy?.categoryRewards || emptyCategoryRewards();
+}
+
+export function countTotalRewards(card) {
+  return getRedeemableRewards(migrateLoyaltyCard(card)).length;
+}
+
+export function countTotalStamps(card) {
+  return getLpBalance(card);
+}
+
+export function getCategoryThreshold(categoryId) {
+  return getCategoryRewardCost(categoryId);
+}
+
+export function categoryProgress(card, categoryId) {
+  const balance = getLpBalance(card);
+  return lpProgressPercent(balance, getCategoryRewardCost(categoryId));
+}
+
+export function stampCardProgress(card) {
+  const balance = getLpBalance(card);
+  const { tier } = lpToNextReward(balance);
+  if (!tier) return 100;
+  return lpProgressPercent(balance, tier.rewardCost);
+}
+
+export function stampsRemaining(card) {
+  const { remaining } = lpToNextReward(getLpBalance(card));
+  return remaining;
+}
+
+// Eski eşik fonksiyonu — LP'de kullanılmaz
+export function applyCategoryThresholds(stamps, rewards) {
+  return { categoryStamps: stamps, categoryRewards: rewards };
+}
+
+export const LOYALTY_RULES_TITLE = 'LP biriktir, dilediğin ikramı seç.';
 export const LOYALTY_RULES_HIGHLIGHTS = [
-  { label: '7. kahven', tone: 'coffee' },
-  { label: '7. tatlın', tone: 'dessert' },
-  { label: '12. burgerin', tone: 'burger' }
+  { label: '7 LP Kahve', tone: 'coffee' },
+  { label: '15 LP Tatlı', tone: 'dessert' },
+  { label: '20 LP Burger', tone: 'burger' }
 ];
-export const LOYALTY_RULES_DETAIL_SUFFIX = 'bizden.';
+export const LOYALTY_RULES_DETAIL_SUFFIX = '';
 
-// Kurallar metni — tek satır özet (geri uyumluluk)
 export function getStampRulesText() {
-  return `${LOYALTY_RULES_TITLE} ${LOYALTY_PROMO}`;
+  return `${BRAND_SLOGAN} ${LOYALTY_PROMO}`;
+}
+
+// LP kart özeti — UI bileşenleri için
+export function getLpCardView(card) {
+  const normalized = migrateLoyaltyCard(card);
+  return {
+    lpBalance: normalized?.lpBalance || 0,
+    lpLifetime: normalized?.lpLifetime || 0,
+    level: normalized?.level || levelByLp(normalized?.lpLifetime || 0),
+    redeemable: getRedeemableRewards(normalized)
+  };
+}
+
+// İşlem geçmişi etiketleri — LP ve eski kayıtlar
+export function historyTypeLabel(type) {
+  return {
+    lp_add: 'LP kazanıldı',
+    lp_remove: 'LP düzeltildi',
+    lp_reward_redeem: 'Ödül kullanıldı',
+    stamp_add: 'LP kazanıldı',
+    stamp_remove: 'LP düzeltildi',
+    reward_redeem: 'Ödül kullanıldı',
+    birthday_reward: 'Doğum günü hediyesi',
+    welcome_bonus: 'Hoş geldin bonusu',
+    google_review_bonus: 'Google yorum bonusu',
+    google_review_request: 'Yorum onay talebi',
+    referral_bonus: 'Referans bonusu',
+    wheel_spin: 'Şans çarkı',
+    daily_login: 'Günlük giriş ödülü',
+    first_order_bonus: 'İlk sipariş bonusu',
+    check_in: 'Check-in',
+    coupon_use: 'Kupon kullanıldı',
+    login: 'Giriş yapıldı',
+    register: 'Kayıt oluşturuldu'
+  }[type] || 'İşlem';
+}
+
+// Geçmiş satırındaki LP miktarı
+export function historyAmountLabel(entry) {
+  if (entry.type === 'lp_reward_redeem' || entry.type === 'reward_redeem') {
+    return `-${entry.count || 0} LP`;
+  }
+  if (entry.type === 'lp_add' || entry.type === 'stamp_add') {
+    return `+${entry.count || 0} LP`;
+  }
+  if (entry.type === 'lp_remove' || entry.type === 'stamp_remove') {
+    return `-${entry.count || 0} LP`;
+  }
+  if (entry.type === 'birthday_reward') return '+7 LP';
+  if (entry.type === 'google_review_bonus') return '+3 LP';
+  if (entry.count > 0) return `+${entry.count}`;
+  return entry.count || '•';
 }

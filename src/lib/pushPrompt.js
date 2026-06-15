@@ -28,7 +28,6 @@ export function markPushDismissed(customerId) {
 // Bu cihazda bildirim isteği gösterilmeli mi?
 export function shouldShowPushPrompt(customer, db) {
   if (!customer?.id) return false;
-  if (!('Notification' in window)) return false;
   if (localStorage.getItem(dismissKey(customer.id)) === '1') return false;
 
   const localToken = getLocalPushToken(customer.id);
@@ -39,23 +38,30 @@ export function shouldShowPushPrompt(customer, db) {
     )
   );
 
+  if (hasLocalToken) return false;
+
+  if (isNativeApp()) return true;
+
+  if (!('Notification' in window)) return false;
   if (hasLocalToken && Notification.permission === 'granted') return false;
 
-  // Başka cihazdaki kayıt bu telefonda izin istemeyi engellemesin
   return true;
 }
 
-// iOS PWA gereksinimi metni
+// Bildirim açmadan önce kısa açıklama
 export function getPushPromptHint() {
+  if (isNativeApp()) {
+    return 'Kampanya, ödül ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.';
+  }
   if (isIos() && !isStandalonePwa()) {
     return 'iPhone\'da bildirimler için önce Safari\'den Ana Ekrana Ekle yap, uygulamayı ana ekrandan aç.';
   }
-  return 'Damga, çark ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.';
+  return 'Kampanya, ödül ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.';
 }
 
 // Bildirim açmadan önce cihaz desteği kontrolü
 export function canRequestPushOnThisDevice() {
-  if (isNativeApp() && isIos()) return false;
+  if (isNativeApp()) return true;
   if (isIos() && !isStandalonePwa()) return false;
   return true;
 }

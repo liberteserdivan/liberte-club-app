@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { applyMenuSync } from './menuSync.js';
+import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 
 const STATE_ID = 'liberte';
 
@@ -85,12 +86,17 @@ export async function loadAppState() {
 
   if (data) {
     const synced = applyMenuSync(data);
-    if (synced.changed) {
-      await saveAppState(synced.state);
-      data = synced.state;
+    data = synced.state;
+
+    const migratedLoyalty = migrateAllLoyalty(data.loyalty || {});
+    const loyaltyChanged = JSON.stringify(migratedLoyalty) !== JSON.stringify(data.loyalty || {});
+    if (loyaltyChanged) {
+      data = { ...data, loyalty: migratedLoyalty };
+    }
+
+    if (synced.changed || loyaltyChanged) {
+      await saveAppState(data);
       updatedAt = new Date().toISOString();
-    } else {
-      data = synced.state;
     }
   }
 

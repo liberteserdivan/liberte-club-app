@@ -5,6 +5,8 @@ import { markPushEnabledOnDevice } from './pushPrompt.js';
 import { formatPushNotification } from './pushNotificationText.js';
 import { isIos, isNativeApp } from './platform.js';
 import { ensureAndroidNotificationPermission } from './androidNotificationPermission.js';
+import { registerNativePushToken, getPushSettingsHint } from './nativePush.js';
+import { Capacitor } from '@capacitor/core';
 
 // Service worker yolu — Capacitor WebView'da göreli yol gerekir
 export function getFirebaseSwUrl() {
@@ -223,6 +225,7 @@ function mapPushError(error) {
 
 // Cihaz platformunu kısaca etiketle
 function detectPushPlatform() {
+  if (isNativeApp()) return Capacitor.getPlatform();
   const ua = navigator.userAgent || '';
   if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
   if (/Android/i.test(ua)) return 'android';
@@ -274,8 +277,27 @@ function upsertPushSubscription(db, customer, token) {
   };
 }
 
+// Native uygulamada Capacitor push token kaydı
+export async function enableNativePush(customer, db, commit) {
+  const result = await registerNativePushToken();
+  if (!result.ok) {
+    if (result.reason === 'denied') {
+      throw new Error(getPushSettingsHint());
+    }
+    throw new Error('Bildirim kurulamadı. Daha sonra tekrar deneyebilirsin.');
+  }
+
+  commit(upsertPushSubscription(db, customer, result.token));
+  markPushEnabledOnDevice(customer.id, result.token);
+  return result.token;
+}
+
 // Push bildirimlerini etkinleştir
 export async function enablePush(customer, db, commit) {
+  if (isNativeApp()) {
+    return enableNativePush(customer, db, commit);
+  }
+
   const { initializeApp, getApps, deleteApp } = await import('firebase/app');
   const { getMessaging, getToken, isSupported, onMessage } = await import('firebase/messaging');
 
@@ -345,8 +367,35 @@ export async function enablePush(customer, db, commit) {
 
 import { getLocalPushToken } from './pushPrompt.js';
 
+// Native cihazda kayıtlı token varsa yenile
+export async function refreshNativePushIfSubscribed(customer, db, commit) {
+  if (!import.meta.env.PROD) return;
+  if (!isNativeApp() || !customer?.id) return;
+
+  const localToken = getLocalPushToken(customer.id);
+  if (!localToken) return;
+
+  const onThisDevice = (db.pushSubscriptions || []).some(
+    (row) => row.customerId === customer.id && row.token === localToken
+  );
+  if (!onThisDevice) return;
+
+  try {
+    const result = await registerNativePushToken();
+    if (!result.ok || !result.token || result.token === localToken) return;
+    commit(upsertPushSubscription(db, customer, result.token));
+    markPushEnabledOnDevice(customer.id, result.token);
+  } catch {
+    // Arka planda sessizce dene
+  }
+}
+
 // Kayıtlı üyede token yenile — SW sıfırlamadan, yalnızca bu cihazda
 export async function refreshPushTokenIfSubscribed(customer, db, commit) {
+  if (isNativeApp()) {
+    return refreshNativePushIfSubscribed(customer, db, commit);
+  }
+
   if (!import.meta.env.PROD) return;
   if (!customer?.id) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;

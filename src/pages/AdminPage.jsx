@@ -2,7 +2,8 @@ import React,{useEffect,useState}from'react';
 import{Database,Download,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
-import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,countTotalRewards,countTotalStamps,normalizeCategoryRewards,normalizeCategoryStamps,STAMP_CATEGORIES}from'../lib/db.js';
+import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,getLpBalance,getRedeemableRewards,STAMP_CATEGORIES}from'../lib/db.js';
+import{historyTypeLabel}from'../lib/loyaltyStamps.js';
 import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
@@ -184,26 +185,17 @@ function OverviewAdmin({db,commit,onManageUsers}){
   const customers=db.customers||[];
   const loyalty=db.loyalty||{};
   const history=db.history||[];
-  const totalStamps=Object.values(loyalty).reduce((a,l)=>a+(l.lifetimeStamps||0),0);
-  const activeRewards=Object.values(loyalty).reduce((a,l)=>a+(l.availableRewards||0),0);
+  const totalLp=Object.values(loyalty).reduce((a,l)=>a+(getLpBalance(l)||0),0);
+  const activeRewards=Object.values(loyalty).reduce((a,l)=>a+getRedeemableRewards(l).length,0);
   const pushCount=(db.pushSubscriptions||[]).length;
   const today=new Date().toLocaleDateString('tr-TR');
   const todayEvents=history.filter(h=>String(h.createdAt||'').startsWith(today)).length;
   const topCustomers=[...customers]
     .map(c=>({c,l:loyalty[c.id]||loyaltyTemplate(c.id)}))
-    .sort((a,b)=>(b.l.lifetimeStamps||0)-(a.l.lifetimeStamps||0))
+    .sort((a,b)=>(getLpBalance(b.l)||0)-(getLpBalance(a.l)||0))
     .slice(0,5);
 
-  const historyLabel=t=>({
-    stamp_add:'Damga eklendi',
-    stamp_remove:'Damga silindi',
-    reward_redeem:'Hak kullanıldı',
-    wheel_spin:'Şans çarkı',
-    daily_login:'Günlük ödül',
-    check_in:'Check-in',
-    google_review_bonus:'Google bonusu',
-    customer_edit:'Üye düzenlendi'
-  }[t]||t);
+  const historyLabel=(t)=>historyTypeLabel(t);
 
   return <div className="analyticsPage">
     <div className="adminSectionHead">
@@ -212,8 +204,8 @@ function OverviewAdmin({db,commit,onManageUsers}){
 
     <div className="analyticsGrid adminMetricsCompact">
       <div className="metricCard"><span>Üye</span><b>{customers.length}</b><small>Kayıtlı</small></div>
-      <div className="metricCard"><span>Damga</span><b>{totalStamps}</b><small>Toplam</small></div>
-      <div className="metricCard"><span>Aktif Hak</span><b>{activeRewards}</b><small>İkram</small></div>
+      <div className="metricCard"><span>Toplam LP</span><b>{totalLp}</b><small>Bakiye</small></div>
+      <div className="metricCard"><span>Ödül</span><b>{activeRewards}</b><small>Kullanılabilir</small></div>
       <div className="metricCard"><span>Bugün</span><b>{todayEvents}</b><small>İşlem</small></div>
       <div className="metricCard"><span>Cihaz</span><b>{pushCount}</b><small>Bildirim</small></div>
       <div className="metricCard"><span>Çark</span><b>{(db.wheelSpins||[]).length}</b><small>Çevirme</small></div>
@@ -228,7 +220,7 @@ function OverviewAdmin({db,commit,onManageUsers}){
           <span>{i+1}</span>
           <div>
             <b>{c.name}</b>
-            <p>{l.level||'Bronze'} · {l.lifetimeStamps||0} damga · {l.availableRewards||0} hak</p>
+            <p>{l.level||'Bronze'} · {getLpBalance(l)} LP · {getRedeemableRewards(l).length} ödül</p>
           </div>
         </div>
       ):<div className="empty">Henüz müşteri yok.</div>}
@@ -280,13 +272,12 @@ function UserManageOverview({db,commit,onManageUsers}){
     />
     {filtered.length?filtered.map(c=>{
       const l=loyalty[c.id]||loyaltyTemplate(c.id);
-      const stamps=normalizeCategoryStamps(l);
-      const totalStamps=countTotalStamps(stamps);
-      const rewards=countTotalRewards(normalizeCategoryRewards(l));
+      const lpBalance=getLpBalance(l);
+      const rewards=getRedeemableRewards(l).length;
       return <div className="historyMini userManageRow" key={c.id}>
         <div>
           <b>{c.name}</b>
-          <p>{c.phone} · {c.email||'mail yok'} · {totalStamps} damga · {rewards} ikram</p>
+          <p>{c.phone} · {c.email||'mail yok'} · {lpBalance} LP · {rewards} ödül</p>
         </div>
         <div className="userManageRowActions">
           <button type="button" className="ghost" onClick={()=>addStamp(c)}><Plus size={14}/></button>
@@ -772,8 +763,9 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
   }
 
   function redeemCategory(c,category){
-    const catLabel=STAMP_CATEGORIES.find(x=>x.id===category)?.label||category;
-    const ok=confirm(`${c.name} için 1 ${catLabel.toLowerCase()} ikramı kullanılsın mı?`);
+    const cat=STAMP_CATEGORIES.find(x=>x.id===category);
+    const catLabel=cat?.label||category;
+    const ok=confirm(`${c.name} için ${cat?.rewardLabel || catLabel} ödülü (${cat?.rewardCost || 0} LP) kullanılsın mı?`);
     if(!ok)return;
     commit(redeemCategoryRewardForCustomer(db,c.id,category,'Admin manuel'));
   }
@@ -787,10 +779,8 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
 
     {customers.map(c=>{
       const l=db.loyalty[c.id]||loyaltyTemplate(c.id);
-      const categoryStamps=normalizeCategoryStamps(l);
-      const categoryRewards=normalizeCategoryRewards(l);
-      const totalStamps=countTotalStamps(categoryStamps);
-      const totalRewards=countTotalRewards(categoryRewards);
+      const lpBalance=getLpBalance(l);
+      const redeemableCount=getRedeemableRewards(l).length;
       const isEdit=editing===c.id;
 
       return <div className={isEdit?'card user editing':'card user'} key={c.id}>
@@ -799,14 +789,13 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
             <b>{c.name}</b>
             <p>{c.phone} · {c.email||'mail yok'} · {c.birthDate||'doğum tarihi yok'} · {l.level||'Bronze'}</p>
             <p>Referans kodu: <b>{getReferralCode(c)}</b></p>
-            <small>{totalStamps} damga · {totalRewards} ikram · {l.usedRewards||0} kullanılan · lifetime {l.lifetimeStamps||0}</small>
+            <small>{lpBalance} LP · {redeemableCount} ödül · {l.usedRewards||0} kullanılan · toplam {l.lpLifetime||l.lifetimeStamps||0} LP</small>
             {(db.customerNotes||{})[c.id]&&<p className="customerNote">Not: {(db.customerNotes||{})[c.id]}</p>}
           </div>
 
           <StampCategoryPanel
             mode="admin"
-            categoryStamps={categoryStamps}
-            categoryRewards={categoryRewards}
+            lpBalance={lpBalance}
             onAdd={(category)=>addCategory(c,category)}
             onRemove={(category)=>removeCategory(c,category)}
             onRedeem={(category)=>redeemCategory(c,category)}

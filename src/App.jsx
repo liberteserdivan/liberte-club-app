@@ -178,7 +178,6 @@ export default function App() {
 
   useEffect(() => {
     if (!customer?.id) return;
-    if (!canRequestPushOnThisDevice()) return;
     refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
   }, [customer?.id]);
 

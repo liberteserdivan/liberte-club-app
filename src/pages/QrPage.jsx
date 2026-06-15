@@ -6,12 +6,10 @@ import CustomerQrScanner from '../components/CustomerQrScanner.jsx';
 import {
   STAMP_CATEGORIES,
   levelByStamps,
-  countTotalRewards,
-  countTotalStamps,
-  normalizeCategoryRewards,
-  normalizeCategoryStamps,
+  getLpCardView,
   stampCardProgress,
-  stampsRemaining
+  stampsRemaining,
+  canRedeemLpReward
 } from '../lib/db.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
@@ -45,13 +43,10 @@ function CustomerQrCard({ customer, card }) {
   const [qrError, setQrError] = useState('');
   const signedQrRequired = isSignedQrRequired();
 
-  const categoryStamps = normalizeCategoryStamps(card);
-  const categoryRewards = normalizeCategoryRewards(card);
-  const totalStamps = countTotalStamps(categoryStamps);
-  const rewards = countTotalRewards(categoryRewards);
-  const remaining = stampsRemaining(categoryStamps);
-  const progress = stampCardProgress(categoryStamps);
-  const level = card.level || levelByStamps(card.lifetimeStamps || 0);
+  const lp = getLpCardView(card);
+  const remaining = stampsRemaining(card);
+  const progress = stampCardProgress(card);
+  const level = lp.level || levelByStamps(lp.lpLifetime);
 
   const refreshSignedQr = useCallback(async () => {
     if (!signedQrRequired) {
@@ -87,13 +82,13 @@ function CustomerQrCard({ customer, card }) {
       className={`qrPageEnter${entered ? ' isEntered' : ''}`}
       eyebrow={CLUB_APP_NAME}
       title="Kasada Göster"
-      subtitle="QR kodunu kasiyere göster, damgan hesabına işlensin."
+      subtitle="QR kodunu kasiyere göster, Liberte Puan hesabına işlensin."
       bodyClassName="qrProBody"
     >
       <article className="qrPassCard">
         <div className="qrPassHead">
           <div>
-            <span>SADAKAT KARTI</span>
+            <span>LIBERTE PUAN</span>
             <strong>{customer.name}</strong>
           </div>
           <div className="qrPassLevel"><Crown aria-hidden="true" /> {level}</div>
@@ -110,16 +105,16 @@ function CustomerQrCard({ customer, card }) {
 
         <div className="qrPassMeta">
           <div><span>Üye No</span><b>LC-{customer.id}</b></div>
-          <div><span>Damga</span><b>{totalStamps}</b></div>
-          <div><span>İkram</span><b>{rewards}</b></div>
+          <div><span>Toplam LP</span><b>{lp.lpBalance}</b></div>
+          <div><span>Ödül</span><b>{lp.redeemable.length}</b></div>
         </div>
 
         <div className="qrPassCategoryGrid">
           {STAMP_CATEGORIES.map((cat) => (
             <div key={cat.id}>
-              <span>{cat.shortLabel}</span>
-              <b>{categoryStamps[cat.id] || 0}/{cat.threshold}</b>
-              <em>{categoryRewards[cat.id] || 0} ikram</em>
+              <span>{cat.rewardLabel}</span>
+              <b>{lp.lpBalance}/{cat.rewardCost}</b>
+              <em>{canRedeemLpReward(card, cat.id) ? 'Hazır' : `+${cat.lpGain} LP`}</em>
             </div>
           ))}
         </div>
@@ -127,11 +122,11 @@ function CustomerQrCard({ customer, card }) {
         <div className="qrPassProgress">
           <div className="progress"><span style={{ width: `${progress}%` }} /></div>
           <p>
-            {rewards > 0
-              ? 'Kullanılabilir ikram hakkın var. Kasada QR ile kullan.'
+            {lp.redeemable.length > 0
+              ? 'Kullanılabilir ödülün var. Kasada QR ile kullandır.'
               : remaining === 0
-                ? 'Damga eşiği doldu, ikram hesabına işlendi.'
-                : `En yakın ikrama ${remaining} damga kaldı`}
+                ? 'Bir sonraki ödül eşiğine ulaştın.'
+                : `Bir sonraki ödüle ${remaining} LP kaldı`}
           </p>
           <StampRulesInline />
         </div>
