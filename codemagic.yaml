@@ -4,12 +4,11 @@
 #   APP_STORE_CONNECT_KEY_IDENTIFIER
 #   APP_STORE_CONNECT_PRIVATE_KEY
 #
-# Codemagic UI → Code signing identities:
-#   Certificate reference: liberte_distribution
+# Codemagic UI → Code signing identities (manuel yukleme):
+#   Certificate reference: liberte_distribution  (.p12 + private key)
 #   Provisioning profile reference: liberte_app_store_profile
 #
-# Push Notifications (1.1.1+): Apple Developer → cafe.liberte.app → Push ac;
-# sonra fetch-signing-files yeni profile olusturur; App.entitlements tekrar baglanir.
+# fetch-signing-files kullanilmiyor — private key olmadan sertifika kaydedemez.
 
 workflows:
   ios-release:
@@ -55,12 +54,6 @@ workflows:
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
           agvtool new-version -all "$BUILD_NUMBER"
-      - name: App Store Connect imza dosyalari
-        script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create \
-            --verbose
       - name: Manuel imza dosyalarini Xcode projesine uygula
         script: xcode-project use-profiles
       - name: Imza ayarlarini dogrula
