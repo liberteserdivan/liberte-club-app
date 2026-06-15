@@ -137,19 +137,29 @@ Yalnızca Key ID; private key içeriği repoda ve bu dosyada tutulmaz.
 
 ## Signing reference bilgileri
 
-Codemagic UI → **Code signing identities** (manuel yükleme).
+Codemagic UI → **Code signing identities**:
 
 | Tür | Reference name |
 |-----|----------------|
 | iOS Distribution certificate | `liberte_distribution` |
-| App Store provisioning profile | `liberte_app_store_profile` |
+| App Store provisioning profile | App Store Connect API ile otomatik (`distribution_type: app_store`) |
+
+### Push Notifications (v1.1+)
+
+Archive hatası **exit code 65** alıyorsanız ve logda `aps-environment` / provisioning profile geçiyorsa:
+
+1. [Apple Developer](https://developer.apple.com/account/resources/identifiers/list) → **Identifiers** → `cafe.liberte.app`
+2. **Push Notifications** capability’yi etkinleştirin
+3. Codemagic’te `ios-release` workflow’unu yeniden çalıştırın (profil ASC API ile yenilenir)
+
+Eski manuel `liberte_app_store_profile` push içermiyorsa artık kullanılmaz.
 
 ### `codemagic.yaml` eşlemesi
 
 ```yaml
 ios_signing:
-  provisioning_profiles:
-    - liberte_app_store_profile
+  distribution_type: app_store
+  bundle_identifier: cafe.liberte.app
   certificates:
     - liberte_distribution
 ```

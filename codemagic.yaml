@@ -6,7 +6,10 @@
 #
 # Codemagic UI → Code signing identities:
 #   Certificate reference: liberte_distribution
-#   Provisioning profile reference: liberte_app_store_profile
+#   (Provisioning profile: App Store Connect API ile otomatik — distribution_type: app_store)
+#
+# Push Notifications icin Apple Developer → Identifiers → cafe.liberte.app
+#   → Push Notifications acik olmali. Eski manuel profile push icermiyorsa archive 65 verir.
 
 workflows:
   ios-release:
@@ -17,8 +20,8 @@ workflows:
       groups:
         - app_store_connect
       ios_signing:
-        provisioning_profiles:
-          - liberte_app_store_profile
+        distribution_type: app_store
+        bundle_identifier: cafe.liberte.app
         certificates:
           - liberte_distribution
       vars:
@@ -42,6 +45,12 @@ workflows:
         script: npm run build
       - name: Capacitor iOS sync
         script: npx cap sync ios
+      - name: SPM yollarini macOS uyumlu yap
+        script: |
+          # Windows cap sync bazen ters slash birakir; Mac archive bunu cozemez
+          sed -i '' 's/\\/\//g' ios/App/CapApp-SPM/Package.swift 2>/dev/null || \
+          sed -i 's/\\/\//g' ios/App/CapApp-SPM/Package.swift
+          grep -n "node_modules" ios/App/CapApp-SPM/Package.swift
       - name: iOS surum ve build numarasi
         script: |
           cd ios/App

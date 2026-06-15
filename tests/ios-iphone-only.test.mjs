@@ -32,3 +32,15 @@ test('Vite base göreli — Capacitor WebView uyumlu', () => {
   const vite = readFileSync(join(root, 'vite.config.js'), 'utf8');
   assert.match(vite, /base:\s*['"]\.\/['"]/);
 });
+
+test('CapApp-SPM Package.swift macOS yolları kullanır', () => {
+  const pkg = readFileSync(join(root, 'ios', 'App', 'CapApp-SPM', 'Package.swift'), 'utf8');
+  assert.match(pkg, /node_modules\/@capacitor\/push-notifications/);
+  assert.doesNotMatch(pkg, /node_modules\\@capacitor/);
+});
+
+test('Release imzasi Manual ve push entitlements tanimli', () => {
+  const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
+  assert.match(pbx, /CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/);
+  assert.match(pbx, /CODE_SIGN_STYLE = Manual;/);
+});
