@@ -70,24 +70,45 @@ export default function LoyaltyTripleStamps({
   return (
     <div className="loyaltyTripleWrap" ref={wrapRef}>
       <div className="loyaltyPremiumWallet">
-        <div className="loyaltyPremiumBalance">
-          <span>Bakiye</span>
-          <strong>
-            {lpBalance}
-            <small>LP</small>
-          </strong>
+        <div className="loyaltyPremiumWalletStats">
+          <div className="loyaltyPremiumStatCell loyaltyPremiumStatCell--balance">
+            <span className="loyaltyPremiumLabel">Bakiye</span>
+            <strong className="loyaltyPremiumValue">
+              <em>{lpBalance}</em>
+              <small>LP</small>
+            </strong>
+          </div>
+
+          <div className="loyaltyPremiumStatDivider" aria-hidden="true" />
+
+          <div className={`loyaltyPremiumStatCell${redeemable.length ? ' hasReward' : ''}`}>
+            <span className="loyaltyPremiumLabel">İkram</span>
+            <strong className="loyaltyPremiumValue">
+              <em>{redeemable.length}</em>
+              {redeemable.length > 0 && <Gift className="loyaltyPremiumRewardIcon" aria-hidden="true" />}
+            </strong>
+          </div>
+
+          <div className="loyaltyPremiumStatDivider" aria-hidden="true" />
+
+        <div className="loyaltyPremiumStatCell">
+          <span className="loyaltyPremiumLabel">Toplam LP</span>
+            <strong className="loyaltyPremiumValue">
+              <em>{lpLifetime}</em>
+            </strong>
+          </div>
         </div>
-        <div className="loyaltyPremiumStat">
-          <span>İkram</span>
-          <strong>{redeemable.length}</strong>
-        </div>
-        <div className="loyaltyPremiumStat">
-          <span>Toplam</span>
-          <strong>{lpLifetime}</strong>
-        </div>
-        <button type="button" className="loyaltyPremiumQrBtn" onClick={() => openQrTab(setTab)}>
-          <QrCode aria-hidden="true" />
-          <span>Kasada göster</span>
+
+        <button
+          type="button"
+          className="loyaltyPremiumQrBtn"
+          onClick={() => openQrTab(setTab)}
+          aria-label="QR kartını kasada göster"
+        >
+          <span className="loyaltyPremiumQrIcon" aria-hidden="true">
+            <QrCode />
+          </span>
+          <span className="loyaltyPremiumQrText">Kasada göster</span>
         </button>
       </div>
 

@@ -9,6 +9,13 @@ import {
   LP_HISTORY_EARN,
   LP_HISTORY_REDEEM
 } from './loyaltyPointsServer.js';
+import {
+  canUseMonthlyDiscount,
+  currentMonthKey,
+  getMembershipView,
+  getTierDiscountPercent,
+  isBirthdayCoffeeUsed
+} from '../../src/lib/membershipTier.js';
 
 // Yeni müşteri LP şablonu
 export function loyaltyTemplate(id) {
@@ -192,61 +199,99 @@ export function applyCheckIn(state, customerId, source = 'Kasa QR check-in') {
   return { ok: true };
 }
 
-// Doğum günü kontrolü — YYYY-MM-DD
-function isBirthdayToday(birthDate) {
-  if (!birthDate) return false;
-  const parts = String(birthDate).split('-');
-  if (parts.length < 3) return false;
-  const today = new Date();
-  return Number(parts[1]) === today.getMonth() + 1 && Number(parts[2]) === today.getDate();
+// Doğum günü otomatik LP bonusu kaldırıldı — doğum günü kahvesi kasiyer uygular
+export function applyBirthdayReward(state, customerId) {
+  return { ok: true, changed: false };
 }
 
-// Doğum günü LP bonusu — yılda bir kez
-export function applyBirthdayReward(state, customerId) {
+// Seviye indirimi — ayda bir kez
+export function applyTierDiscount(state, customerId, source = 'QR kasiyer') {
   const id = Number(customerId);
   const customer = listCustomers(state).find((row) => Number(row.id) === id);
-  if (!customer || !isBirthdayToday(customer.birthDate)) {
-    return { ok: true, changed: false };
-  }
-
-  const year = new Date().getFullYear();
-  const already = (state.history || []).some(
-    (row) => row.customerId === id && row.type === 'birthday_reward' && row.year === year
-  );
-  if (already) return { ok: true, changed: false };
+  if (!customer) return { ok: false, error: 'Müşteri bulunamadı' };
 
   const current = migrateLoyaltyCard(state.loyalty?.[id] || state.loyalty?.[String(id)] || loyaltyTemplate(id));
-  const bonus = 7;
-  const createdAt = new Date().toLocaleString('tr-TR');
-  const nextLifetime = (current.lpLifetime || 0) + bonus;
+  const level = current.level || levelByLp(current.lpLifetime || 0);
+  const percent = getTierDiscountPercent(level);
 
-  state.loyalty = {
-    ...(state.loyalty || {}),
-    [id]: {
-      ...current,
-      lpBalance: (current.lpBalance || 0) + bonus,
-      lpLifetime: nextLifetime,
-      level: levelByLp(nextLifetime),
-      updatedAt: createdAt
-    }
+  if (!percent) return { ok: false, error: 'Bu seviyede indirim hakkı yok.' };
+  if (!canUseMonthlyDiscount(current, level)) {
+    return { ok: false, error: 'Bu ay indirim hakkı zaten kullanıldı.' };
+  }
+
+  const monthKey = currentMonthKey();
+  const createdAt = new Date().toLocaleString('tr-TR');
+  const nextCard = {
+    ...current,
+    monthlyDiscountMonth: monthKey,
+    updatedAt: createdAt
   };
+
+  state.loyalty = { ...(state.loyalty || {}), [id]: nextCard };
   state.history = [
     {
-      id: Date.now() + 91,
+      id: Date.now() + 72,
       customerId: id,
       name: customer.name,
       phone: customer.phone,
-      type: 'birthday_reward',
-      count: bonus,
-      reward: 'Doğum günü ikramı',
-      source: 'Doğum günü otomatik hediye',
-      year,
+      type: 'tier_discount',
+      count: percent,
+      reward: `${level} seviye indirimi %${percent}`,
+      month: monthKey,
+      level,
+      source,
       createdAt
     },
     ...(state.history || [])
   ];
 
-  return { ok: true, changed: true };
+  return { ok: true, loyalty: nextCard };
+}
+
+// Doğum günü kahvesi — yılda bir kez
+export function applyBirthdayCoffee(state, customerId, source = 'QR kasiyer') {
+  const id = Number(customerId);
+  const customer = listCustomers(state).find((row) => Number(row.id) === id);
+  if (!customer) return { ok: false, error: 'Müşteri bulunamadı' };
+
+  const year = new Date().getFullYear();
+  if (isBirthdayCoffeeUsed(state.history || [], id, year)) {
+    return { ok: false, error: 'Doğum günü kahvesi bu yıl zaten kullanıldı.' };
+  }
+
+  if (!customer.birthDate) {
+    return { ok: false, error: 'Müşterinin doğum tarihi tanımlı değil.' };
+  }
+
+  const parts = String(customer.birthDate).split('-');
+  if (parts.length < 3) {
+    return { ok: false, error: 'Geçersiz doğum tarihi.' };
+  }
+
+  const today = new Date();
+  const isToday = Number(parts[1]) === today.getMonth() + 1 && Number(parts[2]) === today.getDate();
+  if (!isToday) {
+    return { ok: false, error: 'Doğum günü kahvesi yalnızca doğum gününde kullanılabilir.' };
+  }
+
+  const createdAt = new Date().toLocaleString('tr-TR');
+  state.history = [
+    {
+      id: Date.now() + 73,
+      customerId: id,
+      name: customer.name,
+      phone: customer.phone,
+      type: 'birthday_coffee',
+      count: 1,
+      reward: 'Doğum günü kahve ikramı',
+      year,
+      source,
+      createdAt
+    },
+    ...(state.history || [])
+  ];
+
+  return { ok: true };
 }
 
 // Müşteri özeti
@@ -256,11 +301,14 @@ export function customerSummary(state, customerId) {
   if (!customer) return null;
 
   const loyalty = migrateLoyaltyCard(state.loyalty?.[id] || state.loyalty?.[String(id)] || loyaltyTemplate(id));
+  const membership = getMembershipView(loyalty, customer, state.history || []);
   return {
     id: customer.id,
     name: customer.name,
     phone: customer.phone,
     email: customer.email || '',
-    loyalty
+    birthDate: customer.birthDate || '',
+    loyalty,
+    membership
   };
 }

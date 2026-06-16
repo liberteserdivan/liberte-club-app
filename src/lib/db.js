@@ -22,6 +22,16 @@ import {
   LP_HISTORY_REDEEM,
   levelByLp
 } from './loyaltyPoints.js';
+import {
+  canUseMonthlyDiscount,
+  currentMonthKey,
+  getMembershipView,
+  getTierDiscountPercent,
+  isBirthdayCoffeeUsed,
+  tierBenefits,
+  UNIVERSAL_MEMBERSHIP_BENEFITS,
+  TIER_DISCOUNT_RULES
+} from './membershipTier.js';
 import { apiJson } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
@@ -442,14 +452,8 @@ export function spinLuckyWheel(db,customerId){
   return applyWheelPrize(db,customerId,weightedPrize(db.wheelPrizes));
 }
 
-export function vipBenefits(level='Bronze'){
-  const map={
-    Bronze:['LP biriktirme','Google yorum bonusu','Günlük giriş ödülü'],
-    Silver:['Bronze avantajları','Ayda özel kampanya','Doğum günü önceliği'],
-    Gold:['Silver avantajları','VIP kampanya erişimi','Haftalık şans çarkı bonusları'],
-    Black:['Gold avantajları','Özel ödül günleri','Premium Club ayrıcalıkları']
-  };
-  return map[level]||map.Bronze;
+export function vipBenefits(level = 'Bronze') {
+  return tierBenefits(level);
 }
 
 
@@ -562,9 +566,9 @@ export function customerBadges(customer,loyalty,db){
   const h=(db.history||[]).filter(x=>x.customerId===customer.id);
   const badges=[];
   const lifetime=loyalty?.lpLifetime||loyalty?.lifetimeStamps||0;
-  if(lifetime>=5)badges.push({emoji:'☕',title:'Kahve Yolcusu',desc:'5+ LP'});
-  if(lifetime>=20)badges.push({emoji:'⭐',title:'Sadık Üye',desc:'20+ LP'});
-  if(lifetime>=50)badges.push({emoji:'👑',title:'Gold Club',desc:'50+ LP'});
+  if(lifetime>=50)badges.push({emoji:'🥈',title:'Silver Club',desc:'50+ LP'});
+  if(lifetime>=150)badges.push({emoji:'🥇',title:'Gold Club',desc:'150+ LP'});
+  if(lifetime>=300)badges.push({emoji:'🖤',title:'Black Club',desc:'300+ LP'});
   if((loyalty?.usedRewards||0)>=1)badges.push({emoji:'🎁',title:'Ödül Avcısı',desc:'İlk ikramını kullandı'});
   if(h.some(x=>x.type==='google_review_bonus'))badges.push({emoji:'💬',title:'Yorum Elçisi',desc:'Google yorumu'});
   if((db.referrals||[]).some(x=>x.referrerId===customer.id))badges.push({emoji:'🤝',title:'Davetçi',desc:'Arkadaş daveti'});
@@ -666,40 +670,96 @@ export function redeemRewardForCustomer(db,id,source='Admin',category='coffee'){
 }
 
 export function applyBirthdayReward(db,id){
-  const customer=db.customers.find(c=>c.id===id);
-  if(!customer||!isBirthdayToday(customer.birthDate))return db;
+  // Otomatik LP bonusu kaldırıldı — doğum günü kahvesi kasiyer tarafından uygulanır
+  return db;
+}
 
-  const year=new Date().getFullYear();
-  const already=(db.history||[]).some(h=>h.customerId===id&&h.type==='birthday_reward'&&h.year===year);
-  if(already)return db;
+// Seviye indirimi — ayda bir kez, LP düşmez
+export function applyTierDiscount(db,id,source='Kasiyer'){
+  const customer=db.customers.find(c=>c.id===id);
+  if(!customer)return db;
 
   const current=migrateLoyaltyCard(db.loyalty[id]||loyaltyTemplate(id));
-  const bonus=7;
+  const level=current.level||levelByLp(current.lpLifetime||0);
+  const percent=getTierDiscountPercent(level);
+
+  if(!percent){
+    if(typeof globalThis.alert==='function') alert('Bu seviyede indirim hakkı yok.');
+    return db;
+  }
+
+  if(!canUseMonthlyDiscount(current,level)){
+    if(typeof globalThis.alert==='function') alert('Bu ay indirim hakkı zaten kullanıldı.');
+    return db;
+  }
+
+  const monthKey=currentMonthKey();
+  const createdAt=new Date().toLocaleString('tr-TR');
+  const nextCard={
+    ...current,
+    monthlyDiscountMonth:monthKey,
+    updatedAt:createdAt
+  };
+
+  return{
+    ...db,
+    loyalty:{...db.loyalty,[id]:nextCard},
+    history:[
+      {
+        id:Date.now()+72,
+        customerId:id,
+        name:customer.name,
+        phone:customer.phone,
+        type:'tier_discount',
+        count:percent,
+        reward:`${level} seviye indirimi %${percent}`,
+        month:monthKey,
+        level,
+        source,
+        createdAt
+      },
+      ...(db.history||[])
+    ]
+  };
+}
+
+// Doğum günü kahvesi — yılda bir kez, LP etkilemez
+export function applyBirthdayCoffee(db,id,source='Kasiyer'){
+  const customer=db.customers.find(c=>c.id===id);
+  if(!customer)return db;
+
+  const year=new Date().getFullYear();
+
+  if(isBirthdayCoffeeUsed(db.history||[],id,year)){
+    if(typeof globalThis.alert==='function') alert('Doğum günü kahvesi bu yıl zaten kullanıldı.');
+    return db;
+  }
+
+  if(!customer.birthDate){
+    if(typeof globalThis.alert==='function') alert('Müşterinin doğum tarihi tanımlı değil.');
+    return db;
+  }
+
+  if(!isBirthdayToday(customer.birthDate)){
+    if(typeof globalThis.alert==='function') alert('Doğum günü kahvesi yalnızca doğum gününde kullanılabilir.');
+    return db;
+  }
+
   const createdAt=new Date().toLocaleString('tr-TR');
 
   return{
     ...db,
-    loyalty:{
-      ...db.loyalty,
-      [id]:{
-        ...current,
-        lpBalance:(current.lpBalance||0)+bonus,
-        lpLifetime:(current.lpLifetime||0)+bonus,
-        level:levelByLp((current.lpLifetime||0)+bonus),
-        updatedAt:createdAt
-      }
-    },
     history:[
       {
-        id:Date.now()+91,
+        id:Date.now()+73,
         customerId:id,
         name:customer.name,
         phone:customer.phone,
-        type:'birthday_reward',
-        count:bonus,
-        reward:'Doğum günü ikramı',
-        source:'Doğum günü otomatik hediye',
+        type:'birthday_coffee',
+        count:1,
+        reward:'Doğum günü kahve ikramı',
         year,
+        source,
         createdAt
       },
       ...(db.history||[])
@@ -725,3 +785,13 @@ export {
   getLpLifetime,
   lpRewardStatusText
 } from './loyaltyStamps.js';
+
+export {
+  getMembershipView,
+  tierBenefits,
+  UNIVERSAL_MEMBERSHIP_BENEFITS,
+  TIER_DISCOUNT_RULES,
+  getTierDiscountPercent,
+  canUseMonthlyDiscount,
+  getBirthdayCoffeeStatus
+} from './membershipTier.js';

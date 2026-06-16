@@ -3,11 +3,15 @@ import { ScanLine } from 'lucide-react';
 import PageShell from './PageShell.jsx';
 import PageSection from './PageSection.jsx';
 import StampCategoryPanel from './StampCategoryPanel.jsx';
+import CashierMembershipPanel from './CashierMembershipPanel.jsx';
 import {
   STAMP_CATEGORIES,
   addCategoryStampToCustomer,
+  applyBirthdayCoffee,
+  applyTierDiscount,
   checkInCustomer,
   getLpBalance,
+  getLpLifetime,
   getRedeemableRewards,
   loyaltyTemplate,
   norm,
@@ -254,6 +258,10 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       nextDb = redeemCategoryRewardForCustomer(db, found.id, category, 'QR kasiyer');
     } else if (action === 'checkin') {
       nextDb = checkInCustomer(db, found.id, 'Kasa QR check-in');
+    } else if (action === 'tier_discount') {
+      nextDb = applyTierDiscount(db, found.id, 'QR kasiyer');
+    } else if (action === 'birthday_coffee') {
+      nextDb = applyBirthdayCoffee(db, found.id, 'QR kasiyer');
     }
 
     if (nextDb === db) return false;
@@ -287,9 +295,28 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     setMsg(`${catLabel} ikram kullanıldı, -${cost} LP.`);
   }
 
-  const loyaltySource = found?.loyalty || (found ? db.loyalty[found.id] : null);
+  async function applyDiscount() {
+    const membership = found?.membership;
+    const pct = membership?.discountPercent || 0;
+    const ok = confirm(`${found.name} için %${pct} seviye indirimi uygulansın mı?`);
+    if (!ok) return;
+    const done = await runLoyaltyAction('tier_discount');
+    if (!done) return;
+    setMsg(`%${pct} seviye indirimi kaydedildi.`);
+  }
+
+  async function applyBirthdayCoffeeAction() {
+    const ok = confirm(`${found.name} için doğum günü kahve ikramı uygulansın mı?`);
+    if (!ok) return;
+    const done = await runLoyaltyAction('birthday_coffee');
+    if (!done) return;
+    setMsg('Doğum günü kahve ikramı kaydedildi.');
+  }
+
+  const loyaltySource = found ? (db.loyalty[found.id] || found?.loyalty) : null;
   const loyalty = loyaltySource || (found ? loyaltyTemplate(found.id) : null);
   const lpBalance = loyalty ? getLpBalance(loyalty) : 0;
+  const lpLifetime = loyalty ? getLpLifetime(loyalty) : 0;
   const redeemableCount = loyalty ? getRedeemableRewards(loyalty).length : 0;
   const memberRef = found ? `LC-${String(found.id).slice(-6)}` : '';
   const showInlineCamera = !nativeScanReady && active;
@@ -362,11 +389,20 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
 
           <PageSection label="Özet" tight>
             <div className="scanResultStats">
-              <div><span>Toplam LP</span><b>{lpBalance}</b></div>
-              <div><span>Ödül</span><b>{redeemableCount}</b></div>
-              <div><span>Kullanılan</span><b>{loyalty.usedRewards || 0}</b></div>
+              <div><span>Mevcut LP</span><b>{lpBalance}</b></div>
+              <div><span>Toplam LP</span><b>{lpLifetime}</b></div>
+              <div><span>İkram</span><b>{redeemableCount}</b></div>
             </div>
           </PageSection>
+
+          <CashierMembershipPanel
+            card={loyalty}
+            customer={found}
+            history={db.history || []}
+            busy={busy}
+            onApplyDiscount={applyDiscount}
+            onApplyBirthdayCoffee={applyBirthdayCoffeeAction}
+          />
 
           <StampCategoryPanel
             mode="cashier"

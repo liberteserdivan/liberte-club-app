@@ -3,9 +3,9 @@ import { Crown } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PageShell from '../components/PageShell.jsx';
 import CustomerQrScanner from '../components/CustomerQrScanner.jsx';
+import MembershipTierCard from '../components/MembershipTierCard.jsx';
 import {
   STAMP_CATEGORIES,
-  levelByStamps,
   getLpCardView,
   stampCardProgress,
   stampsRemaining,
@@ -34,11 +34,11 @@ export default function QrPage({
     return null;
   }
 
-  return <CustomerQrCard customer={customer} card={card} />;
+  return <CustomerQrCard customer={customer} card={card} history={db?.history || []} />;
 }
 
 // Müşteri sadakat kartı QR görünümü
-function CustomerQrCard({ customer, card }) {
+function CustomerQrCard({ customer, card, history = [] }) {
   const [entered, setEntered] = useState(false);
   const [qrValue, setQrValue] = useState('');
   const [qrError, setQrError] = useState('');
@@ -47,7 +47,7 @@ function CustomerQrCard({ customer, card }) {
   const lp = getLpCardView(card);
   const remaining = stampsRemaining(card);
   const progress = stampCardProgress(card);
-  const level = lp.level || levelByStamps(lp.lpLifetime);
+  const level = lp.level;
 
   const refreshSignedQr = useCallback(async () => {
     if (!signedQrRequired) {
@@ -106,9 +106,11 @@ function CustomerQrCard({ customer, card }) {
 
         <div className="qrPassMeta">
           <div><span>Üye No</span><b>LC-{customer.id}</b></div>
-          <div><span>Toplam LP</span><b>{lp.lpBalance}</b></div>
-          <div><span>Kazanılabilir ikramlar</span><b>{lp.redeemable.length}</b></div>
+          <div><span>Mevcut LP</span><b>{lp.lpBalance}</b></div>
+          <div><span>Toplam Kazanılan LP</span><b>{lp.lpLifetime}</b></div>
         </div>
+
+        <MembershipTierCard card={card} customer={customer} history={history} />
 
         <div className="qrPassRewardHead">
           <span>KAZANILABİLİR İKRAMLAR</span>

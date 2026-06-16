@@ -52,3 +52,7 @@ Camera: only used when admin enters admin PIN and opens QR scanner.
 ## Sadakat kuralı (referans — LP v1.1)
 
 > Liberte'de müdavim olmak kazandırır. Kahve +1 LP, tatlı +2 LP, burger +3 LP. 7 LP kahve ikramı, 15 LP tatlı ikramı, 25 LP burger ikramı.
+
+## Üyelik seviyeleri (v1.1)
+
+> Seviye **toplam kazanılan LP** ile belirlenir; ikram kullanımı seviyeyi düşürmez. Bronze 0–49, Silver 50–149, Gold 150–299, Black 300+. Silver/Gold/Black ayda 1 kez %5/%10/%15 cafe içi indirim (LP ikramı ve kampanyalarla birleşmez). Tüm üyeler doğum gününde 1 kahve ikramı alabilir (kasiyer onayı).

@@ -12,7 +12,7 @@ export default function LoyaltyLevelTrack({ lifetime = 0, level = 'Bronze' }) {
       <div className="loyaltyLevelTrackHead">
         <div className="loyaltyLevelTrackTitle">
           <Crown aria-hidden="true" />
-          <span>Club Seviyesi</span>
+          <span>Üyelik Seviyesi</span>
         </div>
 
         <div className="loyaltyLevelTrackBadgeWrap">

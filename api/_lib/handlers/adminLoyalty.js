@@ -5,6 +5,8 @@ import { verifyCustomerQrToken } from '../qrToken.js';
 import {
   applyCategoryStamp,
   applyCheckIn,
+  applyBirthdayCoffee,
+  applyTierDiscount,
   customerSummary,
   redeemCategoryReward
 } from '../loyaltyOps.js';
@@ -69,6 +71,10 @@ export async function handleAdminLoyaltyAction(req, res) {
       result = redeemCategoryReward(nextState, verified.customerId, category, 'QR kasiyer');
     } else if (action === 'checkin') {
       result = applyCheckIn(nextState, verified.customerId, 'Kasa QR check-in');
+    } else if (action === 'tier_discount') {
+      result = applyTierDiscount(nextState, verified.customerId, 'QR kasiyer');
+    } else if (action === 'birthday_coffee') {
+      result = applyBirthdayCoffee(nextState, verified.customerId, 'QR kasiyer');
     } else {
       return res.status(400).json({ error: 'Geçersiz işlem' });
     }

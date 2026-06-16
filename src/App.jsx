@@ -1,6 +1,6 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useEffect, useRef, useState } from 'react';
-import { applyBirthdayReward, cssVars, load } from './lib/db.js';
+import { cssVars, load } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
@@ -175,14 +175,6 @@ export default function App() {
     setAdminGateSkipped(true);
     setTab('home');
   }
-
-  // Doğum günü bonusu — yalnızca yerel dev; production sunucuda uygulanır
-  useEffect(() => {
-    if (!useLocalAuth()) return;
-    if (!customer?.id) return;
-    const next = applyBirthdayReward(db, customer.id);
-    if (next !== db) commit(next);
-  }, [customer?.id, customer?.birthDate]);
 
   useEffect(() => {
     if (!customer?.id) return;

@@ -128,7 +128,9 @@ export function historyTypeLabel(type) {
     stamp_add: 'LP kazanıldı',
     stamp_remove: 'LP düzeltildi',
     reward_redeem: 'Ödül kullanıldı',
-    birthday_reward: 'Doğum günü hediyesi',
+    birthday_reward: 'Doğum günü hediyesi (eski)',
+    birthday_coffee: 'Doğum günü kahve ikramı',
+    tier_discount: 'Seviye indirimi',
     welcome_bonus: 'Hoş geldin bonusu',
     google_review_bonus: 'Google yorum bonusu',
     google_review_request: 'Yorum onay talebi',
@@ -158,6 +160,8 @@ export function historyAmountLabel(entry) {
     return `-${entry.count || 0} LP`;
   }
   if (entry.type === 'birthday_reward') return '+7 LP';
+  if (entry.type === 'birthday_coffee') return 'Kahve ikramı';
+  if (entry.type === 'tier_discount') return `%${entry.count || 0} indirim`;
   if (entry.type === 'google_review_bonus') return '+3 LP';
   if (entry.count > 0) return `+${entry.count}`;
   return entry.count || '•';

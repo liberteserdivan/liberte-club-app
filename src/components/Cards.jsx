@@ -328,11 +328,13 @@ export function VipBenefitsCard({db,customer}){
 export function RewardsCenterCard({db,customer,card}){
   const lp=getLpBalance(card);
   const redeemable=getRedeemableRewards(card);
-  const birthday=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='birthday_reward');
+  const birthday=(db.history||[]).some(h=>h.customerId===customer.id&&(h.type==='birthday_coffee'||h.type==='birthday_reward'));
   const rows=[
     ...redeemable.map((cat)=>({title:cat.rewardLabel,count:1,desc:'Kasada QR göstererek kullandırılır.'})),
-    {title:'Doğum günü hediyesi',count:birthday?1:0,desc:'Doğum gününde hesabına tanımlanan özel ikram.'}
-  ].filter(x=>x.count>0);
+  ];
+  if(!birthday){
+    rows.push({title:'Doğum günü kahve ikramı',count:1,desc:'Doğum gününde 1 kahve ikramı tüm üyeler için geçerlidir.'});
+  }
   return <div className="rewardsCenter card">
     <div className="centerHead">
       <div><span>ÖDÜL MERKEZİ</span><h3>Kazanılabilir Ödüller</h3></div>
@@ -340,7 +342,7 @@ export function RewardsCenterCard({db,customer,card}){
     </div>
     {rows.length?rows.map((r,i)=><div className="rewardLine" key={i}>
       <div><b>{r.title}</b><p>{r.desc}</p></div><strong>{r.count}</strong>
-    </div>):<p className="emptySmall">Henüz kullanılabilir ödülün yok. LP biriktirmeye devam et. ({lp} LP)</p>}
+    </div>):<p className="emptySmall">Henüz kullanılabilir LP ikramın yok. LP biriktirmeye devam et. ({lp} LP)</p>}
   </div>;
 }
 

@@ -4,8 +4,9 @@ import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
+import MembershipTierCard from '../components/MembershipTierCard.jsx';
 import { PushWelcomeBanner } from '../components/Cards.jsx';
-import { levelByStamps } from '../lib/db.js';
+import { getLpCardView } from '../lib/db.js';
 import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
@@ -18,7 +19,8 @@ export default function ProfilePage({
 }) {
   const [legalType, setLegalType] = useState('');
   const [message, setMessage] = useState('');
-  const level = card.level || levelByStamps(card.lifetimeStamps || 0);
+  const lp = getLpCardView(card);
+  const level = lp.level;
 
   async function logout() {
     await logoutSession();
@@ -70,6 +72,10 @@ export default function ProfilePage({
       subtitle="Hesap ayarları, destek ve yasal bilgiler"
       heroSlot={profileHero}
     >
+      <PageSection label="Üyelik Seviyem">
+        <MembershipTierCard card={card} customer={customer} history={db.history || []} />
+      </PageSection>
+
       <PageSection label="İletişim">
         <CafeContactBar />
       </PageSection>
