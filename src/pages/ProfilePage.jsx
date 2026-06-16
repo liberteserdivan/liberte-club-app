@@ -7,6 +7,7 @@ import LegalSheet from '../components/LegalSheet.jsx';
 import MembershipTierCard from '../components/MembershipTierCard.jsx';
 import { PushWelcomeBanner } from '../components/Cards.jsx';
 import { getLpCardView } from '../lib/db.js';
+import { TIER_TONE } from '../lib/membershipTier.js';
 import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
@@ -22,6 +23,7 @@ export default function ProfilePage({
   const [message, setMessage] = useState('');
   const lp = getLpCardView(card);
   const level = lp.level;
+  const tierTone = TIER_TONE[level] || 'bronze';
 
   async function logout() {
     deactivateDevicePushToken(customer.id, db, commit);
@@ -62,7 +64,7 @@ export default function ProfilePage({
         <p><Phone size={14} aria-hidden="true" /> {customer.phone}</p>
         {customer.email && <p><Mail size={14} aria-hidden="true" /> {customer.email}</p>}
       </div>
-      <div className="profileLevelBadge"><Crown size={14} aria-hidden="true" /> {level}</div>
+      <div className={`profileLevelBadge profileLevelBadge--${tierTone}`}><Crown size={14} aria-hidden="true" /> {level}</div>
     </div>
   );
 
@@ -74,7 +76,7 @@ export default function ProfilePage({
       subtitle="Hesap ayarları, destek ve yasal bilgiler"
       heroSlot={profileHero}
     >
-      <PageSection label="Üyelik Seviyem">
+      <PageSection>
         <MembershipTierCard card={card} customer={customer} history={db.history || []} />
       </PageSection>
 

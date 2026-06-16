@@ -223,13 +223,32 @@ function mapPushError(error) {
   return `Bildirim kurulamadı: ${message}`;
 }
 
-// Cihaz platformunu kısaca etiketle
+// Bildirim kanalı — native uygulama mı tarayıcı/PWA mı
+function detectPushChannel() {
+  return isNativeApp() ? 'native' : 'web';
+}
+
+// Cihaz platformu — yalnızca native uygulamada ios/android; tarayıcı her zaman web
 function detectPushPlatform() {
   if (isNativeApp()) return Capacitor.getPlatform();
-  const ua = navigator.userAgent || '';
-  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
-  if (/Android/i.test(ua)) return 'android';
   return 'web';
+}
+
+// Native kayıt sonrası aynı üyenin eski web tokenlarını pasifleştir
+function deactivateWebPushTokensForCustomer(db, customerId, keepToken) {
+  const now = new Date().toLocaleString('tr-TR');
+  return (db.pushSubscriptions || []).map((row) => {
+    if (Number(row.customerId) !== Number(customerId)) return row;
+    if (row.token === keepToken) return row;
+    const channel = row.channel === 'native' ? 'native' : 'web';
+    if (channel !== 'web') return row;
+    return {
+      ...row,
+      active: false,
+      deactivatedAt: now,
+      deactivatedReason: 'replaced_by_native'
+    };
+  });
 }
 
 // Üye başına birden fazla cihaz — token kaydını güncelle
@@ -237,6 +256,7 @@ function upsertPushSubscription(db, customer, token) {
   const others = (db.pushSubscriptions || []).filter((row) => row.token !== token);
   const existing = (db.pushSubscriptions || []).find((row) => row.token === token);
   const platform = detectPushPlatform();
+  const channel = detectPushChannel();
   const now = new Date().toLocaleString('tr-TR');
   const appVersion = import.meta.env?.VITE_APP_VERSION || '1.1.0';
 
@@ -247,37 +267,27 @@ function upsertPushSubscription(db, customer, token) {
     phone: customer.phone,
     token,
     platform,
+    channel,
     active: true,
     lastSeenAt: now,
     appVersion,
     updatedAt: now
   };
 
-  if (existing) {
-    return {
-      ...db,
-      pushSubscriptions: [
-        ...others,
-        {
-          ...existing,
-          ...base,
-          createdAt: existing.createdAt || now
-        }
-      ]
-    };
+  const nextRow = existing
+    ? { ...existing, ...base, createdAt: existing.createdAt || now }
+    : { id: Date.now(), ...base, createdAt: now };
+
+  let pushSubscriptions = [...others, nextRow];
+  if (channel === 'native') {
+    pushSubscriptions = deactivateWebPushTokensForCustomer(
+      { ...db, pushSubscriptions },
+      customer.id,
+      token
+    );
   }
 
-  return {
-    ...db,
-    pushSubscriptions: [
-      ...others,
-      {
-        id: Date.now(),
-        ...base,
-        createdAt: now
-      }
-    ]
-  };
+  return { ...db, pushSubscriptions };
 }
 
 // Native uygulamada Capacitor push token kaydı

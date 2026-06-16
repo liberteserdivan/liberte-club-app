@@ -9,6 +9,11 @@ import {
   LP_HISTORY_EARN,
   LP_HISTORY_REDEEM
 } from './loyaltyPointsServer.js';
+import { menuItems } from '../../src/lib/menuSeed.js';
+import {
+  assertMenuItemCanEarnLp,
+  requiresProductPickForLpCategory
+} from '../../src/lib/menuLp.js';
 import {
   canUseMonthlyDiscount,
   currentMonthKey,
@@ -35,18 +40,29 @@ export function loyaltyTemplate(id) {
 }
 
 // Kategori işlemine göre LP ekle veya çıkar
-export function applyCategoryStamp(state, customerId, category, count = 1, source = 'Kasa QR') {
+export function applyCategoryStamp(state, customerId, category, count = 1, source = 'Kasa QR', options = {}) {
   const id = Number(customerId);
   const customer = listCustomers(state).find((row) => Number(row.id) === id);
   if (!customer) return { ok: false, error: 'Müşteri bulunamadı' };
-
-  const valid = LP_CATEGORIES.some((cat) => cat.id === category);
-  if (!valid) return { ok: false, error: 'Geçersiz kategori' };
 
   const steps = Math.abs(Math.trunc(count));
   if (!steps) return { ok: false, error: 'İşlem adedi geçersiz' };
 
   const sign = count >= 0 ? 1 : -1;
+  const menuItem = options.menuItem || null;
+
+  if (sign > 0) {
+    if (menuItem) {
+      const check = assertMenuItemCanEarnLp(menuItem);
+      if (!check.ok) return { ok: false, error: check.error };
+      category = check.category;
+    } else if (requiresProductPickForLpCategory(category, menuItems)) {
+      return { ok: false, error: 'Bu kategori için ürün seçimi gerekli' };
+    }
+  }
+
+  const valid = LP_CATEGORIES.some((cat) => cat.id === category);
+  if (!valid) return { ok: false, error: 'Geçersiz kategori' };
   const lpGain = getCategoryLpGain(category) * steps;
   const current = migrateLoyaltyCard(state.loyalty?.[id] || state.loyalty?.[String(id)] || loyaltyTemplate(id));
   const oldBalance = current.lpBalance || 0;
@@ -82,6 +98,8 @@ export function applyCategoryStamp(state, customerId, category, count = 1, sourc
       count: lpGain,
       category,
       categoryLabel: catLabel,
+      menuItemId: menuItem?.id || null,
+      menuItemName: menuItem?.name || null,
       lpBefore: oldBalance,
       lpAfter: nextBalance,
       before: { lpBalance: oldBalance, lpLifetime: oldLifetime },

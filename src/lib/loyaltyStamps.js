@@ -94,6 +94,7 @@ export const LOYALTY_RULES_TITLE = 'LP biriktir, dilediğin ikramı seç.';
 export const LOYALTY_RULES_HIGHLIGHTS = [
   { label: '7 LP Kahve İkram', tone: 'coffee' },
   { label: '15 LP Tatlı İkram', tone: 'dessert' },
+  { label: '18 LP Sandviç İkram', tone: 'sandwich' },
   { label: '25 LP Burger İkram', tone: 'burger' }
 ];
 export const LOYALTY_RULES_DETAIL_SUFFIX = '';
@@ -121,9 +122,11 @@ export function historyTypeLabel(type) {
     lp_reward_redeem: 'İkram kullanıldı',
     earn_coffee: 'Kahve satışı',
     earn_dessert: 'Tatlı satışı',
+    earn_sandwich: 'Sandviç satışı',
     earn_burger: 'Burger satışı',
     redeem_coffee: 'Kahve ikram',
     redeem_dessert: 'Tatlı ikram',
+    redeem_sandwich: 'Sandviç ikram',
     redeem_burger: 'Burger ikram',
     stamp_add: 'LP kazanıldı',
     stamp_remove: 'LP düzeltildi',
@@ -147,8 +150,8 @@ export function historyTypeLabel(type) {
 
 // Geçmiş satırındaki LP miktarı
 export function historyAmountLabel(entry) {
-  const redeemTypes = ['lp_reward_redeem', 'reward_redeem', 'redeem_coffee', 'redeem_dessert', 'redeem_burger'];
-  const earnTypes = ['lp_add', 'stamp_add', 'earn_coffee', 'earn_dessert', 'earn_burger'];
+  const redeemTypes = ['lp_reward_redeem', 'reward_redeem', 'redeem_coffee', 'redeem_dessert', 'redeem_sandwich', 'redeem_burger'];
+  const earnTypes = ['lp_add', 'stamp_add', 'earn_coffee', 'earn_dessert', 'earn_sandwich', 'earn_burger'];
 
   if (redeemTypes.includes(entry.type)) {
     return `-${entry.count || 0} LP`;

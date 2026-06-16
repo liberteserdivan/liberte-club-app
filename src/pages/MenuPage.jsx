@@ -4,6 +4,7 @@ import MenuProductDetailModal from '../components/MenuProductDetailModal.jsx';
 import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
+import { getMenuCategoryLpLabel } from '../lib/menuLp.js';
 
 // Kategoriye göre ürün gruplarını döndür
 function buildMenuSections(categories, items, activeCat) {
@@ -65,11 +66,14 @@ export default function MenuPage({ db, embedded = false }) {
       subtitle={embedded ? null : 'Kahve, tatlı, burger ve daha fazlası. Lezzetleri keşfet.'}
       stickySlot={categoryPills}
     >
-      {sections.length ? sections.map(({ category, items }) => (
+      {sections.length ? sections.map(({ category, items }) => {
+        const lpLabel = getMenuCategoryLpLabel(category.id);
+
+        return (
         <PageSection
           key={category.id}
           title={<><span>{category.icon || '•'}</span> {category.name}</>}
-          count={`${items.length} ürün`}
+          count={lpLabel ? `${items.length} ürün · ${lpLabel}` : `${items.length} ürün`}
         >
           {category.description && <p className="menuProSectionDesc">{category.description}</p>}
           <div className="menuList">
@@ -78,7 +82,8 @@ export default function MenuPage({ db, embedded = false }) {
             ))}
           </div>
         </PageSection>
-      )) : (
+        );
+      }) : (
         <div className="empty menuProEmpty">Bu kategoride ürün bulunamadı.</div>
       )}
 

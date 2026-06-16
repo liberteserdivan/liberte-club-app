@@ -5,12 +5,14 @@ export const LP_SCHEMA_VERSION = 2;
 export const LP_WEIGHTS = {
   coffee: 1,
   dessert: 2,
+  sandwich: 2,
   burger: 3
 };
 
 export const LP_REWARD_COSTS = {
   coffee: 7,
   dessert: 15,
+  sandwich: 18,
   burger: 25
 };
 
@@ -18,12 +20,14 @@ export const LP_REWARD_COSTS = {
 export const LP_HISTORY_EARN = {
   coffee: 'earn_coffee',
   dessert: 'earn_dessert',
+  sandwich: 'earn_sandwich',
   burger: 'earn_burger'
 };
 
 export const LP_HISTORY_REDEEM = {
   coffee: 'redeem_coffee',
   dessert: 'redeem_dessert',
+  sandwich: 'redeem_sandwich',
   burger: 'redeem_burger'
 };
 
@@ -54,6 +58,18 @@ export const LP_CATEGORIES = [
     imagePosition: 'center center'
   },
   {
+    id: 'sandwich',
+    label: 'Sandviç',
+    shortLabel: 'Sandviç',
+    lpGain: 2,
+    rewardCost: 18,
+    threshold: 18,
+    redeemTitle: 'Sandviç İkram',
+    rewardLabel: '18 LP Sandviç İkram',
+    image: '/stamps/sandwich.png?v=13',
+    imagePosition: 'center center'
+  },
+  {
     id: 'burger',
     label: 'Burger',
     shortLabel: 'Burger',
@@ -71,11 +87,11 @@ export const LP_SLOT_COUNT = LP_CATEGORIES.length;
 
 // Eski damga alanları — geri uyumluluk için boş şablon
 export function emptyCategoryStamps() {
-  return { dessert: 0, coffee: 0, burger: 0 };
+  return { dessert: 0, coffee: 0, sandwich: 0, burger: 0 };
 }
 
 export function emptyCategoryRewards() {
-  return { dessert: 0, coffee: 0, burger: 0 };
+  return { dessert: 0, coffee: 0, sandwich: 0, burger: 0 };
 }
 
 // Eski karttan damga oku (migration öncesi)
@@ -84,6 +100,7 @@ function readLegacyStamps(card) {
     return {
       dessert: Math.max(0, Math.trunc(card.categoryStamps.dessert || 0)),
       coffee: Math.max(0, Math.trunc(card.categoryStamps.coffee || 0)),
+      sandwich: Math.max(0, Math.trunc(card.categoryStamps.sandwich || 0)),
       burger: Math.max(0, Math.trunc(card.categoryStamps.burger || 0))
     };
   }
@@ -99,12 +116,13 @@ function readLegacyRewards(card) {
     return {
       dessert: Math.max(0, Math.trunc(card.categoryRewards.dessert || 0)),
       coffee: Math.max(0, Math.trunc(card.categoryRewards.coffee || 0)),
+      sandwich: Math.max(0, Math.trunc(card.categoryRewards.sandwich || 0)),
       burger: Math.max(0, Math.trunc(card.categoryRewards.burger || 0))
     };
   }
 
   const legacy = Math.max(0, Math.trunc(card?.availableRewards || 0));
-  return { dessert: 0, coffee: legacy, burger: 0 };
+  return { dessert: 0, coffee: legacy, sandwich: 0, burger: 0 };
 }
 
 // Eski damgaları LP'ye dönüştür — tek seferlik migration
@@ -112,11 +130,13 @@ export function convertLegacyToLp(stamps, rewards) {
   const fromStamps =
     (stamps.coffee || 0) * LP_WEIGHTS.coffee
     + (stamps.dessert || 0) * LP_WEIGHTS.dessert
+    + (stamps.sandwich || 0) * LP_WEIGHTS.sandwich
     + (stamps.burger || 0) * LP_WEIGHTS.burger;
 
   const fromRewards =
     (rewards.coffee || 0) * LP_REWARD_COSTS.coffee
     + (rewards.dessert || 0) * LP_REWARD_COSTS.dessert
+    + (rewards.sandwich || 0) * LP_REWARD_COSTS.sandwich
     + (rewards.burger || 0) * LP_REWARD_COSTS.burger;
 
   return fromStamps + fromRewards;

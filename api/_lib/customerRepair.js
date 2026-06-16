@@ -24,8 +24,8 @@ function loyaltyTemplate(id) {
   return {
     customerId: id,
     totalStamps: 0,
-    categoryStamps: { coffee: 0, dessert: 0, burger: 0 },
-    categoryRewards: { coffee: 0, dessert: 0, burger: 0 },
+    categoryStamps: { coffee: 0, dessert: 0, sandwich: 0, burger: 0 },
+    categoryRewards: { coffee: 0, dessert: 0, sandwich: 0, burger: 0 },
     availableRewards: 0,
     usedRewards: 0,
     lifetimeStamps: 0,

@@ -9,7 +9,7 @@ import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundList
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
 import { canRequestPushOnThisDevice, deactivateDevicePushToken } from './lib/pushPrompt.js';
-import { isIos, isNativeApp } from './lib/platform.js';
+import { isNativeApp } from './lib/platform.js';
 import { useCommit } from './hooks/useCommit.js';
 import AppSplash from './components/AppSplash.jsx';
 import Nav from './components/Nav.jsx';
@@ -111,7 +111,8 @@ export default function App() {
   }, [authReady, splashPhase]);
 
   useEffect(() => {
-    if (isNativeApp() && isIos()) return;
+    // Native uygulamada web push SW kaydı yapma — TestFlight/Safari çakışmasını önler
+    if (isNativeApp()) return;
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register(getFirebaseSwUrl()).catch(() => {});
     startPushForegroundListener().catch(() => {});

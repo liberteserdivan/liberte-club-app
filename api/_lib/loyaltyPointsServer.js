@@ -19,11 +19,11 @@ import {
 export const STAMP_CATEGORIES = CATEGORIES;
 
 export function emptyCategoryStamps() {
-  return { dessert: 0, coffee: 0, burger: 0 };
+  return { dessert: 0, coffee: 0, sandwich: 0, burger: 0 };
 }
 
 export function emptyCategoryRewards() {
-  return { dessert: 0, coffee: 0, burger: 0 };
+  return { dessert: 0, coffee: 0, sandwich: 0, burger: 0 };
 }
 
 export function normalizeCategoryStamps(card) {

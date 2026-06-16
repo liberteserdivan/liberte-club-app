@@ -5,6 +5,7 @@ import LoyaltyTripleStamps from '../components/LoyaltyTripleStamps.jsx';
 import LiberteMarkIcon from '../components/LiberteMarkIcon.jsx';
 import FeaturedSlider from '../components/FeaturedSlider.jsx';
 import { getGreeting, levelByStamps, stampCardProgress, getLpCardView } from '../lib/db.js';
+import { TIER_TONE } from '../lib/membershipTier.js';
 import { DEVICE_APP_NAME } from '../lib/constants.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { DailyCampaignCard, InstallAppCard, PushWelcomeBanner } from '../components/Cards.jsx';
@@ -19,6 +20,7 @@ export default function HomePage({
   const lp = getLpCardView(card);
   const progress = stampCardProgress(card);
   const level = lp.level || levelByStamps(lp.lpLifetime);
+  const tierTone = TIER_TONE[level] || 'bronze';
   const greeting = getGreeting();
 
   return (
@@ -35,7 +37,7 @@ export default function HomePage({
             <h1>{customer.name.split(' ')[0] || DEVICE_APP_NAME}</h1>
             <div className="homeTimeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
           </div>
-          <div className="homeLevelPill"><Crown /><span>{level}</span></div>
+          <div className={`homeLevelPill homeLevelPill--${tierTone}`}><Crown /><span>{level}</span></div>
         </div>
 
         <LoyaltyTripleStamps

@@ -57,10 +57,10 @@ export async function verifyCustomerQr(token) {
 }
 
 // Kasiyer — damga / ikram / check-in (sunucu doğrular)
-export async function postLoyaltyAction({ token, action, category }) {
+export async function postLoyaltyAction({ token, action, category, menuItemId = null }) {
   const { response, data } = await apiJson('/api/admin?resource=loyalty-action', {
     method: 'POST',
-    body: JSON.stringify({ token, action, category })
+    body: JSON.stringify({ token, action, category, menuItemId })
   });
 
   if (!response.ok) {

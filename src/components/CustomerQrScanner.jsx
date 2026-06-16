@@ -4,6 +4,7 @@ import PageShell from './PageShell.jsx';
 import PageSection from './PageSection.jsx';
 import StampCategoryPanel from './StampCategoryPanel.jsx';
 import CashierMembershipPanel from './CashierMembershipPanel.jsx';
+import CashierProductPickModal from './CashierProductPickModal.jsx';
 import {
   STAMP_CATEGORIES,
   addCategoryStampToCustomer,
@@ -25,6 +26,10 @@ import {
 } from '../lib/qrClient.js';
 import { bootInlineQrScanner } from '../lib/qrCameraBootstrap.js';
 import { canUseNativeBarcodeScan, scanQrWithNativeCamera } from '../lib/nativeBarcodeScan.js';
+import {
+  assertMenuItemCanEarnLp,
+  requiresProductPickForLpCategory
+} from '../lib/menuLp.js';
 
 // QR metninden müşteriyi bul — yalnızca yerel geliştirme
 function findCustomerFromLegacyQr(db, rawText) {
@@ -56,6 +61,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const [msg, setMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [productPickCategory, setProductPickCategory] = useState(null);
 
   useEffect(() => {
     canUseNativeBarcodeScan().then(setNativeScanReady).catch(() => setNativeScanReady(false));
@@ -230,13 +236,18 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }
 
   // Sunucu veya yerel state üzerinde sadakat işlemi — başarılıysa true
-  async function runLoyaltyAction(action, category) {
+  async function runLoyaltyAction(action, category, menuItem = null) {
     if (!found || busy) return false;
 
     if (signedQrRequired && scannedToken) {
       setBusy(true);
       try {
-        const result = await postLoyaltyAction({ token: scannedToken, action, category });
+        const result = await postLoyaltyAction({
+          token: scannedToken,
+          action,
+          category,
+          menuItemId: menuItem?.id ?? null
+        });
         if (result.customer) setFound(result.customer);
         if (refreshRemote) await refreshRemote(true);
         return true;
@@ -251,7 +262,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     let nextDb = db;
 
     if (action === 'stamp') {
-      nextDb = addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera');
+      nextDb = addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera', menuItem);
     } else if (action === 'remove') {
       nextDb = addCategoryStampToCustomer(db, found.id, category, -1, 'QR düzeltme');
     } else if (action === 'redeem') {
@@ -270,11 +281,31 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     return true;
   }
 
-  async function addCategory(category) {
-    const ok = await runLoyaltyAction('stamp', category);
+  async function confirmAddCategory(category, menuItem = null) {
+    const ok = await runLoyaltyAction('stamp', category, menuItem);
     if (!ok) return;
     const cat = STAMP_CATEGORIES.find((c) => c.id === category);
-    setMsg(`${cat?.label || category} için +${cat?.lpGain || 1} LP eklendi.`);
+    const itemNote = menuItem?.name ? ` (${menuItem.name})` : '';
+    setMsg(`${cat?.label || category}${itemNote} için +${cat?.lpGain || 1} LP eklendi.`);
+  }
+
+  async function addCategory(category) {
+    if (requiresProductPickForLpCategory(category, db.items || [])) {
+      setProductPickCategory(category);
+      return;
+    }
+    await confirmAddCategory(category);
+  }
+
+  async function handleProductPick(item) {
+    const check = assertMenuItemCanEarnLp(item);
+    if (!check.ok) {
+      setMsg(check.error);
+      setProductPickCategory(null);
+      return;
+    }
+    setProductPickCategory(null);
+    await confirmAddCategory(check.category, item);
   }
 
   async function removeCategory(category) {
@@ -426,6 +457,15 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
             </button>
           </div>
         </div>
+      )}
+
+      {productPickCategory && (
+        <CashierProductPickModal
+          lpCategory={productPickCategory}
+          menuItems={db.items || []}
+          onSelect={handleProductPick}
+          onClose={() => setProductPickCategory(null)}
+        />
       )}
     </PageShell>
   );

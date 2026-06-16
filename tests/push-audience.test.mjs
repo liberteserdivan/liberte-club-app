@@ -67,6 +67,33 @@ test('Pasif token gönderime dahil edilmez', () => {
   assert.equal(isActivePushSubscription({ token: 'x', active: false }), false);
 });
 
+test('Native token varken aynı üyenin web tokenı gönderime alınmaz', () => {
+  const db = {
+    ...baseDb,
+    pushSubscriptions: [
+      { id: 1, customerId: 1, token: 'native-ios', platform: 'ios', channel: 'native', active: true },
+      { id: 2, customerId: 1, token: 'safari-web', platform: 'web', channel: 'web', active: true },
+      { id: 3, customerId: 2, token: 'token-c', platform: 'android', channel: 'native', active: true }
+    ]
+  };
+  const resolved = resolvePushAudience(db, 'all');
+  assert.deepEqual(resolved.tokens.sort(), ['native-ios', 'token-c'].sort());
+});
+
+test('Yalnızca web token varsa web kanalı kullanılır', () => {
+  const db = {
+    customers: [{ id: 5, name: 'Deniz', birthDate: null }],
+    loyalty: { 5: { customerId: 5, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
+    pushSubscriptions: [
+      { id: 5, customerId: 5, token: 'web-only', platform: 'web', channel: 'web', active: true }
+    ],
+    history: [],
+    checkIns: []
+  };
+  const resolved = resolvePushAudience(db, 'all');
+  assert.deepEqual(resolved.tokens, ['web-only']);
+});
+
 test('Aynı kullanıcının birden fazla cihazına gidebilir', () => {
   const resolved = resolvePushAudience(baseDb, 'silver');
   assert.equal(resolved.subscriptions.length, 2);

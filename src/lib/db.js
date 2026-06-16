@@ -42,6 +42,10 @@ import {
   BRAND_SLOGAN,
   LOYALTY_PROMO
 } from './constants.js';
+import {
+  assertMenuItemCanEarnLp,
+  requiresProductPickForLpCategory
+} from './menuLp.js';
 
 export { generateUniqueReferralCode } from './referralCode.js';
 
@@ -491,17 +495,33 @@ export function loyaltyTemplate(id){
 }
 
 // Kategori işlemine göre LP ekler veya çıkarır
-export function addCategoryStampToCustomer(db,id,category,count=1,source='Admin'){
-  const customer=db.customers.find(c=>c.id===id);
-  if(!customer)return db;
+export function addCategoryStampToCustomer(db, id, category, count = 1, source = 'Admin', menuItem = null) {
+  const customer = db.customers.find((c) => c.id === id);
+  if (!customer) return db;
 
-  const valid=STAMP_CATEGORIES.some(cat=>cat.id===category);
-  if(!valid)return db;
+  const steps = Math.abs(Math.trunc(count));
+  if (!steps) return db;
 
-  const steps=Math.abs(Math.trunc(count));
-  if(!steps)return db;
+  const sign = count >= 0 ? 1 : -1;
 
-  const sign=count>=0?1:-1;
+  if (sign > 0) {
+    if (menuItem) {
+      const check = assertMenuItemCanEarnLp(menuItem);
+      if (!check.ok) {
+        if (typeof globalThis.alert === 'function') globalThis.alert(check.error);
+        return db;
+      }
+      category = check.category;
+    } else if (requiresProductPickForLpCategory(category, db.items || [])) {
+      if (typeof globalThis.alert === 'function') {
+        globalThis.alert('Bu kategori için ürün seçimi gerekli.');
+      }
+      return db;
+    }
+  }
+
+  const valid = STAMP_CATEGORIES.some((cat) => cat.id === category);
+  if (!valid) return db;
   const lpGain=getCategoryLpGain(category)*steps;
   const current=migrateLoyaltyCard(db.loyalty[id]||loyaltyTemplate(id));
   const oldBalance=current.lpBalance||0;
@@ -540,6 +560,8 @@ export function addCategoryStampToCustomer(db,id,category,count=1,source='Admin'
         count:lpGain,
         category,
         categoryLabel:catLabel,
+        menuItemId: menuItem?.id || null,
+        menuItemName: menuItem?.name || null,
         lpBefore:oldBalance,
         lpAfter:nextBalance,
         before:{lpBalance:oldBalance,lpLifetime:oldLifetime},

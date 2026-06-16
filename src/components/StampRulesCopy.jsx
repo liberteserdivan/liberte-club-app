@@ -9,11 +9,11 @@ import {
 function StampRulesRewards() {
   return (
     <p className="stampRulesRewards">
-      {LOYALTY_RULES_HIGHLIGHTS.map((item, index) => (
+      {LOYALTY_RULES_HIGHLIGHTS.map((item, index, arr) => (
         <span key={item.label}>
           <em className={`stampRulesChip stampRulesChip--${item.tone}`}>{item.label}</em>
-          {index === 0 && ', '}
-          {index === 1 && ' ve '}
+          {index < arr.length - 2 && ', '}
+          {index === arr.length - 2 && ' ve '}
         </span>
       ))}
       <span className="stampRulesSuffix">{LOYALTY_RULES_DETAIL_SUFFIX}</span>

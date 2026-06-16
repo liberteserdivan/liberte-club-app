@@ -88,6 +88,64 @@ test('yetersiz LP ile ödül engellenir', () => {
   assert.equal(canRedeemLpReward({ ...lowBalance, lpBalance: 7 }, 'coffee'), true);
 });
 
+test('sandviç işlemi +2 LP ekler', () => {
+  const db = mergeDb({
+    customers: [{ id: 44, phone: '559', name: 'Test', email: 't@t.com' }],
+    loyalty: { 44: { customerId: 44, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
+    history: []
+  });
+
+  const next = addCategoryStampToCustomer(db, 44, 'sandwich', 1, 'test');
+  assert.equal(next.loyalty[44].lpBalance, getCategoryLpGain('sandwich'));
+  assert.equal(next.history[0].type, 'earn_sandwich');
+});
+
+test('sandviç ikram -18 LP düşer', () => {
+  const db = mergeDb({
+    customers: [{ id: 12, phone: '560', name: 'Test', email: 't@t.com' }],
+    loyalty: { 12: { customerId: 12, schemaVersion: 2, lpBalance: 18, lpLifetime: 18, level: 'Bronze', usedRewards: 0 } },
+    history: []
+  });
+  const next = redeemCategoryRewardForCustomer(db, 12, 'sandwich', 'test');
+  assert.equal(next.loyalty[12].lpBalance, 0);
+  assert.equal(next.history[0].type, 'redeem_sandwich');
+  assert.equal(next.history[0].count, 18);
+});
+
+test('sandviç ikram 18 LP gerektirir', () => {
+  assert.equal(getCategoryRewardCost('sandwich'), 18);
+  assert.equal(getCategoryLpGain('sandwich'), 2);
+  const card = migrateLoyaltyCard({ customerId: 1, schemaVersion: 2, lpBalance: 17, lpLifetime: 17 });
+  assert.equal(canRedeemLpReward(card, 'sandwich'), false);
+  assert.equal(canRedeemLpReward({ ...card, lpBalance: 18 }, 'sandwich'), true);
+});
+
+test('Patates Tabağı burger LP eklemez', () => {
+  const db = mergeDb({
+    customers: [{ id: 20, phone: '561', name: 'Test', email: 't@t.com' }],
+    loyalty: { 20: { customerId: 20, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
+    history: []
+  });
+  const patates = { id: 68, categoryId: 6, name: 'Patates Tabağı' };
+  const blocked = addCategoryStampToCustomer(db, 20, 'burger', 1, 'test', patates);
+  assert.equal(blocked, db);
+  assert.equal(blocked.loyalty[20].lpBalance, 0);
+
+  const smash = { id: 69, categoryId: 6, name: 'Smash Burger' };
+  const next = addCategoryStampToCustomer(db, 20, 'burger', 1, 'test', smash);
+  assert.equal(next.loyalty[20].lpBalance, 3);
+});
+
+test('burger LP ürün seçmeden eklenmez', () => {
+  const db = mergeDb({
+    customers: [{ id: 21, phone: '562', name: 'Test', email: 't@t.com' }],
+    loyalty: { 21: { customerId: 21, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
+    history: []
+  });
+  const blocked = addCategoryStampToCustomer(db, 21, 'burger', 1, 'test');
+  assert.equal(blocked, db);
+});
+
 test('burger ikram 25 LP gerektirir', () => {
   assert.equal(getCategoryRewardCost('burger'), 25);
   const card = migrateLoyaltyCard({ customerId: 1, schemaVersion: 2, lpBalance: 24, lpLifetime: 24 });

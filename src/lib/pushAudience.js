@@ -50,7 +50,7 @@ export function getCustomerLastActivityAt(customer, history = [], checkIns = [])
   (history || []).forEach((row) => {
     if (Number(row.customerId) !== Number(customer?.id)) return;
     const relevant = [
-      'check_in', 'earn_coffee', 'earn_dessert', 'earn_burger',
+      'check_in', 'earn_coffee', 'earn_dessert', 'earn_sandwich', 'earn_burger',
       'lp_add', 'stamp_add', 'login', 'register'
     ];
     if (!relevant.includes(row.type)) return;
@@ -159,6 +159,33 @@ export function isActivePushSubscription(row) {
   return Boolean(row?.token) && row.active !== false;
 }
 
+// Bildirim kanalı — eski kayıtlarda channel yoksa web kabul et
+export function resolvePushChannel(row) {
+  if (row?.channel === 'native' || row?.channel === 'web') return row.channel;
+  if (row?.platform === 'web') return 'web';
+  return 'web';
+}
+
+// Üye başına native token varsa yalnızca ona gönder — Safari web tokenını atla
+export function selectDeliverySubscriptions(subscriptions = []) {
+  const activeRows = subscriptions.filter(isActivePushSubscription);
+  const byCustomer = new Map();
+
+  activeRows.forEach((row) => {
+    const customerId = Number(row.customerId);
+    if (!byCustomer.has(customerId)) byCustomer.set(customerId, []);
+    byCustomer.get(customerId).push(row);
+  });
+
+  const selected = [];
+  for (const rows of byCustomer.values()) {
+    const nativeRows = rows.filter((row) => resolvePushChannel(row) === 'native');
+    selected.push(...(nativeRows.length ? nativeRows : rows));
+  }
+
+  return selected;
+}
+
 // Hedef kitleye göre abonelikleri çöz
 export function resolvePushAudience(db, audienceId = 'all') {
   const option = PUSH_AUDIENCE_OPTIONS.find((row) => row.id === audienceId) || PUSH_AUDIENCE_OPTIONS[0];
@@ -184,11 +211,12 @@ export function resolvePushAudience(db, audienceId = 'all') {
       .map((customer) => Number(customer.id))
   );
 
-  const subscriptions = (db.pushSubscriptions || []).filter((row) => {
+  const matchedSubscriptions = (db.pushSubscriptions || []).filter((row) => {
     if (!isActivePushSubscription(row)) return false;
     return matchedIds.has(Number(row.customerId));
   });
 
+  const subscriptions = selectDeliverySubscriptions(matchedSubscriptions);
   const tokens = [...new Set(subscriptions.map((row) => row.token).filter(Boolean))];
 
   return {

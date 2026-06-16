@@ -18,7 +18,7 @@ export default function StampCategoryPanel({
         <p>
           {mode === 'cashier'
             ? `QR okutuldu. Toplam LP: ${balance}. Ürün kategorisine göre LP ekle veya ödül kullandır.`
-            : 'Kahve +1 LP, tatlı +2 LP, burger +3 LP. Ödüller LP ile kullanılır.'}
+            : 'Kahve +1 LP, sandviç +2 LP, tatlı +2 LP, burger +3 LP. Ödüller LP ile kullanılır.'}
         </p>
       </div>
 
@@ -31,10 +31,12 @@ export default function StampCategoryPanel({
             <div className={`stampCategoryCard${mode === 'cashier' ? ' stampCategoryCard--cashier' : ''}`} key={cat.id}>
               <div className="stampCategoryCardTop">
                 <div
-                  className="stampCategoryCardPhoto"
-                  style={{ backgroundImage: `url(${cat.image})` }}
+                  className={`stampCategoryCardPhoto${cat.id === 'sandwich' ? ' stampCategoryCardPhoto--sandwich' : ''}${cat.emoji && !cat.image ? ' stampCategoryCardPhoto--emoji' : ''}`}
+                  style={cat.image ? { backgroundImage: `url(${cat.image})`, backgroundPosition: cat.imagePosition || 'center center' } : undefined}
                   aria-hidden="true"
-                />
+                >
+                  {cat.emoji && !cat.image && <span>{cat.emoji}</span>}
+                </div>
                 <div className="stampCategoryCardBody">
                   <strong>{cat.label}</strong>
                   <span>+{cat.lpGain} LP · {cat.rewardLabel}</span>

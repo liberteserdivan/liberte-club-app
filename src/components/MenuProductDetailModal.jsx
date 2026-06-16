@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, MessageCircle, ShoppingBag, X } from 'lucide-react';
+import { Instagram, MapPin, MessageCircle, ShoppingBag, X } from 'lucide-react';
 import { instagramUrl, mapsUrl, yemeksepetiUrl } from '../lib/constants.js';
 import { money, productImageSrc } from '../lib/db.js';
 
@@ -27,13 +27,70 @@ function buildOrderMessage(item) {
   return encodeURIComponent(`Merhaba Liberte, ${item.name} sipariş etmek istiyorum.`);
 }
 
+// Sipariş ve sosyal aksiyon butonları
+function MenuDetailActionButtons({ item }) {
+  const whatsappUrl = `https://wa.me/905058665406?text=${buildOrderMessage(item)}`;
+
+  const actions = [
+    {
+      id: 'whatsapp',
+      label: 'WhatsApp ile Sipariş',
+      href: whatsappUrl,
+      Icon: MessageCircle,
+      tone: 'whatsapp'
+    },
+    {
+      id: 'yemeksepeti',
+      label: 'Yemeksepeti',
+      href: yemeksepetiUrl,
+      Icon: ShoppingBag,
+      tone: 'yemeksepeti'
+    },
+    {
+      id: 'maps',
+      label: 'Konum',
+      href: mapsUrl,
+      Icon: MapPin,
+      tone: 'maps'
+    },
+    {
+      id: 'instagram',
+      label: 'Instagram',
+      href: instagramUrl,
+      Icon: Instagram,
+      tone: 'instagram'
+    }
+  ];
+
+  return (
+    <div className="menuDetailActions">
+      {actions.map(({ id, label, href, Icon, tone }) => (
+        <a
+          key={id}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`menuDetailActionBtn menuDetailActionBtn--${tone}`}
+        >
+          <span className="menuDetailActionIcon" aria-hidden="true">
+            <Icon />
+          </span>
+          <span className="menuDetailActionLabel">{label}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
 // Menü ürün detay modalı — document.body portal (iPad overflow/stacking sorunu)
 export default function MenuProductDetailModal({ item, onClose }) {
   useEffect(() => {
     if (!item) return undefined;
 
     const scrollY = lockPageScroll();
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
     document.addEventListener('keydown', onKey);
 
     return () => {
@@ -44,15 +101,15 @@ export default function MenuProductDetailModal({ item, onClose }) {
 
   if (!item) return null;
 
-  const whatsappUrl = `https://wa.me/905058665406?text=${buildOrderMessage(item)}`;
   const titleId = `menu-detail-${item.id}`;
+  const imageSrc = productImageSrc(item);
 
   return createPortal(
     <div className="menuDetailBackdrop" onClick={onClose} role="presentation">
       <article
         className="menuDetailModal"
         style={{ '--tone': item.tone || '#b9f5d0' }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -61,10 +118,10 @@ export default function MenuProductDetailModal({ item, onClose }) {
           <X />
         </button>
 
-        <div className="menuDetailVisual">
-          {productImageSrc(item)
-            ? <img src={productImageSrc(item)} alt="" />
-            : <span>{item.image || '☕'}</span>}
+        <div className={`menuDetailVisual${imageSrc ? ' menuDetailVisual--photo' : ''}`}>
+          {imageSrc
+            ? <img src={imageSrc} alt="" />
+            : <span className="menuDetailEmoji">{item.image || '☕'}</span>}
           {(item.best || item.featured) && (
             <em className="menuProductBadge">{item.best ? 'Öne çıkan' : 'Favori'}</em>
           )}
@@ -75,22 +132,9 @@ export default function MenuProductDetailModal({ item, onClose }) {
             <h2 id={titleId}>{item.name}</h2>
             <strong>{money(item.price)}</strong>
           </div>
-          <p>{item.description}</p>
+          {item.description && <p>{item.description}</p>}
 
-          <div className="menuDetailActions">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="goldBtn">
-              <MessageCircle aria-hidden="true" /> WhatsApp ile Sipariş
-            </a>
-            <a href={yemeksepetiUrl} target="_blank" rel="noopener noreferrer" className="menuDetailGhost">
-              <ShoppingBag aria-hidden="true" /> Yemeksepeti
-            </a>
-            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="menuDetailGhost">
-              <MapPin aria-hidden="true" /> Konum
-            </a>
-            <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="menuDetailGhost">
-              Instagram
-            </a>
-          </div>
+          <MenuDetailActionButtons item={item} />
         </div>
       </article>
     </div>,

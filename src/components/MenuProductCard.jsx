@@ -1,7 +1,10 @@
 import { money, productImageSrc } from '../lib/db.js';
+import { getMenuItemLpLabel } from '../lib/menuLp.js';
 
 // Sade menü satırı — dikey liste, kaydırma yok
 export function MenuListRow({ item, onSelect }) {
+  const lpLabel = getMenuItemLpLabel(item);
+
   function activate() {
     onSelect?.(item);
   }
@@ -27,6 +30,7 @@ export function MenuListRow({ item, onSelect }) {
       <div className="menuListBody">
         <div className="menuListTop">
           <b>{item.name}</b>
+          {lpLabel && <em className="menuListLpBadge">{lpLabel}</em>}
           {(item.best || item.featured) && (
             <em className="menuListBadge">{item.best ? 'Öne çıkan' : 'Favori'}</em>
           )}

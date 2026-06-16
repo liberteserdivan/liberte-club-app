@@ -147,15 +147,21 @@ export default function LoyaltyTripleStamps({
                   </svg>
                 </div>
 
-                <div
-                  className="loyaltyStampPhoto"
-                  role="img"
-                  aria-label={cat.label}
-                  style={{
-                    backgroundImage: `url(${cat.image})`,
-                    backgroundPosition: cat.imagePosition || 'center center'
-                  }}
-                />
+                {cat.image ? (
+                  <div
+                    className="loyaltyStampPhoto"
+                    role="img"
+                    aria-label={cat.label}
+                    style={{
+                      backgroundImage: `url(${cat.image})`,
+                      backgroundPosition: cat.imagePosition || 'center center'
+                    }}
+                  />
+                ) : (
+                  <div className="loyaltyStampPhoto loyaltyStampPhoto--emoji" role="img" aria-label={cat.label}>
+                    <span aria-hidden="true">{cat.emoji}</span>
+                  </div>
+                )}
               </div>
 
               <div className="loyaltyStampMeta">

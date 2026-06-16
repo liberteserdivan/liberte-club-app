@@ -10,6 +10,7 @@ import {
   customerSummary,
   redeemCategoryReward
 } from '../loyaltyOps.js';
+import { menuItems } from '../../../src/lib/menuSeed.js';
 
 // QR token doğrula — kasiyer müşteri kartını açar
 export async function handleAdminQrVerify(req, res) {
@@ -61,10 +62,14 @@ export async function handleAdminLoyaltyAction(req, res) {
     const nextState = structuredClone(remote.data);
     const action = String(body.action || '').trim();
     const category = String(body.category || 'coffee').trim();
+    const menuItemId = body.menuItemId != null ? Number(body.menuItemId) : null;
+    const menuItem = menuItemId
+      ? menuItems.find((item) => Number(item.id) === menuItemId) || null
+      : null;
     let result;
 
     if (action === 'stamp') {
-      result = applyCategoryStamp(nextState, verified.customerId, category, 1, 'QR kamera');
+      result = applyCategoryStamp(nextState, verified.customerId, category, 1, 'QR kamera', { menuItem });
     } else if (action === 'remove') {
       result = applyCategoryStamp(nextState, verified.customerId, category, -1, 'QR düzeltme');
     } else if (action === 'redeem') {

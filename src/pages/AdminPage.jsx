@@ -10,6 +10,11 @@ import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
+import CashierProductPickModal from '../components/CashierProductPickModal.jsx';
+import {
+  assertMenuItemCanEarnLp,
+  requiresProductPickForLpCategory
+} from '../lib/menuLp.js';
 
 const ADMIN_TABS=[
   {id:'overview',label:'Özet',Icon:LayoutDashboard},
@@ -22,11 +27,16 @@ const ADMIN_TABS=[
 export default function AdminPage({db,commit}){
   const[tab,setTab]=useState('overview');
   const[focusUserId,setFocusUserId]=useState(null);
-  const deviceCount=(db.pushSubscriptions||[]).length;
+  const deviceCount=(db.pushSubscriptions||[]).filter((row)=>row.active!==false).length;
+  const memberCount=(db.customers||[]).length;
 
   function openUserManage(userId=null){
     if(userId)setFocusUserId(userId);
     setTab('uyeler');
+  }
+
+  function openCampaign(){
+    setTab('kampanya');
   }
 
   return <section className="pagePro pagePro--admin adminPage">
@@ -36,15 +46,25 @@ export default function AdminPage({db,commit}){
         <div>
           <span>{db.settings.cafe_name||STORE_APP_NAME}</span>
           <h2>Yönetim Paneli</h2>
-          <p>{db.customers.length} üye · {deviceCount} bildirim cihazı</p>
+          <p>{memberCount} üye · {deviceCount} aktif bildirim cihazı</p>
         </div>
       </div>
-      <div className="adminHeroBadge"><ShieldCheck size={16}/> Admin</div>
+      <div className="adminHeroActions">
+        <div className="adminHeroBadge"><ShieldCheck size={16}/> Admin</div>
+        <div className="adminHeroQuick">
+          <button type="button" className="adminHeroQuickBtn" onClick={openCampaign}>
+            <Megaphone size={15}/> Bildirim
+          </button>
+          <button type="button" className="adminHeroQuickBtn" onClick={()=>openUserManage()}>
+            <Users size={15}/> Üyeler
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div className="adminNavPills">
+    <div className="adminNavPills" role="tablist" aria-label="Yönetim sekmeleri">
       {ADMIN_TABS.map(({id,label,Icon})=>
-        <button type="button" key={id} className={tab===id?'on':''} onClick={()=>setTab(id)}>
+        <button type="button" key={id} role="tab" aria-selected={tab===id} className={tab===id?'on':''} onClick={()=>setTab(id)}>
           <Icon size={17}/><span>{label}</span>
         </button>
       )}
@@ -198,12 +218,13 @@ function OverviewAdmin({db,commit,onManageUsers}){
 
   const historyLabel=(t)=>historyTypeLabel(t);
 
-  return <div className="analyticsPage">
-    <div className="adminSectionHead">
+  return <div className="analyticsPage adminOverview">
+    <div className="adminSectionHead adminOverviewHead">
       <div><span>ÖZET</span><h3>İşletme durumu</h3></div>
+      <p className="adminOverviewDate">{today}</p>
     </div>
 
-    <div className="analyticsGrid adminMetricsCompact">
+    <div className="analyticsGrid adminMetricsCompact adminMetricsPremium">
       <div className="metricCard"><span>Üye</span><b>{customers.length}</b><small>Kayıtlı</small></div>
       <div className="metricCard"><span>Toplam LP</span><b>{totalLp}</b><small>Bakiye</small></div>
       <div className="metricCard"><span>Ödül</span><b>{activeRewards}</b><small>Kullanılabilir</small></div>
@@ -568,6 +589,7 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
   const[editing,setEditing]=useState(null);
   const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false,note:''});
   const[message,setMessage]=useState('');
+  const[lpProductPick,setLpProductPick]=useState(null);
 
   const customers=db.customers||[];
 
@@ -672,8 +694,34 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
     setMessage('Kullanıcı silindi.');
   }
 
-  function addCategory(c,category){
-    commit(addCategoryStampToCustomer(db,c.id,category,1,'Admin manuel'));
+  function addCategory(c,category,menuItem=null){
+    const next=addCategoryStampToCustomer(db,c.id,category,1,'Admin manuel',menuItem);
+    if(next===db){
+      setMessage('LP eklenemedi. Burger için ürün seç ve Patates Tabağı LP kazanmaz.');
+      return;
+    }
+    commit(next);
+    setMessage(menuItem?.name ? `${menuItem.name} için LP eklendi.` : 'LP eklendi.');
+  }
+
+  function requestAddCategory(c,category){
+    if(requiresProductPickForLpCategory(category, db.items||[])){
+      setLpProductPick({ customer:c, category });
+      return;
+    }
+    addCategory(c,category);
+  }
+
+  function handleLpProductPick(item){
+    if(!lpProductPick)return;
+    const check=assertMenuItemCanEarnLp(item);
+    if(!check.ok){
+      setMessage(check.error);
+      setLpProductPick(null);
+      return;
+    }
+    addCategory(lpProductPick.customer, check.category, item);
+    setLpProductPick(null);
   }
 
   function removeCategory(c,category){
@@ -714,7 +762,7 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
           <StampCategoryPanel
             mode="admin"
             lpBalance={lpBalance}
-            onAdd={(category)=>addCategory(c,category)}
+            onAdd={(category)=>requestAddCategory(c,category)}
             onRemove={(category)=>removeCategory(c,category)}
             onRedeem={(category)=>redeemCategory(c,category)}
           />
@@ -755,5 +803,14 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
         </>}
       </div>;
     })}
+
+    {lpProductPick && (
+      <CashierProductPickModal
+        lpCategory={lpProductPick.category}
+        menuItems={db.items || []}
+        onSelect={handleLpProductPick}
+        onClose={() => setLpProductPick(null)}
+      />
+    )}
   </div>;
 }

@@ -4,7 +4,8 @@ import { dispatchPush } from '../lib/pushDispatch.js';
 import {
   PUSH_AUDIENCE_OPTIONS,
   getAudienceOptionState,
-  resolvePushAudience
+  resolvePushAudience,
+  resolvePushChannel
 } from '../lib/pushAudience.js';
 
 // Örnek bildirim şablonları
@@ -47,6 +48,16 @@ export default function PushNotificationAdmin({ db, commit }) {
   const pushLog = db.pushLog || [];
   const preview = useMemo(() => resolvePushAudience(db, audience), [db, audience]);
   const audienceState = getAudienceOptionState(db, audience);
+
+  function formatDeviceLabel(device) {
+    const platform = device.platform === 'ios'
+      ? 'iOS'
+      : device.platform === 'android'
+        ? 'Android'
+        : 'Web';
+    const channel = resolvePushChannel(device) === 'native' ? 'uygulama' : 'web';
+    return `${platform} (${channel})`;
+  }
 
   async function sendPush() {
     if (!body.trim()) {
@@ -213,7 +224,7 @@ export default function PushNotificationAdmin({ db, commit }) {
             <div>
               <b>{device.name || 'Üye'}</b>
               <p>
-                {device.phone || '—'} · {device.platform === 'ios' ? 'iOS' : device.platform === 'android' ? 'Android' : 'Web'}
+                {device.phone || '—'} · {formatDeviceLabel(device)}
                 {device.active === false ? ' · pasif' : ''}
                 {' · '}{device.lastSeenAt || device.updatedAt || device.createdAt || 'Tarih yok'}
               </p>
