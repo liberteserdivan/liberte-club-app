@@ -73,8 +73,10 @@ workflows:
       - name: Imza ayarlarini dogrula
         script: |
           xcodebuild -project "$CM_BUILD_DIR/$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings \
-            | grep -E 'PROVISIONING_PROFILE|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM|CURRENT_PROJECT_VERSION' \
-            | head -20
+            | grep -E 'PROVISIONING_PROFILE|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM|CURRENT_PROJECT_VERSION|CODE_SIGN_ENTITLEMENTS' \
+            | head -25
+          echo "=== App.entitlements ==="
+          cat ios/App/App/App.entitlements
       - name: iOS archive (IPA)
         script: |
           set -eo pipefail
@@ -82,6 +84,8 @@ workflows:
             --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
             || {
+              echo "=== xcodebuild HATA satirlari ==="
+              grep -i "error:" /tmp/xcodebuild_logs/*.log 2>/dev/null | tail -40 || true
               echo "=== xcodebuild log (son 200 satir) ==="
               tail -200 /tmp/xcodebuild_logs/*.log 2>/dev/null || true
               exit 1
