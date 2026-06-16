@@ -11,6 +11,7 @@ import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
 import { logoutSession } from '../lib/session.js';
+import { deactivateDevicePushToken } from '../lib/pushPrompt.js';
 import { supportEmail, CLUB_APP_NAME } from '../lib/constants.js';
 
 // Profil — çıkış, hesap silme, yasal linkler
@@ -23,6 +24,7 @@ export default function ProfilePage({
   const level = lp.level;
 
   async function logout() {
+    deactivateDevicePushToken(customer.id, db, commit);
     await logoutSession();
     setSession(null);
   }

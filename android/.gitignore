@@ -61,8 +61,8 @@ keystore.properties
 .externalNativeBuild
 .cxx/
 
-# Google Services (e.g. APIs or Firebase)
-# google-services.json
+# Google Services (Firebase) — gizli proje anahtarları içerir
+google-services.json
 
 # Freeline
 freeline.py

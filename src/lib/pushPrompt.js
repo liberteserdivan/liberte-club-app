@@ -25,6 +25,32 @@ export function markPushDismissed(customerId) {
   localStorage.setItem(dismissKey(customerId), '1');
 }
 
+// Bu cihazdaki yerel push kaydını temizle
+export function clearLocalPushDevice(customerId) {
+  if (!customerId) return;
+  localStorage.removeItem(deviceKey(customerId));
+  localStorage.removeItem(dismissKey(customerId));
+}
+
+// Çıkışta yalnızca bu cihazın tokenını pasifleştir
+export function deactivateDevicePushToken(customerId, db, commit) {
+  if (!customerId || typeof commit !== 'function') return;
+
+  const localToken = getLocalPushToken(customerId);
+  if (!localToken) return;
+
+  const now = new Date().toLocaleString('tr-TR');
+  const pushSubscriptions = (db.pushSubscriptions || []).map((row) => {
+    if (row.customerId === customerId && row.token === localToken) {
+      return { ...row, active: false, deactivatedAt: now };
+    }
+    return row;
+  });
+
+  clearLocalPushDevice(customerId);
+  commit({ ...db, pushSubscriptions });
+}
+
 // Bu cihazda bildirim isteği gösterilmeli mi?
 export function shouldShowPushPrompt(customer, db) {
   if (!customer?.id) return false;

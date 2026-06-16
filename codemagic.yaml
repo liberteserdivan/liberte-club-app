@@ -7,6 +7,8 @@
 # Codemagic UI → Code signing identities (manuel yukleme):
 #   Certificate reference: liberte_distribution  (.p12 + private key)
 #   Provisioning profile reference: liberte_app_store_profile
+#   NOT: Profile Push Notifications capability icermeli (aps-environment).
+#   Apple Developer → Identifiers → cafe.liberte.app → Push Notifications acik olmali.
 #
 # fetch-signing-files kullanilmiyor — private key olmadan sertifika kaydedemez.
 

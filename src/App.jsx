@@ -8,7 +8,7 @@ import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
-import { canRequestPushOnThisDevice } from './lib/pushPrompt.js';
+import { canRequestPushOnThisDevice, deactivateDevicePushToken } from './lib/pushPrompt.js';
 import { isIos, isNativeApp } from './lib/platform.js';
 import { useCommit } from './hooks/useCommit.js';
 import AppSplash from './components/AppSplash.jsx';
@@ -119,6 +119,9 @@ export default function App() {
 
   async function handleSetSession(next) {
     if (!next) {
+      if (customer?.id) {
+        deactivateDevicePushToken(customer.id, db, commit);
+      }
       await logoutSession();
       setMemorySession(null);
       setSession(null);

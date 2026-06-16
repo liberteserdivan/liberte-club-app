@@ -39,8 +39,9 @@ test('CapApp-SPM Package.swift macOS yolları kullanır', () => {
   assert.doesNotMatch(pkg, /node_modules\\@capacitor/);
 });
 
-test('Release imzasi Manual (entitlements Codemagic profile ile sonra)', () => {
+test('Release imzasi Manual ve push entitlement baglantisi', () => {
   const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
   assert.match(pbx, /CODE_SIGN_STYLE = Manual;/);
+  assert.match(pbx, /CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/);
   assert.doesNotMatch(pbx, /PROVISIONING_PROFILE_SPECIFIER = "";/);
 });

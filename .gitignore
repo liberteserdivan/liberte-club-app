@@ -43,6 +43,13 @@ public/Liberte_Cup_Luwai.glb
 android/keystore.properties
 android/play-console-service-account.json
 
+# Firebase native config — gizli anahtarlar içerir, commit etme
+google-services.json
+android/app/google-services.json
+GoogleService-Info.plist
+ios/App/App/GoogleService-Info.plist
+*firebase*service*account*.json
+
 # iOS CI / imza ve sertifika dosyalari
 ios/certificates/
 ios/build/
