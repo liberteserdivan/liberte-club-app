@@ -1,10 +1,11 @@
-// Push bildirimi gönder — uygulama içi kayıt + FCM
+// Push bildirimi gönder — hedef kitle + FCM (sunucu tarafı)
+import { resolvePushAudience } from './pushAudience.js';
 import { pruneInvalidPushTokens } from './pushTokens.js';
 import { apiFetch } from './apiClient.js';
 import { reportApiError, reportError } from './errorHub.js';
 
-export async function dispatchPush(db, commit, { title, body, customerId = null }) {
-  const tokens = (db.pushSubscriptions || []).map((x) => x.token).filter(Boolean);
+export async function dispatchPush(db, commit, { title, body, audience = 'all', customerId = null }) {
+  const resolved = resolvePushAudience(db, audience);
   const createdAt = new Date().toLocaleString('tr-TR');
   const logId = Date.now();
 
@@ -12,6 +13,8 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
     id: logId,
     title,
     body,
+    audience,
+    audienceLabel: resolved.audienceLabel,
     createdAt,
     ...(customerId ? { customerId } : {})
   };
@@ -24,7 +27,10 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
         id: logId,
         title,
         body,
-        deviceCount: tokens.length,
+        audience,
+        audienceLabel: resolved.audienceLabel,
+        targetUserCount: resolved.targetUserCount,
+        deviceCount: resolved.deviceCount,
         sent: 0,
         failed: 0,
         note: '',
@@ -36,14 +42,28 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
 
   commit(next);
 
-  if (!tokens.length) {
-    return { ok: true, sent: 0, note: 'Kayıtlı cihaz yok. Bildirim uygulama içi kaydedildi.' };
+  if (resolved.disabled) {
+    return {
+      ok: false,
+      sent: 0,
+      failed: 0,
+      note: resolved.disabledReason || 'Hedef kitle kullanılamıyor.'
+    };
+  }
+
+  if (!resolved.deviceCount) {
+    return {
+      ok: true,
+      sent: 0,
+      failed: 0,
+      note: 'Seçilen hedef kitlede kayıtlı cihaz yok. Bildirim uygulama içi kaydedildi.'
+    };
   }
 
   try {
     const response = await apiFetch('/api/push/send', {
       method: 'POST',
-      body: JSON.stringify({ tokens, title, body })
+      body: JSON.stringify({ title, body, audience })
     });
 
     let result = {};
@@ -53,6 +73,7 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       return {
         ok: false,
         sent: 0,
+        failed: 0,
         note: `Push sunucusu geçersiz yanıt döndü (HTTP ${response.status}).`
       };
     }
@@ -85,12 +106,25 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       ...synced,
       pushLog: synced.pushLog.map((row) => (
         row.id === logId
-          ? { ...row, sent: result.sent || 0, failed: result.failed || 0, note }
+          ? {
+            ...row,
+            sent: result.sent || 0,
+            failed: result.failed || 0,
+            deviceCount: result.deviceCount ?? row.deviceCount,
+            targetUserCount: result.targetUserCount ?? row.targetUserCount,
+            note
+          }
           : row
       ))
     });
 
-    return { ok: response.ok && result.ok !== false, sent: result.sent || 0, note, removedInvalid: removed };
+    return {
+      ok: response.ok && result.ok !== false,
+      sent: result.sent || 0,
+      failed: result.failed || 0,
+      note,
+      removedInvalid: removed
+    };
   } catch (error) {
     reportError({
       source: 'push.dispatch',
@@ -99,6 +133,11 @@ export async function dispatchPush(db, commit, { title, body, customerId = null 
       showToast: false,
       persist: true
     });
-    return { ok: false, sent: 0, note: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.' };
+    return {
+      ok: false,
+      sent: 0,
+      failed: 0,
+      note: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.'
+    };
   }
 }

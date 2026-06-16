@@ -232,15 +232,26 @@ function detectPushPlatform() {
   return 'web';
 }
 
-// Üye başına tek güncel token tut — eski iOS/Android kayıtlarını temizle
+// Üye başına birden fazla cihaz — token kaydını güncelle
 function upsertPushSubscription(db, customer, token) {
-  const others = (db.pushSubscriptions || []).filter(
-    (row) => row.customerId !== customer.id && row.token !== token
-  );
-
+  const others = (db.pushSubscriptions || []).filter((row) => row.token !== token);
   const existing = (db.pushSubscriptions || []).find((row) => row.token === token);
   const platform = detectPushPlatform();
   const now = new Date().toLocaleString('tr-TR');
+  const appVersion = import.meta.env?.VITE_APP_VERSION || '1.1.0';
+
+  const base = {
+    customerId: customer.id,
+    userId: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    token,
+    platform,
+    active: true,
+    lastSeenAt: now,
+    appVersion,
+    updatedAt: now
+  };
 
   if (existing) {
     return {
@@ -249,11 +260,8 @@ function upsertPushSubscription(db, customer, token) {
         ...others,
         {
           ...existing,
-          customerId: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          platform,
-          updatedAt: now
+          ...base,
+          createdAt: existing.createdAt || now
         }
       ]
     };
@@ -265,13 +273,8 @@ function upsertPushSubscription(db, customer, token) {
       ...others,
       {
         id: Date.now(),
-        customerId: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        token,
-        platform,
-        createdAt: now,
-        updatedAt: now
+        ...base,
+        createdAt: now
       }
     ]
   };

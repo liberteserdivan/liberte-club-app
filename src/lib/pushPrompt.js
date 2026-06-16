@@ -50,13 +50,14 @@ export function shouldShowPushPrompt(customer, db) {
 
 // Bildirim açmadan önce kısa açıklama
 export function getPushPromptHint() {
+  const permissionText = 'Kampanyalar, LP fırsatları ve ikram haklarından haberdar olmak için bildirimleri açabilirsiniz.';
   if (isNativeApp()) {
-    return 'Kampanya, ödül ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.';
+    return permissionText;
   }
   if (isIos() && !isStandalonePwa()) {
-    return 'iPhone\'da bildirimler için önce Safari\'den Ana Ekrana Ekle yap, uygulamayı ana ekrandan aç.';
+    return `${permissionText} iPhone'da bildirimler için önce Safari'den Ana Ekrana Ekle yap, uygulamayı ana ekrandan aç.`;
   }
-  return 'Kampanya, ödül ve fırsat bildirimlerini aç — hiçbir şeyi kaçırma.';
+  return permissionText;
 }
 
 // Bildirim açmadan önce cihaz desteği kontrolü

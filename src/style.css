@@ -4160,6 +4160,96 @@ header{
   justify-content:center;
   gap:8px;
 }
+
+.pushComposerPro label{
+  display:block;
+  margin:0 0 6px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--forest);
+}
+
+.pushAudienceSelect{
+  width:100%;
+  margin-bottom:12px;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid rgba(11,47,38,.1);
+  background:#fff;
+  font-size:14px;
+  font-weight:700;
+  color:var(--forest);
+}
+
+.pushAudienceNote{
+  margin:-4px 0 12px!important;
+  font-size:12px!important;
+  color:#9a6b2f!important;
+  line-height:1.45!important;
+}
+
+.pushReachStats{
+  display:flex;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.pushReachStats div{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:#f7faf8;
+  border:1px solid rgba(11,47,38,.06);
+  font-size:12px;
+  font-weight:800;
+  color:var(--forest);
+}
+
+.pushPreviewPro em{
+  display:block;
+  margin-top:10px;
+  font-style:normal;
+  font-size:12px;
+  font-weight:800;
+  color:#1D6A55;
+}
+
+.pushSendResult{
+  margin-top:14px;
+  padding:14px;
+  border-radius:16px;
+  background:#fff6f6;
+  border:1px solid rgba(180,60,60,.16);
+}
+
+.pushSendResult.isSuccess{
+  background:#ecfdf5;
+  border-color:rgba(31,106,85,.16);
+}
+
+.pushSendResult strong{
+  display:block;
+  margin-bottom:8px;
+  color:var(--forest);
+}
+
+.pushSendResult ul{
+  margin:0 0 8px;
+  padding-left:18px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+
+.pushSendResult p{
+  margin:0!important;
+  font-size:12px!important;
+  color:var(--muted)!important;
+}
+
 .deviceRow{
   display:flex;
   align-items:center;

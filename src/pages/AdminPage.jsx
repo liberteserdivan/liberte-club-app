@@ -2,10 +2,10 @@ import React,{useEffect,useState}from'react';
 import{Database,Download,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
+import PushNotificationAdmin from '../components/PushNotificationAdmin.jsx';
 import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,getLpBalance,getRedeemableRewards,STAMP_CATEGORIES}from'../lib/db.js';
 import{historyTypeLabel}from'../lib/loyaltyStamps.js';
 import{STORE_APP_NAME}from'../lib/constants.js';
-import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
@@ -68,7 +68,7 @@ function MenuAdmin({db,commit}){
 
 function KampanyaAdmin({db,commit}){
   return <div className="adminStack">
-    <NotificationAdmin db={db} commit={commit}/>
+    <PushNotificationAdmin db={db} commit={commit}/>
     <GameAdmin db={db} commit={commit}/>
   </div>;
 }
@@ -562,90 +562,6 @@ function GameAdmin({db,commit}){
   </div>;
 }
 
-
-function NotificationAdmin({db,commit}){
-  const[title,setTitle]=useState('');
-  const[body,setBody]=useState('Bugüne özel kampanya seni bekliyor.');
-  const[status,setStatus]=useState('');
-  const[sending,setSending]=useState(false);
-  const devices=db.pushSubscriptions||[];
-  const pushLog=db.pushLog||[];
-
-  const templates=[
-    {label:'Smash',title:'Smash zamanı 🍔',body:'Bugüne özel Smash Menü seni bekliyor.'},
-    {label:'Tatlı',title:'Tatlı molası 🍓',body:'Magnolia ve kahve ikilisiyle gününü güzelleştir.'},
-    {label:'Seni özledik',title:'Seni özledik ☕',body:'Liberte\'ye gel, ekstra LP kazan.'},
-    {label:'Doğum günü',title:'Doğum günün kutlu olsun 🎂',body:'Doğum gününe özel 1 içecek ikramın hesabında.'},
-    {label:'Çark',title:'Şans çarkın hazır 🎡',body:'Bugün çarkı çevirmedin — sürpriz ödül seni bekliyor.'}
-  ];
-
-  async function sendPush(){
-    if(!body.trim())return alert('Mesaj zorunlu.');
-    setSending(true);
-    setStatus('Gönderiliyor...');
-    const result=await dispatchPush(db,commit,{title,body});
-    setStatus(result.note);
-    setSending(false);
-  }
-
-  function removeDevice(id,token){
-    if(!confirm('Bu cihaz listeden kaldırılsın mı?'))return;
-    commit({...db,pushSubscriptions:devices.filter(x=>x.id!==id&&x.token!==token)});
-  }
-
-  return <div className="notificationAdmin">
-    <div className="card adminSectionCard pushComposer">
-      <div className="adminSectionHead">
-        <div><span>BİLDİRİM</span><h3>Kurulu cihazlara gönder</h3></div>
-        <span className="deviceCountBadge"><Smartphone size={14}/> {devices.length} cihaz</span>
-      </div>
-      <p className="pushHint">iPhone: uygulama ana ekrandan açılmalı. Firebase Console → Cloud Messaging → Apple → APNs Auth Key yüklü olmalı. &quot;from Liberte&quot; satırı iOS sisteminden gelir; başlıkta kampanya adı kullan (ör: Smash zamanı).</p>
-
-      <div className="pushPreview">
-        <span>Önizleme</span>
-        <b>{title||'Başlık'}</b>
-        <p>{body||'Mesaj içeriği'}</p>
-      </div>
-
-      <label>Başlık</label>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Örn: Smash zamanı 🍔"/>
-
-      <label>Mesaj</label>
-      <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Bildirim metni" rows={3}/>
-
-      <div className="pushTemplates">
-        {templates.map(t=>
-          <button type="button" key={t.label} className="ghost" onClick={()=>{setTitle(t.title);setBody(t.body);}}>{t.label}</button>
-        )}
-      </div>
-
-      <button type="button" className="goldBtn pushSendBtn" onClick={sendPush} disabled={sending}>
-        <Send size={18}/> {sending?'Gönderiliyor...':'Tüm cihazlara gönder'}
-      </button>
-      {status&&<p className={`scanMsg${status.includes('iletildi')||status.includes('cihaza')?' isSuccess':''}`}>{status}</p>}
-    </div>
-
-    <div className="card adminSectionCard">
-      <div className="adminSectionHead"><div><span>CİHAZLAR</span><h3>Kayıtlı bildirim cihazları</h3></div></div>
-      {devices.length?devices.map(d=>
-        <div className="deviceRow" key={d.id||d.token}>
-          <div><b>{d.name||'Üye'}</b><p>{d.phone||'—'} · {(d.platform==='ios'?'iOS':d.platform==='android'?'Android':'Web')} · {d.updatedAt||d.createdAt||'Tarih yok'}</p></div>
-          <button type="button" className="ghost deviceRemoveBtn" onClick={()=>removeDevice(d.id,d.token)} aria-label="Kaldır"><Trash2 size={14}/></button>
-        </div>
-      ):<p className="emptySmall">Henüz bildirim izni veren cihaz yok. Üyeler uygulamada &quot;Bildirim Aç&quot; butonuna basmalı.</p>}
-    </div>
-
-    {pushLog.length>0&&<div className="card adminSectionCard">
-      <div className="adminSectionHead"><div><span>GEÇMİŞ</span><h3>Son gönderimler</h3></div></div>
-      {pushLog.slice(0,8).map(p=>
-        <div className="historyMini" key={p.id}>
-          <div><b>{p.title}</b><p>{p.createdAt} · {p.sent||0}/{p.deviceCount||0} cihaz{p.note?` · ${p.note}`:''}</p></div>
-          <strong>{p.sent||0}</strong>
-        </div>
-      )}
-    </div>}
-  </div>;
-}
 
 function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
   const[editing,setEditing]=useState(null);

@@ -1,8 +1,10 @@
 import admin from 'firebase-admin';
 import { parseServiceAccount, validateServiceAccount } from '../serviceAccount.js';
 import { formatPushNotification } from '../pushNotificationText.js';
-import { applyCors } from '../http.js';
+import { applyCors, readBodySafe } from '../http.js';
 import { requireAdminSession } from '../auth.js';
+import { loadAppState } from '../appState.js';
+import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -53,13 +55,40 @@ export async function handleAdminPushSend(req, res) {
     const adminSession = await requireAdminSession(req, res, { pinRequired: true });
     if (!adminSession) return;
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const { tokens = [], title = '', body: message = 'Yeni kampanya var!' } = body;
+    const body = readBodySafe(req);
+    const audience = String(body.audience || 'all').trim();
+    const title = String(body.title || '').trim();
+    const message = String(body.body || body.message || 'Yeni kampanya var!').trim();
     const pushText = formatPushNotification(title, message);
-    const clean = [...new Set(tokens.filter(Boolean))];
+
+    const remote = await loadAppState();
+    if (!remote.data) {
+      return res.status(404).json({ ok: false, error: 'Veri bulunamadı', sent: 0, failed: 0 });
+    }
+
+    const resolved = resolvePushAudience(remote.data, audience);
+    if (resolved.disabled) {
+      return res.status(400).json({
+        ok: false,
+        sent: 0,
+        failed: 0,
+        note: resolved.disabledReason || 'Hedef kitle kullanılamıyor.'
+      });
+    }
+
+    const clean = [...new Set(resolved.tokens.filter(Boolean))];
 
     if (!clean.length) {
-      return res.status(200).json({ ok: true, sent: 0, note: 'Kayıtlı bildirim tokenı yok.' });
+      return res.status(200).json({
+        ok: true,
+        sent: 0,
+        failed: 0,
+        audience,
+        audienceLabel: resolved.audienceLabel,
+        targetUserCount: resolved.targetUserCount,
+        deviceCount: 0,
+        note: 'Seçilen hedef kitlede kayıtlı bildirim tokenı yok.'
+      });
     }
 
     const serviceAccount = parseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
@@ -141,6 +170,10 @@ export async function handleAdminPushSend(req, res) {
       sent: result.successCount,
       failed: result.failureCount,
       invalidTokens,
+      audience,
+      audienceLabel: resolved.audienceLabel,
+      targetUserCount: resolved.targetUserCount,
+      deviceCount: clean.length,
       note
     });
   } catch (error) {
