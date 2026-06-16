@@ -1,1 +1,1 @@
-Liberte Club 1.1.0 — kampanya bildirimleri, üyelik seviyeleri (Bronze–Black), sadakat puanı iyileştirmeleri ve açılış ekranı güncellemesi.
+Liberte Club 1.1.1 — sandviç LP (+2 kazanç, 18 LP ikram), menüde LP rozetleri, kasiyer ürün seçimi (Patates Tabağı LP dışı), menü sipariş butonları ve push iyileştirmeleri.
