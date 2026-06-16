@@ -31,8 +31,8 @@ workflows:
       vars:
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
-        APP_VERSION: "1.1"
-        IOS_MIN_BUILD_NUMBER: "23"
+        APP_VERSION: "1.1.1"
+        IOS_MIN_BUILD_NUMBER: "24"
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
       node: 22
