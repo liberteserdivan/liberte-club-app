@@ -49,7 +49,7 @@ export function applyCategoryStamp(state, customerId, category, count = 1, sourc
     return { ok: false, error: 'Yetersiz LP' };
   }
 
-  const nextBalance = sign > 0 ? oldBalance + lpGain : oldBalance - lpGain;
+  const nextBalance = Math.max(0, sign > 0 ? oldBalance + lpGain : oldBalance - lpGain);
   const nextLifetime = sign > 0 ? oldLifetime + lpGain : oldLifetime;
   const createdAt = new Date().toLocaleString('tr-TR');
   const catLabel = LP_CATEGORIES.find((cat) => cat.id === category)?.label || category;
@@ -106,7 +106,7 @@ export function redeemCategoryReward(state, customerId, category, source = 'QR k
   }
 
   const oldBalance = current.lpBalance || 0;
-  const nextBalance = oldBalance - cost;
+  const nextBalance = Math.max(0, oldBalance - cost);
   const createdAt = new Date().toLocaleString('tr-TR');
   const nextCard = {
     ...current,
@@ -190,6 +190,63 @@ export function applyCheckIn(state, customerId, source = 'Kasa QR check-in') {
   }
 
   return { ok: true };
+}
+
+// Doğum günü kontrolü — YYYY-MM-DD
+function isBirthdayToday(birthDate) {
+  if (!birthDate) return false;
+  const parts = String(birthDate).split('-');
+  if (parts.length < 3) return false;
+  const today = new Date();
+  return Number(parts[1]) === today.getMonth() + 1 && Number(parts[2]) === today.getDate();
+}
+
+// Doğum günü LP bonusu — yılda bir kez
+export function applyBirthdayReward(state, customerId) {
+  const id = Number(customerId);
+  const customer = listCustomers(state).find((row) => Number(row.id) === id);
+  if (!customer || !isBirthdayToday(customer.birthDate)) {
+    return { ok: true, changed: false };
+  }
+
+  const year = new Date().getFullYear();
+  const already = (state.history || []).some(
+    (row) => row.customerId === id && row.type === 'birthday_reward' && row.year === year
+  );
+  if (already) return { ok: true, changed: false };
+
+  const current = migrateLoyaltyCard(state.loyalty?.[id] || state.loyalty?.[String(id)] || loyaltyTemplate(id));
+  const bonus = 7;
+  const createdAt = new Date().toLocaleString('tr-TR');
+  const nextLifetime = (current.lpLifetime || 0) + bonus;
+
+  state.loyalty = {
+    ...(state.loyalty || {}),
+    [id]: {
+      ...current,
+      lpBalance: (current.lpBalance || 0) + bonus,
+      lpLifetime: nextLifetime,
+      level: levelByLp(nextLifetime),
+      updatedAt: createdAt
+    }
+  };
+  state.history = [
+    {
+      id: Date.now() + 91,
+      customerId: id,
+      name: customer.name,
+      phone: customer.phone,
+      type: 'birthday_reward',
+      count: bonus,
+      reward: 'Doğum günü ikramı',
+      source: 'Doğum günü otomatik hediye',
+      year,
+      createdAt
+    },
+    ...(state.history || [])
+  ];
+
+  return { ok: true, changed: true };
 }
 
 // Müşteri özeti

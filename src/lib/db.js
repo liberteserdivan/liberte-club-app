@@ -54,7 +54,7 @@ function resolveMenu(x) {
 
 export const seed={
   settings:{
-    stamp_threshold:6,
+    stamp_threshold:7,
     reward_description:'Kategori ikramı',
     cafe_name: STORE_APP_NAME,
     app_name: CLUB_APP_NAME,
@@ -170,12 +170,23 @@ export const seed={
 
 export function mergeDb(x){
   const menu = resolveMenu(x);
+  let customers = x?.customers || seed.customers;
+
+  // Dev — seed yönetici/demo hesapları silinmişse geri ekle
+  if (useLocalAuth() && Array.isArray(customers)) {
+    customers = [...customers];
+    seed.customers.forEach((seedCustomer) => {
+      const exists = customers.some((c) => norm(c.phone) === norm(seedCustomer.phone));
+      if (!exists) customers.push(seedCustomer);
+    });
+  }
+
   return x?{
     ...seed,
     ...x,
     ...menu,
     settings:{...seed.settings,...x.settings,logo:x.settings?.logo||seed.settings.logo},
-    customers:x.customers||seed.customers,
+    customers,
     loyalty:migrateAllLoyalty(x.loyalty||seed.loyalty),
     notifications:x.notifications||seed.notifications,
     history:x.history||[],
@@ -493,12 +504,12 @@ export function addCategoryStampToCustomer(db,id,category,count=1,source='Admin'
   const oldLifetime=current.lpLifetime||0;
 
   if(sign<0&&oldBalance<lpGain){
-    alert('Yetersiz LP');
+    if(typeof globalThis.alert==='function') alert('Yetersiz LP');
     return db;
   }
 
   const earnType = LP_HISTORY_EARN[category] || 'lp_add';
-  const nextBalance=sign>0?oldBalance+lpGain:oldBalance-lpGain;
+  const nextBalance=Math.max(0, sign>0?oldBalance+lpGain:oldBalance-lpGain);
   const nextLifetime=sign>0?oldLifetime+lpGain:oldLifetime;
   const createdAt=new Date().toLocaleString('tr-TR');
   const catLabel=STAMP_CATEGORIES.find(cat=>cat.id===category)?.label||category;
@@ -605,12 +616,12 @@ export function redeemCategoryRewardForCustomer(db,id,category,source='Admin'){
   const catLabel=STAMP_CATEGORIES.find(cat=>cat.id===category)?.label||category;
 
   if(!canRedeemLpReward(current,category)){
-    alert('Yetersiz LP');
+    if(typeof globalThis.alert==='function') alert('Yetersiz LP');
     return db;
   }
 
   const oldBalance=current.lpBalance||0;
-  const nextBalance=oldBalance-cost;
+  const nextBalance=Math.max(0, oldBalance-cost);
   const createdAt=new Date().toLocaleString('tr-TR');
   const redeemType=LP_HISTORY_REDEEM[category]||'lp_reward_redeem';
   const redeemTitle=STAMP_CATEGORIES.find(cat=>cat.id===category)?.redeemTitle||`${catLabel} ikram`;
@@ -685,7 +696,7 @@ export function applyBirthdayReward(db,id){
         name:customer.name,
         phone:customer.phone,
         type:'birthday_reward',
-        count:1,
+        count:bonus,
         reward:'Doğum günü ikramı',
         source:'Doğum günü otomatik hediye',
         year,

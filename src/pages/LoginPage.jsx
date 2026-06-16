@@ -611,6 +611,11 @@ export default function Login({ db, commit, setSession }) {
           <p className="loginFooterLabel">{STORE_APP_NAME}</p>
           <p className="loginFooterNote">{BRAND_SLOGAN}</p>
           <p className="loginFooterNote">{LOYALTY_PROMO}</p>
+          {import.meta.env.DEV && (
+            <p className="loginFooterNote loginDevHint">
+              Yerel test — Yönetici: 555 010 00 02 veya 505 866 54 06 · Giriş PIN: 1234 · Yönetici PIN: 5454
+            </p>
+          )}
           <CafeContactBar compact />
         </div>
       </div>

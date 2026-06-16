@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { reportError } from '../lib/errorHub.js';
 
-// Buluttan veri çekme aralığı (ms)
-const SYNC_INTERVAL_MS = 15000;
+// Buluttan veri çekme aralığı (ms) — LP güncellemeleri ~5 sn içinde yansır
+const SYNC_INTERVAL_MS = 5000;
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
 export function useCommit(initial) {
@@ -16,6 +16,7 @@ export function useCommit(initial) {
   });
   const lastRemoteAt = useRef(null);
   const syncing = useRef(false);
+  const savingCount = useRef(0);
   const saveSeq = useRef(0);
 
   // Uzak kayıt hatasını merkezi hub'a ilet
@@ -44,6 +45,9 @@ export function useCommit(initial) {
   // Buluttan güncel veriyi çeker
   const pullRemote = useCallback(async (force = false) => {
     if (syncing.current) return;
+    // Kayıt devam ederken eski snapshot ile üzerine yazmayı önle
+    if (!force && savingCount.current > 0) return;
+
     syncing.current = true;
     try {
       const remote = await loadRemote();
@@ -80,9 +84,11 @@ export function useCommit(initial) {
 
   // Arka planda buluta kaydet
   function queueSaveRemote(nextDb, seq) {
+    savingCount.current += 1;
     setSyncState((prev) => ({ ...prev, status: 'saving', lastError: null }));
 
     saveRemote(nextDb).then((result) => {
+      savingCount.current = Math.max(0, savingCount.current - 1);
       if (seq !== saveSeq.current) return;
 
       if (result.ok) {

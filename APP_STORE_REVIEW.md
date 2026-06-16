@@ -49,6 +49,6 @@ Camera: only used when admin enters admin PIN and opens QR scanner.
 
 ---
 
-## Sadakat kuralı (referans)
+## Sadakat kuralı (referans — LP v1.1)
 
-> Liberte'de müdavim olmak kazandırır. 7. kahven, 7. tatlın ve 12. burgerin bizden.
+> Liberte'de müdavim olmak kazandırır. Kahve +1 LP, tatlı +2 LP, burger +3 LP. 7 LP kahve ikramı, 15 LP tatlı ikramı, 25 LP burger ikramı.

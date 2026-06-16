@@ -16,6 +16,7 @@ import {
   mergeAdminState,
   mergeUserState
 } from './_lib/stateAccess.js';
+import { applyBirthdayReward } from './_lib/loyaltyOps.js';
 
 export default async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
@@ -45,9 +46,21 @@ export default async function handler(req, res) {
         return res.status(200).json({ data: null, updated_at: null, mode: 'cloud' });
       }
 
+      let stateData = remote.data;
+
+      // Doğum günü bonusu — müşteri oturumunda sunucu tarafında uygula
+      if (session.customerId && !session.isAdmin) {
+        const nextState = structuredClone(stateData);
+        const birthday = applyBirthdayReward(nextState, session.customerId);
+        if (birthday.changed) {
+          await saveAppState(nextState);
+          stateData = nextState;
+        }
+      }
+
       const data = session.isAdmin && session.adminVerified
-        ? filterStateForAdmin(remote.data)
-        : filterStateForUser(remote.data, session.customerId);
+        ? filterStateForAdmin(stateData)
+        : filterStateForUser(stateData, session.customerId);
 
       return res.status(200).json({
         data,

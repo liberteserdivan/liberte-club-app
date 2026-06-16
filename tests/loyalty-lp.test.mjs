@@ -32,6 +32,41 @@ test('migration eski alanları korur', () => {
   assert.equal(migrated._legacy.categoryStamps.coffee, 4);
 });
 
+test('tatlı işlemi +2 LP ekler', () => {
+  const db = mergeDb({
+    customers: [{ id: 43, phone: '556', name: 'Test', email: 't@t.com' }],
+    loyalty: { 43: { customerId: 43, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
+    history: []
+  });
+
+  const next = addCategoryStampToCustomer(db, 43, 'dessert', 1, 'test');
+  assert.equal(next.loyalty[43].lpBalance, getCategoryLpGain('dessert'));
+  assert.equal(next.history[0].type, 'earn_dessert');
+});
+
+test('tatlı ikram -15 LP düşer', () => {
+  const db = mergeDb({
+    customers: [{ id: 10, phone: '557', name: 'Test', email: 't@t.com' }],
+    loyalty: { 10: { customerId: 10, schemaVersion: 2, lpBalance: 15, lpLifetime: 15, level: 'Bronze', usedRewards: 0 } },
+    history: []
+  });
+  const next = redeemCategoryRewardForCustomer(db, 10, 'dessert', 'test');
+  assert.equal(next.loyalty[10].lpBalance, 0);
+  assert.equal(next.history[0].type, 'redeem_dessert');
+  assert.equal(next.history[0].count, 15);
+});
+
+test('LP bakiyesi eksiye düşmez', () => {
+  const db = mergeDb({
+    customers: [{ id: 11, phone: '558', name: 'Test', email: 't@t.com' }],
+    loyalty: { 11: { customerId: 11, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
+    history: []
+  });
+  const next = addCategoryStampToCustomer(db, 11, 'coffee', -1, 'test');
+  assert.equal(next, db);
+  assert.equal(next.loyalty[11].lpBalance, 0);
+});
+
 test('kahve işlemi +1 LP ekler', () => {
   const db = mergeDb({
     customers: [{ id: 42, phone: '555', name: 'Test', email: 't@t.com' }],

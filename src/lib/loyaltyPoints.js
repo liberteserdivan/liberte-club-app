@@ -140,7 +140,13 @@ export function migrateLoyaltyCard(card) {
 
   const legacyStamps = readLegacyStamps(card);
   const legacyRewards = readLegacyRewards(card);
-  const lpBalance = convertLegacyToLp(legacyStamps, legacyRewards);
+  let lpBalance = convertLegacyToLp(legacyStamps, legacyRewards);
+
+  // LP alanları yazılmışsa legacy boş olsa bile koru
+  if (lpBalance === 0 && (card.lpBalance != null || card.lpLifetime != null)) {
+    lpBalance = Math.max(0, Math.trunc(card.lpBalance ?? card.lpLifetime ?? 0));
+  }
+
   const lpLifetime = Math.max(
     Math.trunc(card.lifetimeStamps || 0),
     lpBalance,
@@ -234,10 +240,77 @@ export function lpProgressPercent(balance, targetCost) {
   return Math.min(100, Math.round((balance / targetCost) * 100));
 }
 
+// Kategori kartı — müşteri arayüzü özet verisi
+export function lpCategoryCardView(card, category) {
+  const balance = getLpBalance(card);
+  const ready = canRedeemLpReward(card, category.id);
+  const remaining = lpRemainingForReward(balance, category.id);
+  const progress = lpProgressPercent(balance, category.rewardCost);
+
+  return {
+    ready,
+    remaining,
+    progress,
+    gainLabel: `+${category.lpGain} LP`,
+    statusLabel: ready ? 'Kullanılabilir' : `${remaining} LP kaldı`,
+    shortTitle: category.redeemTitle || category.label
+  };
+}
+
 export function levelByLp(total) {
   const n = Number(total || 0);
   if (n >= 90) return 'Black';
   if (n >= 50) return 'Gold';
   if (n >= 20) return 'Silver';
   return 'Bronze';
+}
+
+// Club seviye basamakları — toplam LP ile
+export const LP_LEVEL_TIERS = [
+  { id: 'Bronze', threshold: 0 },
+  { id: 'Silver', threshold: 20 },
+  { id: 'Gold', threshold: 50 },
+  { id: 'Black', threshold: 90 }
+];
+
+// Seviye ilerlemesi — premium club şeridi için
+export function getLevelProgress(lifetime) {
+  const n = Math.max(0, Number(lifetime || 0));
+  const level = levelByLp(n);
+
+  let tierIndex = 0;
+  if (n >= 90) tierIndex = 3;
+  else if (n >= 50) tierIndex = 2;
+  else if (n >= 20) tierIndex = 1;
+
+  const current = LP_LEVEL_TIERS[tierIndex];
+  const next = LP_LEVEL_TIERS[tierIndex + 1] || null;
+
+  if (!next) {
+    return {
+      level,
+      tierIndex,
+      progress: 100,
+      remaining: 0,
+      nextLevel: null,
+      lifetime: n,
+      journeyPercent: 100
+    };
+  }
+
+  const span = next.threshold - current.threshold;
+  const earned = n - current.threshold;
+  const progress = Math.min(100, Math.round((earned / span) * 100));
+  const remaining = Math.max(0, next.threshold - n);
+  const journeyPercent = Math.min(100, Math.round((n / 90) * 100));
+
+  return {
+    level,
+    tierIndex,
+    progress,
+    remaining,
+    nextLevel: next.id,
+    lifetime: n,
+    journeyPercent
+  };
 }

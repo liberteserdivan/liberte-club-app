@@ -1,5 +1,7 @@
 export {
   LP_CATEGORIES,
+  LP_HISTORY_EARN,
+  LP_HISTORY_REDEEM,
   migrateLoyaltyCard,
   getCategoryLpGain,
   getCategoryRewardCost,

@@ -24,12 +24,16 @@ import { canUseNativeBarcodeScan, scanQrWithNativeCamera } from '../lib/nativeBa
 
 // QR metninden müşteriyi bul — yalnızca yerel geliştirme
 function findCustomerFromLegacyQr(db, rawText) {
-  const data = JSON.parse(rawText);
-  if (data?.type !== 'liberte-customer') return null;
+  try {
+    const data = JSON.parse(rawText);
+    if (data?.type !== 'liberte-customer') return null;
 
-  return (db.customers || []).find(
-    (c) => String(c.id) === String(data.id) || norm(c.phone) === norm(data.phone)
-  ) || null;
+    return (db.customers || []).find(
+      (c) => String(c.id) === String(data.id) || norm(c.phone) === norm(data.phone)
+    ) || null;
+  } catch {
+    return null;
+  }
 }
 
 // Kasiyer — müşteri QR tarama ve damga işlemleri
@@ -221,9 +225,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     requestScan();
   }
 
-  // Sunucu veya yerel state üzerinde sadakat işlemi
+  // Sunucu veya yerel state üzerinde sadakat işlemi — başarılıysa true
   async function runLoyaltyAction(action, category) {
-    if (!found || busy) return;
+    if (!found || busy) return false;
 
     if (signedQrRequired && scannedToken) {
       setBusy(true);
@@ -231,34 +235,43 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
         const result = await postLoyaltyAction({ token: scannedToken, action, category });
         if (result.customer) setFound(result.customer);
         if (refreshRemote) await refreshRemote(true);
+        return true;
       } catch (error) {
         setMsg(error?.message || 'İşlem yapılamadı');
-        return;
+        return false;
       } finally {
         setBusy(false);
       }
-      return;
     }
 
+    let nextDb = db;
+
     if (action === 'stamp') {
-      commit(addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera'));
+      nextDb = addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera');
     } else if (action === 'remove') {
-      commit(addCategoryStampToCustomer(db, found.id, category, -1, 'QR düzeltme'));
+      nextDb = addCategoryStampToCustomer(db, found.id, category, -1, 'QR düzeltme');
     } else if (action === 'redeem') {
-      commit(redeemCategoryRewardForCustomer(db, found.id, category, 'QR kasiyer'));
+      nextDb = redeemCategoryRewardForCustomer(db, found.id, category, 'QR kasiyer');
     } else if (action === 'checkin') {
-      commit(checkInCustomer(db, found.id, 'Kasa QR check-in'));
+      nextDb = checkInCustomer(db, found.id, 'Kasa QR check-in');
     }
+
+    if (nextDb === db) return false;
+
+    commit(nextDb);
+    return true;
   }
 
   async function addCategory(category) {
-    await runLoyaltyAction('stamp', category);
+    const ok = await runLoyaltyAction('stamp', category);
+    if (!ok) return;
     const cat = STAMP_CATEGORIES.find((c) => c.id === category);
     setMsg(`${cat?.label || category} için +${cat?.lpGain || 1} LP eklendi.`);
   }
 
   async function removeCategory(category) {
-    await runLoyaltyAction('remove', category);
+    const ok = await runLoyaltyAction('remove', category);
+    if (!ok) return;
     const cat = STAMP_CATEGORIES.find((c) => c.id === category);
     setMsg(`${cat?.label || category} için LP geri alındı.`);
   }
@@ -269,7 +282,8 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     const cost = cat?.rewardCost || 0;
     const ok = confirm(`${found.name} için ${cat?.rewardLabel || catLabel} ödülü (${cost} LP) kullanılsın mı?`);
     if (!ok) return;
-    await runLoyaltyAction('redeem', category);
+    const done = await runLoyaltyAction('redeem', category);
+    if (!done) return;
     setMsg(`${catLabel} ikram kullanıldı, -${cost} LP.`);
   }
 
@@ -368,8 +382,8 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
               className="ghost"
               disabled={busy}
               onClick={async () => {
-                await runLoyaltyAction('checkin');
-                setMsg('Check-in kaydedildi.');
+                const ok = await runLoyaltyAction('checkin');
+                if (ok) setMsg('Check-in kaydedildi.');
               }}
             >
               Check-in kaydet

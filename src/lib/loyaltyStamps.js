@@ -12,11 +12,14 @@ import {
   lpProgressPercent,
   lpToNextReward,
   levelByLp,
+  getLevelProgress,
+  LP_LEVEL_TIERS,
   canRedeemLpReward,
   getCategoryLpGain,
   getCategoryRewardCost,
   lpRewardStatusText,
-  lpRemainingForReward
+  lpRemainingForReward,
+  lpCategoryCardView
 } from './loyaltyPoints.js';
 
 export {
@@ -31,11 +34,14 @@ export {
   lpProgressPercent,
   lpToNextReward,
   levelByLp,
+  getLevelProgress,
+  LP_LEVEL_TIERS,
   canRedeemLpReward,
   getCategoryLpGain,
   getCategoryRewardCost,
   lpRewardStatusText,
-  lpRemainingForReward
+  lpRemainingForReward,
+  lpCategoryCardView
 };
 
 // Geri uyumluluk — eski import adları

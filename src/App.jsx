@@ -1,5 +1,7 @@
+import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useEffect, useRef, useState } from 'react';
 import { applyBirthdayReward, cssVars, load } from './lib/db.js';
+import { useLocalAuth } from './lib/devAuth.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
@@ -40,6 +42,11 @@ export default function App() {
   const [hydratingCustomer, setHydratingCustomer] = useState(false);
   const splashStartRef = useRef(Date.now());
   const hydrateStartedRef = useRef(0);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    bootstrapDevAuth(db.customers || []).catch(() => {});
+  }, [db.customers]);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -169,7 +176,9 @@ export default function App() {
     setTab('home');
   }
 
+  // Doğum günü bonusu — yalnızca yerel dev; production sunucuda uygulanır
   useEffect(() => {
+    if (!useLocalAuth()) return;
     if (!customer?.id) return;
     const next = applyBirthdayReward(db, customer.id);
     if (next !== db) commit(next);

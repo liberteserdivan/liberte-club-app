@@ -1,5 +1,5 @@
 import { Gift, Minus, Plus } from 'lucide-react';
-import { LP_CATEGORIES, getLpBalance, canRedeemLpReward } from '../lib/loyaltyStamps.js';
+import { LP_CATEGORIES, getCategoryRewardCost } from '../lib/loyaltyStamps.js';
 
 // Kasiyer — LP ekleme ve ödül kullandırma
 export default function StampCategoryPanel({
@@ -24,7 +24,7 @@ export default function StampCategoryPanel({
 
       <div className={`stampCategoryGrid${mode === 'cashier' ? ' stampCategoryGrid--cashier' : ''}`}>
         {LP_CATEGORIES.map((cat) => {
-          const canRedeem = canRedeemLpReward({ lpBalance: balance }, cat.id);
+          const canRedeem = balance >= getCategoryRewardCost(cat.id);
           const canUndo = balance >= cat.lpGain;
 
           return (

@@ -38,7 +38,12 @@ export default function HomePage({
           <div className="homeLevelPill"><Crown /><span>{level}</span></div>
         </div>
 
-        <LoyaltyTripleStamps card={card} level={level} />
+        <LoyaltyTripleStamps
+          card={card}
+          level={level}
+          lpLifetime={lp.lpLifetime}
+          setTab={setTab}
+        />
       </div>
 
       <div className="homeBody">

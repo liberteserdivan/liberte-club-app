@@ -8,6 +8,8 @@ import { captureException } from './lib/errorHub.js';
 import { patchFirebaseReferrer } from './lib/firebaseReferrerPatch.js';
 import { getFirebaseReferrerOrigin } from './lib/firebasePush.js';
 import { initPwaInstallCapture } from './lib/pwaInstall.js';
+import { load } from './lib/db.js';
+import { bootstrapDevAuth } from './lib/devAuth.js';
 import './style.css';
 
 // Herkese acik yasal sayfalar — giris ve splash olmadan
@@ -74,4 +76,12 @@ function mountApp() {
   }
 }
 
-mountApp();
+async function boot() {
+  if (import.meta.env.DEV) {
+    const db = load();
+    await bootstrapDevAuth(db.customers || []);
+  }
+  mountApp();
+}
+
+boot();
