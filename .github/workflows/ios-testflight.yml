@@ -1,5 +1,11 @@
-# TestFlight yukleme — Mac gerekmez (GitHub macOS runner kullanir)
-# Gerekli GitHub Secrets: docs/APP_STORE_YUKLEME.md
+# TestFlight yukleme — GitHub macOS runner
+# Gerekli GitHub Secrets:
+#   GOOGLE_SERVICE_INFO_PLIST
+#   GOOGLE_SERVICES_JSON
+#   APP_STORE_CONNECT_PRIVATE_KEY
+#   APP_STORE_CONNECT_KEY_ID
+#   APP_STORE_CONNECT_ISSUER_ID
+#   APPLE_TEAM_ID
 
 name: iOS TestFlight Publish
 
@@ -7,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       build_number:
-        description: 'iOS build numarasi (bos birakilirsa 10 kullanilir)'
+        description: 'iOS build numarasi (App Store Connectte kullanilmamis olmali)'
         required: false
-        default: '10'
+        default: '23'
       changelog:
         description: 'TestFlight surum notu'
         required: false
@@ -27,14 +33,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Web build ve Capacitor sync
         working-directory: .
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          CI: true
         run: |
-          npm ci
+          npm ci --legacy-peer-deps
           npm run build
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/fix-ios-spm-paths.mjs
+          test -f ios/App/App/GoogleService-Info.plist
           npx cap sync ios
 
       - uses: ruby/setup-ruby@v1
@@ -55,7 +68,7 @@ jobs:
           BUILD_NO: ${{ inputs.build_number }}
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" App/App/Info.plist 2>/dev/null || true
-          agv="MARKETING_VERSION = 1.0.8;"
+          agv="MARKETING_VERSION = 1.1.1;"
           bgv="CURRENT_PROJECT_VERSION = $BUILD_NO;"
           sed -i '' "s/MARKETING_VERSION = .*/$agv/" App/App.xcodeproj/project.pbxproj
           sed -i '' "s/CURRENT_PROJECT_VERSION = .*/$bgv/" App/App.xcodeproj/project.pbxproj

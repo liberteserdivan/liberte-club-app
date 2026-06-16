@@ -1,5 +1,10 @@
 # Play Console'a AAB yukleme — manuel tetikleme
-# Gerekli secret: PLAY_STORE_SERVICE_ACCOUNT_JSON (servis hesabi JSON icerigi)
+# Gerekli GitHub Secrets:
+#   PLAY_STORE_SERVICE_ACCOUNT_JSON
+#   ANDROID_KEYSTORE_BASE64
+#   ANDROID_KEYSTORE_PROPERTIES
+#   GOOGLE_SERVICE_INFO_PLIST
+#   GOOGLE_SERVICES_JSON
 
 name: Android Play Publish
 
@@ -25,7 +30,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - uses: actions/setup-java@v4
@@ -47,4 +52,8 @@ jobs:
         run: echo "$PLAY_JSON" > android/play-console-service-account.json
 
       - name: Derle ve yukle
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          CI: true
         run: node scripts/publish-android-play.mjs ${{ inputs.track }} --build
