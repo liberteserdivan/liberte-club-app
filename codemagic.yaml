@@ -4,8 +4,8 @@
 #   APP_STORE_CONNECT_KEY_IDENTIFIER
 #   APP_STORE_CONNECT_PRIVATE_KEY
 #
-# Codemagic UI → Environment variables (push icin):
-#   GOOGLE_SERVICE_INFO_PLIST  — GoogleService-Info.plist icerigi (ham veya base64)
+# Codemagic UI → Environment variables (ZORUNLU — iOS build icin):
+#   GOOGLE_SERVICE_INFO_PLIST  — GoogleService-Info.plist tam XML icerigi (Secure)
 #
 # Codemagic UI → Code signing identities (manuel yukleme):
 #   Certificate reference: liberte_distribution  (.p12 + private key)
@@ -46,16 +46,15 @@ workflows:
           npm -v
       - name: npm install
         script: npm install --legacy-peer-deps
-      - name: Firebase native config dosyalari
-        script: node scripts/materialize-firebase-native-config.mjs
       - name: npm run build
         script: npm run build
       - name: Capacitor iOS sync
         script: npx cap sync ios
-      - name: SPM yollarini macOS uyumlu yap
+      - name: Firebase plist ve SPM yollari
         script: |
-          sed -i '' 's/\\/\//g' ios/App/CapApp-SPM/Package.swift 2>/dev/null || \
-          sed -i 's/\\/\//g' ios/App/CapApp-SPM/Package.swift
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/fix-ios-spm-paths.mjs
+          test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GoogleService-Info.plist yok — Codemagic GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
           grep -n "node_modules" ios/App/CapApp-SPM/Package.swift
       - name: iOS surum ve build numarasi
         script: |
@@ -83,8 +82,8 @@ workflows:
             --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
             || {
-              echo "=== xcodebuild log (son 150 satir) ==="
-              tail -150 /tmp/xcodebuild_logs/*.log 2>/dev/null || true
+              echo "=== xcodebuild log (son 200 satir) ==="
+              tail -200 /tmp/xcodebuild_logs/*.log 2>/dev/null || true
               exit 1
             }
     artifacts:

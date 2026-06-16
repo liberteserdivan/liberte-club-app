@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI/CD ve lokal release build — Firebase native config dosyalarını üretir.
- * Ortam değişkenleri:
- *   GOOGLE_SERVICES_JSON        — android/app/google-services.json (ham JSON veya base64)
- *   GOOGLE_SERVICE_INFO_PLIST   — ios/App/App/GoogleService-Info.plist (ham XML veya base64)
+ * CI/CD ve lokal release build — Firebase native config dosyalarini uretir.
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -11,8 +8,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const isCi = Boolean(process.env.CM_BUILD_ID || process.env.CI || process.env.CODEMAGIC);
 
-// Ortam değişkeninden dosya içeriğini çöz
 function decodeEnvValue(raw) {
   const text = String(raw || '').trim();
   if (!text) return '';
@@ -27,44 +24,53 @@ function decodeEnvValue(raw) {
       return decoded;
     }
   } catch {
-    // base64 değilse ham metin olarak devam et
+    // base64 degilse devam et
   }
 
   return text;
 }
 
-// Hedef dosyayı yaz — mevcut dosyayı ezme seçeneği
-function writeConfigFile(envName, targetPath, label) {
+function writeConfigFile(envName, targetPath, label, { requiredOnCi = false } = {}) {
   const raw = process.env[envName];
   const content = decodeEnvValue(raw);
 
   if (!content) {
     if (existsSync(targetPath)) {
-      console.log(`[firebase-native] ${label} mevcut — ${envName} tanımlı değil, korunuyor.`);
+      console.log(`[firebase-native] ${label} mevcut — ${envName} tanimli degil, korunuyor.`);
       return true;
     }
-    console.warn(`[firebase-native] ${label} yok — ${envName} veya yerel dosya gerekli.`);
+
+    const message = `[firebase-native] ${label} yok — ${envName} veya yerel dosya gerekli.`;
+    if (requiredOnCi && isCi) {
+      console.error(message);
+      process.exit(1);
+    }
+    console.warn(message);
     return false;
   }
 
   mkdirSync(dirname(targetPath), { recursive: true });
   writeFileSync(targetPath, content.endsWith('\n') ? content : `${content}\n`, 'utf8');
-  console.log(`[firebase-native] ${label} yazıldı: ${targetPath}`);
+  console.log(`[firebase-native] ${label} yazildi: ${targetPath}`);
   return true;
 }
 
-const androidOk = writeConfigFile(
+const iosPlistPath = join(root, 'ios', 'App', 'App', 'GoogleService-Info.plist');
+
+writeConfigFile(
   'GOOGLE_SERVICES_JSON',
   join(root, 'android', 'app', 'google-services.json'),
   'google-services.json'
 );
 
-const iosOk = writeConfigFile(
+writeConfigFile(
   'GOOGLE_SERVICE_INFO_PLIST',
-  join(root, 'ios', 'App', 'App', 'GoogleService-Info.plist'),
-  'GoogleService-Info.plist'
+  iosPlistPath,
+  'GoogleService-Info.plist',
+  { requiredOnCi: true }
 );
 
-if (!androidOk && !iosOk) {
-  console.warn('[firebase-native] Native push için en az bir config dosyası gerekli.');
+if (isCi && !existsSync(iosPlistPath)) {
+  console.error('[firebase-native] CI build durduruldu: GoogleService-Info.plist bulunamadi.');
+  process.exit(1);
 }

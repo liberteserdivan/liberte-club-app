@@ -84,6 +84,7 @@ test('Codemagic build number alt siniri tanimli', () => {
 
 test('Firebase native config materialize scripti mevcut', () => {
   assert.equal(existsSync(join(root, 'scripts', 'materialize-firebase-native-config.mjs')), true);
+  assert.equal(existsSync(join(root, 'scripts', 'fix-ios-spm-paths.mjs')), true);
 });
 
 test('Android google-services.json gitignore ile korunur', () => {
