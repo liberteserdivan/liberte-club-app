@@ -3,10 +3,43 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {
+  detectPushTokenType,
+  isApnsDeviceToken,
+  isFcmRegistrationToken
+} from '../src/lib/pushTokenFormat.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// iOS push entitlement — App Store / TestFlight production
+const sampleApns = 'a'.repeat(64);
+const sampleFcm = `${'e'.repeat(120)}:APA91b${'x'.repeat(40)}`;
+
+test('APNs token 64 hex olarak tanınır', () => {
+  assert.equal(isApnsDeviceToken(sampleApns), true);
+  assert.equal(isFcmRegistrationToken(sampleApns), false);
+  assert.equal(detectPushTokenType(sampleApns), 'apns');
+});
+
+test('FCM token Firebase Admin ile uyumlu formatta tanınır', () => {
+  assert.equal(isFcmRegistrationToken(sampleFcm), true);
+  assert.equal(isApnsDeviceToken(sampleFcm), false);
+  assert.equal(detectPushTokenType(sampleFcm), 'fcm');
+});
+
+test('Native push FirebaseMessaging kullanır — eski PushNotifications değil', () => {
+  const nativePush = readFileSync(join(root, 'src', 'lib', 'nativePush.js'), 'utf8');
+  assert.match(nativePush, /@capacitor-firebase\/messaging/);
+  assert.match(nativePush, /FirebaseMessaging\.getToken/);
+  assert.doesNotMatch(nativePush, /@capacitor\/push-notifications/);
+  assert.doesNotMatch(nativePush, /PushNotifications\.register/);
+});
+
+test('package.json push-notifications yerine firebase messaging kullanır', () => {
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  assert.ok(pkg.dependencies['@capacitor-firebase/messaging']);
+  assert.equal(pkg.dependencies['@capacitor/push-notifications'], undefined);
+});
+
 test('App.entitlements aps-environment production', () => {
   const entitlements = readFileSync(
     join(root, 'ios', 'App', 'App', 'App.entitlements'),
@@ -22,6 +55,11 @@ test('Xcode CODE_SIGN_ENTITLEMENTS App.entitlements dosyasına bağlı', () => {
   assert.equal(matches.length, 2, 'Debug ve Release için entitlement bağlantısı gerekli');
 });
 
+test('GoogleService-Info.plist Xcode projesine bağlı', () => {
+  const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
+  assert.match(pbx, /GoogleService-Info\.plist/);
+});
+
 test('Info.plist remote-notification arka plan modu', () => {
   const plist = readFileSync(join(root, 'ios', 'App', 'App', 'Info.plist'), 'utf8');
   assert.match(plist, /UIBackgroundModes/);
@@ -31,6 +69,21 @@ test('Info.plist remote-notification arka plan modu', () => {
 test('Xcode Push Notifications capability aktif', () => {
   const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
   assert.match(pbx, /com\.apple\.Push/);
+});
+
+test('iOS minimum build number 23', () => {
+  const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
+  assert.match(pbx, /CURRENT_PROJECT_VERSION = 23;/);
+});
+
+test('Codemagic build number alt siniri tanimli', () => {
+  const yaml = readFileSync(join(root, 'codemagic.yaml'), 'utf8');
+  assert.match(yaml, /IOS_MIN_BUILD_NUMBER/);
+  assert.match(yaml, /materialize-firebase-native-config/);
+});
+
+test('Firebase native config materialize scripti mevcut', () => {
+  assert.equal(existsSync(join(root, 'scripts', 'materialize-firebase-native-config.mjs')), true);
 });
 
 test('Android google-services.json repoda yok — CI/CD yerel dosya gerekir', () => {
@@ -78,4 +131,6 @@ test('Çıkışta cihaz token pasifleştirme fonksiyonu mevcut', () => {
 test('keystore.properties gitignore ile korunur', () => {
   const gitignore = readFileSync(join(root, '.gitignore'), 'utf8');
   assert.match(gitignore, /android\/keystore\.properties/);
+  assert.match(gitignore, /google-services\.json/);
+  assert.match(gitignore, /GoogleService-Info\.plist/);
 });

@@ -287,6 +287,9 @@ export async function enableNativePush(customer, db, commit) {
     if (result.reason === 'denied') {
       throw new Error(getPushSettingsHint());
     }
+    if (result.reason === 'apns_token_not_supported' || result.reason === 'invalid_fcm_token') {
+      throw new Error('Push yapılandırması eksik. Firebase native config dosyalarını kontrol edin.');
+    }
     throw new Error('Bildirim kurulamadı. Daha sonra tekrar deneyebilirsin.');
   }
 

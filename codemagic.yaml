@@ -4,6 +4,9 @@
 #   APP_STORE_CONNECT_KEY_IDENTIFIER
 #   APP_STORE_CONNECT_PRIVATE_KEY
 #
+# Codemagic UI → Environment variables (push icin):
+#   GOOGLE_SERVICE_INFO_PLIST  — GoogleService-Info.plist icerigi (ham veya base64)
+#
 # Codemagic UI → Code signing identities (manuel yukleme):
 #   Certificate reference: liberte_distribution  (.p12 + private key)
 #   Provisioning profile reference: liberte_app_store_profile
@@ -29,6 +32,7 @@ workflows:
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
         APP_VERSION: "1.1"
+        IOS_MIN_BUILD_NUMBER: "23"
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
       node: 22
@@ -41,7 +45,9 @@ workflows:
           node -v
           npm -v
       - name: npm install
-        script: npm install
+        script: npm install --legacy-peer-deps
+      - name: Firebase native config dosyalari
+        script: node scripts/materialize-firebase-native-config.mjs
       - name: npm run build
         script: npm run build
       - name: Capacitor iOS sync
@@ -55,13 +61,20 @@ workflows:
         script: |
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
-          agvtool new-version -all "$BUILD_NUMBER"
+          MIN_BUILD="${IOS_MIN_BUILD_NUMBER:-23}"
+          if [ "${BUILD_NUMBER:-0}" -lt "$MIN_BUILD" ]; then
+            IOS_BUILD="$MIN_BUILD"
+          else
+            IOS_BUILD="$BUILD_NUMBER"
+          fi
+          echo "iOS build number: $IOS_BUILD (Codemagic BUILD_NUMBER=$BUILD_NUMBER, min=$MIN_BUILD)"
+          agvtool new-version -all "$IOS_BUILD"
       - name: Manuel imza dosyalarini Xcode projesine uygula
         script: xcode-project use-profiles
       - name: Imza ayarlarini dogrula
         script: |
           xcodebuild -project "$CM_BUILD_DIR/$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings \
-            | grep -E 'PROVISIONING_PROFILE|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM' \
+            | grep -E 'PROVISIONING_PROFILE|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM|CURRENT_PROJECT_VERSION' \
             | head -20
       - name: iOS archive (IPA)
         script: |

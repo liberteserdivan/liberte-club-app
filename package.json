@@ -18,7 +18,7 @@
     "cap:sync:ios": "npm run build && npx cap sync ios",
     "cap:android": "npm run cap:sync:android && cd android && gradlew.bat assembleDebug",
     "cap:ios": "npm run cap:sync:ios && npx cap open ios",
-    "release:android": "npm run build && node scripts/generate-android-icons.mjs && npx cap sync android && cd android && gradlew.bat bundleRelease",
+    "release:android": "node scripts/materialize-firebase-native-config.mjs && npm run build && node scripts/generate-android-icons.mjs && npx cap sync android && cd android && gradlew.bat bundleRelease",
     "publish:android": "node scripts/publish-android-play.mjs internal",
     "publish:android:internal": "node scripts/publish-android-play.mjs internal --build",
     "publish:android:production": "node scripts/publish-android-play.mjs production --build",
@@ -27,12 +27,12 @@
     "import:menu": "node scripts/import-menu-from-xlsx.mjs"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^8.1.0",
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
-    "@capacitor/push-notifications": "^8.1.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@neondatabase/serverless": "^1.1.0",
     "firebase": "^11.0.0",

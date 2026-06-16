@@ -2,12 +2,26 @@
   "appId": "cafe.liberte.app",
   "appName": "Liberte",
   "webDir": "dist",
+  "experimental": {
+    "ios": {
+      "spm": {
+        "packageOptions": {
+          "@capacitor-firebase/messaging": {
+            "symlink": true
+          }
+        }
+      }
+    }
+  },
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": false,
       "backgroundColor": "#0B2F26",
       "androidSplashResourceName": "splash",
       "showSpinner": false
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": ["alert", "badge", "sound"]
     }
   }
 }

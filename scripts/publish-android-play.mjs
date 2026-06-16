@@ -52,6 +52,8 @@ function run(command, commandArgs, cwd) {
 }
 
 if (shouldBuild) {
+  console.log('> Firebase native config dosyalari hazirlaniyor...');
+  run('node', ['scripts/materialize-firebase-native-config.mjs'], root);
   console.log('> Web build + AAB derleniyor...');
   run('npm', ['run', 'build'], root);
   run('node', ['scripts/generate-android-icons.mjs'], root);

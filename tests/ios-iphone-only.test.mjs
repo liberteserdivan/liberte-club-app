@@ -33,10 +33,11 @@ test('Vite base göreli — Capacitor WebView uyumlu', () => {
   assert.match(vite, /base:\s*['"]\.\/['"]/);
 });
 
-test('CapApp-SPM Package.swift macOS yolları kullanır', () => {
+test('CapApp-SPM Package.swift Firebase Messaging bagimliligi', () => {
   const pkg = readFileSync(join(root, 'ios', 'App', 'CapApp-SPM', 'Package.swift'), 'utf8');
-  assert.match(pkg, /node_modules\/@capacitor\/push-notifications/);
-  assert.doesNotMatch(pkg, /node_modules\\@capacitor/);
+  assert.match(pkg, /CapacitorFirebaseMessaging/);
+  assert.match(pkg, /@capacitor-firebase[\\/]messaging/);
+  assert.doesNotMatch(pkg, /CapacitorPushNotifications/);
 });
 
 test('Release imzasi Manual ve push entitlement baglantisi', () => {
