@@ -5,7 +5,9 @@ import {
   getCategoryLpGain,
   getCategoryRewardCost,
   canRedeemLpReward,
-  levelByLp
+  levelByLp,
+  LP_HISTORY_EARN,
+  LP_HISTORY_REDEEM
 } from './loyaltyPointsServer.js';
 
 // Yeni müşteri LP şablonu
@@ -44,7 +46,7 @@ export function applyCategoryStamp(state, customerId, category, count = 1, sourc
   const oldLifetime = current.lpLifetime || 0;
 
   if (sign < 0 && oldBalance < lpGain) {
-    return { ok: false, error: 'Yeterli LP yok.' };
+    return { ok: false, error: 'Yetersiz LP' };
   }
 
   const nextBalance = sign > 0 ? oldBalance + lpGain : oldBalance - lpGain;
@@ -61,13 +63,15 @@ export function applyCategoryStamp(state, customerId, category, count = 1, sourc
   };
 
   state.loyalty = { ...(state.loyalty || {}), [id]: nextCard };
+  const earnType = LP_HISTORY_EARN[category] || (sign > 0 ? 'lp_add' : 'lp_remove');
+
   state.history = [
     {
       id: Date.now(),
       customerId: id,
       name: customer.name,
       phone: customer.phone,
-      type: sign > 0 ? 'lp_add' : 'lp_remove',
+      type: sign > 0 ? earnType : 'lp_remove',
       count: lpGain,
       category,
       categoryLabel: catLabel,
@@ -98,7 +102,7 @@ export function redeemCategoryReward(state, customerId, category, source = 'QR k
   const catLabel = LP_CATEGORIES.find((cat) => cat.id === category)?.label || category;
 
   if (!canRedeemLpReward(current, category)) {
-    return { ok: false, error: `${catLabel} ödülü için ${cost} LP gerekli.` };
+    return { ok: false, error: 'Yetersiz LP' };
   }
 
   const oldBalance = current.lpBalance || 0;
@@ -112,13 +116,15 @@ export function redeemCategoryReward(state, customerId, category, source = 'QR k
   };
 
   state.loyalty = { ...(state.loyalty || {}), [id]: nextCard };
+  const redeemType = LP_HISTORY_REDEEM[category] || 'lp_reward_redeem';
+
   state.history = [
     {
       id: Date.now(),
       customerId: id,
       name: customer.name,
       phone: customer.phone,
-      type: 'lp_reward_redeem',
+      type: redeemType,
       count: cost,
       category,
       categoryLabel: catLabel,

@@ -1,191 +1,93 @@
-import { Bell, Crown, Gift, Sparkles, Star } from 'lucide-react';
+import { Bell, Gift, Sparkles } from 'lucide-react';
 
 import PageShell from '../components/PageShell.jsx';
-
 import PageSection from '../components/PageSection.jsx';
-
 import {
-
   DailyCampaignCard,
-
   FullHistoryCard,
-
   GoogleReviewBonusCard,
-
   NotificationCenterCard,
-
   PushWelcomeBanner,
-
   ReferralCard,
-
   RewardsCenterCard,
-
   VipBenefitsCard
-
 } from '../components/Cards.jsx';
-
 import PremiumSection from '../components/PremiumSection.jsx';
-
-import { levelByStamps, loyaltyTemplate, countTotalRewards, countTotalStamps, normalizeCategoryRewards, normalizeCategoryStamps } from '../lib/db.js';
+import { getLpCardView, levelByStamps, loyaltyTemplate } from '../lib/db.js';
 import { CLUB_APP_NAME } from '../lib/constants.js';
-
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 
-
-
 // Aktif kampanya listesini döndür
-
 function activeCampaigns(db) {
-
   return (db.campaigns || []).filter((c) => c.active !== false);
-
 }
 
-
-
-// Kampanyalar — menü ile uyumlu premium düzen
-
+// Kampanyalar — Liberte Puan odaklı premium düzen
 export default function CampaignPage({ db, customer, commit }) {
-
   const card = db.loyalty[customer.id] || loyaltyTemplate(customer.id);
-
-  const categoryStamps = normalizeCategoryStamps(card);
-
-  const categoryRewards = normalizeCategoryRewards(card);
-
-  const totalStamps = countTotalStamps(categoryStamps);
-
-  const rewards = countTotalRewards(categoryRewards);
-
-  const level = card.level || levelByStamps(card.lifetimeStamps || 0);
-
+  const lp = getLpCardView(card);
+  const level = lp.level || levelByStamps(lp.lpLifetime);
   const campaigns = activeCampaigns(db);
 
-
-
   return (
-
     <PageShell
-
       variant="campaign"
-
       eyebrow={CLUB_APP_NAME}
-
       title="Fırsatlar & Ödüller"
-
-      subtitle="Damga biriktir, bonus kazan, club avantajlarını keşfet."
-
+      subtitle="Liberte Puan biriktir, bonus kazan, club avantajlarını keşfet."
       bodyClassName="campaignProBody"
-
-      heroSlot={(
-
+      heroSlot={
         <>
-
           <div className="campaignProStats pageProStats">
-
             <div>
-
-              <strong>{totalStamps}</strong>
-
-              <span>Damga</span>
-
+              <strong>{lp.lpBalance}</strong>
+              <span>LP Bakiye</span>
             </div>
-
             <div>
-
-              <strong>{rewards}</strong>
-
-              <span>İkram</span>
-
+              <strong>{lp.redeemable.length}</strong>
+              <span>Ödül</span>
             </div>
-
             <div>
-
-              <strong><Crown aria-hidden="true" /></strong>
-
-              <span>{level}</span>
-
+              <strong>{level}</strong>
+              <span>Seviye</span>
             </div>
-
           </div>
-
-          <StampRulesInline className="campaignProRules" />
-
+          <StampRulesInline className="campaignProRules stampRulesInline" />
         </>
-
-      )}
-
+      }
     >
-
-      {campaigns.length > 0 && (
-
-        <PageSection title={<><Gift aria-hidden="true" /> Güncel kampanyalar</>} count={`${campaigns.length} aktif`}>
-
-          <div className="campaignProRail">
-
-            {campaigns.map((c) => (
-
-              <article className="campaignProCard" key={c.id}>
-
-                <span className="campaignProCardIcon">{c.emoji || '🎁'}</span>
-
-                <div>
-
-                  <b>{c.title}</b>
-
-                  <p>{c.body}</p>
-
-                </div>
-
-              </article>
-
-            ))}
-
-          </div>
-
-        </PageSection>
-
-      )}
-
-
-
       <PushWelcomeBanner db={db} customer={customer} commit={commit} />
 
-      <DailyCampaignCard db={db} setTab={null} />
+      <PageSection label="Özet" tight>
+        <RewardsCenterCard db={db} customer={customer} card={card} />
+      </PageSection>
 
-      <RewardsCenterCard db={db} customer={customer} card={card} commit={commit} />
+      <DailyCampaignCard db={db} />
 
-
-
-      <PremiumSection title="Bonus fırsatları" subtitle="Ekstra damga ve avantajlar" icon={Sparkles} defaultOpen>
-
-        <GoogleReviewBonusCard db={db} customer={customer} commit={commit} compact />
-
+      <PremiumSection title="Bonus fırsatları" subtitle="Ekstra LP ve avantajlar" icon={Sparkles} defaultOpen>
         <ReferralCard db={db} customer={customer} />
-
-      </PremiumSection>
-
-
-
-      <PremiumSection title="Club avantajları" subtitle="Seviye ve üyelik ayrıcalıkları" icon={Star}>
-
+        <GoogleReviewBonusCard db={db} customer={customer} commit={commit} />
         <VipBenefitsCard db={db} customer={customer} />
-
       </PremiumSection>
 
+      {campaigns.length > 0 && (
+        <PremiumSection title="Club kampanyaları" subtitle="Güncel duyurular" icon={Gift}>
+          {campaigns.map((c) => (
+            <div className="card campaignListCard" key={c.id}>
+              <span>{c.emoji || '🎁'}</span>
+              <div>
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
+              </div>
+            </div>
+          ))}
+        </PremiumSection>
+      )}
 
-
-      <PremiumSection title="Hesabım" subtitle="Geçmiş ve bildirimler" icon={Bell}>
-
-        <NotificationCenterCard db={db} customer={customer} />
-
+      <PremiumSection title="Geçmiş & bildirimler" subtitle="LP hareketleri ve duyurular" icon={Bell}>
         <FullHistoryCard db={db} customer={customer} />
-
+        <NotificationCenterCard db={db} customer={customer} />
       </PremiumSection>
-
     </PageShell>
-
   );
-
 }
-

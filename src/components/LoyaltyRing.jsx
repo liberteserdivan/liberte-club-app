@@ -1,47 +1,32 @@
 import { Crown } from 'lucide-react';
-import LoyaltyCup3d from './LoyaltyCup3d.jsx';
 
-// Starbucks tarzı dairesel damga halkası
+// LP dairesel ilerleme halkası
 export default function LoyaltyRing({ stamps = 0, threshold = 10, rewards = 0, level = 'Bronze' }) {
-  const safeThreshold = Math.max(1, threshold);
-  const progress = Math.min(100, (stamps / safeThreshold) * 100);
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference - (progress / 100) * circumference;
+  const pct = threshold ? Math.min(100, Math.round((stamps / threshold) * 100)) : 0;
+  const ring = 2 * Math.PI * 46;
+  const offset = ring - (pct / 100) * ring;
 
   return (
-    <div className="loyaltyRingBoard">
-      <div className="loyaltyRingSide">
-        <span className="loyaltyRingLabel">Damga bakiyesi</span>
-        <div className="loyaltyRingBalance">
-          <span className="loyaltyRingDot" aria-hidden="true" />
-          <strong>{stamps}</strong>
-        </div>
-        <em>{rewards} ikram içecek</em>
-      </div>
-
-      <div className="loyaltyRingCenter">
-        <svg className="loyaltyRingSvg" viewBox="0 0 128 128" aria-hidden="true">
-          <circle cx="64" cy="64" r={radius} className="loyaltyRingTrack" />
+    <div className="loyaltyRingCard">
+      <div className="loyaltyRingVisual" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="46" className="loyaltyRingTrack" />
           <circle
-            cx="64"
-            cy="64"
-            r={radius}
+            cx="50"
+            cy="50"
+            r="46"
             className="loyaltyRingFill"
-            strokeDasharray={circumference}
-            strokeDashoffset={dashOffset}
+            strokeDasharray={ring}
+            strokeDashoffset={offset}
           />
         </svg>
-
-        <LoyaltyCup3d />
-
-        <span className="loyaltyRingCount">{stamps}/{safeThreshold}</span>
+        <strong>{stamps}</strong>
       </div>
-
-      <div className="loyaltyRingSide loyaltyRingSideRight">
-        <span className="loyaltyRingLabel">Rozetim</span>
-        <div className="loyaltyRingBadge"><Crown /></div>
-        <em>{level}</em>
+      <div>
+        <span className="loyaltyRingLabel">LP bakiyesi</span>
+        <b>{stamps} / {threshold}</b>
+        <em>{rewards} kullanılabilir ödül</em>
+        <div className="loyaltyRingLevel"><Crown size={14} /> {level}</div>
       </div>
     </div>
   );

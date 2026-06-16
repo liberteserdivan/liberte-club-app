@@ -234,7 +234,7 @@ function OverviewAdmin({db,commit,onManageUsers}){
             <b>{historyLabel(h.type)}</b>
             <p>{h.name||'Müşteri'} · {h.createdAt}</p>
           </div>
-          <strong>{h.type==='reward_redeem'?'Hak':h.count>0?`+${h.count}`:h.count||'•'}</strong>
+          <strong>{h.type==='reward_redeem'||h.type==='lp_reward_redeem'?`${h.count||0} LP`:(h.count>0?`+${h.count} LP`:h.count||'•')}</strong>
         </div>
       )}
       {!history.length&&<div className="empty">Henüz işlem yok.</div>}
@@ -438,7 +438,7 @@ function DesignAdmin({db,commit}){
 
 function CouponsAdmin({db,commit}){
   const[code,setCode]=useState('');
-  const[title,setTitle]=useState('Bonus Damga');
+  const[title,setTitle]=useState('Bonus LP');
   const[value,setValue]=useState(1);
   const[type,setType]=useState('stamp');
 
@@ -460,15 +460,15 @@ function CouponsAdmin({db,commit}){
     <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
     <input placeholder="Kupon başlığı" value={title} onChange={e=>setTitle(e.target.value)}/>
     <select value={type} onChange={e=>setType(e.target.value)}>
-      <option value="stamp">Damga ver</option>
-      <option value="reward">İkram hakkı ver</option>
+      <option value="stamp">LP ver</option>
+      <option value="reward">İkram (7 LP) ver</option>
     </select>
     <input type="number" min="1" value={value} onChange={e=>setValue(e.target.value)}/>
     <button type="button" onClick={createCoupon}><Plus/> Kupon oluştur</button>
 
     <div className="couponList">
       {(db.coupons||[]).map(c=><div className="historyMini" key={c.id}>
-        <div><b>{c.code}</b><p>{c.title} · {c.rewardType==='reward'?'İkram':'Damga'} +{c.rewardValue}</p></div>
+        <div><b>{c.code}</b><p>{c.title} · {c.rewardType==='reward'?'İkram (7 LP)':'LP'} +{c.rewardValue}</p></div>
         <button type="button" className={c.active?'ghost':'danger'} onClick={()=>toggleCoupon(c.id)}>{c.active?'Aktif':'Pasif'}</button>
       </div>)}
     </div>
@@ -546,14 +546,15 @@ function GameAdmin({db,commit}){
       {prizes.map((p,i)=><div className="prizeEdit" key={p.id||i}>
         <input value={p.label} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,label:e.target.value}:x))}/>
         <select value={p.type} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,type:e.target.value}:x))}>
-          <option value="stamp">Damga</option>
-          <option value="reward">İkram</option>
+          <option value="stamp">LP</option>
+          <option value="reward">İkram (7 LP)</option>
+          <option value="lp">LP (doğrudan)</option>
           <option value="message">Mesaj</option>
         </select>
         <input type="number" value={p.value} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,value:e.target.value}:x))}/>
         <input type="number" value={p.weight} onChange={e=>setPrizes(prizes.map((x,n)=>n===i?{...x,weight:e.target.value}:x))}/>
       </div>)}
-      <button type="button" className="ghost" onClick={()=>setPrizes([...prizes,{id:Date.now(),label:'+1 Damga',type:'stamp',value:1,weight:10}])}><Plus/> Ödül ekle</button>
+      <button type="button" className="ghost" onClick={()=>setPrizes([...prizes,{id:Date.now(),label:'+1 LP',type:'stamp',value:1,weight:10}])}><Plus/> Ödül ekle</button>
       <label className="adminToggle"><input type="checkbox" checked={wheelUnlimited} onChange={e=>setWheelUnlimited(e.target.checked)}/><span>Tüm üyeler için sınırsız çark</span></label>
       <p className="pushHint">Admin hesapları her zaman sınırsız çevirebilir.</p>
       <button type="button" onClick={savePrizes}><ShieldCheck/> Çarkı kaydet</button>
@@ -573,7 +574,7 @@ function NotificationAdmin({db,commit}){
   const templates=[
     {label:'Smash',title:'Smash zamanı 🍔',body:'Bugüne özel Smash Menü seni bekliyor.'},
     {label:'Tatlı',title:'Tatlı molası 🍓',body:'Magnolia ve kahve ikilisiyle gününü güzelleştir.'},
-    {label:'Seni özledik',title:'Seni özledik ☕',body:'Liberte\'ye gel, ekstra damga kazan.'},
+    {label:'Seni özledik',title:'Seni özledik ☕',body:'Liberte\'ye gel, ekstra LP kazan.'},
     {label:'Doğum günü',title:'Doğum günün kutlu olsun 🎂',body:'Doğum gününe özel 1 içecek ikramın hesabında.'},
     {label:'Çark',title:'Şans çarkın hazır 🎡',body:'Bugün çarkı çevirmedin — sürpriz ödül seni bekliyor.'}
   ];
@@ -732,7 +733,7 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
       if(adminCount<=1){setMessage('Son admin kullanıcı silinemez.');return;}
     }
 
-    const ok=confirm(`${c.name} kullanıcısı silinsin mi? Bu işlem damga ve ödül kayıtlarını da kaldırır.`);
+    const ok=confirm(`${c.name} kullanıcısı silinsin mi? Bu işlem LP ve ödül kayıtlarını da kaldırır.`);
     if(!ok)return;
 
     const loyalty={...(db.loyalty||{})};

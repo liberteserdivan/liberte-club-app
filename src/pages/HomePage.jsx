@@ -66,7 +66,7 @@ export default function HomePage({
             <div>
               <span>LIBERTE CLUB</span>
               <h2>Liberte Puan</h2>
-              <p>{lp.lpBalance} LP · {lp.redeemable.length} kazanılabilir ödül</p>
+              <p>{lp.lpBalance} LP · {lp.redeemable.length} kazanılabilir ikram</p>
               <StampRulesInline className="homeWalletRules" />
             </div>
             <Crown />

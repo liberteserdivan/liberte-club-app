@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
 import { ScanLine } from 'lucide-react';
 import PageShell from './PageShell.jsx';
 import PageSection from './PageSection.jsx';
@@ -20,6 +19,9 @@ import {
   postLoyaltyAction,
   verifyCustomerQr
 } from '../lib/qrClient.js';
+import { bootInlineQrScanner } from '../lib/qrCameraBootstrap.js';
+import { canUseNativeBarcodeScan, scanQrWithNativeCamera } from '../lib/nativeBarcodeScan.js';
+
 // QR metninden müşteriyi bul — yalnızca yerel geliştirme
 function findCustomerFromLegacyQr(db, rawText) {
   const data = JSON.parse(rawText);
@@ -38,6 +40,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const startingRef = useRef(false);
   const signedQrRequired = isSignedQrRequired();
 
+  const [nativeScanReady, setNativeScanReady] = useState(false);
   const [active, setActive] = useState(false);
   const [scanRequested, setScanRequested] = useState(false);
   const [found, setFound] = useState(null);
@@ -45,6 +48,10 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const [msg, setMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    canUseNativeBarcodeScan().then(setNativeScanReady).catch(() => setNativeScanReady(false));
+  }, []);
 
   const stopScanner = useCallback(async () => {
     startingRef.current = false;
@@ -94,14 +101,45 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       setMsg('Müşteri bulundu!');
       await stopScanner();
     } catch (error) {
-      setMsg(error?.message || 'Geçerli Liberte QR kodu okut.');
+      const message = error?.message || 'Geçerli Liberte QR kodu okut.';
+      if (message.includes('PIN doğrulaması')) {
+        setMsg('Yönetici PIN doğrulaması gerekli. Uygulamayı yeniden açıp PIN gir.');
+      } else {
+        setMsg(message);
+      }
     } finally {
       setBusy(false);
     }
   }, [resolveCustomerFromScan, stopScanner]);
 
-  // Kamera alanı DOM'da hazır olduktan sonra tarayıcıyı başlat
-  const requestScan = useCallback(() => {
+  // Native ML Kit — tam ekran kamera (Play Store güvenilir yol)
+  const requestNativeScan = useCallback(async () => {
+    if (startingRef.current || busy) return;
+    startingRef.current = true;
+    setFound(null);
+    setScannedToken('');
+    setSuccess(false);
+    setMsg('Kamera açılıyor...');
+    setActive(true);
+
+    try {
+      const rawValue = await scanQrWithNativeCamera();
+      await onScanSuccess(rawValue);
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (/cancel/i.test(message) || /iptal/i.test(message)) {
+        setMsg('Tarama iptal edildi.');
+      } else {
+        setMsg(message || 'QR okunamadı. Tekrar dene.');
+      }
+    } finally {
+      startingRef.current = false;
+      setActive(false);
+    }
+  }, [busy, onScanSuccess]);
+
+  // Web — Html5Qrcode satır içi kamera
+  const requestInlineScan = useCallback(() => {
     if (startingRef.current) return;
     setFound(null);
     setScannedToken('');
@@ -111,8 +149,16 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     setScanRequested(true);
   }, []);
 
+  const requestScan = useCallback(() => {
+    if (nativeScanReady) {
+      void requestNativeScan();
+      return;
+    }
+    requestInlineScan();
+  }, [nativeScanReady, requestInlineScan, requestNativeScan]);
+
   useEffect(() => {
-    if (!scanRequested) return undefined;
+    if (!scanRequested || nativeScanReady) return undefined;
 
     let cancelled = false;
 
@@ -131,29 +177,19 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           throw new Error('Kamera alanı hazır değil');
         }
 
-        const scanner = new Html5Qrcode(readerId);
-        scannerRef.current = scanner;
+        const scanner = await bootInlineQrScanner({
+          elementId: readerId,
+          onDecoded: (decoded) => { onScanSuccess(decoded); }
+        });
 
-        const cameras = await Html5Qrcode.getCameras();
-        if (cancelled) return;
-
-        const backCam = cameras.find((c) => /back|rear|environment|arka/i.test(c.label));
-        const cameraId = backCam?.id || cameras[0]?.id;
-
-        const qrbox = (viewWidth, viewHeight) => {
-          const size = Math.floor(Math.min(viewWidth, viewHeight) * 0.72);
-          return { width: size, height: size };
-        };
-
-        await scanner.start(
-          cameraId || { facingMode: 'environment' },
-          { fps: 10, qrbox, aspectRatio: 1 },
-          (decoded) => { onScanSuccess(decoded); }
-        );
-
-        if (!cancelled) {
-          setMsg('Müşteri kartını çerçeveye hizala.');
+        if (cancelled) {
+          await scanner.stop().catch(() => {});
+          await scanner.clear().catch(() => {});
+          return;
         }
+
+        scannerRef.current = scanner;
+        setMsg('Müşteri kartını çerçeveye hizala.');
       } catch (error) {
         if (!cancelled) {
           setMsg(`Kamera açılamadı: ${error?.message || 'izin verilmedi'}`);
@@ -170,7 +206,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     return () => {
       cancelled = true;
     };
-  }, [scanRequested, readerId, onScanSuccess, stopScanner]);
+  }, [scanRequested, nativeScanReady, readerId, onScanSuccess, stopScanner]);
 
   useEffect(() => () => {
     stopScanner();
@@ -234,7 +270,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     const ok = confirm(`${found.name} için ${cat?.rewardLabel || catLabel} ödülü (${cost} LP) kullanılsın mı?`);
     if (!ok) return;
     await runLoyaltyAction('redeem', category);
-    setMsg(`${catLabel} ödülü kullanıldı.`);
+    setMsg(`${catLabel} ikram kullanıldı, -${cost} LP.`);
   }
 
   const loyaltySource = found?.loyalty || (found ? db.loyalty[found.id] : null);
@@ -242,6 +278,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const lpBalance = loyalty ? getLpBalance(loyalty) : 0;
   const redeemableCount = loyalty ? getRedeemableRewards(loyalty).length : 0;
   const memberRef = found ? `LC-${String(found.id).slice(-6)}` : '';
+  const showInlineCamera = !nativeScanReady && active;
 
   return (
     <PageShell
@@ -251,7 +288,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       subtitle={
         found
           ? `${memberRef} · ${found.phone}`
-          : 'Müşterinin kartındaki QR kodu okut, LP veya ödül işle.'
+          : nativeScanReady
+            ? 'Kamerayı aç, müşteri QR kodunu okut.'
+            : 'Müşterinin kartındaki QR kodu okut, LP veya ödül işle.'
       }
       heroSlot={
         found ? (
@@ -266,9 +305,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       }
       bodyClassName={found ? 'qrScanResultBody' : ''}
     >
-      <div className={`scannerFrame${active ? '' : ' scannerFrame--hidden'}`}>
+      <div className={`scannerFrame${showInlineCamera ? '' : ' scannerFrame--hidden'}`}>
         <div ref={hostRef} id={readerId} className="qrReaderHost" />
-        {active && (
+        {showInlineCamera && (
           <div className="scannerOverlay" aria-hidden="true">
             <span className="scannerCorner tl" />
             <span className="scannerCorner tr" />
@@ -284,9 +323,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           <div className="scanPanelHead">
             <div>
               <span>OKUYUCU</span>
-              <h3>Kamera</h3>
+              <h3>{nativeScanReady ? 'Native Kamera' : 'Kamera'}</h3>
             </div>
-            {active && (
+            {showInlineCamera && (
               <button type="button" className="ghost scanRescanBtn" onClick={rescan} disabled={busy}>
                 <ScanLine size={16} /> İptal
               </button>
@@ -294,7 +333,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           </div>
 
           <p className={`scanMsg${success ? ' isSuccess' : ''}`}>
-            {msg || 'Müşteri QR gösterir → okut → LP ekle veya ödül kullandır.'}
+            {msg || (nativeScanReady
+              ? 'Play Store sürümünde native QR okuyucu kullanılır. Kamerayı aç ve müşteri kodunu okut.'
+              : 'Müşteri QR gösterir → okut → LP ekle veya ödül kullandır.')}
           </p>
         </div>
       ) : (

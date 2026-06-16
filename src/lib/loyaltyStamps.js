@@ -14,7 +14,9 @@ import {
   levelByLp,
   canRedeemLpReward,
   getCategoryLpGain,
-  getCategoryRewardCost
+  getCategoryRewardCost,
+  lpRewardStatusText,
+  lpRemainingForReward
 } from './loyaltyPoints.js';
 
 export {
@@ -31,7 +33,9 @@ export {
   levelByLp,
   canRedeemLpReward,
   getCategoryLpGain,
-  getCategoryRewardCost
+  getCategoryRewardCost,
+  lpRewardStatusText,
+  lpRemainingForReward
 };
 
 // Geri uyumluluk — eski import adları
@@ -82,9 +86,9 @@ export function applyCategoryThresholds(stamps, rewards) {
 
 export const LOYALTY_RULES_TITLE = 'LP biriktir, dilediğin ikramı seç.';
 export const LOYALTY_RULES_HIGHLIGHTS = [
-  { label: '7 LP Kahve', tone: 'coffee' },
-  { label: '15 LP Tatlı', tone: 'dessert' },
-  { label: '20 LP Burger', tone: 'burger' }
+  { label: '7 LP Kahve İkram', tone: 'coffee' },
+  { label: '15 LP Tatlı İkram', tone: 'dessert' },
+  { label: '25 LP Burger İkram', tone: 'burger' }
 ];
 export const LOYALTY_RULES_DETAIL_SUFFIX = '';
 
@@ -108,7 +112,13 @@ export function historyTypeLabel(type) {
   return {
     lp_add: 'LP kazanıldı',
     lp_remove: 'LP düzeltildi',
-    lp_reward_redeem: 'Ödül kullanıldı',
+    lp_reward_redeem: 'İkram kullanıldı',
+    earn_coffee: 'Kahve satışı',
+    earn_dessert: 'Tatlı satışı',
+    earn_burger: 'Burger satışı',
+    redeem_coffee: 'Kahve ikram',
+    redeem_dessert: 'Tatlı ikram',
+    redeem_burger: 'Burger ikram',
     stamp_add: 'LP kazanıldı',
     stamp_remove: 'LP düzeltildi',
     reward_redeem: 'Ödül kullanıldı',
@@ -129,10 +139,13 @@ export function historyTypeLabel(type) {
 
 // Geçmiş satırındaki LP miktarı
 export function historyAmountLabel(entry) {
-  if (entry.type === 'lp_reward_redeem' || entry.type === 'reward_redeem') {
+  const redeemTypes = ['lp_reward_redeem', 'reward_redeem', 'redeem_coffee', 'redeem_dessert', 'redeem_burger'];
+  const earnTypes = ['lp_add', 'stamp_add', 'earn_coffee', 'earn_dessert', 'earn_burger'];
+
+  if (redeemTypes.includes(entry.type)) {
     return `-${entry.count || 0} LP`;
   }
-  if (entry.type === 'lp_add' || entry.type === 'stamp_add') {
+  if (earnTypes.includes(entry.type)) {
     return `+${entry.count || 0} LP`;
   }
   if (entry.type === 'lp_remove' || entry.type === 'stamp_remove') {

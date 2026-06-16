@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { patchMemorySession } from '../lib/session.js';
 import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth, verifyDevAdminPin } from '../lib/devAuth.js';
 
@@ -35,6 +36,7 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
         throw new Error(data.error || 'PIN doğrulanamadı');
       }
 
+      patchMemorySession({ adminVerified: Boolean(data.adminVerified) });
       onVerified?.();
     } catch (e) {
       setError(e.message || 'PIN doğrulanamadı');

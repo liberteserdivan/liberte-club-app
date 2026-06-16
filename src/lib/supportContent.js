@@ -16,7 +16,7 @@ export const SUPPORT_TOPICS = [
   'Giriş ve kayıt sorunları',
   'PIN yenileme',
   'Sadakat kartı / QR kod sorunları',
-  'Damga ve ikram işlemleri',
+  'Liberte Puan (LP) ve ödül işlemleri',
   'Kampanya bildirimleri',
   'Hesap silme ve gizlilik talepleri'
 ];

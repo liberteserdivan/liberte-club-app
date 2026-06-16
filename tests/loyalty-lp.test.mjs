@@ -5,9 +5,11 @@ import {
   migrateLoyaltyCard,
   migrateAllLoyalty,
   canRedeemLpReward,
-  getCategoryLpGain
+  getCategoryLpGain,
+  getCategoryRewardCost,
+  lpRewardStatusText
 } from '../src/lib/loyaltyPoints.js';
-import { mergeDb, addCategoryStampToCustomer } from '../src/lib/db.js';
+import { mergeDb, addCategoryStampToCustomer, redeemCategoryRewardForCustomer } from '../src/lib/db.js';
 
 test('eski damgalar LP\'ye dönüştürülür', () => {
   const lp = convertLegacyToLp(
@@ -39,6 +41,7 @@ test('kahve işlemi +1 LP ekler', () => {
 
   const next = addCategoryStampToCustomer(db, 42, 'coffee', 1, 'test');
   assert.equal(next.loyalty[42].lpBalance, getCategoryLpGain('coffee'));
+  assert.equal(next.history[0].type, 'earn_coffee');
 });
 
 test('yetersiz LP ile ödül engellenir', () => {
@@ -48,6 +51,26 @@ test('yetersiz LP ile ödül engellenir', () => {
   const lowBalance = migrateLoyaltyCard({ customerId: 7, schemaVersion: 2, lpBalance: 6, lpLifetime: 6 });
   assert.equal(canRedeemLpReward(lowBalance, 'coffee'), false);
   assert.equal(canRedeemLpReward({ ...lowBalance, lpBalance: 7 }, 'coffee'), true);
+});
+
+test('burger ikram 25 LP gerektirir', () => {
+  assert.equal(getCategoryRewardCost('burger'), 25);
+  const card = migrateLoyaltyCard({ customerId: 1, schemaVersion: 2, lpBalance: 24, lpLifetime: 24 });
+  assert.equal(canRedeemLpReward(card, 'burger'), false);
+  assert.equal(canRedeemLpReward({ ...card, lpBalance: 25 }, 'burger'), true);
+  assert.match(lpRewardStatusText({ ...card, lpBalance: 22 }, { id: 'burger', redeemTitle: 'Burger İkram' }), /3 LP kaldı/);
+});
+
+test('kahve ikram -7 LP düşer', () => {
+  const db = mergeDb({
+    customers: [{ id: 9, phone: '555', name: 'Test', email: 't@t.com' }],
+    loyalty: { 9: { customerId: 9, schemaVersion: 2, lpBalance: 7, lpLifetime: 7, level: 'Bronze', usedRewards: 0 } },
+    history: []
+  });
+  const next = redeemCategoryRewardForCustomer(db, 9, 'coffee', 'test');
+  assert.equal(next.loyalty[9].lpBalance, 0);
+  assert.equal(next.history[0].type, 'redeem_coffee');
+  assert.equal(next.history[0].count, 7);
 });
 
 test('mergeDb tüm loyalty kayıtlarını migrate eder', () => {

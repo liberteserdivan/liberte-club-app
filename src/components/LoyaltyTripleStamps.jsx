@@ -23,7 +23,7 @@ export default function LoyaltyTripleStamps({ card, level = 'Bronze' }) {
           <strong>{lpBalance}</strong>
         </div>
         <div className="loyaltyTripleStatPill">
-          <span>Kazanılabilir ödüller</span>
+          <span>Kazanılabilir ikramlar</span>
           <strong>{redeemable.length}</strong>
         </div>
         <div className="loyaltyTripleStatPill">

@@ -9,7 +9,8 @@ import {
   getLpCardView,
   stampCardProgress,
   stampsRemaining,
-  canRedeemLpReward
+  canRedeemLpReward,
+  lpRewardStatusText
 } from '../lib/db.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
@@ -106,17 +107,24 @@ function CustomerQrCard({ customer, card }) {
         <div className="qrPassMeta">
           <div><span>Üye No</span><b>LC-{customer.id}</b></div>
           <div><span>Toplam LP</span><b>{lp.lpBalance}</b></div>
-          <div><span>Ödül</span><b>{lp.redeemable.length}</b></div>
+          <div><span>Kazanılabilir ikramlar</span><b>{lp.redeemable.length}</b></div>
+        </div>
+
+        <div className="qrPassRewardHead">
+          <span>KAZANILABİLİR İKRAMLAR</span>
         </div>
 
         <div className="qrPassCategoryGrid">
-          {STAMP_CATEGORIES.map((cat) => (
-            <div key={cat.id}>
-              <span>{cat.rewardLabel}</span>
-              <b>{lp.lpBalance}/{cat.rewardCost}</b>
-              <em>{canRedeemLpReward(card, cat.id) ? 'Hazır' : `+${cat.lpGain} LP`}</em>
-            </div>
-          ))}
+          {STAMP_CATEGORIES.map((cat) => {
+            const ready = canRedeemLpReward(card, cat.id);
+            return (
+              <div key={cat.id} className={ready ? 'isReady' : ''}>
+                <span>{cat.redeemTitle}</span>
+                <b>{cat.rewardCost} LP</b>
+                <em>{lpRewardStatusText(card, cat)}</em>
+              </div>
+            );
+          })}
         </div>
 
         <div className="qrPassProgress">

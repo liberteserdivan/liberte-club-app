@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyBirthdayReward, cssVars, load } from './lib/db.js';
-import { logoutSession, setMemorySession } from './lib/session.js';
+import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
@@ -158,9 +158,8 @@ export default function App() {
   }, [awaitingCustomer, customer]);
 
   function handleAdminVerified() {
-    const next = { ...session, adminVerified: true };
-    setMemorySession(next);
-    setSession(next);
+    patchMemorySession({ adminVerified: true });
+    setSession(getMemorySession());
     setAdminGateSkipped(false);
     refreshRemote(true);
   }

@@ -4,25 +4,13 @@ import { applyCors, readBody } from '../http.js';
 import { cleanPhone } from '../phone.js';
 import { buildCustomerRecord, createSession, indexCustomerEmail } from '../auth.js';
 import { loadAppState, saveAppState } from '../appState.js';
+import { loyaltyTemplate, applyCategoryStamp } from '../loyaltyOps.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
 import { isValidPinFormat, normalizePin, saveCustomerPin } from '../pinAuth.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
-}
-
-function loyaltyTemplate(id) {
-  return {
-    customerId: id,
-    totalStamps: 0,
-    categoryStamps: { coffee: 0, dessert: 0, burger: 0 },
-    categoryRewards: { coffee: 0, dessert: 0, burger: 0 },
-    availableRewards: 0,
-    usedRewards: 0,
-    lifetimeStamps: 0,
-    level: 'Bronze'
-  };
 }
 
 // Kayıt öncesi — e-postaya doğrulama kodu gönder
@@ -130,6 +118,22 @@ async function handleComplete(req, res) {
 
   state.customers = [...(state.customers || []), customer];
   state.loyalty = { ...(state.loyalty || {}), [customer.id]: loyaltyTemplate(customer.id) };
+  applyCategoryStamp(state, customer.id, 'coffee', 2, 'Yeni üye hoş geldin bonusu');
+
+  if (referrer) {
+    applyCategoryStamp(state, customer.id, 'coffee', 2, 'Referans kayıt bonusu');
+    applyCategoryStamp(state, referrer.id, 'coffee', 2, `${customer.name} referans kaydı`);
+    state.referrals = [
+      {
+        id: Date.now(),
+        referrerId: referrer.id,
+        customerId: customer.id,
+        createdAt: new Date().toLocaleString('tr-TR')
+      },
+      ...(state.referrals || [])
+    ];
+  }
+
   state.history = [
     {
       id: Date.now(),

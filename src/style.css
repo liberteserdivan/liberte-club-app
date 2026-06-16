@@ -6397,3 +6397,70 @@ body.menuDetailOpen{
   background:rgba(120,223,187,.18);
   color:var(--accent,#78dfbb);
 }
+
+/* =========================
+   GİRİŞ / KAYIT — OKUNAKLILIK
+   ========================= */
+.loginPage{
+  padding-left:max(26px, env(safe-area-inset-left))!important;
+  padding-right:max(26px, env(safe-area-inset-right))!important;
+}
+
+.loginPageStack,
+.loginCard{
+  width:min(420px,100%)!important;
+}
+
+.loginCard label{
+  display:block;
+  margin:14px 0 8px;
+  color:#0b2f26!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  letter-spacing:.01em;
+}
+
+.loginCard label em{
+  color:#b9955c;
+  font-style:normal;
+}
+
+.loginCard>p{
+  color:#3f524b!important;
+  font-size:15px!important;
+  font-weight:600!important;
+  line-height:1.5!important;
+}
+
+.loginCard input{
+  color:#0b2f26!important;
+  font-weight:700!important;
+  background:rgba(255,255,255,.92)!important;
+  border:1px solid rgba(11,47,38,.12)!important;
+}
+
+.loginCard input::placeholder{
+  color:#7a8a83!important;
+  font-weight:600!important;
+  opacity:1;
+}
+
+.loginHint--verify{
+  margin:4px 0 10px!important;
+  text-align:left!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  color:#4a5c55!important;
+  line-height:1.35!important;
+}
+
+.loginCard .info{
+  color:#174b3a!important;
+  font-weight:700!important;
+}
+
+.loginFooterNote,
+.loginFooterLabel{
+  color:#3f524b!important;
+  font-weight:700!important;
+}

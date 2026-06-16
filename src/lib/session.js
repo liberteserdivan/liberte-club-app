@@ -12,6 +12,13 @@ export function setMemorySession(session) {
   memorySession = session;
 }
 
+// Oturum alanlarını kısmi güncelle
+export function patchMemorySession(patch) {
+  if (!memorySession) return null;
+  memorySession = { ...memorySession, ...patch };
+  return memorySession;
+}
+
 // Sunucudan oturumu doğrula
 export async function bootstrapSession() {
   if (useLocalAuth()) {

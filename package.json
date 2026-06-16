@@ -27,6 +27,7 @@
     "import:menu": "node scripts/import-menu-from-xlsx.mjs"
   },
   "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "^8.1.0",
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",

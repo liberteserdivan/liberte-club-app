@@ -9,15 +9,18 @@ import{
   stampsRemaining,
   getLpBalance,
   getRedeemableRewards,
-  getLpCardView,
-  levelByLp
-}from './loyaltyStamps.js';
+  canRedeemLpReward,
+  getLpLifetime,
+  lpRewardStatusText
+} from './loyaltyStamps.js';
 import {
   migrateLoyaltyCard,
   migrateAllLoyalty,
   getCategoryLpGain,
   getCategoryRewardCost,
-  canRedeemLpReward
+  LP_HISTORY_EARN,
+  LP_HISTORY_REDEEM,
+  levelByLp
 } from './loyaltyPoints.js';
 import { apiJson } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
@@ -136,7 +139,7 @@ export const seed={
   categories:menuCategories,
   items:menuItems,
   notifications:[
-    {id:1,title:'Liberte Club Açıldı',body:'QR kartını göster, damgalarını toplamaya başla.',createdAt:new Date().toLocaleString('tr-TR')}
+    {id:1,title:'Liberte Club Açıldı',body:'QR kartını göster, Liberte Puan biriktirmeye başla.',createdAt:new Date().toLocaleString('tr-TR')}
   ],
   history:[],
   feedback:[],
@@ -145,17 +148,17 @@ export const seed={
   referrals:[],
   automationLog:[],
   checkIns:[],
-  coupons:[{id:1,code:'LIBERTE10',title:'Hoş Geldin Kuponu',rewardType:'stamp',rewardValue:1,active:true,createdAt:new Date().toLocaleString('tr-TR')}],
+  coupons:[{id:1,code:'LIBERTE10',title:'Hoş Geldin Kuponu',rewardType:'stamp',rewardValue:2,active:true,createdAt:new Date().toLocaleString('tr-TR')}],
   couponUses:[],
   dailyClaims:[],
   wheelSpins:[],
   firstOrderBonuses:[],
   customerNotes:{},
-  dailyCampaign:{id:1,title:'Bugünün Kampanyası',body:'2 Latte alana +1 bonus damga',active:true,rewardType:'stamp',rewardValue:1,emoji:'☕'},
+  dailyCampaign:{id:1,title:'Bugünün Kampanyası',body:'2 Latte alana +1 bonus LP',active:true,rewardType:'stamp',rewardValue:1,emoji:'☕'},
   wheelPrizes:[
-    {id:1,label:'+1 Damga',type:'stamp',value:1,weight:35},
-    {id:2,label:'+2 Damga',type:'stamp',value:2,weight:18},
-    {id:3,label:'1 İçecek Hakkı',type:'reward',value:1,weight:6},
+    {id:1,label:'+1 LP',type:'stamp',value:1,weight:35},
+    {id:2,label:'+2 LP',type:'stamp',value:2,weight:18},
+    {id:3,label:'+7 LP İkram',type:'reward',value:1,weight:6},
     {id:4,label:'Tatlı Molası',type:'message',value:0,weight:8},
     {id:5,label:'Bugün Şanslı Gün',type:'stamp',value:3,weight:3},
     {id:6,label:'Tekrar Dene',type:'message',value:0,weight:30}
@@ -407,7 +410,7 @@ export function applyWheelPrize(db,customerId,prize){
   if((db.wheelSpins||[]).some(x=>x.customerId===customerId&&x.day===day))return db;
   const createdAt=new Date().toLocaleString('tr-TR');
   let next={...db};
-  if(prize.type==='stamp')next=addCategoryStampToCustomer(next,customerId,'coffee',Number(prize.value||1),'Şans çarkı');
+  if(prize.type==='stamp'||prize.type==='lp')next=addCategoryStampToCustomer(next,customerId,'coffee',Number(prize.value||1),'Şans çarkı');
   if(prize.type==='reward'){
     const current=migrateLoyaltyCard(next.loyalty[customerId]||loyaltyTemplate(customerId));
     const bonus=Number(prize.value||1)*7;
@@ -430,10 +433,10 @@ export function spinLuckyWheel(db,customerId){
 
 export function vipBenefits(level='Bronze'){
   const map={
-    Bronze:['Damga toplama','Google yorum bonusu','Günlük giriş ödülü'],
+    Bronze:['LP biriktirme','Google yorum bonusu','Günlük giriş ödülü'],
     Silver:['Bronze avantajları','Ayda özel kampanya','Doğum günü önceliği'],
     Gold:['Silver avantajları','VIP kampanya erişimi','Haftalık şans çarkı bonusları'],
-    Black:['Gold avantajları','Özel ikram günleri','Premium Club ayrıcalıkları']
+    Black:['Gold avantajları','Özel ödül günleri','Premium Club ayrıcalıkları']
   };
   return map[level]||map.Bronze;
 }
@@ -490,10 +493,11 @@ export function addCategoryStampToCustomer(db,id,category,count=1,source='Admin'
   const oldLifetime=current.lpLifetime||0;
 
   if(sign<0&&oldBalance<lpGain){
-    alert('Yeterli LP yok.');
+    alert('Yetersiz LP');
     return db;
   }
 
+  const earnType = LP_HISTORY_EARN[category] || 'lp_add';
   const nextBalance=sign>0?oldBalance+lpGain:oldBalance-lpGain;
   const nextLifetime=sign>0?oldLifetime+lpGain:oldLifetime;
   const createdAt=new Date().toLocaleString('tr-TR');
@@ -517,7 +521,7 @@ export function addCategoryStampToCustomer(db,id,category,count=1,source='Admin'
         customerId:id,
         name:customer.name,
         phone:customer.phone,
-        type:sign>0?'lp_add':'lp_remove',
+        type:sign>0?earnType:'lp_remove',
         count:lpGain,
         category,
         categoryLabel:catLabel,
@@ -539,7 +543,8 @@ export function addStampToCustomer(db,id,count=1,source='Admin'){
 
 
 export function calculateCoins(l){
-  return Math.max(0,Math.floor((l?.lifetimeStamps||0)*10 + (l?.usedRewards||0)*50));
+  // Geri uyumluluk — coin terimi kullanılmaz, LP ömür puanı
+  return getLpLifetime(l);
 }
 
 export function customerBadges(customer,loyalty,db){
@@ -600,13 +605,15 @@ export function redeemCategoryRewardForCustomer(db,id,category,source='Admin'){
   const catLabel=STAMP_CATEGORIES.find(cat=>cat.id===category)?.label||category;
 
   if(!canRedeemLpReward(current,category)){
-    alert(`${catLabel} ödülü için ${cost} LP gerekli.`);
+    alert('Yetersiz LP');
     return db;
   }
 
   const oldBalance=current.lpBalance||0;
   const nextBalance=oldBalance-cost;
   const createdAt=new Date().toLocaleString('tr-TR');
+  const redeemType=LP_HISTORY_REDEEM[category]||'lp_reward_redeem';
+  const redeemTitle=STAMP_CATEGORIES.find(cat=>cat.id===category)?.redeemTitle||`${catLabel} ikram`;
   const next={
     ...current,
     lpBalance:nextBalance,
@@ -626,11 +633,11 @@ export function redeemCategoryRewardForCustomer(db,id,category,source='Admin'){
         customerId:id,
         name:customer.name,
         phone:customer.phone,
-        type:'lp_reward_redeem',
+        type:redeemType,
         count:cost,
         category,
         categoryLabel:catLabel,
-        reward:STAMP_CATEGORIES.find(cat=>cat.id===category)?.rewardLabel||'İkram',
+        reward:STAMP_CATEGORIES.find(cat=>cat.id===category)?.rewardLabel||redeemTitle,
         lpBefore:oldBalance,
         lpAfter:nextBalance,
         before:{lpBalance:oldBalance,usedRewards:current.usedRewards||0},
@@ -703,5 +710,7 @@ export {
   getLpCardView,
   getLpBalance,
   getRedeemableRewards,
-  canRedeemLpReward
+  canRedeemLpReward,
+  getLpLifetime,
+  lpRewardStatusText
 } from './loyaltyStamps.js';

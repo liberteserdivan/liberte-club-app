@@ -21,6 +21,7 @@ import {
   BRAND_SLOGAN,
   LOYALTY_PROMO
 } from '../lib/constants.js';
+import { formatPhoneInput, formatPinInput } from '../lib/phoneMask.js';
 import {
   findReferrerByCode,
   getReferralCode,
@@ -36,7 +37,7 @@ export default function Login({ db, commit, setSession }) {
   const [registerStep, setRegisterStep] = useState('form');
   const [forgotStep, setForgotStep] = useState('identify');
   const [forgotIdentifier, setForgotIdentifier] = useState('');
-  const [phone, setPhone] = useState(() => localStorage.getItem('liberteLastPhone') || '');
+  const [phone, setPhone] = useState(() => formatPhoneInput(localStorage.getItem('liberteLastPhone') || ''));
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('liberteLastEmail') || '');
   const [birthDate, setBirthDate] = useState('');
@@ -67,7 +68,7 @@ export default function Login({ db, commit, setSession }) {
   function readPhone() {
     const ph = norm(phone);
     if (ph.length < 10) {
-      notify('Telefon numaranı 10 hane olarak gir.');
+      notify('Telefon numaranızı 10 hane olarak giriniz.');
       return null;
     }
     return ph;
@@ -181,7 +182,7 @@ export default function Login({ db, commit, setSession }) {
       return null;
     }
     if (nm.split(' ').filter(Boolean).length < 2) {
-      notify('Kayıt için isim soyisim zorunlu.');
+      notify('Ad soyad giriniz.');
       return null;
     }
 
@@ -429,6 +430,10 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
   }
 
+  function onPhoneChange(value) {
+    setPhone(formatPhoneInput(value));
+  }
+
   return (
     <section className="loginPage">
       <div className="orb one" />
@@ -444,10 +449,10 @@ export default function Login({ db, commit, setSession }) {
             {authMode === 'forgot' && 'PIN Sıfırla'}
           </h1>
           <p>
-            {authMode === 'login' && 'Telefon numaran ve kişisel PIN ile giriş yap.'}
-            {authMode === 'register' && registerStep === 'form' && 'Bilgilerini gir; e-postana doğrulama kodu gönderilir.'}
-            {authMode === 'register' && registerStep === 'verify' && 'E-postadaki kodu gir ve kaydı tamamla.'}
-            {authMode === 'forgot' && 'E-posta veya telefonunu gir; kodlar kayıtlı e-postana gider.'}
+            {authMode === 'login' && 'Telefon numaranız ve kişisel PIN ile giriş yapın.'}
+            {authMode === 'register' && registerStep === 'form' && 'Bilgilerinizi girin; e-postanıza doğrulama kodu gönderilir.'}
+            {authMode === 'register' && registerStep === 'verify' && 'E-postanızdaki kodu girin ve kaydı tamamlayın.'}
+            {authMode === 'forgot' && 'E-posta veya telefonunuzu girin; kod kayıtlı e-postanıza gider.'}
           </p>
 
           {authMode !== 'forgot' && (
@@ -459,13 +464,13 @@ export default function Login({ db, commit, setSession }) {
 
           {authMode === 'login' && (
             <>
-              <label>Telefon</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel" />
+              <label>Telefon numaranız</label>
+              <input value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
 
               <label>PIN</label>
               <input
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setPin(formatPinInput(e.target.value))}
                 placeholder="4 veya 6 haneli PIN"
                 type="password"
                 inputMode="numeric"
@@ -484,26 +489,26 @@ export default function Login({ db, commit, setSession }) {
 
           {authMode === 'register' && registerStep === 'form' && (
             <>
-              <label>Telefon</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon numaran" inputMode="tel" />
+              <label>Telefon numaranız</label>
+              <input value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
 
-              <label>İsim Soyisim <em>*</em></label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" />
+              <label>Ad Soyad <em>*</em></label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad soyad giriniz" autoComplete="name" />
 
               <label>E-posta <em>*</em></label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresin" inputMode="email" />
-              <p className="loginHint mini">Doğrulama kodu bu adrese gönderilir.</p>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresiniz" inputMode="email" autoComplete="email" />
+              <p className="loginHint loginHint--verify">Doğrulama kodu bu adrese gönderilir.</p>
 
               <label>Doğum Tarihi</label>
               <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date" />
 
               <label>Referans Kodu</label>
-              <input value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} placeholder="Varsa davet kodun" />
+              <input value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} placeholder="Varsa davet kodunuzu giriniz" />
 
-              <label>PIN belirle <em>*</em></label>
+              <label>PIN belirleyin <em>*</em></label>
               <input
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setPin(formatPinInput(e.target.value))}
                 placeholder="4 veya 6 hane"
                 type="password"
                 inputMode="numeric"
@@ -513,7 +518,7 @@ export default function Login({ db, commit, setSession }) {
               <label>PIN tekrar <em>*</em></label>
               <input
                 value={pinConfirm}
-                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setPinConfirm(formatPinInput(e.target.value))}
                 placeholder="PIN tekrar"
                 type="password"
                 inputMode="numeric"
@@ -537,7 +542,7 @@ export default function Login({ db, commit, setSession }) {
           {authMode === 'register' && registerStep === 'verify' && (
             <>
               <label>Doğrulama kodu</label>
-              <input value={registerCode} maxLength={6} onChange={(e) => setRegisterCode(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
+              <input value={registerCode} maxLength={6} onChange={(e) => setRegisterCode(formatPinInput(e.target.value, 6))} placeholder="6 haneli kod" inputMode="numeric" />
 
               <button disabled={loading} onClick={registerAccount}>
                 <UserPlus /> {loading ? 'Kaydediliyor...' : 'Kaydı Tamamla'}
@@ -552,8 +557,8 @@ export default function Login({ db, commit, setSession }) {
               <label>E-posta veya telefon</label>
               <input
                 value={forgotIdentifier}
-                onChange={(e) => setForgotIdentifier(e.target.value)}
-                placeholder="Kayıtlı e-posta veya telefon"
+                onChange={(e) => setForgotIdentifier(e.target.value.includes('@') ? e.target.value : formatPhoneInput(e.target.value))}
+                placeholder="E-posta veya telefon numaranız"
                 inputMode="text"
                 autoComplete="username"
               />
@@ -569,12 +574,12 @@ export default function Login({ db, commit, setSession }) {
           {authMode === 'forgot' && forgotStep === 'reset' && (
             <>
               <label>Doğrulama kodu</label>
-              <input value={resetCode} maxLength={6} onChange={(e) => setResetCode(e.target.value)} placeholder="6 haneli kod" inputMode="numeric" />
+              <input value={resetCode} maxLength={6} onChange={(e) => setResetCode(formatPinInput(e.target.value, 6))} placeholder="6 haneli kod" inputMode="numeric" />
 
               <label>Yeni PIN</label>
               <input
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setPin(formatPinInput(e.target.value))}
                 placeholder="4 veya 6 hane"
                 type="password"
                 inputMode="numeric"
@@ -584,7 +589,7 @@ export default function Login({ db, commit, setSession }) {
               <label>Yeni PIN tekrar</label>
               <input
                 value={pinConfirm}
-                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setPinConfirm(formatPinInput(e.target.value))}
                 placeholder="PIN tekrar"
                 type="password"
                 inputMode="numeric"

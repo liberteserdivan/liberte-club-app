@@ -15,7 +15,7 @@ export const TERMS_PAGE_TITLE = 'Kullanım Şartları';
 export const privacyPolicySections = [
   {
     title: 'Toplanan bilgiler',
-    body: 'Kayıt ve sadakat hizmeti kapsamında ad soyad, telefon numarası, e-posta adresi, doğum tarihi (isteğe bağlı), sadakat kartı / damga / ikram bilgileri ile kampanya geçmişi işlenebilir. Push bildirimleri için cihaz bildirim izni ve bildirim tokenı alınabilir.'
+    body: 'Kayıt ve sadakat hizmeti kapsamında ad soyad, telefon numarası, e-posta adresi, doğum tarihi (isteğe bağlı), Liberte Puan (LP) bakiyesi ve kampanya geçmişi işlenebilir. Push bildirimleri için cihaz bildirim izni ve bildirim tokenı alınabilir.'
   },
   {
     title: 'Kullanım amacı',
@@ -46,7 +46,7 @@ export const termsOfUseSections = [
   },
   {
     title: 'Sadakat ve ödüller',
-    body: `Damga ve ikram hakları Liberte tarafından belirlenir: ${LOYALTY_PROMO} Kötüye kullanım tespitinde hesap kısıtlanabilir veya kapatılabilir.`
+    body: `Liberte Puan (LP) ve ödül hakları Liberte tarafından belirlenir: ${LOYALTY_PROMO} Kötüye kullanım tespitinde hesap kısıtlanabilir veya kapatılabilir.`
   },
   {
     title: 'Bildirimler',

@@ -11,7 +11,20 @@ export const LP_WEIGHTS = {
 export const LP_REWARD_COSTS = {
   coffee: 7,
   dessert: 15,
-  burger: 20
+  burger: 25
+};
+
+// İşlem geçmişi türleri
+export const LP_HISTORY_EARN = {
+  coffee: 'earn_coffee',
+  dessert: 'earn_dessert',
+  burger: 'earn_burger'
+};
+
+export const LP_HISTORY_REDEEM = {
+  coffee: 'redeem_coffee',
+  dessert: 'redeem_dessert',
+  burger: 'redeem_burger'
 };
 
 // Kategori tanımları — kasiyer ve müşteri arayüzü
@@ -23,7 +36,8 @@ export const LP_CATEGORIES = [
     lpGain: 1,
     rewardCost: 7,
     threshold: 7,
-    rewardLabel: '7 LP Kahve',
+    redeemTitle: 'Kahve İkram',
+    rewardLabel: '7 LP Kahve İkram',
     image: '/stamps/coffee.png?v=8',
     imagePosition: 'center center'
   },
@@ -34,7 +48,8 @@ export const LP_CATEGORIES = [
     lpGain: 2,
     rewardCost: 15,
     threshold: 15,
-    rewardLabel: '15 LP Tatlı',
+    redeemTitle: 'Tatlı İkram',
+    rewardLabel: '15 LP Tatlı İkram',
     image: '/stamps/dessert.png?v=8',
     imagePosition: 'center center'
   },
@@ -43,9 +58,10 @@ export const LP_CATEGORIES = [
     label: 'Burger',
     shortLabel: 'Burger',
     lpGain: 3,
-    rewardCost: 20,
-    threshold: 20,
-    rewardLabel: '20 LP Burger',
+    rewardCost: 25,
+    threshold: 25,
+    redeemTitle: 'Burger İkram',
+    rewardLabel: '25 LP Burger İkram',
     image: '/stamps/burger.png?v=8',
     imagePosition: 'center center'
   }
@@ -91,7 +107,7 @@ function readLegacyRewards(card) {
   return { dessert: 0, coffee: legacy, burger: 0 };
 }
 
-// Eski damgaları LP'ye dönüştür
+// Eski damgaları LP'ye dönüştür — tek seferlik migration
 export function convertLegacyToLp(stamps, rewards) {
   const fromStamps =
     (stamps.coffee || 0) * LP_WEIGHTS.coffee
@@ -187,6 +203,19 @@ export function canRedeemLpReward(card, categoryId) {
 export function getRedeemableRewards(card) {
   const balance = getLpBalance(card);
   return LP_CATEGORIES.filter((cat) => balance >= cat.rewardCost);
+}
+
+// İkram için kalan LP
+export function lpRemainingForReward(balance, categoryId) {
+  const cost = getCategoryRewardCost(categoryId);
+  return Math.max(0, cost - Math.max(0, Number(balance || 0)));
+}
+
+// Müşteri kartı — ikram durum metni
+export function lpRewardStatusText(card, category) {
+  if (canRedeemLpReward(card, category.id)) return 'Kullanılabilir';
+  const remaining = lpRemainingForReward(getLpBalance(card), category.id);
+  return `${category.redeemTitle || category.label} ikram için ${remaining} LP kaldı.`;
 }
 
 // Bir sonraki kazanılabilir ödüle kalan LP

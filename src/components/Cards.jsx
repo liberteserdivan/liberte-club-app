@@ -50,7 +50,7 @@ export function CustomerHistoryCard({db,customer}){
 export function ReferralCard({db,customer}){
   const code=getReferralCode(customer);
   const invited=(db.referrals||[]).filter(r=>r.referrerId===customer.id).length;
-  const shareText=`Liberte Club'a katıl, kayıt olurken ${code} kodunu kullan. İkimiz de +2 damga kazanalım.`;
+  const shareText=`Liberte Club'a katıl, kayıt olurken ${code} kodunu kullan. İkimiz de +2 LP kazanalım.`;
 
   async function copy(){
     try{await navigator.clipboard.writeText(code);alert('Referans kodun kopyalandı.');}
@@ -67,8 +67,8 @@ export function ReferralCard({db,customer}){
   return <div className="referralCard">
     <div>
       <span>ARKADAŞINI DAVET ET</span>
-      <h3>+2 damga sen, +2 damga arkadaşın</h3>
-      <p>Kayıtta bu kod kullanıldığında bonus damgalar otomatik işlenir.</p>
+      <h3>+2 LP sen, +2 LP arkadaşın</h3>
+      <p>Kayıtta bu kod kullanıldığında bonus LP otomatik işlenir.</p>
     </div>
     <div className="referralCodeBox">
       <small>Davet Kodun</small>
@@ -92,7 +92,7 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
     if(approved){alert('Google yorum bonusun daha önce işlendi.');return;}
     if(pending){alert('Yorum talebin admin onayı bekliyor.');return;}
     const createdAt=new Date().toLocaleString('tr-TR');
-    // Müşteri yalnızca admin onayı bekleyen talep oluşturur; damga admin onayında verilir
+    // Müşteri yalnızca admin onayı bekleyen talep oluşturur; LP admin onayında verilir
     commit({
       ...db,
       googleReviewRequests:[
@@ -108,8 +108,8 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
     <div className="reviewBonusIcon"><Star fill="currentColor"/></div>
     <div className="reviewBonusText">
       <span>GOOGLE YORUM BONUSU</span>
-      <h3>Google yorumla 3 damga kazan</h3>
-      <p>{approved?'Bu üyelik için yorum bonusu işlendi.':pending?'Talebin admin onayı bekliyor.':'Yorum sayfasına git, sonra admin onayıyla +3 damga hesabına işlensin.'}</p>
+      <h3>Google yorumla +3 LP kazan</h3>
+      <p>{approved?'Bu üyelik için yorum bonusu işlendi.':pending?'Talebin admin onayı bekliyor.':'Yorum sayfasına git, sonra admin onayıyla +3 LP hesabına işlensin.'}</p>
     </div>
     <button className={approved||pending?'ghost':'goldBtn'} onClick={requestBonus}>{approved?'Yoruma Git':pending?'Onay Bekliyor':'Yorum Yap'}</button>
   </div>;
@@ -348,7 +348,7 @@ export function FullHistoryCard({db,customer}){
   const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,30);
   const label=(t)=>historyTypeLabel(t);
   return <div className="fullHistory card">
-    <div className="centerHead"><div><span>İŞLEM GEÇMİŞİ</span><h3>LP Hareketleri</h3></div><ShieldCheck/></div>
+      <div className="centerHead"><div><span>İŞLEM GEÇMİŞİ</span><h3>LP geçmişi</h3></div><ShieldCheck/></div>
     {rows.length?rows.map(h=><div className="historyLine" key={h.id}>
       <div><b>{label(h.type)}</b><p>{h.createdAt} · {h.source||h.categoryLabel||'Liberte Club'}</p></div>
       <strong>{historyAmountLabel(h)}</strong>
@@ -375,7 +375,7 @@ export function ReviewApprovalAdmin({db,commit}){
       ...next,
       googleReviewRequests:(next.googleReviewRequests||db.googleReviewRequests||[]).map(x=>x.id===r.id?{...x,status:'approved',approvedAt:createdAt}:x),
       notifications:[
-        {id:Date.now()+10,customerId:r.customerId,title:'Google yorum bonusun onaylandı',body:'+3 damga hesabına işlendi. Teşekkür ederiz.',createdAt},
+        {id:Date.now()+10,customerId:r.customerId,title:'Google yorum bonusun onaylandı',body:'+3 LP hesabına işlendi. Teşekkür ederiz.',createdAt},
         ...(next.notifications||[])
       ],
       history:[
@@ -390,10 +390,10 @@ export function ReviewApprovalAdmin({db,commit}){
     commit({...db,googleReviewRequests:(db.googleReviewRequests||[]).map(x=>x.id===r.id?{...x,status:'rejected',rejectedAt:createdAt}:x),notifications:[{id:Date.now(),customerId:r.customerId,title:'Google yorum talebi kapatıldı',body:'Yorum bonus talebin admin tarafından kapatıldı.',createdAt},...(db.notifications||[])]});
   }
   return <div className="list">
-    <div className="card"><h3>Google Yorum Onayları</h3><p>Kullanıcı yorum sayfasına yönlendikten sonra talep buraya düşer. Onaylayınca +3 damga işlenir.</p></div>
+    <div className="card"><h3>Google Yorum Onayları</h3><p>Kullanıcı yorum sayfasına yönlendikten sonra talep buraya düşer. Onaylayınca +3 LP işlenir.</p></div>
     {rows.length?rows.map(r=><div className="card reviewRequest" key={r.id}>
       <div><b>{r.name}</b><p>{r.phone} · {r.email}</p><small>{r.createdAt}</small></div>
-      <div className="userActions wide"><button className="goldBtn" onClick={()=>approve(r)}><Plus/> +3 Onayla</button><button className="ghost" onClick={()=>reject(r)}>Reddet</button></div>
+      <div className="userActions wide"><button className="goldBtn" onClick={()=>approve(r)}><Plus/> +3 LP Onayla</button><button className="ghost" onClick={()=>reject(r)}>Reddet</button></div>
     </div>):<div className="empty">Bekleyen Google yorum talebi yok.</div>}
   </div>;
 }
