@@ -51,6 +51,9 @@ jobs:
           PLAY_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
         run: echo "$PLAY_JSON" > android/play-console-service-account.json
 
+      - name: Bagimliliklari kur
+        run: npm ci --legacy-peer-deps
+
       - name: Derle ve yukle
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
