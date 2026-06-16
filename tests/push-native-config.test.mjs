@@ -86,10 +86,22 @@ test('Firebase native config materialize scripti mevcut', () => {
   assert.equal(existsSync(join(root, 'scripts', 'materialize-firebase-native-config.mjs')), true);
 });
 
-test('Android google-services.json repoda yok — CI/CD yerel dosya gerekir', () => {
-  const path = join(root, 'android', 'app', 'google-services.json');
-  assert.equal(existsSync(path), false);
-  assert.equal(existsSync(join(root, 'android', 'app', 'google-services.json.example')), true);
+test('Android google-services.json gitignore ile korunur', () => {
+  const gitignore = readFileSync(join(root, '.gitignore'), 'utf8');
+  const androidIgnore = readFileSync(join(root, 'android', '.gitignore'), 'utf8');
+  assert.match(gitignore, /google-services\.json/);
+  assert.match(androidIgnore, /google-services\.json/);
+});
+
+test('GoogleService-Info.plist doğru Xcode klasöründe olabilir', () => {
+  const correctPath = join(root, 'ios', 'App', 'App', 'GoogleService-Info.plist');
+  const wrongPath = join(root, 'ios', 'App', 'GoogleService-Info.plist');
+  assert.equal(existsSync(wrongPath), false, 'plist ios/App/ altında olmamalı');
+  if (existsSync(correctPath)) {
+    const plist = readFileSync(correctPath, 'utf8');
+    assert.match(plist, /cafe\.liberte\.app/);
+    assert.match(plist, /liberte-club/);
+  }
 });
 
 test('Android google-services plugin koşullu uygulanır', () => {

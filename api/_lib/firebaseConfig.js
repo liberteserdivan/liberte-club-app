@@ -30,8 +30,8 @@ export function readFirebaseWebConfig() {
 
 // Service worker JS içeriğini üret
 export function buildFirebaseMessagingSw(config) {
-  return `importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
+  return `importScripts('https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging-compat.js');
 
 const GOOGLE_API_HOSTS = [
   'firebaseinstallations.googleapis.com',

@@ -48,6 +48,7 @@ google-services.json
 android/app/google-services.json
 GoogleService-Info.plist
 ios/App/App/GoogleService-Info.plist
+ios/App/GoogleService-Info.plist
 *firebase*service*account*.json
 
 # iOS CI / imza ve sertifika dosyalari
