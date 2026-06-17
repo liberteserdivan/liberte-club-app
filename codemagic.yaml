@@ -2,9 +2,9 @@
 #
 # Ortak Secure env: GOOGLE_SERVICE_INFO_PLIST, GOOGLE_SERVICES_JSON
 # Android ek Secure: PLAY_STORE_SERVICE_ACCOUNT_JSON
-# Android imza (ikisinden biri):
-#   A) Code signing → liberte_club_release (.jks)
-#   B) ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PROPERTIES env
+# Android imza (Codemagic env — Secure):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PROPERTIES
+#   PLAY_STORE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICES_JSON
 
 workflows:
   ios-release:
@@ -95,8 +95,6 @@ workflows:
     max_build_duration: 90
     instance_type: linux_x2
     environment:
-      android_signing:
-        - liberte_club_release
       vars:
         ANDROID_RELEASE: "true"
         PLAY_TRACK: internal
