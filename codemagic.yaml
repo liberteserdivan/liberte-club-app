@@ -133,6 +133,7 @@ workflows:
       - name: AAB derle ve Play Console yukle
         script: |
           cd android
+          chmod +x gradlew
           ./gradlew bundleRelease publishReleaseBundle --track="$PLAY_TRACK"
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
