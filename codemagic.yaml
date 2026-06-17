@@ -5,7 +5,9 @@
 # Android imza — iki yol:
 #   A) Code signing → Android keystore reference: liberte_club_release
 #   B) Env: ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PROPERTIES
-# Android Secure env: GOOGLE_SERVICES_JSON, PLAY_STORE_SERVICE_ACCOUNT_JSON
+# Android Secure env (grup: liberte_android):
+#   GOOGLE_SERVICES_JSON, PLAY_STORE_SERVICE_ACCOUNT_JSON
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PROPERTIES
 
 workflows:
   ios-release:
@@ -96,6 +98,8 @@ workflows:
     max_build_duration: 90
     instance_type: mac_mini_m2
     environment:
+      groups:
+        - liberte_android
       vars:
         ANDROID_RELEASE: "true"
         PLAY_TRACK: internal
