@@ -1,15 +1,10 @@
 # Liberte Club — Codemagic iOS + Android mağaza derlemesi
 #
-# iOS — Environment variable group: app_store_connect
-#   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY
-# iOS + Android ortak (Secure):
-#   GOOGLE_SERVICE_INFO_PLIST, GOOGLE_SERVICES_JSON
-# Android ek (Secure):
-#   PLAY_STORE_SERVICE_ACCOUNT_JSON — Play Console servis hesabi JSON
-# Android — Code signing identities:
-#   Keystore reference: liberte_club_release  (.jks + alias + sifreler)
-# iOS — Code signing identities:
-#   liberte_distribution, liberte_app_store_profile
+# Ortak Secure env: GOOGLE_SERVICE_INFO_PLIST, GOOGLE_SERVICES_JSON
+# Android ek Secure: PLAY_STORE_SERVICE_ACCOUNT_JSON
+# Android imza (ikisinden biri):
+#   A) Code signing → liberte_club_release (.jks)
+#   B) ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PROPERTIES env
 
 workflows:
   ios-release:
@@ -25,10 +20,11 @@ workflows:
         certificates:
           - liberte_distribution
       vars:
+        IOS_RELEASE: "true"
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
         APP_VERSION: "1.1.1"
-        IOS_MIN_BUILD_NUMBER: "24"
+        IOS_MIN_BUILD_NUMBER: "25"
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
       node: 22
@@ -42,21 +38,21 @@ workflows:
           npm -v
       - name: npm install
         script: npm install --legacy-peer-deps
-      - name: npm run build
-        script: npm run build
-      - name: Capacitor iOS sync
-        script: npx cap sync ios
-      - name: Firebase plist ve SPM yollari
+      - name: Firebase config
         script: |
           node scripts/materialize-firebase-native-config.mjs
+          test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
+      - name: Web build
+        script: npm run build:release
+      - name: Capacitor iOS sync
+        script: |
+          npx cap sync ios
           node scripts/fix-ios-spm-paths.mjs
-          test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GoogleService-Info.plist yok — Codemagic GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
-          grep -n "node_modules" ios/App/CapApp-SPM/Package.swift
       - name: iOS surum ve build numarasi
         script: |
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
-          MIN_BUILD="${IOS_MIN_BUILD_NUMBER:-23}"
+          MIN_BUILD="${IOS_MIN_BUILD_NUMBER:-25}"
           if [ "${BUILD_NUMBER:-0}" -lt "$MIN_BUILD" ]; then
             IOS_BUILD="$MIN_BUILD"
           else
@@ -66,13 +62,6 @@ workflows:
           agvtool new-version -all "$IOS_BUILD"
       - name: Manuel imza dosyalarini Xcode projesine uygula
         script: xcode-project use-profiles
-      - name: Imza ayarlarini dogrula
-        script: |
-          xcodebuild -project "$CM_BUILD_DIR/$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings \
-            | grep -E 'PROVISIONING_PROFILE|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM|CURRENT_PROJECT_VERSION|CODE_SIGN_ENTITLEMENTS' \
-            | head -25
-          echo "=== App.entitlements ==="
-          cat ios/App/App/App.entitlements
       - name: iOS archive (IPA)
         script: |
           set -eo pipefail
@@ -82,7 +71,6 @@ workflows:
             || {
               echo "=== xcodebuild HATA satirlari ==="
               grep -i "error:" /tmp/xcodebuild_logs/*.log 2>/dev/null | tail -40 || true
-              echo "=== xcodebuild log (son 200 satir) ==="
               tail -200 /tmp/xcodebuild_logs/*.log 2>/dev/null || true
               exit 1
             }
@@ -110,6 +98,7 @@ workflows:
       android_signing:
         - liberte_club_release
       vars:
+        ANDROID_RELEASE: "true"
         PLAY_TRACK: internal
         PACKAGE_NAME: cafe.liberte.app
       node: 22
@@ -129,6 +118,7 @@ workflows:
           node scripts/setup-codemagic-android-signing.mjs
           node scripts/setup-codemagic-play-credentials.mjs
           test -f android/app/google-services.json || (echo "HATA: GOOGLE_SERVICES_JSON env ekle" && exit 1)
+          test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Web build
         script: npm run build:release
       - name: Capacitor Android sync
@@ -138,9 +128,7 @@ workflows:
       - name: AAB derle ve Play Console yukle
         script: |
           cd android
-          ./gradlew bundleRelease
-          cd ..
-          node scripts/publish-android-play.mjs "$PLAY_TRACK"
+          ./gradlew bundleRelease publishReleaseBundle --track="$PLAY_TRACK"
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
     publishing:

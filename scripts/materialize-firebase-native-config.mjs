@@ -9,6 +9,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const isCi = Boolean(process.env.CM_BUILD_ID || process.env.CI || process.env.CODEMAGIC);
+const isAndroidRelease = process.env.ANDROID_RELEASE === 'true';
+const isIosRelease = process.env.IOS_RELEASE === 'true' || (isCi && !isAndroidRelease);
+
+const androidJsonPath = join(root, 'android', 'app', 'google-services.json');
+const iosPlistPath = join(root, 'ios', 'App', 'App', 'GoogleService-Info.plist');
 
 function decodeEnvValue(raw) {
   const text = String(raw || '').trim();
@@ -55,22 +60,26 @@ function writeConfigFile(envName, targetPath, label, { requiredOnCi = false } = 
   return true;
 }
 
-const iosPlistPath = join(root, 'ios', 'App', 'App', 'GoogleService-Info.plist');
-
 writeConfigFile(
   'GOOGLE_SERVICES_JSON',
-  join(root, 'android', 'app', 'google-services.json'),
-  'google-services.json'
+  androidJsonPath,
+  'google-services.json',
+  { requiredOnCi: isCi && isAndroidRelease }
 );
 
 writeConfigFile(
   'GOOGLE_SERVICE_INFO_PLIST',
   iosPlistPath,
   'GoogleService-Info.plist',
-  { requiredOnCi: true }
+  { requiredOnCi: isCi && isIosRelease }
 );
 
-if (isCi && !existsSync(iosPlistPath)) {
-  console.error('[firebase-native] CI build durduruldu: GoogleService-Info.plist bulunamadi.');
+if (isCi && isAndroidRelease && !existsSync(androidJsonPath)) {
+  console.error('[firebase-native] Android build durduruldu: google-services.json bulunamadi.');
+  process.exit(1);
+}
+
+if (isCi && isIosRelease && !existsSync(iosPlistPath)) {
+  console.error('[firebase-native] iOS build durduruldu: GoogleService-Info.plist bulunamadi.');
   process.exit(1);
 }
