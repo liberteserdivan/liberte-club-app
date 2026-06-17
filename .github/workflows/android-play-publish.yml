@@ -1,10 +1,4 @@
 # Play Console'a AAB yukleme — manuel tetikleme
-# Gerekli GitHub Secrets:
-#   PLAY_STORE_SERVICE_ACCOUNT_JSON
-#   ANDROID_KEYSTORE_BASE64
-#   ANDROID_KEYSTORE_PROPERTIES
-#   GOOGLE_SERVICE_INFO_PLIST
-#   GOOGLE_SERVICES_JSON
 
 name: Android Play Publish
 
@@ -25,6 +19,11 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+      GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      CI: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -40,8 +39,6 @@ jobs:
 
       - name: Secret kontrolu
         env:
-          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PROPERTIES: ${{ secrets.ANDROID_KEYSTORE_PROPERTIES }}
           PLAY_STORE_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
@@ -52,20 +49,40 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PROPERTIES: ${{ secrets.ANDROID_KEYSTORE_PROPERTIES }}
         run: |
-          echo "$KEYSTORE_PROPERTIES" > android/keystore.properties
+          printf '%s\n' "$KEYSTORE_PROPERTIES" > android/keystore.properties
           echo "$KEYSTORE_BASE64" | base64 -d > android/app/liberte-club-release-key.jks
 
       - name: Play Console kimlik bilgisi
         env:
           PLAY_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
-        run: echo "$PLAY_JSON" > android/play-console-service-account.json
+        run: printf '%s\n' "$PLAY_JSON" > android/play-console-service-account.json
+
+      - name: Imza dosyalarini dogrula
+        run: |
+          test -s android/app/liberte-club-release-key.jks || (echo "HATA: JKS bos — ANDROID_KEYSTORE_BASE64 yanlis kopyalanmis olabilir" && exit 1)
+          test -s android/keystore.properties || (echo "HATA: keystore.properties bos" && exit 1)
+          grep -q keyAlias android/keystore.properties || (echo "HATA: keystore.properties formati yanlis (4 satir olmali)" && exit 1)
+          node -e "JSON.parse(require('fs').readFileSync('android/play-console-service-account.json','utf8'))" || (echo "HATA: PLAY_STORE_SERVICE_ACCOUNT_JSON gecerli JSON degil" && exit 1)
+          echo "Imza dosyalari OK (JKS: $(wc -c < android/app/liberte-club-release-key.jks) byte)"
 
       - name: Bagimliliklari kur
         run: npm ci --legacy-peer-deps
 
-      - name: Derle ve yukle
-        env:
-          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-          CI: true
-        run: node scripts/publish-android-play.mjs ${{ inputs.track }} --build
+      - name: Firebase config
+        run: node scripts/materialize-firebase-native-config.mjs
+
+      - name: Web build
+        run: npm run build:release
+
+      - name: Capacitor Android sync
+        run: |
+          node scripts/generate-android-icons.mjs
+          npx cap sync android
+
+      - name: AAB derle
+        working-directory: android
+        run: ./gradlew bundleRelease
+
+      - name: Play Console yukle
+        working-directory: android
+        run: ./gradlew publishReleaseBundle --track=${{ inputs.track }}
