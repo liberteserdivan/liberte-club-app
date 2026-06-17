@@ -1,19 +1,15 @@
-# Liberte Club — Capacitor iOS App Store / TestFlight derlemesi
-# Codemagic UI → Environment variable group: app_store_connect
-#   APP_STORE_CONNECT_ISSUER_ID
-#   APP_STORE_CONNECT_KEY_IDENTIFIER
-#   APP_STORE_CONNECT_PRIVATE_KEY
+# Liberte Club — Codemagic iOS + Android mağaza derlemesi
 #
-# Codemagic UI → Environment variables (ZORUNLU — iOS build icin):
-#   GOOGLE_SERVICE_INFO_PLIST  — GoogleService-Info.plist tam XML icerigi (Secure)
-#
-# Codemagic UI → Code signing identities (manuel yukleme):
-#   Certificate reference: liberte_distribution  (.p12 + private key)
-#   Provisioning profile reference: liberte_app_store_profile
-#   NOT: Profile Push Notifications capability icermeli (aps-environment).
-#   Apple Developer → Identifiers → cafe.liberte.app → Push Notifications acik olmali.
-#
-# fetch-signing-files kullanilmiyor — private key olmadan sertifika kaydedemez.
+# iOS — Environment variable group: app_store_connect
+#   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY
+# iOS + Android ortak (Secure):
+#   GOOGLE_SERVICE_INFO_PLIST, GOOGLE_SERVICES_JSON
+# Android ek (Secure):
+#   PLAY_STORE_SERVICE_ACCOUNT_JSON — Play Console servis hesabi JSON
+# Android — Code signing identities:
+#   Keystore reference: liberte_club_release  (.jks + alias + sifreler)
+# iOS — Code signing identities:
+#   liberte_distribution, liberte_app_store_profile
 
 workflows:
   ios-release:
@@ -105,3 +101,52 @@ workflows:
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
+
+  android-release:
+    name: android-release
+    max_build_duration: 90
+    instance_type: linux_x2
+    environment:
+      android_signing:
+        - liberte_club_release
+      vars:
+        PLAY_TRACK: internal
+        PACKAGE_NAME: cafe.liberte.app
+      node: 22
+      java: 21
+    scripts:
+      - name: Node.js 22 hazirla
+        script: |
+          nvm install 22
+          nvm use 22
+          node -v
+          npm -v
+      - name: npm install
+        script: npm install --legacy-peer-deps
+      - name: Firebase, imza ve Play kimlik
+        script: |
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/setup-codemagic-android-signing.mjs
+          node scripts/setup-codemagic-play-credentials.mjs
+          test -f android/app/google-services.json || (echo "HATA: GOOGLE_SERVICES_JSON env ekle" && exit 1)
+      - name: Web build
+        script: npm run build:release
+      - name: Capacitor Android sync
+        script: |
+          node scripts/generate-android-icons.mjs
+          npx cap sync android
+      - name: AAB derle ve Play Console yukle
+        script: |
+          cd android
+          ./gradlew bundleRelease
+          cd ..
+          node scripts/publish-android-play.mjs "$PLAY_TRACK"
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true

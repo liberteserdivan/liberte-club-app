@@ -71,9 +71,18 @@ Yeni yukleme oncesi `android/app/build.gradle` icinde:
 - `versionCode` — her yuklemede +1 (Play Store zorunlu)
 - `versionName` — gorunen surum (or. `1.0.8`)
 
-## 6. CI / GitHub Actions (istege bagli)
+## 6. Codemagic ile otomatik yukleme (onerilen)
 
-GitHub repo secret olarak `PLAY_STORE_SERVICE_ACCOUNT_JSON` (JSON icerigi) tanimlayin. Ornek workflow: `.github/workflows/android-play-publish.yml`
+GitHub Actions yerine Codemagic `android-release` workflow kullanin. `codemagic.yaml` dosyasina bakin.
+
+Codemagic UI → Environment variables (Secure):
+- `GOOGLE_SERVICES_JSON`
+- `GOOGLE_SERVICE_INFO_PLIST`
+- `PLAY_STORE_SERVICE_ACCOUNT_JSON`
+
+Codemagic UI → Code signing → Android keystore reference: `liberte_club_release`
+
+Baslat: Codemagic → Start new build → workflow **android-release** → branch **main**
 
 ## Sorun giderme
 
