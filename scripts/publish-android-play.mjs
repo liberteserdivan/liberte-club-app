@@ -55,15 +55,20 @@ if (shouldBuild) {
   console.log('> Firebase native config dosyalari hazirlaniyor...');
   run('node', ['scripts/materialize-firebase-native-config.mjs'], root);
   console.log('> Web build + AAB derleniyor...');
-  run('npm', ['run', 'build'], root);
+  const buildScript = process.env.CI ? 'build:release' : 'build';
+  run('npm', ['run', buildScript], root);
   run('node', ['scripts/generate-android-icons.mjs'], root);
   run('npx', ['cap', 'sync', 'android'], root);
   const gradle = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
   run(gradle, ['bundleRelease'], androidDir);
 }
 
-const javaHome = process.env.JAVA_HOME || 'C:\\Program Files\\Android\\Android Studio\\jbr';
-process.env.JAVA_HOME = javaHome;
+const javaHome =
+  process.env.JAVA_HOME ||
+  (process.platform === 'win32' ? 'C:\\Program Files\\Android\\Android Studio\\jbr' : null);
+if (javaHome) {
+  process.env.JAVA_HOME = javaHome;
+}
 
 console.log(`> Play Console'a yukleniyor (kanal: ${track})...`);
 run(
