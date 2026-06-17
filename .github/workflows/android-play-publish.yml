@@ -50,20 +50,21 @@ jobs:
           KEYSTORE_PROPERTIES: ${{ secrets.ANDROID_KEYSTORE_PROPERTIES }}
         run: |
           printf '%s\n' "$KEYSTORE_PROPERTIES" > android/keystore.properties
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/liberte-club-release-key.jks
+          echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > android/app/liberte-club-release-key.jks
 
       - name: Play Console kimlik bilgisi
         env:
           PLAY_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
-        run: printf '%s\n' "$PLAY_JSON" > android/play-console-service-account.json
+        run: printf '%s' "$PLAY_JSON" > android/play-console-service-account.json
 
       - name: Imza dosyalarini dogrula
         run: |
-          test -s android/app/liberte-club-release-key.jks || (echo "HATA: JKS bos — ANDROID_KEYSTORE_BASE64 yanlis kopyalanmis olabilir" && exit 1)
+          JKS_SIZE=$(wc -c < android/app/liberte-club-release-key.jks | tr -d ' ')
+          test "$JKS_SIZE" -ge 2000 || (echo "HATA: JKS cok kucuk (${JKS_SIZE} byte) — ANDROID_KEYSTORE_BASE64 bastan kopyala" && exit 1)
           test -s android/keystore.properties || (echo "HATA: keystore.properties bos" && exit 1)
           grep -q keyAlias android/keystore.properties || (echo "HATA: keystore.properties formati yanlis (4 satir olmali)" && exit 1)
           node -e "JSON.parse(require('fs').readFileSync('android/play-console-service-account.json','utf8'))" || (echo "HATA: PLAY_STORE_SERVICE_ACCOUNT_JSON gecerli JSON degil" && exit 1)
-          echo "Imza dosyalari OK (JKS: $(wc -c < android/app/liberte-club-release-key.jks) byte)"
+          echo "Imza dosyalari OK (JKS: ${JKS_SIZE} byte)"
 
       - name: Bagimliliklari kur
         run: npm ci --legacy-peer-deps
