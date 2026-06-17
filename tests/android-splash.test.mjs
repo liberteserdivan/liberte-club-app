@@ -36,7 +36,7 @@ test('Android 12 sistem splash ikonu şeffaf', () => {
 
 test('Android sürüm numarası güncel', () => {
   const gradle = readFileSync(join(root, 'android', 'app', 'build.gradle'), 'utf8');
-  assert.match(gradle, /versionCode 23/);
+  assert.match(gradle, /versionCode 24/);
   assert.match(gradle, /versionName "1\.1\.1"/);
 });
 
