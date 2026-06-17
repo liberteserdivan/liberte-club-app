@@ -104,6 +104,7 @@ workflows:
         ANDROID_RELEASE: "true"
         PLAY_TRACK: internal
         PACKAGE_NAME: cafe.liberte.app
+        APP_VERSION: "1.1.2"
       node: 22
       java: 21
     scripts:
@@ -125,13 +126,22 @@ workflows:
           test -f android/app/google-services.json || (echo "HATA: GOOGLE_SERVICES_JSON env ekle" && exit 1)
           test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Web build
-        script: npm run build:release
+        script: |
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.2}.${BUILD_NUMBER:-0}"
+          echo "[build] VITE_APP_VERSION=$VITE_APP_VERSION commit=$(git rev-parse --short HEAD)"
+          npm run build:release
       - name: Capacitor Android sync
         script: |
           node scripts/generate-android-icons.mjs
           npx cap sync android
       - name: Android surum kodu
         script: node scripts/set-android-version-code.mjs
+      - name: Derleme dogrulama
+        script: |
+          echo "[verify] commit=$(git rev-parse --short HEAD)"
+          grep -E 'versionCode|versionName' android/app/build.gradle
+          grep -R "Ayarları Aç" dist/assets/*.js >/dev/null || (echo "HATA: yeni bildirim UI dist icinde yok" && exit 1)
+          echo "[verify] yeni bildirim UI dist icinde bulundu"
       - name: AAB derle
         script: |
           cd android

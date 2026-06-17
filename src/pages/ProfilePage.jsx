@@ -151,6 +151,7 @@ export default function ProfilePage({
             <ExternalLink size={16} /> Destek sayfası
           </a>
           <p className="profileHint">E-posta: {supportEmail}</p>
+          <p className="profileHint">Sürüm: {import.meta.env.VITE_APP_VERSION || '1.1.2'}</p>
         </div>
       </PageSection>
 

@@ -39,7 +39,7 @@ test('Android sürüm numarası güncel', () => {
   const match = gradle.match(/versionCode\s+(\d+)/);
   assert.ok(match, 'versionCode bulunamadi');
   assert.ok(Number(match[1]) >= 25, 'versionCode en az 25 olmali');
-  assert.match(gradle, /versionName "1\.1\.1"/);
+  assert.match(gradle, /versionName "1\.1\.2"/);
 });
 
 test('Capacitor splash yeşil zemin', () => {

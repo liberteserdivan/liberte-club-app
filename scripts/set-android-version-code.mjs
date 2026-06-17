@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Codemagic — Android versionCode degerini BUILD_NUMBER ile gunceller.
+ * Codemagic — Android versionCode ve versionName degerlerini gunceller.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -11,15 +11,22 @@ const gradlePath = join(root, 'android', 'app', 'build.gradle');
 const minCode = Number(process.env.ANDROID_MIN_VERSION_CODE || 25);
 const buildNumber = Number(process.env.BUILD_NUMBER || 0);
 const versionCode = Math.max(minCode, buildNumber || minCode);
+const versionName = String(process.env.APP_VERSION || '1.1.2').trim();
 
-const content = readFileSync(gradlePath, 'utf8');
-const match = content.match(/versionCode\s+\d+/);
+let content = readFileSync(gradlePath, 'utf8');
 
-if (!match) {
+if (!content.match(/versionCode\s+\d+/)) {
   console.error('[android-version] versionCode satiri bulunamadi.');
   process.exit(1);
 }
 
-const next = content.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
-writeFileSync(gradlePath, next, 'utf8');
-console.log(`[android-version] versionCode ${versionCode} (BUILD_NUMBER=${buildNumber || 'yok'})`);
+if (!content.match(/versionName\s+"[^"]+"/)) {
+  console.error('[android-version] versionName satiri bulunamadi.');
+  process.exit(1);
+}
+
+content = content.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
+content = content.replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
+writeFileSync(gradlePath, content, 'utf8');
+
+console.log(`[android-version] versionCode ${versionCode}, versionName ${versionName} (BUILD_NUMBER=${buildNumber || 'yok'})`);
