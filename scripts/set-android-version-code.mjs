@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const gradlePath = join(root, 'android', 'app', 'build.gradle');
-const minCode = Number(process.env.ANDROID_MIN_VERSION_CODE || 25);
+const minCode = Number(process.env.ANDROID_MIN_VERSION_CODE || 26);
 const buildNumber = Number(process.env.BUILD_NUMBER || 0);
 const versionCode = Math.max(minCode, buildNumber || minCode);
 const versionName = String(process.env.APP_VERSION || '1.1.2').trim();

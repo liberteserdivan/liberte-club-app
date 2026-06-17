@@ -38,7 +38,7 @@ test('Android sürüm numarası güncel', () => {
   const gradle = readFileSync(join(root, 'android', 'app', 'build.gradle'), 'utf8');
   const match = gradle.match(/versionCode\s+(\d+)/);
   assert.ok(match, 'versionCode bulunamadi');
-  assert.ok(Number(match[1]) >= 25, 'versionCode en az 25 olmali');
+  assert.ok(Number(match[1]) >= 26, 'versionCode en az 26 olmali');
   assert.match(gradle, /versionName "1\.1\.2"/);
 });
 
