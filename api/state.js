@@ -17,6 +17,7 @@ import {
   mergeUserState
 } from './_lib/stateAccess.js';
 import { applyBirthdayReward } from './_lib/loyaltyOps.js';
+import { enforceAuthRateLimit } from './_lib/rateLimit.js';
 
 export default async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
@@ -169,6 +170,10 @@ async function handleErrorLogCreate(req, res, payload) {
     return res.status(400).json({ error: 'message zorunlu' });
   }
 
+  if (await enforceAuthRateLimit(req, 'error_log', { maxHits: 30 })) {
+    return res.status(429).json({ error: 'Çok fazla hata kaydı' });
+  }
+
   const session = await getSession(req);
   const row = await insertErrorLog({
     level: payload.level,
@@ -176,7 +181,7 @@ async function handleErrorLogCreate(req, res, payload) {
     message: payload.userMessage || payload.message,
     code: payload.code,
     detail: payload.detail,
-    customerId: session?.customerId || payload.customerId || null,
+    customerId: session?.customerId || null,
     platform: payload.platform
   });
 

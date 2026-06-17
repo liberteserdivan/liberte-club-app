@@ -159,9 +159,10 @@ export function isActivePushSubscription(row) {
   return Boolean(row?.token) && row.active !== false;
 }
 
-// Bildirim kanalı — eski kayıtlarda channel yoksa web kabul et
+// Bildirim kanalı — platform ios/android ise native kabul et
 export function resolvePushChannel(row) {
   if (row?.channel === 'native' || row?.channel === 'web') return row.channel;
+  if (row?.platform === 'ios' || row?.platform === 'android') return 'native';
   if (row?.platform === 'web') return 'web';
   return 'web';
 }

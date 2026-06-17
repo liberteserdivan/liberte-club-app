@@ -1,14 +1,12 @@
 import React,{useEffect,useState}from'react';
 import{Bell,Coffee,Crown,Gift,Plus,QrCode,Send,ShieldCheck,Sparkles,Star}from'lucide-react';
 import{googleReviewUrl}from'../lib/constants.js';
-import{tryEnablePush}from'../lib/firebasePush.js';
+import{usePushEnableFlow}from'../hooks/usePushEnableFlow.js';
 import{
-  canRequestPushOnThisDevice,
   getPushPromptHint,
   markPushDismissed,
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
-import{getPushSettingsHint}from'../lib/nativePush.js';
 import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,customerBadges,redeemRewardForCustomer,getLpBalance,getRedeemableRewards}from'../lib/db.js';
 import{historyTypeLabel,historyAmountLabel}from'../lib/loyaltyStamps.js';
 import{isNativeApp,isAndroid,isIos}from'../lib/platform.js';
@@ -90,7 +88,7 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
   function requestBonus(){
     window.open(googleReviewUrl,'_blank','noopener,noreferrer');
     if(approved){alert('Google yorum bonusun daha önce işlendi.');return;}
-    if(pending){alert('Yorum talebin admin onayı bekliyor.');return;}
+    if(pending){alert('Yorum talebin inceleniyor. Onaylandığında LP hesabına işlenecek.');return;}
     const createdAt=new Date().toLocaleString('tr-TR');
     // Müşteri yalnızca admin onayı bekleyen talep oluşturur; LP admin onayında verilir
     commit({
@@ -100,7 +98,7 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
         ...requests
       ]
     });
-    alert('Yorum sayfası açıldı. Yorumu tamamladıktan sonra talebin admin onayına düştü.');
+    alert('Yorum sayfası açıldı. Yorumu tamamladıktan sonra talebin incelemeye alındı.');
   }
 
   return <div className={compact?'reviewBonusCard compact':'reviewBonusCard'}>
@@ -109,7 +107,7 @@ export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
     <div className="reviewBonusText">
       <span>GOOGLE YORUM BONUSU</span>
       <h3>Google yorumla +3 LP kazan</h3>
-      <p>{approved?'Bu üyelik için yorum bonusu işlendi.':pending?'Talebin admin onayı bekliyor.':'Yorum sayfasına git, sonra admin onayıyla +3 LP hesabına işlensin.'}</p>
+      <p>{approved?'Bu üyelik için yorum bonusu işlendi.':pending?'Talebin inceleniyor. Onaylandığında +3 LP hesabına işlenecek.':'Yorum sayfasına git; onay sonrası +3 LP hesabına işlensin.'}</p>
     </div>
     <button className={approved||pending?'ghost':'goldBtn'} onClick={requestBonus}>{approved?'Yoruma Git':pending?'Onay Bekliyor':'Yorum Yap'}</button>
   </div>;
@@ -213,24 +211,50 @@ export function ReviewCard({db,commit,customer}){
   </div>;
 }
 
-async function enablePush(customer,db,commit){
-  const result=await tryEnablePush(customer,db,commit);
-  alert(result.message);
+// Bildirim açma butonları — ayarlara yönlendirme veya ilk izin
+function PushEnableActions({needsSettings,busy,onEnable,onOpenSettings,onDismiss,showDismiss}){
+  if(needsSettings){
+    return <>
+      <button type="button" className="goldBtn" onClick={onOpenSettings}>Ayarları Aç</button>
+      <button type="button" className="ghost" onClick={onEnable} disabled={busy}>
+        {busy ? 'Deneniyor…' : 'Tekrar Dene'}
+      </button>
+    </>;
+  }
+
+  return <>
+    <button type="button" className="goldBtn" onClick={onEnable} disabled={busy}>
+      {busy ? 'Açılıyor…' : 'Bildirimleri Aç'}
+    </button>
+    {showDismiss && <button type="button" className="ghost" onClick={onDismiss}>Sonra</button>}
+  </>;
 }
 
 export function PushPermission({customer,db,commit}){
+  const{needsSettings,statusMessage,busy,attemptEnable,openSettings}=usePushEnableFlow(customer,db,commit);
+
   return <div className="card push">
     <div>
       <b>Kampanyaları kaçırma</b>
-      <p>Ödül, fırsat ve yeni ürün bildirimleri gelsin.</p>
+      <p>{needsSettings ? 'Bildirimler kapalı. Ayarlardan aç, sonra tekrar dene.' : 'Ödül, fırsat ve yeni ürün bildirimleri gelsin.'}</p>
+      {statusMessage && !needsSettings && <p className="pushInlineNote">{statusMessage}</p>}
     </div>
-    <button onClick={()=>enablePush(customer,db,commit)}><Bell/> Bildirim Aç</button>
+    <div className="pushWelcomeActions">
+      <PushEnableActions
+        needsSettings={needsSettings}
+        busy={busy}
+        onEnable={attemptEnable}
+        onOpenSettings={openSettings}
+        showDismiss={false}
+      />
+    </div>
   </div>;
 }
 
 // İlk ziyarette bildirim izni banner'ı
 export function PushWelcomeBanner({customer,db,commit}){
   const[visible,setVisible]=useState(()=>shouldShowPushPrompt(customer,db));
+  const{needsSettings,statusMessage,busy,attemptEnable,openSettings}=usePushEnableFlow(customer,db,commit);
 
   useEffect(()=>{
     setVisible(shouldShowPushPrompt(customer,db));
@@ -242,14 +266,16 @@ export function PushWelcomeBanner({customer,db,commit}){
   }
 
   async function accept(){
-    if(!canRequestPushOnThisDevice()){
-      alert('iPhone\'da bildirimler için önce Safari paylaş menüsünden "Ana Ekrana Ekle" yapmalısın. Uygulamayı ana ekrandan açınca Bildirimleri Aç seçeneği görünür.');
+    const result=await attemptEnable();
+    if(result.ok){
+      setVisible(false);
       return;
     }
-
-    const result=await tryEnablePush(customer,db,commit);
-    if(result.ok)setVisible(false);
-    else alert(result.message?.includes('kapalı') ? result.message : `${result.message}${isNativeApp() ? `\n\n${getPushSettingsHint()}` : ''}`);
+    if(result.needsSettings){
+      setVisible(true);
+      return;
+    }
+    if(result.message) alert(result.message);
   }
 
   if(!visible)return null;
@@ -258,11 +284,18 @@ export function PushWelcomeBanner({customer,db,commit}){
     <div className="pushWelcomeIcon"><Bell size={22}/></div>
     <div>
       <b>Kampanyalardan haberdar ol</b>
-      <p>{getPushPromptHint()}</p>
+      <p>{needsSettings ? 'Bildirimler kapalı. Ayarlardan aç, sonra tekrar dene.' : getPushPromptHint()}</p>
+      {statusMessage && !needsSettings && <p className="pushInlineNote">{statusMessage}</p>}
     </div>
     <div className="pushWelcomeActions">
-      <button type="button" className="goldBtn" onClick={accept}>Bildirimleri Aç</button>
-      <button type="button" className="ghost" onClick={dismiss}>Sonra</button>
+      <PushEnableActions
+        needsSettings={needsSettings}
+        busy={busy}
+        onEnable={accept}
+        onOpenSettings={openSettings}
+        onDismiss={dismiss}
+        showDismiss={!needsSettings}
+      />
     </div>
   </div>;
 }

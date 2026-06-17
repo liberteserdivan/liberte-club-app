@@ -5,6 +5,7 @@ import { sendVerificationCode } from '../verificationMail.js';
 import { upsertCustomerEmail } from '../customerEmails.js';
 import { getSql } from '../appState.js';
 import { resolveRecoveryCustomer } from '../customerRepair.js';
+import { enforceAuthRateLimit } from '../rateLimit.js';
 import {
   isValidPinFormat,
   normalizePin,
@@ -18,6 +19,10 @@ function readIdentifier(body) {
 
 // PIN unutma — kayıtlı e-postaya doğrulama kodu gönder
 async function handleSendCode(req, res) {
+  if (await enforceAuthRateLimit(req, 'auth_send_code', { maxHits: 8 })) {
+    return res.status(429).json({ error: 'Çok fazla kod isteği. Lütfen 15 dakika sonra tekrar dene.' });
+  }
+
   const body = readBody(req);
   const identifier = readIdentifier(body);
   const resolved = await resolveRecoveryCustomer(identifier);

@@ -3,22 +3,16 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 const TOKEN_VERSION = 1;
 const TOKEN_TTL_MS = 90 * 1000;
 
-// İmza anahtarı — production'da env zorunlu
+// İmza anahtarı — production'da yalnızca QR_SIGNING_SECRET
 function signingSecret() {
-  const secret = String(
-    process.env.QR_SIGNING_SECRET
-    || process.env.ADMIN_PIN
-    || process.env.CASHIER_PIN
-    || ''
-  ).trim();
-
+  const secret = String(process.env.QR_SIGNING_SECRET || '').trim();
   if (secret) return secret;
 
   if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
     throw new Error('QR imza anahtarı yapılandırılmadı');
   }
 
-  return 'dev-qr-signing-secret';
+  return String(process.env.QR_SIGNING_SECRET || 'dev-qr-signing-secret').trim();
 }
 
 // Base64url kodla

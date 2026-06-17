@@ -23,7 +23,7 @@ function activeCampaigns(db) {
 }
 
 // Kampanyalar — Liberte Puan odaklı premium düzen
-export default function CampaignPage({ db, customer, commit }) {
+export default function CampaignPage({ db, customer, commit, setTab }) {
   const card = db.loyalty[customer.id] || loyaltyTemplate(customer.id);
   const lp = getLpCardView(card);
   const level = lp.level || levelByStamps(lp.lpLifetime);
@@ -62,7 +62,7 @@ export default function CampaignPage({ db, customer, commit }) {
         <RewardsCenterCard db={db} customer={customer} card={card} />
       </PageSection>
 
-      <DailyCampaignCard db={db} />
+      <DailyCampaignCard db={db} setTab={setTab} />
 
       <PremiumSection title="Bonus fırsatları" subtitle="Ekstra LP ve avantajlar" icon={Sparkles} defaultOpen>
         <ReferralCard db={db} customer={customer} />
@@ -70,7 +70,7 @@ export default function CampaignPage({ db, customer, commit }) {
         <VipBenefitsCard db={db} customer={customer} />
       </PremiumSection>
 
-      {campaigns.length > 0 && (
+      {campaigns.length > 0 ? (
         <PremiumSection title="Club kampanyaları" subtitle="Güncel duyurular" icon={Gift}>
           {campaigns.map((c) => (
             <div className="card campaignListCard" key={c.id}>
@@ -82,6 +82,13 @@ export default function CampaignPage({ db, customer, commit }) {
             </div>
           ))}
         </PremiumSection>
+      ) : (
+        <PageSection label="Kampanyalar">
+          <div className="card campaignEmptyCard">
+            <Gift size={22} aria-hidden="true" />
+            <p>Şu an aktif kampanya yok. Bildirimleri aç; yeni fırsatlardan haberdar ol.</p>
+          </div>
+        </PageSection>
       )}
 
       <PremiumSection title="Geçmiş & bildirimler" subtitle="LP hareketleri ve duyurular" icon={Bell}>

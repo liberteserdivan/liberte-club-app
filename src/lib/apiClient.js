@@ -108,7 +108,7 @@ export async function apiFetch(path, options = {}) {
     });
 
     if (response.status === 401 && onUnauthorized) {
-      onUnauthorized();
+      onUnauthorized('expired');
     }
 
     return response;

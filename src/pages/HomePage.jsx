@@ -52,7 +52,7 @@ export default function HomePage({
         <PushWelcomeBanner db={db} customer={customer} commit={commit} />
         <InstallAppCard />
 
-        <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
+        <DailyTasksStrip db={db} customer={customer} commit={commit} setTab={setTab} />
 
         <PageSection label="Hızlı erişim">
           <div className="homeHubGrid homeHubGrid--three">
@@ -97,7 +97,7 @@ export default function HomePage({
         </PageSection>
 
         <PageSection label="Öne çıkanlar">
-          <FeaturedSlider items={featured} setTab={setTab} />
+          <FeaturedSlider items={featured} onMenuClick={() => setTab('menu')} />
         </PageSection>
       </div>
     </section>

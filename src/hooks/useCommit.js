@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
+import { prepareLocalState } from '../lib/localStateCache.js';
 import { reportError } from '../lib/errorHub.js';
 
 // Buluttan veri çekme aralığı (ms) — LP güncellemeleri ~5 sn içinde yansır
 const SYNC_INTERVAL_MS = 5000;
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
-export function useCommit(initial) {
+export function useCommit(initial, sessionRef) {
   const [db, setDb] = useState(initial);
   const [mode, setMode] = useState('local');
   const [syncState, setSyncState] = useState({
@@ -18,6 +19,16 @@ export function useCommit(initial) {
   const syncing = useRef(false);
   const savingCount = useRef(0);
   const saveSeq = useRef(0);
+
+  // Oturuma göre güvenli yerel önbellek yaz
+  function persistLocal(nextDb) {
+    const session = sessionRef?.current || null;
+    save(prepareLocalState(nextDb, {
+      customerId: session?.customerId,
+      isAdmin: session?.isAdmin,
+      adminVerified: session?.adminVerified
+    }));
+  }
 
   // Uzak kayıt hatasını merkezi hub'a ilet
   function handleSaveFailure(result) {
@@ -55,7 +66,7 @@ export function useCommit(initial) {
       if (!force && remote.updatedAt && remote.updatedAt === lastRemoteAt.current) return;
       lastRemoteAt.current = remote.updatedAt;
       setDb(remote.data);
-      save(remote.data);
+      persistLocal(remote.data);
       setMode('cloud');
       setSyncState((prev) => ({
         ...prev,
@@ -112,7 +123,7 @@ export function useCommit(initial) {
     const seq = saveSeq.current;
 
     setDb(nextDb);
-    save(nextDb);
+    persistLocal(nextDb);
     queueSaveRemote(nextDb, seq);
   }, []);
 

@@ -394,9 +394,11 @@ export function getDailyTasks(db,customerId){
 
 export function claimDailyLoginReward(db,customerId){
   const customer=db.customers.find(c=>c.id===customerId);
-  if(!customer)return db;
+  if(!customer)return { ok:false, db, message:'Üye bulunamadı.' };
   const day=localDayKey();
-  if(hasDailyClaim(db,customerId,'daily_login')){alert('Günlük giriş ödülünü bugün zaten aldın.');return db;}
+  if(hasDailyClaim(db,customerId,'daily_login')){
+    return { ok:false, db, message:'Günlük giriş ödülünü bugün zaten aldın.' };
+  }
   const createdAt=new Date().toLocaleString('tr-TR');
   const prevStreak=getCustomerStreak(db,customerId);
   let next=addStampToCustomer(db,customerId,1,'Günlük giriş ödülü');
@@ -404,7 +406,8 @@ export function claimDailyLoginReward(db,customerId){
   const newStreak=prevStreak+1;
   if(newStreak===3)next=addStampToCustomer(next,customerId,1,'3 gün seri bonusu');
   if(newStreak===7)next=addStampToCustomer(next,customerId,2,'7 gün seri bonusu');
-  return next;
+  const bonusNote=newStreak===3?' 3 gün seri bonusu da eklendi!':newStreak===7?' 7 gün seri bonusu da eklendi!':'';
+  return { ok:true, db:next, message:`+1 LP günlük giriş ödülü hesabına eklendi.${bonusNote}` };
 }
 
 export function claimFirstOrderBonus(db,customerId){

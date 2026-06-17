@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { applyCors, readBody } from '../http.js';
 import { cleanPhone } from '../phone.js';
+import { enforceAuthRateLimit } from '../rateLimit.js';
 import {
   createSession,
   findCustomerByPhone,
@@ -18,6 +19,10 @@ export async function handleAuthLogin(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    if (await enforceAuthRateLimit(req, 'auth_login', { maxHits: 20 })) {
+      return res.status(429).json({ error: 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.' });
+    }
+
     const body = readBody(req);
     const phone = cleanPhone(body.phone);
     const pin = normalizePin(body.pin);

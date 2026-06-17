@@ -4686,6 +4686,8 @@ body{
 .pushWelcomeBanner p{margin:0 0 14px!important;color:rgba(255,255,255,.78)!important;font-size:14px!important;line-height:1.45!important}
 .pushWelcomeActions{display:grid;grid-template-columns:1fr auto;gap:8px}
 .pushWelcomeActions .ghost{background:rgba(255,255,255,.1)!important;color:#fff!important;border-color:rgba(255,255,255,.18)!important}
+.pushInlineNote{margin:0 0 10px!important;font-size:13px!important;line-height:1.4!important;color:rgba(255,255,255,.72)!important}
+.card.push .pushInlineNote{color:var(--muted)!important}
 .premiumSectionBody .pushWelcomeBanner{margin-bottom:0}
 .pageHero h2,.adminSectionHead h3,.homeSectionLabel,.dailyTasksHead h3{font-family:var(--font-display)!important}
 .homeWelcome h1{font-family:var(--font-display)!important;letter-spacing:-.03em!important}
@@ -8020,4 +8022,137 @@ body.menuDetailOpen{
   .loyaltyLevelNode.isBlackNode .loyaltyLevelDot{
     animation:none!important;
   }
+}
+
+/* Onboarding tanıtım katmanı */
+.onboardingOverlay{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(6,17,13,.72);
+  backdrop-filter:blur(6px);
+}
+.onboardingCard{
+  position:relative;
+  width:min(420px,100%);
+  padding:28px 24px 24px;
+  border-radius:22px;
+  background:linear-gradient(160deg,#0f2f26,#06110d);
+  color:#f7faf8;
+  box-shadow:0 24px 60px rgba(0,0,0,.35);
+  text-align:center;
+}
+.onboardingSkip{
+  position:absolute;
+  top:12px;
+  right:12px;
+  border:0;
+  background:transparent;
+  color:#b9f5d0;
+}
+.onboardingIcon{
+  width:56px;
+  height:56px;
+  margin:0 auto 12px;
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  background:rgba(185,245,208,.12);
+  color:#b9f5d0;
+}
+.onboardingStep{
+  display:block;
+  font-size:.78rem;
+  letter-spacing:.08em;
+  color:#8fb5a8;
+  margin-bottom:8px;
+}
+.onboardingCard h2{
+  margin:0 0 10px;
+  font-size:1.35rem;
+}
+.onboardingCard p{
+  margin:0 0 18px;
+  color:#d7e8e1;
+  line-height:1.5;
+}
+.onboardingDots{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin-bottom:16px;
+}
+.onboardingDots i{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.25);
+}
+.onboardingDots i.isActive{
+  background:#b9f5d0;
+}
+.onboardingNext{
+  width:100%;
+}
+
+/* QR yeniden dene */
+.qrPassRetry{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  min-height:196px;
+  justify-content:center;
+}
+.qrRetryBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* Günlük ödül */
+.dailyClaimBtn{
+  width:100%;
+  margin:0 0 10px;
+}
+.dailyClaimMessage{
+  margin:0 0 10px;
+  font-size:.88rem;
+  color:#126047;
+}
+
+/* Profil doğum tarihi */
+.profileBirthDateCard{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.profileBirthLabel{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.profileBirthLabel input{
+  flex:1;
+}
+.profileSupportLink{
+  text-decoration:none;
+}
+.campaignEmptyCard{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.adminGatePlaceholder{
+  padding:24px 16px;
+  text-align:center;
+  color:#5a6b64;
+}
+.appBootNotice{
+  margin-bottom:12px;
+  color:#126047;
 }

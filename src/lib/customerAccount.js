@@ -21,6 +21,12 @@ export function clearLocalCustomerSession(customerId) {
   if (customerId) {
     localStorage.removeItem(`libertePushDismissed:${customerId}`);
     localStorage.removeItem(`libertePushDevice:${customerId}`);
+    localStorage.removeItem(`liberteOnboarded:${customerId}`);
+  }
+  try {
+    localStorage.removeItem('liberteDB');
+  } catch {
+    // Depolama kapalıysa sessizce geç
   }
 }
 

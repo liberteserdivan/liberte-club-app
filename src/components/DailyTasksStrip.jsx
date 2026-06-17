@@ -1,13 +1,32 @@
+import { useState } from 'react';
 import { Check, Coffee, Gift, Sparkles, Sun } from 'lucide-react';
-import { getCustomerStreak, getDailyTasks } from '../lib/db.js';
+import { claimDailyLoginReward, getCustomerStreak, getDailyTasks, hasDailyClaim } from '../lib/db.js';
 
 const ICONS = { sun: Sun, sparkles: Sparkles, coffee: Coffee, gift: Gift };
 
 // Ana sayfada günlük görev şeridi
-export default function DailyTasksStrip({ db, customer, setTab }) {
+export default function DailyTasksStrip({ db, customer, commit, setTab }) {
+  const [claimMessage, setClaimMessage] = useState('');
   const tasks = getDailyTasks(db, customer.id);
   const streak = getCustomerStreak(db, customer.id);
-  const doneCount = tasks.filter(t => t.done).length;
+  const doneCount = tasks.filter((task) => task.done).length;
+  const dailyClaimed = hasDailyClaim(db, customer.id, 'daily_login');
+
+  function handleDailyClaim() {
+    if (dailyClaimed) {
+      setClaimMessage('Günlük giriş ödülünü bugün zaten aldın.');
+      return;
+    }
+
+    const result = claimDailyLoginReward(db, customer.id);
+    if (!result.ok) {
+      setClaimMessage(result.message);
+      return;
+    }
+
+    commit(result.db);
+    setClaimMessage(result.message);
+  }
 
   return (
     <div className="dailyTasksStrip">
@@ -21,8 +40,16 @@ export default function DailyTasksStrip({ db, customer, setTab }) {
           <em>{doneCount}/{tasks.length}</em>
         </div>
       </div>
+
+      {!dailyClaimed && (
+        <button type="button" className="dailyClaimBtn goldBtn" onClick={handleDailyClaim}>
+          Günlük giriş ödülünü al (+1 LP)
+        </button>
+      )}
+      {claimMessage && <p className="dailyClaimMessage">{claimMessage}</p>}
+
       <div className="dailyTasksScroll">
-        {tasks.map(task => {
+        {tasks.map((task) => {
           const Icon = ICONS[task.icon] || Sparkles;
           return (
             <button

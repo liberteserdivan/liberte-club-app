@@ -8,6 +8,7 @@ import { loyaltyTemplate, applyCategoryStamp } from '../loyaltyOps.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
 import { isValidPinFormat, normalizePin, saveCustomerPin } from '../pinAuth.js';
+import { enforceAuthRateLimit } from '../rateLimit.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
@@ -15,6 +16,10 @@ function validEmail(v = '') {
 
 // Kayıt öncesi — e-postaya doğrulama kodu gönder
 async function handleSendCode(req, res) {
+  if (await enforceAuthRateLimit(req, 'auth_send_code', { maxHits: 8 })) {
+    return res.status(429).json({ error: 'Çok fazla kod isteği. Lütfen 15 dakika sonra tekrar dene.' });
+  }
+
   const body = readBody(req);
   const phone = cleanPhone(body.phone);
   const email = String(body.email || '').trim().toLowerCase();

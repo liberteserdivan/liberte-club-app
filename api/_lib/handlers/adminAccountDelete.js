@@ -1,7 +1,8 @@
-import { applyCors } from '../http.js';
+import { applyCors, publicErrorMessage } from '../http.js';
 import { destroySession, requireSession } from '../auth.js';
 import { loadAppState, saveAppState } from '../appState.js';
 import { deleteCustomerFromState } from '../stateAccess.js';
+import { purgeCustomerAuthRecords } from '../accountCleanup.js';
 
 // Hesap silme — App Store uyumu
 export async function handleAdminAccountDelete(req, res) {
@@ -35,8 +36,6 @@ export async function handleAdminAccountDelete(req, res) {
       {
         id: Date.now(),
         customerId: session.customerId,
-        name: customer.name,
-        phone: customer.phone,
         type: 'customer_delete',
         count: 0,
         source: 'Kullanıcı hesap silme',
@@ -46,10 +45,15 @@ export async function handleAdminAccountDelete(req, res) {
     ];
 
     await saveAppState(next);
+    await purgeCustomerAuthRecords({
+      customerId: session.customerId,
+      phone: customer.phone,
+      email: customer.email
+    });
     await destroySession(req, res);
 
     return res.status(200).json({ ok: true });
   } catch (e) {
-    return res.status(500).json({ error: e.message || 'Hesap silinemedi' });
+    return res.status(500).json({ error: publicErrorMessage(e, 'Hesap silinemedi') });
   }
 }

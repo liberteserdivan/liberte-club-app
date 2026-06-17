@@ -1,5 +1,6 @@
 import { handleAdminBackup } from './_lib/handlers/adminBackup.js';
 import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
+import { handleAdminPushCleanup } from './_lib/handlers/adminPushCleanup.js';
 import { handleAdminAccountDelete } from './_lib/handlers/adminAccountDelete.js';
 import { handleAdminLoyaltyAction, handleAdminQrVerify } from './_lib/handlers/adminLoyalty.js';
 
@@ -7,6 +8,7 @@ import { handleAdminLoyaltyAction, handleAdminQrVerify } from './_lib/handlers/a
 const ADMIN_RESOURCES = {
   backup: handleAdminBackup,
   'push-send': handleAdminPushSend,
+  'push-cleanup': handleAdminPushCleanup,
   'account-delete': handleAdminAccountDelete,
   'qr-verify': handleAdminQrVerify,
   'loyalty-action': handleAdminLoyaltyAction

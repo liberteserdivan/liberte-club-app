@@ -5,7 +5,7 @@ import { useLocalAuth } from './lib/devAuth.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
-import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener } from './lib/firebasePush.js';
+import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered } from './lib/firebasePush.js';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
 import { canRequestPushOnThisDevice, deactivateDevicePushToken } from './lib/pushPrompt.js';
@@ -24,6 +24,7 @@ import QrPage from './pages/QrPage.jsx';
 import CampaignPage from './pages/CampaignPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import OnboardingOverlay, { shouldShowOnboarding } from './components/OnboardingOverlay.jsx';
 
 const SPLASH_MIN_MS = 1000;
 const SPLASH_FADE_MS = 880;
@@ -32,7 +33,8 @@ const SPLASH_FORCE_MS = 4500;
 const CUSTOMER_HYDRATE_MS = 8000;
 
 export default function App() {
-  const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load());
+  const sessionRef = useRef(null);
+  const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load(), sessionRef);
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [tab, setTab] = useState('home');
@@ -40,6 +42,8 @@ export default function App() {
   const [splashImageReady, setSplashImageReady] = useState(false);
   const [adminGateSkipped, setAdminGateSkipped] = useState(false);
   const [hydratingCustomer, setHydratingCustomer] = useState(false);
+  const [authNotice, setAuthNotice] = useState('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const splashStartRef = useRef(Date.now());
   const hydrateStartedRef = useRef(0);
 
@@ -49,10 +53,17 @@ export default function App() {
   }, [db.customers]);
 
   useEffect(() => {
-    setUnauthorizedHandler(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    setUnauthorizedHandler((reason) => {
       void logoutSession();
       setMemorySession(null);
       setSession(null);
+      setAuthNotice(reason === 'expired'
+        ? 'Oturumun sona erdi. Lütfen tekrar giriş yap.'
+        : '');
     });
     return () => setUnauthorizedHandler(null);
   }, []);
@@ -132,6 +143,7 @@ export default function App() {
     setMemorySession(next);
     setSession(next);
     setAdminGateSkipped(false);
+    setAuthNotice('');
   }
 
   const customer = session
@@ -158,6 +170,7 @@ export default function App() {
       await logoutSession();
       setMemorySession(null);
       setSession(null);
+      setAuthNotice('Hesap bilgilerin yüklenemedi. Lütfen tekrar giriş yap.');
     }, CUSTOMER_HYDRATE_MS);
 
     return () => clearTimeout(timer);
@@ -180,9 +193,27 @@ export default function App() {
     setTab('home');
   }
 
+  // Yönetim paneline gidince PIN ekranını yeniden göster
+  useEffect(() => {
+    if (tab === 'admin' && isAdmin && !adminVerified) {
+      setAdminGateSkipped(false);
+    }
+  }, [tab, isAdmin, adminVerified]);
+
+  useEffect(() => {
+    if (!customer?.id) {
+      setShowOnboarding(false);
+      return;
+    }
+    setShowOnboarding(shouldShowOnboarding(customer.id));
+  }, [customer?.id]);
+
   useEffect(() => {
     if (!customer?.id) return;
     refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
+    if (isNativeApp()) {
+      ensureNativePushRegistered(customer, db, commit).catch(() => {});
+    }
   }, [customer?.id]);
 
   const theme = cssVars(db.settings);
@@ -201,6 +232,7 @@ export default function App() {
   } else if (!session || !customer) {
     mainContent = (
       <main className="appBoot" style={theme}>
+        {authNotice && <p className="appBootHint appBootNotice">{authNotice}</p>}
         <LoginPage db={db} commit={commit} setSession={handleSetSession} />
       </main>
     );
@@ -223,7 +255,7 @@ export default function App() {
               adminVerified={adminVerified}
             />
           )}
-          {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} />}
+          {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} setTab={setTab} />}
           {tab === 'profile' && (
             <ProfilePage
               db={db}
@@ -233,10 +265,23 @@ export default function App() {
               setSession={handleSetSession}
               setTab={setTab}
               isAdmin={isAdmin}
+              onOpenAdmin={() => {
+                setAdminGateSkipped(false);
+                setTab('admin');
+              }}
             />
           )}
           {tab === 'admin' && isAdmin && adminVerified && <AdminPage db={db} commit={commit} />}
+          {tab === 'admin' && isAdmin && !adminVerified && (
+            <section className="adminGatePlaceholder">
+              <p>Yönetim paneli için PIN doğrulaması gerekli.</p>
+            </section>
+          )}
         </div>
+
+        {showOnboarding && (
+          <OnboardingOverlay customerId={customer.id} onDone={() => setShowOnboarding(false)} />
+        )}
 
         {isAdmin && !adminVerified && !adminGateSkipped && (
           <AdminPinGate fullscreen onVerified={handleAdminVerified} onSkip={handleAdminSkip} />

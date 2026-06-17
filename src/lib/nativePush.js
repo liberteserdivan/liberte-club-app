@@ -71,6 +71,17 @@ export async function registerNativePushToken() {
   }
 }
 
+// Native bildirim izni verilmiş mi?
+export async function hasNativePushPermission() {
+  if (!isNativeApp()) return false;
+  try {
+    const perm = await FirebaseMessaging.checkPermissions();
+    return perm.receive === 'granted';
+  } catch {
+    return false;
+  }
+}
+
 // Bildirim izni reddedildiyse ayarlara yönlendirme metni
 export function getPushSettingsHint() {
   if (Capacitor.getPlatform() === 'ios') {

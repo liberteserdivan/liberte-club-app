@@ -91,6 +91,14 @@ export function validateServiceAccount(account) {
     return 'Service account JSON eksik. private_key ve client_email alanları gerekli.';
   }
 
+  if (!String(account.private_key).includes('BEGIN PRIVATE KEY')) {
+    return 'Service account private_key bozuk. JSON\'u tek satır (\\n kaçışlı) olarak Vercel\'e yapıştırın.';
+  }
+
+  if (String(account.private_key).length < 500) {
+    return 'Service account private_key kesilmiş görünüyor. Firebase\'den yeni key indirin.';
+  }
+
   return '';
 }
 

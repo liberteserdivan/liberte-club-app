@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Smartphone, Trash2, Users } from 'lucide-react';
 import { dispatchPush } from '../lib/pushDispatch.js';
+import { apiFetch } from '../lib/apiClient.js';
+import { sanitizePushSubscriptions } from '../lib/pushSubscriptionSanitize.js';
 import {
   PUSH_AUDIENCE_OPTIONS,
   getAudienceOptionState,
@@ -43,11 +45,51 @@ export default function PushNotificationAdmin({ db, commit }) {
   const [audience, setAudience] = useState('all');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
+  const [cleanupNote, setCleanupNote] = useState('');
+  const cleanupStarted = useRef(false);
 
   const devices = db.pushSubscriptions || [];
   const pushLog = db.pushLog || [];
   const preview = useMemo(() => resolvePushAudience(db, audience), [db, audience]);
   const audienceState = getAudienceOptionState(db, audience);
+
+  // Eski/pasif/web kayıtları açılışta temizle
+  useEffect(() => {
+    if (cleanupStarted.current) return;
+    cleanupStarted.current = true;
+
+    async function runCleanup() {
+      try {
+        const response = await apiFetch('/api/admin?resource=push-cleanup', {
+          method: 'POST',
+          body: JSON.stringify({ mode: 'sanitize' })
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (response.ok && payload?.ok) {
+          if (payload.removed > 0) {
+            const cleaned = sanitizePushSubscriptions(db.pushSubscriptions || []);
+            commit({ ...db, pushSubscriptions: cleaned.subscriptions });
+            setCleanupNote(`${payload.removed} eski cihaz kaydı temizlendi.`);
+          }
+          return;
+        }
+      } catch {
+        // Sunucu endpoint yoksa yerel temizliğe düş
+      }
+
+      const cleaned = sanitizePushSubscriptions(db.pushSubscriptions || []);
+      if (!cleaned.summary.removed) return;
+
+      commit({
+        ...db,
+        pushSubscriptions: cleaned.subscriptions
+      });
+      setCleanupNote(`${cleaned.summary.removed} eski cihaz kaydı temizlendi.`);
+    }
+
+    runCleanup();
+  }, [db, commit]);
 
   function formatDeviceLabel(device) {
     const platform = device.platform === 'ios'
@@ -57,6 +99,29 @@ export default function PushNotificationAdmin({ db, commit }) {
         : 'Web';
     const channel = resolvePushChannel(device) === 'native' ? 'uygulama' : 'web';
     return `${platform} (${channel})`;
+  }
+
+  async function resetDevices() {
+    const ok = confirm('Tüm bildirim cihaz kayıtları silinsin mi? Üyeler bildirimleri yeniden açmalı.');
+    if (!ok) return;
+
+    try {
+      const response = await apiFetch('/api/admin?resource=push-cleanup', {
+        method: 'POST',
+        body: JSON.stringify({ mode: 'reset' })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload?.ok) {
+        commit({ ...db, pushSubscriptions: [] });
+        setCleanupNote('Tüm cihaz kayıtları sıfırlandı. Telefonda bildirimleri yeniden aç.');
+        return;
+      }
+    } catch {
+      // Yerel sıfırlama
+    }
+
+    commit({ ...db, pushSubscriptions: [] });
+    setCleanupNote('Cihaz kayıtları temizlendi. Telefonda bildirimleri yeniden aç.');
   }
 
   async function sendPush() {
@@ -112,6 +177,8 @@ export default function PushNotificationAdmin({ db, commit }) {
             <Smartphone size={14} /> {preview.deviceCount} cihaz
           </span>
         </div>
+
+        {cleanupNote && <p className="pushAudienceNote">{cleanupNote}</p>}
 
         <p className="pushHint">
           Kampanyalar, LP fırsatları ve ikram haklarından haberdar olmak için üyeler bildirim izni vermelidir.
@@ -218,6 +285,9 @@ export default function PushNotificationAdmin({ db, commit }) {
       <div className="card adminSectionCard">
         <div className="adminSectionHead">
           <div><span>CİHAZLAR</span><h3>Kayıtlı bildirim cihazları</h3></div>
+          <button type="button" className="ghost" onClick={resetDevices}>
+            Tümünü sıfırla
+          </button>
         </div>
         {devices.length ? devices.map((device) => (
           <div className="deviceRow" key={device.id || device.token}>

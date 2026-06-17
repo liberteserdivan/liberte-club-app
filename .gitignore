@@ -72,3 +72,9 @@ ios/fastlane/test_output/
 android/app/release
 android/app/*.jks
 android/app/*.keystore
+.vercel
+
+# Firebase admin ve gizli anahtar yedekleri — commit etme
+service-account*.txt
+*adminsdk*.json
+liberte-app-review-package.zip

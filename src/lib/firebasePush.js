@@ -2,10 +2,11 @@ import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, N
 import { apiFetch } from './apiClient.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice } from './pushPrompt.js';
+import { resolvePushChannel } from './pushAudience.js';
 import { formatPushNotification } from './pushNotificationText.js';
-import { isIos, isNativeApp } from './platform.js';
+import { isAndroid, isIos, isNativeApp } from './platform.js';
 import { ensureAndroidNotificationPermission } from './androidNotificationPermission.js';
-import { registerNativePushToken, getPushSettingsHint } from './nativePush.js';
+import { registerNativePushToken, getPushSettingsHint, hasNativePushPermission } from './nativePush.js';
 import { Capacitor } from '@capacitor/core';
 
 // Service worker yolu — Capacitor WebView'da göreli yol gerekir
@@ -184,24 +185,20 @@ function isValidVapidPublicKey(key) {
 function mapPushError(error) {
   const message = error?.message || String(error || '');
 
-  if (error?.message === 'VAPID_MISSING') {
-    return 'Push henüz yapılandırılmadı. Vercel ortam değişkenlerine FIREBASE_VAPID_PUBLIC_KEY ekleyin (Firebase → Cloud Messaging → Web Push).';
-  }
-
-  if (error?.message === 'VAPID_INVALID') {
-    return 'VAPID anahtarı eksik veya hatalı. Firebase\'den public key\'in tamamını kopyalayıp Vercel\'de güncelleyin (~88 karakter, B ile başlar).';
+  if (error?.message === 'VAPID_MISSING' || error?.message === 'VAPID_INVALID') {
+    return 'Bildirimler şu an kullanılamıyor. Lütfen daha sonra tekrar dene.';
   }
 
   if (message.includes('applicationServerKey is not valid')) {
-    return 'VAPID anahtarı geçersiz veya eksik. Firebase\'den public key\'in tamamını (~88 karakter) Vercel\'de FIREBASE_VAPID_PUBLIC_KEY olarak güncelleyin.';
+    return 'Bildirim ayarları güncelleniyor. Lütfen bir süre sonra tekrar dene.';
   }
 
   if (message.includes('API key not valid') || message.includes('INVALID_ARGUMENT') || message.includes('PERMISSION_DENIED')) {
-    return 'Firebase API anahtarı reddedildi. Google Cloud\'da yeni API key oluşturup Vercel\'e FIREBASE_WEB_API_KEY olarak ekleyin (Application: None, API: Don\'t restrict). Chrome\'da deneyin.';
+    return 'Bildirim servisine bağlanılamadı. Uygulamayı yeniden başlatıp tekrar dene.';
   }
 
   if (message.includes('installations') || message.includes('request-failed')) {
-    return 'Firebase bağlantısı kurulamadı. API key, domain kısıtı ve VAPID ayarlarını kontrol edin.';
+    return 'Bildirim servisine bağlanılamadı. İnternet bağlantını kontrol et.';
   }
 
   if (
@@ -209,18 +206,22 @@ function mapPushError(error) {
     || message.includes('Registration failed')
     || message.includes('token-subscribe-failed')
   ) {
-    return 'Push servisi bağlanamadı. Sayfayı yenile, Chrome\'da site ayarlarından bildirim iznini aç ve tekrar dene. Sorun sürerse tarayıcı önbelleğini temizle.';
+    return 'Bildirim kaydı tamamlanamadı. Uygulamayı yeniden başlat ve tekrar dene.';
   }
 
   if (message.includes('messaging/permission-blocked')) {
-    return 'Bildirim izni tarayıcı tarafından engellendi.';
+    return 'Bildirim izni telefon ayarlarından kapalı. Ayarlardan Liberte Club bildirimlerini aç.';
   }
 
   if (message.includes('Android bildirim izni')) {
     return message;
   }
 
-  return `Bildirim kurulamadı: ${message}`;
+  if (message.includes('Service worker')) {
+    return 'Bildirimler bu cihazda desteklenmiyor. Uygulamayı mağazadan indirerek dene.';
+  }
+
+  return 'Bildirimler açılamadı. Telefon ayarlarından izin verip tekrar dene.';
 }
 
 // Bildirim kanalı — native uygulama mı tarayıcı/PWA mı
@@ -292,6 +293,13 @@ function upsertPushSubscription(db, customer, token) {
 
 // Native uygulamada Capacitor push token kaydı
 export async function enableNativePush(customer, db, commit) {
+  if (isAndroid()) {
+    const androidPermission = await ensureAndroidNotificationPermission();
+    if (!androidPermission.ok) {
+      throw new Error(getPushSettingsHint());
+    }
+  }
+
   const result = await registerNativePushToken();
   if (!result.ok) {
     if (result.reason === 'denied') {
@@ -459,15 +467,47 @@ export async function refreshPushTokenIfSubscribed(customer, db, commit) {
   }
 }
 
+// Native uygulamada izin verilmişse FCM token kaydını otomatik yap
+export async function ensureNativePushRegistered(customer, db, commit) {
+  if (!isNativeApp() || !customer?.id || typeof commit !== 'function') return;
+
+  const localToken = getLocalPushToken(customer.id);
+  const hasNativeRow = (db.pushSubscriptions || []).some((row) => (
+    Number(row.customerId) === Number(customer.id)
+    && row.active !== false
+    && resolvePushChannel(row) === 'native'
+    && (!localToken || row.token === localToken)
+  ));
+
+  if (hasNativeRow && localToken) return;
+
+  if (!(await hasNativePushPermission())) return;
+
+  try {
+    await enableNativePush(customer, db, commit);
+  } catch {
+    // Kullanıcı banner'dan manuel açabilir
+  }
+}
+
 // enablePush sarmalayıcı — hata mesajını döndürür
 export async function tryEnablePush(customer, db, commit) {
   try {
     await enablePush(customer, db, commit);
-    return { ok: true, message: 'Bildirimler aktif.' };
+    return { ok: true, message: 'Bildirimler aktif.', needsSettings: false };
   } catch (error) {
-    if (error?.message === 'VAPID_MISSING') {
-      return { ok: false, message: mapPushError(error) };
+    const message = error?.message || '';
+    const needsSettings = isNativeApp() && (
+      message.includes('Ayarlar')
+      || message.includes('kapalı')
+      || message.includes('izni')
+      || message.includes('reddedildi')
+    );
+
+    if (needsSettings) {
+      return { ok: false, message, needsSettings: true };
     }
-    return { ok: false, message: mapPushError(error) };
+
+    return { ok: false, message: mapPushError(error), needsSettings: false };
   }
 }

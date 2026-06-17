@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Crown } from 'lucide-react';
+import { Crown, RefreshCw } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PageShell from '../components/PageShell.jsx';
 import CustomerQrScanner from '../components/CustomerQrScanner.jsx';
@@ -30,10 +30,7 @@ export default function QrPage({
     return <CustomerQrScanner db={db} commit={commit} refreshRemote={refreshRemote} />;
   }
 
-  if (isAdmin && !adminVerified) {
-    return null;
-  }
-
+  // Yönetici müşteri modunda da kendi QR kartını görebilir
   return <CustomerQrCard customer={customer} card={card} history={db?.history || []} />;
 }
 
@@ -42,6 +39,7 @@ function CustomerQrCard({ customer, card, history = [] }) {
   const [entered, setEntered] = useState(false);
   const [qrValue, setQrValue] = useState('');
   const [qrError, setQrError] = useState('');
+  const [qrLoading, setQrLoading] = useState(false);
   const signedQrRequired = isSignedQrRequired();
 
   const lp = getLpCardView(card);
@@ -52,15 +50,20 @@ function CustomerQrCard({ customer, card, history = [] }) {
   const refreshSignedQr = useCallback(async () => {
     if (!signedQrRequired) {
       setQrValue(JSON.stringify({ type: 'liberte-customer', id: customer.id, phone: customer.phone }));
+      setQrError('');
       return;
     }
 
+    setQrLoading(true);
     try {
       const issued = await fetchCustomerQrToken();
       setQrValue(formatSignedQrValue(issued.token));
       setQrError('');
     } catch (error) {
-      setQrError(error?.message || 'QR kodu yüklenemedi');
+      setQrValue('');
+      setQrError('QR kodu yüklenemedi. İnternet bağlantını kontrol edip tekrar dene.');
+    } finally {
+      setQrLoading(false);
     }
   }, [customer.id, customer.phone, signedQrRequired]);
 
@@ -100,7 +103,15 @@ function CustomerQrCard({ customer, card, history = [] }) {
           {qrValue ? (
             <QRCodeCanvas value={qrValue} size={196} level="H" includeMargin={false} />
           ) : (
-            <p className="qrPassTip">{qrError || 'QR hazırlanıyor...'}</p>
+            <div className="qrPassRetry">
+              <p className="qrPassTip">{qrError || (qrLoading ? 'QR hazırlanıyor…' : 'QR kodu bekleniyor…')}</p>
+              {signedQrRequired && (
+                <button type="button" className="ghost qrRetryBtn" onClick={refreshSignedQr} disabled={qrLoading}>
+                  <RefreshCw size={16} aria-hidden="true" />
+                  {qrLoading ? 'Yükleniyor…' : 'Tekrar dene'}
+                </button>
+              )}
+            </div>
           )}
         </div>
 

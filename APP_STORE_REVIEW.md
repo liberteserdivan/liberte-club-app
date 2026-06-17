@@ -27,11 +27,12 @@ PIN: [Set in App Store Connect only — do not commit real PIN to git]
 
 Test flow:
 1. Launch app → splash screen → login
-2. Enter demo phone + PIN → Home / Card tab → QR code
+2. Enter demo phone + PIN → Home / Card tab → QR code (tap Retry if network is slow)
 3. Menu tab → tap product → detail modal opens (close with X)
-4. Profile → legal links open in-app
+4. Profile → legal links open in-app; optional birth date; Delete Account available
+5. Optional: accept push notification prompt on Home or Profile
 
-Push notifications: web/PWA only; native iOS app does not show push prompts.
+Push notifications: native iOS/Android app supports push via Firebase. You may enable notifications when prompted, or skip via "Later".
 
 Camera: only used when admin enters admin PIN and opens QR scanner.
 ```
@@ -45,7 +46,9 @@ Camera: only used when admin enters admin PIN and opens QR scanner.
 - [ ] Privacy Policy URL loads without JavaScript
 - [ ] Support URL: https://app.liberte.cafe/support
 - [ ] Export compliance: No (standard HTTPS only)
-- [ ] iPhone screenshots only (iPad desteği kapalı)
+- [ ] Play Console / App Store screenshots uploaded
+- [ ] Production smoke test: register → QR → push → delete account
+- [ ] QR_SIGNING_SECRET set in Vercel (separate from ADMIN_PIN)
 
 ---
 

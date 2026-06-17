@@ -5,6 +5,27 @@ export const INVALID_PUSH_TOKEN_CODES = new Set([
   'messaging/invalid-argument'
 ]);
 
+// Gönderim hatası sonrası silinecek token kodları
+export const REMOVABLE_PUSH_FAILURE_CODES = new Set([
+  ...INVALID_PUSH_TOKEN_CODES,
+  'messaging/third-party-auth-error'
+]);
+
+// FCM yanıtından başarısız tokenları topla
+export function collectFailedPushTokens(tokens = [], responses = [], options = {}) {
+  const allowThirdPartyRemoval = Boolean(options.allowThirdPartyRemoval);
+  const failed = [];
+  responses.forEach((row, index) => {
+    if (row?.success) return;
+    const code = row?.error?.code || '';
+    if (code === 'messaging/third-party-auth-error' && !allowThirdPartyRemoval) return;
+    if (!REMOVABLE_PUSH_FAILURE_CODES.has(code)) return;
+    const token = tokens[index];
+    if (token) failed.push(token);
+  });
+  return [...new Set(failed)];
+}
+
 // Kayıtlı push aboneliklerinden geçersiz tokenları çıkar
 export function pruneInvalidPushTokens(subscriptions = [], invalidTokens = []) {
   if (!invalidTokens.length) return { subscriptions, removed: 0 };

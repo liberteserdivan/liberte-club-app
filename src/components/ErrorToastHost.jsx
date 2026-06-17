@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { dismissErrorToast, subscribeErrorHub } from '../lib/errorHub.js';
 
+// Kullanıcıya gösterilecek toast başlığı
+function toastTitle(item) {
+  if (item.level === 'warn') return 'Uyarı';
+  return 'Bir sorun oluştu';
+}
+
 // Merkezi hata toast bildirimleri
 export default function ErrorToastHost() {
   const [items, setItems] = useState([]);
@@ -20,7 +26,7 @@ export default function ErrorToastHost() {
         >
           <AlertTriangle size={18} aria-hidden="true" />
           <div className="errorToastBody">
-            <strong>{item.source}</strong>
+            <strong>{toastTitle(item)}</strong>
             <p>{item.userMessage}</p>
           </div>
           <button

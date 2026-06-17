@@ -1,6 +1,7 @@
 import { readFirebaseWebConfig } from './_lib/firebaseConfig.js';
 import { isValidVapidPublicKey, normalizeVapidKey, readVapidKeyFromEnv } from './_lib/vapid.js';
-import { getServiceAccountStatus } from './_lib/serviceAccount.js';
+import { getServiceAccountStatus, parseServiceAccount, validateServiceAccount } from './_lib/serviceAccount.js';
+import { probeFcmCredentials } from './_lib/fcmProbe.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,10 +40,16 @@ function handlePush(res) {
 }
 
 // Push kurulum durumu — gizli anahtar döndürmez
-function handlePushStatus(res) {
+async function handlePushStatus(res) {
   const vapidKey = readVapidKeyFromEnv();
+  const serviceAccount = parseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
   const adminStatus = getServiceAccountStatus(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  const adminReady = adminStatus.state === 'hazir';
+  const structureError = validateServiceAccount(serviceAccount);
+  const fcmProbe = serviceAccount && !structureError
+    ? await probeFcmCredentials(serviceAccount)
+    : { ok: false, code: 'invalid_account', message: structureError || adminStatus.state };
+
+  const adminReady = adminStatus.state === 'hazir' && fcmProbe.ok;
 
   return res.status(200).json({
     projectId: 'liberte-club',
@@ -51,16 +58,24 @@ function handlePushStatus(res) {
     adminReady,
     adminProjectId: adminStatus.projectId,
     adminState: adminStatus.state,
-    adminHint: adminStatus.state === 'gecersiz'
-      ? 'JSON bozuk. Firebase liberte-club key indirip tek satır yapıştırın.'
-      : adminStatus.state === 'yanlis_proje'
-        ? 'Yanlış Firebase projesi. liberte-club kullanın.'
-        : adminStatus.state === 'yok'
-          ? 'FIREBASE_SERVICE_ACCOUNT_JSON Vercel\'e ekleyin.'
-          : '',
+    adminHint: structureError
+      || (adminStatus.state === 'gecersiz'
+        ? 'JSON bozuk. Firebase liberte-club key indirip tek satır yapıştırın.'
+        : adminStatus.state === 'yanlis_proje'
+          ? 'Yanlış Firebase projesi. liberte-club kullanın.'
+          : adminStatus.state === 'yok'
+            ? 'FIREBASE_SERVICE_ACCOUNT_JSON Vercel\'e ekleyin.'
+            : ''),
+    fcmAuthOk: fcmProbe.ok,
+    fcmAuthCode: fcmProbe.code,
+    fcmAuthHint: fcmProbe.ok
+      ? ''
+      : (fcmProbe.message || 'Firebase service account Google OAuth doğrulaması başarısız.'),
     memberPushReady: Boolean(vapidKey),
     adminSendReady: adminReady,
-    iosWebPushHint: 'iPhone için: PWA ana ekrandan açılmalı. Firebase Console → Cloud Messaging → Apple yapılandırmasında APNs Auth Key gerekli.',
+    iosWebPushHint: 'iPhone için: Firebase Console → Cloud Messaging → Apple → APNs Authentication Key (.p8) yükleyin.',
+    androidHint: 'Android için: Google Cloud Console → Firebase Cloud Messaging API etkin olmalı.',
+    webHint: 'Web token varsa: Firebase Console → Cloud Messaging → Web Push sertifikası VAPID ile aynı olmalı.',
     site: 'https://app.liberte.cafe'
   });
 }

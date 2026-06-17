@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User } from 'lucide-react';
+import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User, Calendar, ExternalLink } from 'lucide-react';
 import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
@@ -13,14 +13,22 @@ import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
 import { logoutSession } from '../lib/session.js';
 import { deactivateDevicePushToken } from '../lib/pushPrompt.js';
-import { supportEmail, CLUB_APP_NAME } from '../lib/constants.js';
+import { formatPhoneInput } from '../lib/phoneMask.js';
+import { supportEmail, supportUrl, CLUB_APP_NAME } from '../lib/constants.js';
+
+// Telefon numarasını okunabilir formata çevir
+function formatDisplayPhone(phone = '') {
+  return formatPhoneInput(phone) || phone;
+}
 
 // Profil — çıkış, hesap silme, yasal linkler
 export default function ProfilePage({
-  db, customer, card, commit, setSession, setTab, isAdmin = false
+  db, customer, card, commit, setSession, setTab, isAdmin = false, onOpenAdmin
 }) {
   const [legalType, setLegalType] = useState('');
   const [message, setMessage] = useState('');
+  const [birthDate, setBirthDate] = useState(customer.birthDate || '');
+  const [savingBirthDate, setSavingBirthDate] = useState(false);
   const lp = getLpCardView(card);
   const level = lp.level;
   const tierTone = TIER_TONE[level] || 'bronze';
@@ -29,6 +37,26 @@ export default function ProfilePage({
     deactivateDevicePushToken(customer.id, db, commit);
     await logoutSession();
     setSession(null);
+  }
+
+  function saveBirthDate() {
+    const value = String(birthDate || '').trim();
+    if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      setMessage('Doğum tarihi YYYY-AA-GG formatında olmalı.');
+      return;
+    }
+
+    setSavingBirthDate(true);
+    setMessage('');
+    const next = {
+      ...db,
+      customers: (db.customers || []).map((row) => (
+        row.id === customer.id ? { ...row, birthDate: value || '' } : row
+      ))
+    };
+    commit(next);
+    setSavingBirthDate(false);
+    setMessage(value ? 'Doğum tarihin kaydedildi.' : 'Doğum tarihi kaldırıldı.');
   }
 
   async function removeAccount() {
@@ -61,7 +89,7 @@ export default function ProfilePage({
       <div className="profileAvatar" aria-hidden="true"><User size={28} /></div>
       <div className="profileHeroInfo">
         <strong>{customer.name}</strong>
-        <p><Phone size={14} aria-hidden="true" /> {customer.phone}</p>
+        <p><Phone size={14} aria-hidden="true" /> {formatDisplayPhone(customer.phone)}</p>
         {customer.email && <p><Mail size={14} aria-hidden="true" /> {customer.email}</p>}
       </div>
       <div className={`profileLevelBadge profileLevelBadge--${tierTone}`}><Crown size={14} aria-hidden="true" /> {level}</div>
@@ -80,6 +108,23 @@ export default function ProfilePage({
         <MembershipTierCard card={card} customer={customer} history={db.history || []} />
       </PageSection>
 
+      <PageSection label="Doğum günü">
+        <div className="profileBirthDateCard">
+          <p className="profileHint">Doğum günü kahve ikramı için tarihini ekleyebilirsin.</p>
+          <label className="profileBirthLabel">
+            <Calendar size={16} aria-hidden="true" />
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(event) => setBirthDate(event.target.value)}
+            />
+          </label>
+          <button type="button" className="profileAction" onClick={saveBirthDate} disabled={savingBirthDate}>
+            {savingBirthDate ? 'Kaydediliyor…' : 'Doğum Tarihini Kaydet'}
+          </button>
+        </div>
+      </PageSection>
+
       <PageSection label="İletişim">
         <CafeContactBar />
       </PageSection>
@@ -94,7 +139,7 @@ export default function ProfilePage({
             <LogOut size={18} /> Çıkış Yap
           </button>
           {isAdmin && (
-            <button type="button" className="profileAction" onClick={() => setTab('admin')}>
+            <button type="button" className="profileAction" onClick={() => (onOpenAdmin ? onOpenAdmin() : setTab('admin'))}>
               <ShieldCheck size={18} /> Yönetim Paneli
             </button>
           )}
@@ -102,7 +147,10 @@ export default function ProfilePage({
             <Trash2 size={18} /> Hesabımı Sil
           </button>
           {message && <p className="profileMessage">{message}</p>}
-          <p className="profileHint">Destek: {supportEmail}</p>
+          <a className="profileAction ghost profileSupportLink" href={supportUrl} target="_blank" rel="noopener noreferrer">
+            <ExternalLink size={16} /> Destek sayfası
+          </a>
+          <p className="profileHint">E-posta: {supportEmail}</p>
         </div>
       </PageSection>
 
