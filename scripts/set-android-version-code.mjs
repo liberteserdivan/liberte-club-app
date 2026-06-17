@@ -13,12 +13,13 @@ const buildNumber = Number(process.env.BUILD_NUMBER || 0);
 const versionCode = Math.max(minCode, buildNumber || minCode);
 
 const content = readFileSync(gradlePath, 'utf8');
-const next = content.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
+const match = content.match(/versionCode\s+\d+/);
 
-if (next === content) {
+if (!match) {
   console.error('[android-version] versionCode satiri bulunamadi.');
   process.exit(1);
 }
 
+const next = content.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
 writeFileSync(gradlePath, next, 'utf8');
 console.log(`[android-version] versionCode ${versionCode} (BUILD_NUMBER=${buildNumber || 'yok'})`);
