@@ -130,11 +130,17 @@ workflows:
         script: |
           node scripts/generate-android-icons.mjs
           npx cap sync android
-      - name: AAB derle ve Play Console yukle
+      - name: Android surum kodu
+        script: node scripts/set-android-version-code.mjs
+      - name: AAB derle
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease publishReleaseBundle --track="$PLAY_TRACK"
+          ./gradlew bundleRelease
+      - name: Play Console yukle
+        script: |
+          cd android
+          ./gradlew publishReleaseBundle --track="$PLAY_TRACK"
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
     publishing:
