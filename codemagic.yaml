@@ -2,9 +2,10 @@
 #
 # Ortak Secure env: GOOGLE_SERVICE_INFO_PLIST, GOOGLE_SERVICES_JSON
 # Android ek Secure: PLAY_STORE_SERVICE_ACCOUNT_JSON
-# Android imza (Codemagic env — Secure):
-#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PROPERTIES
-#   PLAY_STORE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICES_JSON
+# Android imza — iki yol:
+#   A) Code signing → Android keystore reference: liberte_club_release
+#   B) Env: ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PROPERTIES
+# Android Secure env: GOOGLE_SERVICES_JSON, PLAY_STORE_SERVICE_ACCOUNT_JSON
 
 workflows:
   ios-release:
@@ -110,6 +111,8 @@ workflows:
           npm -v
       - name: npm install
         script: npm install --legacy-peer-deps
+      - name: Android ortam kontrolu
+        script: node scripts/verify-codemagic-android-env.mjs
       - name: Firebase, imza ve Play kimlik
         script: |
           node scripts/materialize-firebase-native-config.mjs
