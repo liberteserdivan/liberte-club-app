@@ -85,15 +85,23 @@ export function buildQrFetchDebug(response, data) {
   };
 }
 
+// Geliştirme ortamında QR debug logları
+function qrDevLog(...args) {
+  if (import.meta.env.DEV) console.log(...args);
+}
+
+function qrDevError(...args) {
+  if (import.meta.env.DEV) console.error(...args);
+}
+
 // Müşteri — sunucudan kısa ömürlü QR token al
 export async function fetchCustomerQrToken(options = {}) {
   const { signal, timeoutMs = 10000, customerId = null } = options;
   const tokenMeta = getStoredAuthTokenMeta();
 
-  console.log('[qr.frontend] start', {
+  qrDevLog('[qr.frontend] start', {
     customerId,
     sessionTokenExists: tokenMeta.exists,
-    sessionTokenLength: tokenMeta.length,
     endpoint: QR_ENDPOINT,
     state: 'loading'
   });
@@ -108,14 +116,13 @@ export async function fetchCustomerQrToken(options = {}) {
       skipUnauthorized: true
     }));
 
-    console.log('[qr.frontend] response', {
+    qrDevLog('[qr.frontend] response', {
       status: response?.status,
       ok: data?.ok,
       code: data?.code,
-      qrPayload: data?.qrPayload,
-      qrToken: data?.qrToken,
       requestId: data?.requestId,
-      fullData: data
+      hasQrPayload: Boolean(data?.qrPayload),
+      hasQrToken: Boolean(data?.qrToken)
     });
 
     if (!response.ok || data?.ok === false) {
@@ -146,16 +153,14 @@ export async function fetchCustomerQrToken(options = {}) {
       debug: buildQrFetchDebug(response, data)
     };
 
-    console.log('[qr.frontend] render', {
-      qrValue: qrPayload,
-      qrValueType: typeof qrPayload,
-      qrValueLength: qrPayload?.length,
+    qrDevLog('[qr.frontend] render', {
+      qrValueLength: qrPayload.length,
       state: 'ready'
     });
 
     return result;
   } catch (error) {
-    console.error('[qr.frontend] error', error);
+    qrDevError('[qr.frontend] error', error);
     if (error?.requestId || error?.code || error?.debug) throw error;
     const wrapped = wrapQrNetworkError(error, 'QR oluşturulamadı.');
     wrapped.debug = {

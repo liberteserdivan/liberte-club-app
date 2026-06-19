@@ -69,13 +69,23 @@ test('apiClient token tüm platformlarda saklanır', () => {
   assert.match(source, /skipUnauthorized/);
 });
 
-test('QrPage Tekrar Dene force ile yeni istek atar', () => {
+test('QrPage gerçek QR payload ve premium kart kullanır', () => {
   const source = readFileSync(join(root, 'src/pages/QrPage.jsx'), 'utf8');
   assert.match(source, /force: true/);
   assert.match(source, /requestGenRef/);
   assert.match(source, /String\(qrValue\)/);
-  assert.match(source, /LIBERTE-QR-TEST/);
-  assert.match(source, /\[qr\.frontend\]/);
+  assert.match(source, /qrPayload \|\| issued\.qrToken/);
+  assert.match(source, /qrPassStage/);
+  assert.match(source, /Geçerlilik:/);
+  assert.doesNotMatch(source, /LIBERTE-QR-TEST/);
+  assert.doesNotMatch(source, /Dummy QR/);
+  assert.doesNotMatch(source, /Render testi/);
+});
+
+test('qrClient production debug logları DEV ile sınırlı', () => {
+  const source = readFileSync(join(root, 'src/lib/qrClient.js'), 'utf8');
+  assert.match(source, /import\.meta\.env\.DEV/);
+  assert.doesNotMatch(source, /LIBERTE-QR-TEST/);
 });
 
 test('auth session bootstrap sessionToken döndürür', () => {
