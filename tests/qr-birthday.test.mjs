@@ -45,28 +45,30 @@ test('createCustomerQrToken üretir ve doğrular', () => {
 });
 
 test('QR generate endpoint qrPayload döndürür', () => {
-  const source = readFileSync(join(root, 'api/state.js'), 'utf8');
-  assert.match(source, /qrPayload/);
-  assert.match(source, /qr\.generate/);
-  assert.match(source, /resolveQrSigningSecret/);
-  assert.match(source, /getSessionForQr/);
+  const handler = readFileSync(join(root, 'api/_lib/handlers/qrGenerate.js'), 'utf8');
+  assert.match(handler, /qrPayload/);
+  assert.match(handler, /qr\.generate/);
+  assert.match(handler, /getSessionForQr/);
+  assert.match(handler, /hasSessionToken/);
+  const vercel = readFileSync(join(root, 'vercel.json'), 'utf8');
+  assert.match(vercel, /\/api\/qr\/generate/);
 });
 
-test('qrClient Bearer token ve debug meta içerir', () => {
+test('qrClient Bearer token ve POST generate endpoint kullanır', () => {
   const source = readFileSync(join(root, 'src/lib/qrClient.js'), 'utf8');
   assert.match(source, /hasBearerToken/);
   assert.match(source, /buildQrFetchDebug/);
   assert.match(source, /QR_ENDPOINT/);
-  assert.match(source, /\[qr\.frontend\]/);
+  assert.match(source, /\/api\/qr\/generate/);
+  assert.match(source, /method: 'POST'/);
+  assert.match(source, /formatQrUserError/);
   assert.match(source, /skipUnauthorized/);
 });
 
-test('apiClient token tüm platformlarda saklanır', () => {
+test('apiClient AbortError ve timeout ayrımı yapar', () => {
   const source = readFileSync(join(root, 'src/lib/apiClient.js'), 'utf8');
-  assert.match(source, /saveAuthToken/);
-  assert.match(source, /sessionStorage\.setItem/);
-  assert.match(source, /localStorage\.setItem/);
-  assert.match(source, /skipUnauthorized/);
+  assert.match(source, /FETCH_TIMEOUT/);
+  assert.match(source, /AbortError/);
 });
 
 test('QrPage gerçek QR payload ve premium kart kullanır', () => {

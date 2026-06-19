@@ -43,10 +43,10 @@ if (signing.secret) {
 
 const base = process.env.QR_PROBE_URL || 'https://app.liberte.cafe';
 const started = Date.now();
-const res = await fetch(`${base}/api/state?qrToken=1`, { method: 'GET' });
+const res = await fetch(`${base}/api/qr/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
 const body = await res.text();
 console.log('\nProduction probe (oturumsuz):');
-console.log('endpoint:', `${base}/api/state?qrToken=1`);
+console.log('endpoint:', `${base}/api/qr/generate`);
 console.log('httpStatus:', res.status);
 console.log('durationMs:', Date.now() - started);
 console.log('body:', body.slice(0, 500));

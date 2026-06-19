@@ -3,37 +3,112 @@ import { useLocalAuth } from './devAuth.js';
 import { isNativeApp } from './platform.js';
 
 const QR_PREFIX = 'liberte-qr:';
-const QR_ENDPOINT = '/api/state?qrToken=1';
+export const QR_ENDPOINT = '/api/qr/generate';
+export const QR_LEGACY_ENDPOINT = '/api/state?qrToken=1';
 
-// API hata mesajını kullanıcıya uygun metne çevir
-function mapQrApiError(response, data, fallback) {
-  if (response?.status === 401) {
-    return data?.message || 'Oturum süresi doldu. Lütfen tekrar giriş yap.';
-  }
-  if (response?.status === 403) {
-    return data?.message || 'QR oluşturma yetkisi yok.';
-  }
-  if (response?.status === 409) {
-    return 'Veri güncellendi. Lütfen tekrar dene.';
-  }
-  if (response?.status >= 500) {
-    return data?.message || data?.error || 'Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene.';
-  }
-  return data?.message || data?.error || fallback;
+// Geliştirme ortamında QR debug logları
+function qrDevLog(...args) {
+  if (import.meta.env.DEV) console.log(...args);
 }
 
-// Ağ hatasını kasa ekranına uygun mesaja çevir
-function wrapQrNetworkError(error, fallback) {
-  const message = error?.message || '';
-  if (
-    message.includes('bağlan')
-    || message.includes('yanıt vermedi')
-    || message.includes('Failed to fetch')
-    || error?.name === 'AbortError'
-  ) {
-    return new Error('İnternet bağlantısı yok veya sunucuya ulaşılamadı. İşlem kaydedilmedi.');
+function qrDevError(...args) {
+  if (import.meta.env.DEV) console.error(...args);
+}
+
+// QR isteği debug özeti
+export function buildQrFetchDebug(response, data, endpoint = QR_ENDPOINT) {
+  return {
+    endpoint,
+    method: 'POST',
+    httpStatus: response?.status ?? null,
+    durationMs: data?._meta?.durationMs ?? null,
+    requestId: data?.requestId || null,
+    code: data?.code || null,
+    step: data?.step || null,
+    hasBearerToken: hasStoredAuthToken(),
+    isNativeApp: isNativeApp(),
+    ok: Boolean(response?.ok && data?.ok !== false),
+    hasQrToken: Boolean(data?.token || data?.qrToken),
+    hasQrPayload: Boolean(data?.qrPayload),
+    payloadLength: String(data?.qrPayload || data?.token || '').length
+  };
+}
+
+// Kullanıcıya gösterilecek QR hata mesajını oluştur
+export function formatQrUserError(error, response = null, data = {}) {
+  if (error?.name === 'AbortError') {
+    return { message: '', requestId: null, abort: true };
   }
-  return new Error(message || fallback);
+
+  const requestId = data?.requestId || error?.requestId || null;
+  const httpStatus = response?.status ?? error?.httpStatus ?? null;
+  const code = data?.code || error?.code || null;
+  const refSuffix = requestId ? ` Ref: ${requestId}` : '';
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return { message: 'Bağlantı yok. QR yenilenemedi.', requestId, code: 'OFFLINE', abort: false };
+  }
+
+  if (error?.code === 'FETCH_TIMEOUT') {
+    return { message: `Sunucuya ulaşılamadı.${refSuffix}`, requestId, code: 'FETCH_TIMEOUT', abort: false };
+  }
+
+  if (httpStatus === 401) {
+    return {
+      message: `${data?.message || 'Oturum süresi doldu. Lütfen tekrar giriş yap.'}${refSuffix}`,
+      requestId,
+      code: code || 'SESSION_REQUIRED',
+      abort: false
+    };
+  }
+
+  if (httpStatus === 403) {
+    return {
+      message: `${data?.message || 'QR oluşturma yetkisi yok.'}${refSuffix}`,
+      requestId,
+      code: code || 'FORBIDDEN',
+      abort: false
+    };
+  }
+
+  if (httpStatus === 404) {
+    return {
+      message: `QR servisi bulunamadı.${refSuffix}`,
+      requestId,
+      code: code || 'NOT_FOUND',
+      abort: false
+    };
+  }
+
+  if (httpStatus >= 500) {
+    return {
+      message: `${data?.message || data?.error || 'QR oluşturulamadı.'}${refSuffix}`,
+      requestId,
+      code: code || 'QR_GENERATE_FAILED',
+      abort: false
+    };
+  }
+
+  if (data?.ok === false || (response && !response.ok)) {
+    return {
+      message: `${data?.message || data?.error || 'QR oluşturulamadı.'}${refSuffix}`,
+      requestId,
+      code: code || 'QR_GENERATE_FAILED',
+      abort: false
+    };
+  }
+
+  const raw = String(error?.message || '');
+  if (raw.includes('Failed to fetch') || raw.includes('bağlan')) {
+    return { message: `Sunucuya ulaşılamadı.${refSuffix}`, requestId, code: 'NETWORK_ERROR', abort: false };
+  }
+
+  return {
+    message: `${raw || 'QR oluşturulamadı.'}${refSuffix}`,
+    requestId,
+    code: code || 'QR_GENERATE_FAILED',
+    abort: false
+  };
 }
 
 // İmzalı QR metnini oluştur
@@ -50,12 +125,12 @@ export function parseQrScanText(rawText) {
   }
 
   try {
-    const data = JSON.parse(text);
-    if (data?.type === 'liberte-customer') {
-      return { type: 'legacy', payload: data };
+    const parsed = JSON.parse(text);
+    if (parsed?.type === 'liberte-customer') {
+      return { type: 'legacy', payload: parsed };
     }
   } catch {
-    // Geçersiz JSON — aşağıda invalid döner
+    // Geçersiz JSON
   }
 
   return { type: 'invalid' };
@@ -66,32 +141,15 @@ export function isSignedQrRequired() {
   return !useLocalAuth();
 }
 
-// QR isteği debug özeti
-export function buildQrFetchDebug(response, data) {
-  return {
-    endpoint: QR_ENDPOINT,
-    method: 'GET',
-    httpStatus: response?.status ?? null,
-    durationMs: data?._meta?.durationMs ?? null,
-    requestId: data?.requestId || null,
-    code: data?.code || null,
-    step: data?.step || null,
-    hasBearerToken: hasStoredAuthToken(),
-    isNativeApp: isNativeApp(),
-    ok: Boolean(response?.ok && data?.ok !== false),
-    hasQrToken: Boolean(data?.token || data?.qrToken),
-    hasQrPayload: Boolean(data?.qrPayload),
-    payloadLength: String(data?.qrPayload || data?.token || '').length
-  };
-}
-
-// Geliştirme ortamında QR debug logları
-function qrDevLog(...args) {
-  if (import.meta.env.DEV) console.log(...args);
-}
-
-function qrDevError(...args) {
-  if (import.meta.env.DEV) console.error(...args);
+// expiresAt değerini ms timestamp'e çevir
+export function parseQrExpiresAt(value, ttlSeconds = 90) {
+  if (typeof value === 'string' && value) {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  return Date.now() + ttlSeconds * 1000;
 }
 
 // Müşteri — sunucudan kısa ömürlü QR token al
@@ -103,7 +161,7 @@ export async function fetchCustomerQrToken(options = {}) {
     customerId,
     sessionTokenExists: tokenMeta.exists,
     endpoint: QR_ENDPOINT,
-    state: 'loading'
+    method: 'POST'
   });
 
   let response;
@@ -111,6 +169,8 @@ export async function fetchCustomerQrToken(options = {}) {
 
   try {
     ({ response, data } = await apiJson(QR_ENDPOINT, {
+      method: 'POST',
+      body: JSON.stringify({ customerId }),
       signal,
       timeoutMs,
       skipUnauthorized: true
@@ -122,56 +182,77 @@ export async function fetchCustomerQrToken(options = {}) {
       code: data?.code,
       requestId: data?.requestId,
       hasQrPayload: Boolean(data?.qrPayload),
-      hasQrToken: Boolean(data?.qrToken)
+      hasQrToken: Boolean(data?.qrToken),
+      durationMs: data?._meta?.durationMs
     });
 
     if (!response.ok || data?.ok === false) {
-      const err = new Error(mapQrApiError(response, data, data?.message || 'QR oluşturulamadı.'));
-      err.requestId = data?.requestId || null;
-      err.code = data?.code || 'QR_GENERATE_FAILED';
+      const formatted = formatQrUserError(null, response, data);
+      const err = new Error(formatted.message || 'QR oluşturulamadı.');
+      err.requestId = formatted.requestId;
+      err.code = formatted.code;
       err.httpStatus = response.status;
       err.debug = buildQrFetchDebug(response, data);
       throw err;
     }
 
-    const token = String(data.token || data.qrToken || '').trim();
-    if (!token) {
-      const err = new Error('QR yanıtı geçersiz — token boş.');
-      err.requestId = data?.requestId || null;
+    const qrValue = String(data.qrPayload || data.qrToken || data.token || '').trim();
+    if (!qrValue || qrValue === 'liberte-qr:') {
+      const formatted = formatQrUserError(
+        new Error('QR yanıtı geçersiz — payload boş.'),
+        response,
+        data
+      );
+      const err = new Error(formatted.message);
+      err.requestId = formatted.requestId || data?.requestId || null;
       err.code = 'QR_INVALID_RESPONSE';
       err.httpStatus = response.status;
       err.debug = buildQrFetchDebug(response, data);
       throw err;
     }
 
-    const qrPayload = String(data.qrPayload || '').trim() || formatSignedQrValue(token);
+    const token = String(data.qrToken || data.token || '').trim()
+      || (qrValue.startsWith(QR_PREFIX) ? qrValue.slice(QR_PREFIX.length) : qrValue);
+
     const result = {
       ...data,
       token,
       qrToken: token,
-      qrPayload,
+      qrPayload: qrValue.startsWith(QR_PREFIX) ? qrValue : formatSignedQrValue(token),
+      expiresAtMs: parseQrExpiresAt(data.expiresAt, data.ttlSeconds),
       debug: buildQrFetchDebug(response, data)
     };
 
     qrDevLog('[qr.frontend] render', {
-      qrValueLength: qrPayload.length,
+      qrValueLength: result.qrPayload.length,
       state: 'ready'
     });
 
     return result;
   } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+
     qrDevError('[qr.frontend] error', error);
+
     if (error?.requestId || error?.code || error?.debug) throw error;
-    const wrapped = wrapQrNetworkError(error, 'QR oluşturulamadı.');
+
+    const formatted = formatQrUserError(error, response, data);
+    if (formatted.abort) throw error;
+
+    const wrapped = new Error(formatted.message || 'QR oluşturulamadı.');
+    wrapped.requestId = formatted.requestId;
+    wrapped.code = formatted.code;
+    wrapped.httpStatus = response?.status ?? null;
     wrapped.debug = {
       endpoint: QR_ENDPOINT,
-      method: 'GET',
+      method: 'POST',
       httpStatus: response?.status ?? null,
       durationMs: data?._meta?.durationMs ?? null,
       hasBearerToken: hasStoredAuthToken(),
       isNativeApp: isNativeApp(),
       ok: false,
-      code: 'NETWORK_ERROR'
+      code: formatted.code || 'NETWORK_ERROR',
+      requestId: formatted.requestId
     };
     throw wrapped;
   }
@@ -186,12 +267,15 @@ export async function verifyCustomerQr(token) {
     });
 
     if (!response.ok) {
-      throw new Error(mapQrApiError(response, data, 'QR doğrulanamadı'));
+      const formatted = formatQrUserError(null, response, data);
+      throw new Error(formatted.message || 'QR doğrulanamadı');
     }
 
     return data.customer;
   } catch (error) {
-    throw wrapQrNetworkError(error, 'QR doğrulanamadı');
+    if (error?.name === 'AbortError') throw error;
+    const formatted = formatQrUserError(error);
+    throw new Error(formatted.message || error?.message || 'QR doğrulanamadı');
   }
 }
 
@@ -204,11 +288,14 @@ export async function postLoyaltyAction({ token, action, category, menuItemId = 
     });
 
     if (!response.ok) {
-      throw new Error(mapQrApiError(response, data, 'İşlem yapılamadı'));
+      const formatted = formatQrUserError(null, response, data);
+      throw new Error(formatted.message || 'İşlem yapılamadı');
     }
 
     return data;
   } catch (error) {
-    throw wrapQrNetworkError(error, 'İşlem yapılamadı');
+    if (error?.name === 'AbortError') throw error;
+    const formatted = formatQrUserError(error);
+    throw new Error(formatted.message || error?.message || 'İşlem yapılamadı');
   }
 }

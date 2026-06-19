@@ -28,6 +28,7 @@
     { "source": "/api/backup", "destination": "/api/admin?resource=backup" },
     { "source": "/api/push/send", "destination": "/api/admin?resource=push-send" },
     { "source": "/api/push/register-device", "destination": "/api/push?action=register-device" },
+    { "source": "/api/qr/generate", "destination": "/api/qr?action=generate" },
     { "source": "/api/push/cleanup", "destination": "/api/admin?resource=push-cleanup" },
     { "source": "/api/account/delete", "destination": "/api/admin?resource=account-delete" },
     { "source": "/privacy", "destination": "/privacy.html" },

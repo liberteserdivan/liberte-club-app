@@ -14,7 +14,7 @@ import {
 } from '../lib/db.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
-import { fetchCustomerQrToken, formatSignedQrValue, isSignedQrRequired } from '../lib/qrClient.js';
+import { fetchCustomerQrToken, formatSignedQrValue, isSignedQrRequired, parseQrExpiresAt } from '../lib/qrClient.js';
 import { hasStoredAuthToken } from '../lib/apiClient.js';
 import { isNativeApp } from '../lib/platform.js';
 import { hydrateSessionTokenFromServer } from '../lib/session.js';
@@ -123,13 +123,13 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
 
     if (force) {
       abortRef.current?.abort();
-      refreshBusyRef.current = false;
       setQrError('');
       setQrRequestId('');
     }
 
+    if (refreshBusyRef.current && !force) return;
+
     refreshBusyRef.current = true;
-    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     const gen = requestGenRef.current + 1;
@@ -177,7 +177,7 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
         });
       }
 
-      const expiresAt = Number(issued.expiresAt) || (Date.now() + (Number(issued.ttlSeconds) || DEFAULT_TTL_SECONDS) * 1000);
+      const expiresAt = issued.expiresAtMs || parseQrExpiresAt(issued.expiresAt, issued.ttlSeconds);
 
       qrValueRef.current = nextValue;
       setQrValue(nextValue);
@@ -199,8 +199,8 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
       if (error?.name === 'AbortError') return;
 
       const ref = error?.requestId || '';
-      const base = error?.message || 'QR yüklenemedi. Bağlantını kontrol edip tekrar dene.';
-      setQrError(base);
+      const message = error?.message || 'QR yüklenemedi. Bağlantını kontrol edip tekrar dene.';
+      setQrError(message.includes('Ref:') ? message : (ref ? `${message} Ref: ${ref}` : message));
       if (ref) setQrRequestId(ref);
 
       if (!hadQr) {

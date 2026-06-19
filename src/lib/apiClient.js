@@ -86,16 +86,34 @@ function withRequestMeta(path, startedAt, data = {}) {
 // Fetch isteğine üst zaman sınırı ekle
 function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
 
   const { signal: userSignal, ...rest } = options;
   if (userSignal) {
-    userSignal.addEventListener('abort', () => controller.abort(), { once: true });
+    if (userSignal.aborted) {
+      controller.abort();
+    } else {
+      userSignal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
   }
 
-  return fetch(url, { ...rest, signal: controller.signal }).finally(() => {
-    clearTimeout(timer);
-  });
+  return fetch(url, { ...rest, signal: controller.signal })
+    .finally(() => clearTimeout(timer))
+    .catch((error) => {
+      if (error?.name !== 'AbortError') throw error;
+      if (timedOut) {
+        const timeoutErr = new Error('Sunucu yanıt vermedi. Bağlantını kontrol edip tekrar dene.');
+        timeoutErr.code = 'FETCH_TIMEOUT';
+        throw timeoutErr;
+      }
+      const abortErr = new Error('İstek iptal edildi.');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    });
 }
 
 // Kimlik bilgili API isteği
@@ -126,9 +144,7 @@ export async function apiFetch(path, options = {}) {
 
     return response;
   } catch (error) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Sunucu yanıt vermedi. Bağlantını kontrol edip tekrar dene.');
-    }
+    if (error?.name === 'AbortError' || error?.code === 'FETCH_TIMEOUT') throw error;
     if (native && error?.message === 'Failed to fetch') {
       throw new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.');
     }
