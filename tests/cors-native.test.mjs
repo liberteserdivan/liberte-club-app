@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { resolveOrigin } from '../api/lib/http.js';
+import { resolveOrigin } from '../api/_lib/http.js';
 
 const nativeReq = (origin) => ({ headers: { origin } });
 

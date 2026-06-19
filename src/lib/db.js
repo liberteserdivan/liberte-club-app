@@ -222,24 +222,62 @@ export function mergeDb(x){
   }:seed;
 }
 
+// Bozuk yerel önbelleği güvenle ayıkla
+function parseLocalCache(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value;
+}
+
 export function load(){
   try{
-    return mergeDb(JSON.parse(localStorage.getItem('liberteDB')||'null'));
+    const raw = localStorage.getItem('liberteDB');
+    if (!raw) return seed;
+    const parsed = parseLocalCache(JSON.parse(raw));
+    if (!parsed) {
+      localStorage.removeItem('liberteDB');
+      return seed;
+    }
+    return mergeDb(parsed);
   }catch{
+    try {
+      localStorage.removeItem('liberteDB');
+    } catch {
+      // private mode
+    }
     return seed;
   }
 }
 
 export function save(db){
-  localStorage.setItem('liberteDB',JSON.stringify(db));
+  try {
+    localStorage.setItem('liberteDB', JSON.stringify(db));
+  } catch {
+    // kota veya gizli mod — uygulama çalışmaya devam etsin
+  }
 }
 
-export async function loadRemote(){
+export async function loadRemote(options = {}){
   if(useLocalAuth())return null;
+  const since = String(options.since || '').trim();
+  const path = since ? `/api/state?since=${encodeURIComponent(since)}` : '/api/state';
+
   try{
-    const {response,data:j}=await apiJson('/api/state');
+    const {response,data:j}=await apiJson(path);
+    if(response.status === 401){
+      return { unauthorized: true };
+    }
     if(!response.ok){
-      return null;
+      return { network: response.status >= 500, status: response.status };
+    }
+    if(j?.unchanged){
+      return{
+        unchanged:true,
+        data:null,
+        updatedAt:j.updated_at||since||null,
+        role:j.role||'user',
+        isAdmin:Boolean(j.isAdmin),
+        adminVerified:Boolean(j.adminVerified)
+      };
     }
     if(!j?.data)return null;
     return{
@@ -249,20 +287,37 @@ export async function loadRemote(){
       isAdmin:Boolean(j.isAdmin),
       adminVerified:Boolean(j.adminVerified)
     };
-  }catch{
-    return null;
+  }catch(error){
+    return {
+      network: true,
+      error: error?.message || 'Sunucuya bağlanılamadı.'
+    };
   }
 }
 
 // Buluta kaydet — sonuç döndürür (sessiz hata yok)
-export async function saveRemote(db){
+export async function saveRemote(db, options = {}){
   if(useLocalAuth())return { ok:true, skipped:true };
+
+  const payload = { data: db };
+  const baseUpdatedAt = String(options.baseUpdatedAt || '').trim();
+  if (baseUpdatedAt) payload.updated_at = baseUpdatedAt;
 
   try{
     const {response,data}=await apiJson('/api/state',{
       method:'POST',
-      body:JSON.stringify({data:db})
+      body:JSON.stringify(payload)
     });
+
+    if(response.status === 409){
+      return {
+        ok:false,
+        conflict:true,
+        status:409,
+        updatedAt:data?.updated_at||null,
+        error:data?.error||'Veri başka bir oturumda güncellendi.'
+      };
+    }
 
     if(!response.ok){
       return {
@@ -273,7 +328,10 @@ export async function saveRemote(db){
       };
     }
 
-    return { ok:true };
+    return {
+      ok:true,
+      updatedAt:data?.updated_at||null
+    };
   }catch(error){
     return {
       ok:false,

@@ -1,13 +1,14 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
 import { apiFetch } from './apiClient.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
-import { markPushEnabledOnDevice } from './pushPrompt.js';
+import { markPushEnabledOnDevice, getLocalPushToken } from './pushPrompt.js';
 import { resolvePushChannel } from './pushAudience.js';
 import { formatPushNotification } from './pushNotificationText.js';
 import { isAndroid, isIos, isNativeApp } from './platform.js';
 import { ensureAndroidNotificationPermission } from './androidNotificationPermission.js';
-import { registerNativePushToken, getPushSettingsHint, hasNativePushPermission } from './nativePush.js';
+import { registerNativePushToken, getPushSettingsHint, hasNativePushPermission, onNativeTokenRefresh } from './nativePush.js';
 import { Capacitor } from '@capacitor/core';
+import { reportError } from './errorHub.js';
 
 // Service worker yolu — Capacitor WebView'da göreli yol gerekir
 export function getFirebaseSwUrl() {
@@ -389,8 +390,6 @@ export async function enablePush(customer, db, commit) {
   return token;
 }
 
-import { getLocalPushToken } from './pushPrompt.js';
-
 // Native cihazda kayıtlı token varsa yenile
 export async function refreshNativePushIfSubscribed(customer, db, commit) {
   if (!import.meta.env.PROD) return;
@@ -467,6 +466,23 @@ export async function refreshPushTokenIfSubscribed(customer, db, commit) {
   }
 }
 
+// FCM token rotate — native listener ile yeniden kayıt
+export function bindNativeTokenRefresh(customer, db, commit) {
+  if (!isNativeApp() || !customer?.id || typeof commit !== 'function') {
+    return () => {};
+  }
+
+  return onNativeTokenRefresh((token) => {
+    if (!token) return;
+    try {
+      commit(upsertPushSubscription(db, customer, token));
+      markPushEnabledOnDevice(customer.id, token);
+    } catch {
+      // Token kaydı başarısız olsa uygulama çalışmaya devam etsin
+    }
+  });
+}
+
 // Native uygulamada izin verilmişse FCM token kaydını otomatik yap
 export async function ensureNativePushRegistered(customer, db, commit) {
   if (!isNativeApp() || !customer?.id || typeof commit !== 'function') return;
@@ -485,8 +501,14 @@ export async function ensureNativePushRegistered(customer, db, commit) {
 
   try {
     await enableNativePush(customer, db, commit);
-  } catch {
-    // Kullanıcı banner'dan manuel açabilir
+  } catch (error) {
+    reportError({
+      source: 'push.native.auto-register',
+      message: error?.message || 'Native push kaydı başarısız',
+      level: 'warn',
+      showToast: false,
+      persist: true
+    });
   }
 }
 
@@ -496,6 +518,14 @@ export async function tryEnablePush(customer, db, commit) {
     await enablePush(customer, db, commit);
     return { ok: true, message: 'Bildirimler aktif.', needsSettings: false };
   } catch (error) {
+    reportError({
+      source: 'push.enable',
+      message: error?.message || 'Push etkinleştirilemedi',
+      level: 'warn',
+      showToast: false,
+      persist: true
+    });
+
     const message = error?.message || '';
     const needsSettings = isNativeApp() && (
       message.includes('Ayarlar')

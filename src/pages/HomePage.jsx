@@ -14,7 +14,7 @@ import CafeContactBar from '../components/CafeContactBar.jsx';
 
 // Ana sayfa — özet kart ve keşif
 export default function HomePage({
-  db, customer, card, setTab, commit,
+  db, customer, card, setTab, commit, pushBannerDeferred = false,
 }) {
   const featured = db.items.filter((i) => i.best || i.featured).slice(0, 8);
   const lp = getLpCardView(card);
@@ -49,7 +49,7 @@ export default function HomePage({
       </div>
 
       <div className="homeBody">
-        <PushWelcomeBanner db={db} customer={customer} commit={commit} />
+        <PushWelcomeBanner db={db} customer={customer} commit={commit} defer={pushBannerDeferred} />
         <InstallAppCard />
 
         <DailyTasksStrip db={db} customer={customer} commit={commit} setTab={setTab} />

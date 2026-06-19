@@ -28,13 +28,13 @@ test('Menü detay modal CSS tablet kuralları mevcut', () => {
   assert.doesNotMatch(block, /backdrop-filter/);
 });
 
-test('AppSplash tek tam ekran görsel kullanır', () => {
+test('AppSplash logo ve marka metinleri kullanır', () => {
   const source = readFileSync(join(root, 'src/components/AppSplash.jsx'), 'utf8');
   const constants = readFileSync(join(root, 'src/lib/constants.js'), 'utf8');
   assert.match(source, /createPortal/);
-  assert.match(source, /SPLASH_IMAGE/);
-  assert.match(source, /appSplashImage/);
-  assert.match(constants, /liberte-club-splash-master\.png/);
+  assert.match(source, /SPLASH_LOGO/);
+  assert.match(source, /appSplashLogo/);
+  assert.match(constants, /liberte-logo\.png/);
 });
 
 test('Açılış bootstrap zaman aşımı tanımlı', () => {

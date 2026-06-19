@@ -212,7 +212,7 @@ export function ReviewCard({db,commit,customer}){
 }
 
 // Bildirim açma butonları — ayarlara yönlendirme veya ilk izin
-function PushEnableActions({needsSettings,busy,onEnable,onOpenSettings,onDismiss,showDismiss}){
+export function PushEnableActions({needsSettings,busy,onEnable,onOpenSettings,onDismiss,showDismiss}){
   if(needsSettings){
     return <>
       <button type="button" className="goldBtn" onClick={onOpenSettings}>Ayarları Aç</button>
@@ -252,13 +252,17 @@ export function PushPermission({customer,db,commit}){
 }
 
 // İlk ziyarette bildirim izni banner'ı
-export function PushWelcomeBanner({customer,db,commit}){
-  const[visible,setVisible]=useState(()=>shouldShowPushPrompt(customer,db));
+export function PushWelcomeBanner({customer,db,commit,defer=false}){
+  const[visible,setVisible]=useState(()=>!defer && shouldShowPushPrompt(customer,db));
   const{needsSettings,statusMessage,busy,attemptEnable,openSettings}=usePushEnableFlow(customer,db,commit);
 
   useEffect(()=>{
+    if(defer){
+      setVisible(false);
+      return;
+    }
     setVisible(shouldShowPushPrompt(customer,db));
-  },[customer?.id,db.pushSubscriptions]);
+  },[customer?.id,db.pushSubscriptions,defer]);
 
   function dismiss(){
     markPushDismissed(customer.id);

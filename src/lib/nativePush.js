@@ -4,22 +4,51 @@ import { isNativeApp } from './platform.js';
 import { detectPushTokenType, isFcmRegistrationToken } from './pushTokenFormat.js';
 
 let listenersAttached = false;
+const tokenRefreshHandlers = new Set();
+
+// FCM token yenilendiğinde kayıt handler'ı
+export function onNativeTokenRefresh(handler) {
+  if (typeof handler !== 'function') return () => {};
+  tokenRefreshHandlers.add(handler);
+  return () => tokenRefreshHandlers.delete(handler);
+}
+
+function notifyTokenRefresh(token) {
+  tokenRefreshHandlers.forEach((handler) => {
+    try {
+      handler(token);
+    } catch {
+      // Handler hatası uygulamayı durdurmasın
+    }
+  });
+}
 
 // Native FCM bildirim dinleyicilerini bir kez bağla
 function attachNativePushListeners() {
   if (listenersAttached || !isNativeApp()) return;
   listenersAttached = true;
 
-  FirebaseMessaging.addListener('notificationReceived', (event) => {
-    if (import.meta.env.DEV) {
-      console.info('[push] foreground', event?.notification?.title || event);
-    }
+  FirebaseMessaging.addListener('notificationReceived', () => {
+    // Foreground bildirim — platform gösterir
   });
 
   FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
-    if (import.meta.env.DEV) {
-      console.info('[push] action', action?.notification?.title || action);
+    const url = action?.notification?.data?.url || action?.notification?.data?.link;
+    if (url && typeof window !== 'undefined') {
+      try {
+        const target = new URL(String(url), window.location.origin);
+        if (target.origin === window.location.origin || target.hostname === 'app.liberte.cafe') {
+          window.location.href = target.href;
+        }
+      } catch {
+        // Geçersiz URL — sessizce geç
+      }
     }
+  });
+
+  FirebaseMessaging.addListener('tokenReceived', (event) => {
+    const token = event?.token;
+    if (token) notifyTokenRefresh(token);
   });
 }
 
@@ -54,10 +83,6 @@ export async function registerNativePushToken() {
           ? 'apns_token_not_supported'
           : 'invalid_fcm_token'
       };
-    }
-
-    if (import.meta.env.DEV) {
-      console.info('[push] fcm token', `${String(token).slice(0, 12)}…`);
     }
 
     return {

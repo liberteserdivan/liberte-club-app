@@ -32,7 +32,7 @@ Proje klasik “her tablo bir entity” ORM yapısına sahip değildir. Üyelik,
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Vercel Serverless API (Node.js)                            │
-│  api/lib/appState.js, auth.js, pinAuth.js, stateAccess.js │
+│  api/_lib/appState.js, auth.js, pinAuth.js, stateAccess.js │
 └──────────────────────────┬──────────────────────────────────┘
                            │ @neondatabase/serverless
                            ▼
@@ -46,7 +46,7 @@ Proje klasik “her tablo bir entity” ORM yapısına sahip değildir. Üyelik,
 
 ## PostgreSQL tabloları
 
-Tablolar uygulama ilk çalıştığında **lazy migration** ile oluşturulur (`CREATE TABLE IF NOT EXISTS`). Şema referansı: `neon.sql` ve `api/lib/*` modülleri.
+Tablolar uygulama ilk çalıştığında **lazy migration** ile oluşturulur (`CREATE TABLE IF NOT EXISTS`). Şema referansı: `neon.sql` ve `api/_lib/*` modülleri.
 
 ### 1. `app_state` — ana uygulama durumu
 
@@ -58,8 +58,8 @@ Tüm iş verisinin merkezi deposu.
 | `data` | `jsonb` | Uygulama durumu (müşteriler, sadakat, menü vb.) |
 | `updated_at` | `timestamptz` | Son güncelleme zamanı |
 
-**Okuma:** `loadAppState()` — `api/lib/appState.js`  
-**Yazma:** `saveAppState(data)` — kayıt öncesi otomatik yedekleme tetiklenebilir
+**Okuma:** `loadAppState()` — `api/_lib/appState.js`  
+**Yazma:** `saveAppState(data)` / `saveAppStateIfUnchanged(data, expectedUpdatedAt)` — kasa işlemlerinde optimistic lock
 
 ### 2. `app_state_backups` — otomatik yedekler
 
@@ -96,7 +96,7 @@ Tüm iş verisinin merkezi deposu.
 - Web: HttpOnly cookie `liberte_session`
 - Native (Capacitor): `Authorization: Bearer <token>` + `sessionStorage`
 
-Modül: `api/lib/auth.js`
+Modül: `api/_lib/auth.js`
 
 ### 4. `customer_pin_auth` — müşteri PIN kimlik doğrulama
 
@@ -116,7 +116,7 @@ Modül: `api/lib/auth.js`
 - PBKDF2: 120.000 iterasyon, SHA-512.
 - 5 hatalı deneme → 10 dakika kilit.
 
-Modül: `api/lib/pinAuth.js`
+Modül: `api/_lib/pinAuth.js`
 
 ### 5. `email_codes` — e-posta OTP
 
@@ -135,7 +135,7 @@ Kayıt ve PIN sıfırlama için 6 haneli doğrulama kodları.
 | `expires_at` | `timestamptz` | Geçerlilik süresi |
 | `created_at` | `timestamptz` | |
 
-Modül: `api/lib/emailCodesSchema.js`, `api/lib/emailCodes.js`  
+Modül: `api/_lib/emailCodesSchema.js`, `api/_lib/emailCodes.js`  
 E-posta gönderimi: Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`)
 
 ### 6. `customer_emails` — e-posta arama indeksi
@@ -149,7 +149,7 @@ JSON içinde müşteri aramayı hızlandırmak ve e-posta benzersizliğini deste
 | `phone` | `text` | Telefon |
 | `updated_at` | `timestamptz` | |
 
-Modül: `api/lib/customerEmails.js`
+Modül: `api/_lib/customerEmails.js`
 
 ---
 
@@ -176,9 +176,69 @@ Tek kayıt altında tutulan ana koleksiyonlar (`src/lib/db.js` — `seed` ve `me
 | `referrals[]` | Davet ilişkileri |
 | `checkIns[]`, `dailyClaims[]`, `wheelSpins[]` | Etkileşim kayıtları |
 | `customerNotes{}` | Yönetici notları (müşteri ID → metin) |
-| `automationLog[]` | Otomasyon logları |
+| `googleReviewRequests[]` | Google yorum bonus talepleri |
 
 **Sadakat kategorileri:** kahve, tatlı, burger (`src/lib/loyaltyStamps.js`).
+
+---
+
+## Normalize PostgreSQL hedef mimarisi (hazırlık — cutover yapılmadı)
+
+Production hâlâ **`app_state.data` JSONB** üzerinden okur/yazar. Normalize tablolar yalnızca migration hazırlığı içindir.
+
+| JSONB alanı | Hedef tablo |
+|-------------|-------------|
+| `customers[]` | `customers` |
+| `loyalty{}` | `customer_loyalty` + `entity_revisions` |
+| `history[]` | `loyalty_events` |
+| `categories[]` | `menu_categories` |
+| `items[]` | `menu_items` |
+| `campaigns[]` | `campaigns` |
+| `dailyCampaign` | `daily_campaigns` |
+| `coupons[]` | `coupons` |
+| `couponUses[]` | `coupon_uses` |
+| `checkIns[]` | `check_ins` |
+| `wheelPrizes[]` | `wheel_prizes` |
+| `wheelSpins[]` | `wheel_spins` |
+| `dailyClaims[]` | `daily_claims` |
+| `firstOrderBonuses[]` | `first_order_bonuses` |
+| `referrals[]` | `referrals` |
+| `feedback[]` | `feedback` |
+| `googleReviewRequests[]` | `google_review_requests` |
+| `customerNotes{}` | `customer_notes` |
+| `notifications[]` | `in_app_notifications` |
+| `pushSubscriptions[]` | `push_subscriptions` |
+| `pushLog[]` | `push_send_log` |
+
+**Kural:** `app_state.data` silinmez; legacy/backup olarak kalır.
+
+### Feature flag (öneri)
+
+| Değişken | Değer | Davranış |
+|----------|-------|----------|
+| `USE_RELATIONAL_STATE` | `false` (varsayılan) | Mevcut JSONB yolu |
+| `USE_RELATIONAL_STATE` | `true` | Normalize tablolardan okuma/yazma (cutover sonrası) |
+
+### Migration çalıştırma (staging / Neon branch)
+
+```bash
+# Önce dry-run — yalnızca sayım ve checksum
+DATABASE_URL=... node scripts/migrate-jsonb-to-relational.mjs --dry-run
+
+# Şema + veri taşıma (app_state.data dokunulmaz)
+DATABASE_URL=... node scripts/migrate-jsonb-to-relational.mjs
+
+# Doğrulama
+DATABASE_URL=... node scripts/verify-migration.mjs
+```
+
+Şema SQL: `scripts/sql/001_normalized_schema.sql`
+
+### Geri dönüş planı
+
+1. `USE_RELATIONAL_STATE=false` ile API’yi JSONB yoluna al.
+2. Normalize tabloları silmek zorunda değilsiniz; `app_state.data` kaynak olarak durur.
+3. Sorunlu cutover sonrası: `scripts/restore-state-backup.mjs --latest-pre-delete` veya Neon branch geri yükleme.
 
 ---
 
@@ -197,7 +257,7 @@ Tek kayıt altında tutulan ana koleksiyonlar (`src/lib/db.js` — `seed` ve `me
 | `/api/backup` | GET/POST | Yedek listeleme / geri yükleme |
 | `/api/push/send` | POST | FCM (Firebase Admin — DB dışı) |
 
-Durum filtreleme: `api/lib/stateAccess.js`
+Durum filtreleme: `api/_lib/stateAccess.js`
 
 - **Müşteri:** Yalnızca kendi profili, sadakat kartı ve ilişkili kayıtlar.
 - **Yönetici:** Tam veri (`cashier_pin` istemciye gönderilmez).
@@ -210,7 +270,7 @@ Durum filtreleme: `api/lib/stateAccess.js`
 ```
 useCommit (src/hooks/useCommit.js)
   ├── commit(n) → localStorage + POST /api/state
-  ├── pullRemote() → GET /api/state (15 sn aralık)
+  ├── pullRemote() → GET /api/state?since= (60 sn / QR 9 sn)
   └── load() → localStorage birleştirme (mergeDb)
 ```
 
@@ -218,6 +278,9 @@ useCommit (src/hooks/useCommit.js)
 |-----|----------|
 | Production | Bulut (`DATABASE_URL` zorunlu) |
 | `useLocalAuth()` (geliştirme) | Yalnızca `localStorage`; sunucu çağrılmaz |
+| Arka plan | Polling durur (0 istek) |
+| Öne gelince | Tek sync tetiklenir |
+| Değişiklik yok | `{ unchanged: true }` — tam JSON gönderilmez |
 
 Native uygulama API kökü: `https://app.liberte.cafe` (`src/lib/apiClient.js`).
 
@@ -263,14 +326,15 @@ Firebase push ve config değişkenleri veritabanı dışıdır; ayrı servis ola
 
 **Dikkat edilmesi gerekenler**
 
-- Yüksek eşzamanlı yazımda “son yazan kazanır” (optimistic locking yok).
+- Yüksek eşzamanlı yazımda JSONB genel state için “son yazan kazanır” riski devam eder; kasa LP işlemleri `saveAppStateIfUnchanged` ile korunur.
 - Çok büyük `jsonb` boyutu performansı etkileyebilir; binlerce üye sonrası normalizasyon düşünülebilir.
 - PIN ve oturum verileri JSON dışında tutulduğu için güvenlik açısından doğru ayrım yapılmıştır.
 
-**Gelecekte normalize edilebilecek alanlar (öneri, mevcut değil)**
+**Normalize geçiş (hazırlık dosyaları mevcut, production cutover yok)**
 
-- `customers`, `loyalty`, `history` ayrı tablolar
-- Satır düzeyinde indeksler ve transaction kilidi
+- `scripts/sql/001_normalized_schema.sql`
+- `scripts/migrate-jsonb-to-relational.mjs` (dry-run destekli)
+- `scripts/verify-migration.mjs`
 
 ---
 
@@ -279,15 +343,18 @@ Firebase push ve config değişkenleri veritabanı dışıdır; ayrı servis ola
 | Dosya | Rol |
 |-------|-----|
 | `neon.sql` | Minimal şema referansı |
-| `api/lib/appState.js` | Ana CRUD + yedekleme |
-| `api/lib/auth.js` | Oturum yönetimi |
-| `api/lib/pinAuth.js` | PIN hash / doğrulama |
-| `api/lib/stateAccess.js` | Rol bazlı okuma/yazma |
-| `api/lib/customerEmails.js` | E-posta indeksi |
+| `api/_lib/appState.js` | Ana CRUD + yedekleme + optimistic lock |
+| `api/_lib/auth.js` | Oturum yönetimi |
+| `api/_lib/pinAuth.js` | PIN hash / doğrulama |
+| `api/_lib/stateAccess.js` | Rol bazlı okuma/yazma |
+| `api/_lib/customerEmails.js` | E-posta indeksi |
 | `api/state.js` | `/api/state` handler |
+| `scripts/sql/001_normalized_schema.sql` | Normalize hedef şema |
+| `scripts/migrate-jsonb-to-relational.mjs` | JSONB → tablo taşıma |
+| `scripts/verify-migration.mjs` | Sayım/checksum doğrulama |
 | `src/lib/db.js` | İstemci veri modeli ve seed |
 | `src/hooks/useCommit.js` | Senkronizasyon hook’u |
 
 ---
 
-*Son güncelleme: proje sürümü 1.0.9 — Neon PostgreSQL + JSONB hibrit model.*
+*Son güncelleme: proje sürümü 1.1.2 — Neon PostgreSQL + JSONB hibrit model; normalize şema hazırlığı eklendi.*

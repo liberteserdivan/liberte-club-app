@@ -8,7 +8,7 @@ import {
   mergeUserState,
   mergeAdminState,
   filterStateForUser
-} from '../api/lib/stateAccess.js';
+} from '../api/_lib/stateAccess.js';
 
 const CUSTOMER_ID = 900001;
 

@@ -51,6 +51,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const hostRef = useRef(null);
   const scannerRef = useRef(null);
   const startingRef = useRef(false);
+  const decodeLockRef = useRef(false);
   const signedQrRequired = isSignedQrRequired();
 
   const [nativeScanReady, setNativeScanReady] = useState(false);
@@ -106,6 +107,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }, [db, signedQrRequired]);
 
   const onScanSuccess = useCallback(async (txt) => {
+    if (decodeLockRef.current) return;
+    decodeLockRef.current = true;
+
     try {
       setBusy(true);
       const { customer, token } = await resolveCustomerFromScan(txt);
@@ -123,6 +127,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       }
     } finally {
       setBusy(false);
+      decodeLockRef.current = false;
     }
   }, [resolveCustomerFromScan, stopScanner]);
 
@@ -227,6 +232,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }, [stopScanner]);
 
   async function rescan() {
+    decodeLockRef.current = false;
     await stopScanner();
     setFound(null);
     setScannedToken('');
@@ -238,6 +244,11 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   // Sunucu veya yerel state üzerinde sadakat işlemi — başarılıysa true
   async function runLoyaltyAction(action, category, menuItem = null) {
     if (!found || busy) return false;
+
+    if (signedQrRequired && typeof navigator !== 'undefined' && !navigator.onLine) {
+      setMsg('İnternet bağlantısı yok. LP işlemi kaydedilmedi.');
+      return false;
+    }
 
     if (signedQrRequired && scannedToken) {
       setBusy(true);
@@ -278,6 +289,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     if (nextDb === db) return false;
 
     commit(nextDb);
+    const updated = nextDb.customers?.find((c) => c.id === found.id);
+    if (updated) setFound(updated);
+    if (refreshRemote) void refreshRemote(true);
     return true;
   }
 

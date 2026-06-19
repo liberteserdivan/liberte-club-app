@@ -3,6 +3,34 @@ import { useLocalAuth } from './devAuth.js';
 
 const QR_PREFIX = 'liberte-qr:';
 
+// API hata mesajını kullanıcıya uygun metne çevir
+function mapQrApiError(response, data, fallback) {
+  if (response?.status === 401) {
+    return 'Oturum süresi doldu. Lütfen tekrar giriş yap.';
+  }
+  if (response?.status === 409) {
+    return 'Veri güncellendi. Lütfen tekrar dene.';
+  }
+  if (response?.status >= 500) {
+    return 'Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene.';
+  }
+  return data?.error || fallback;
+}
+
+// Ağ hatasını kasa ekranına uygun mesaja çevir
+function wrapQrNetworkError(error, fallback) {
+  const message = error?.message || '';
+  if (
+    message.includes('bağlan')
+    || message.includes('yanıt vermedi')
+    || message.includes('Failed to fetch')
+    || error?.name === 'AbortError'
+  ) {
+    return new Error('İnternet bağlantısı yok veya sunucuya ulaşılamadı. İşlem kaydedilmedi.');
+  }
+  return new Error(message || fallback);
+}
+
 // İmzalı QR metnini oluştur
 export function formatSignedQrValue(token) {
   return `${QR_PREFIX}${token}`;
@@ -35,37 +63,49 @@ export function isSignedQrRequired() {
 
 // Müşteri — sunucudan kısa ömürlü QR token al
 export async function fetchCustomerQrToken() {
-  const { response, data } = await apiJson('/api/state?qrToken=1');
-  if (!response.ok) {
-    throw new Error(data.error || 'QR token alınamadı');
+  try {
+    const { response, data } = await apiJson('/api/state?qrToken=1');
+    if (!response.ok) {
+      throw new Error(mapQrApiError(response, data, 'QR token alınamadı'));
+    }
+    return data;
+  } catch (error) {
+    throw wrapQrNetworkError(error, 'QR token alınamadı');
   }
-  return data;
 }
 
 // Kasiyer — imzalı QR doğrula
 export async function verifyCustomerQr(token) {
-  const { response, data } = await apiJson('/api/admin?resource=qr-verify', {
-    method: 'POST',
-    body: JSON.stringify({ token })
-  });
+  try {
+    const { response, data } = await apiJson('/api/admin?resource=qr-verify', {
+      method: 'POST',
+      body: JSON.stringify({ token })
+    });
 
-  if (!response.ok) {
-    throw new Error(data.error || 'QR doğrulanamadı');
+    if (!response.ok) {
+      throw new Error(mapQrApiError(response, data, 'QR doğrulanamadı'));
+    }
+
+    return data.customer;
+  } catch (error) {
+    throw wrapQrNetworkError(error, 'QR doğrulanamadı');
   }
-
-  return data.customer;
 }
 
 // Kasiyer — damga / ikram / check-in (sunucu doğrular)
 export async function postLoyaltyAction({ token, action, category, menuItemId = null }) {
-  const { response, data } = await apiJson('/api/admin?resource=loyalty-action', {
-    method: 'POST',
-    body: JSON.stringify({ token, action, category, menuItemId })
-  });
+  try {
+    const { response, data } = await apiJson('/api/admin?resource=loyalty-action', {
+      method: 'POST',
+      body: JSON.stringify({ token, action, category, menuItemId })
+    });
 
-  if (!response.ok) {
-    throw new Error(data.error || 'İşlem yapılamadı');
+    if (!response.ok) {
+      throw new Error(mapQrApiError(response, data, 'İşlem yapılamadı'));
+    }
+
+    return data;
+  } catch (error) {
+    throw wrapQrNetworkError(error, 'İşlem yapılamadı');
   }
-
-  return data;
 }

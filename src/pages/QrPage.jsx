@@ -30,12 +30,18 @@ export default function QrPage({
     return <CustomerQrScanner db={db} commit={commit} refreshRemote={refreshRemote} />;
   }
 
-  // Yönetici müşteri modunda da kendi QR kartını görebilir
-  return <CustomerQrCard customer={customer} card={card} history={db?.history || []} />;
+  return (
+    <CustomerQrCard
+      customer={customer}
+      card={card}
+      history={db?.history || []}
+      refreshRemote={refreshRemote}
+    />
+  );
 }
 
 // Müşteri sadakat kartı QR görünümü
-function CustomerQrCard({ customer, card, history = [] }) {
+function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
   const [entered, setEntered] = useState(false);
   const [qrValue, setQrValue] = useState('');
   const [qrError, setQrError] = useState('');
@@ -54,6 +60,11 @@ function CustomerQrCard({ customer, card, history = [] }) {
       return;
     }
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setQrError('İnternet bağlantısı yok. QR kodu yüklenemedi.');
+      return;
+    }
+
     setQrLoading(true);
     try {
       const issued = await fetchCustomerQrToken();
@@ -61,7 +72,7 @@ function CustomerQrCard({ customer, card, history = [] }) {
       setQrError('');
     } catch (error) {
       setQrValue('');
-      setQrError('QR kodu yüklenemedi. İnternet bağlantını kontrol edip tekrar dene.');
+      setQrError(error?.message || 'QR kodu yüklenemedi. İnternet bağlantını kontrol edip tekrar dene.');
     } finally {
       setQrLoading(false);
     }
@@ -79,6 +90,21 @@ function CustomerQrCard({ customer, card, history = [] }) {
     const timer = setInterval(refreshSignedQr, 60 * 1000);
     return () => clearInterval(timer);
   }, [refreshSignedQr, signedQrRequired]);
+
+  // Kasada LP sonrası müşteri kartını hemen güncelle — useCommit QR aralığı yeterli
+  useEffect(() => {
+    if (!refreshRemote) return undefined;
+
+    refreshRemote(true);
+
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return;
+      refreshRemote(true);
+    }
+
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshRemote, customer.id]);
 
   return (
     <PageShell

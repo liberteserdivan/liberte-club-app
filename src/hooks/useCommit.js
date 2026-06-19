@@ -2,12 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
 import { reportError } from '../lib/errorHub.js';
+import { useLocalAuth } from '../lib/devAuth.js';
+import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
+import { subscribeRemoteSyncRequest } from '../lib/syncBus.js';
 
-// Buluttan veri çekme aralığı (ms) — LP güncellemeleri ~5 sn içinde yansır
-const SYNC_INTERVAL_MS = 5000;
+// Oturum yokken uzak sync yapılmaz (401 israfını önle)
+function canPullRemote(sessionRef) {
+  if (useLocalAuth()) return true;
+  return Boolean(sessionRef?.current?.customerId);
+}
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
-export function useCommit(initial, sessionRef) {
+export function useCommit(initial, sessionRef, syncContext = {}) {
+  const { tab = 'home' } = syncContext;
   const [db, setDb] = useState(initial);
   const [mode, setMode] = useState('local');
   const [syncState, setSyncState] = useState({
@@ -19,6 +26,12 @@ export function useCommit(initial, sessionRef) {
   const syncing = useRef(false);
   const savingCount = useRef(0);
   const saveSeq = useRef(0);
+  const timerRef = useRef(null);
+  const pageVisibleRef = useRef(
+    typeof document === 'undefined' ? true : document.visibilityState !== 'hidden'
+  );
+  const syncContextRef = useRef(syncContext);
+  syncContextRef.current = syncContext;
 
   // Oturuma göre güvenli yerel önbellek yaz
   function persistLocal(nextDb) {
@@ -42,9 +55,11 @@ export function useCommit(initial, sessionRef) {
     reportError({
       source: 'sync.saveRemote',
       message: result.error || 'saveRemote failed',
-      userMessage: result.fields
-        ? 'Bu işlem için yetkin yok veya veri reddedildi.'
-        : (result.error || 'Değişiklikler sunucuya kaydedilemedi. Bağlantını kontrol et.'),
+      userMessage: result.conflict
+        ? 'Başka bir cihaz veriyi güncelledi. En güncel veriler yüklendi.'
+        : result.fields
+          ? 'Bu işlem için yetkin yok veya veri reddedildi.'
+          : (result.error || 'Değişiklikler sunucuya kaydedilemedi. Bağlantını kontrol et.'),
       level: result.status === 403 ? 'warn' : 'error',
       code: result.network ? 'network' : `http_${result.status || 0}`,
       detail: { fields: result.fields || null },
@@ -53,17 +68,83 @@ export function useCommit(initial, sessionRef) {
     });
   }
 
+  const clearSyncTimer = useCallback(() => {
+    if (!timerRef.current) return;
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }, []);
+
+  const pullRemoteRef = useRef(async () => {});
+
+  const scheduleSyncTimer = useCallback(() => {
+    clearSyncTimer();
+    if (!pageVisibleRef.current) return;
+    if (!canPullRemote(sessionRef)) return;
+
+    const intervalMs = resolveSyncIntervalMs(syncContextRef.current);
+    timerRef.current = setInterval(() => {
+      pullRemoteRef.current(false);
+    }, intervalMs);
+  }, [clearSyncTimer, sessionRef]);
+
+  // Uzak yanıt hatasını işle
+  function handlePullFailure(remote) {
+    if (remote?.unauthorized) return;
+    if (!remote?.network) return;
+
+    setSyncState((prev) => ({
+      ...prev,
+      status: 'error',
+      lastError: remote.error || 'Güncel veriler alınamadı.'
+    }));
+  }
+
   // Buluttan güncel veriyi çeker
   const pullRemote = useCallback(async (force = false) => {
     if (syncing.current) return;
+    if (!canPullRemote(sessionRef)) return;
     // Kayıt devam ederken eski snapshot ile üzerine yazmayı önle
     if (!force && savingCount.current > 0) return;
 
     syncing.current = true;
     try {
+      if (!force && lastRemoteAt.current) {
+        const probe = await loadRemote({ since: lastRemoteAt.current });
+        if (!probe) return;
+        if (probe.unauthorized) return;
+        if (probe.unchanged) {
+          setSyncState((prev) => ({
+            ...prev,
+            status: 'synced',
+            lastError: null,
+            lastOkAt: Date.now()
+          }));
+          return;
+        }
+        if (probe.network && !probe.data) {
+          handlePullFailure(probe);
+          return;
+        }
+      }
+
       const remote = await loadRemote();
       if (!remote) return;
+      if (remote.unauthorized) return;
+      if (remote.unchanged) {
+        setSyncState((prev) => ({
+          ...prev,
+          status: 'synced',
+          lastError: null,
+          lastOkAt: Date.now()
+        }));
+        return;
+      }
+      if (!remote.data) {
+        handlePullFailure(remote);
+        return;
+      }
       if (!force && remote.updatedAt && remote.updatedAt === lastRemoteAt.current) return;
+
       lastRemoteAt.current = remote.updatedAt;
       setDb(remote.data);
       persistLocal(remote.data);
@@ -71,6 +152,7 @@ export function useCommit(initial, sessionRef) {
       setSyncState((prev) => ({
         ...prev,
         status: 'synced',
+        lastError: null,
         lastOkAt: Date.now()
       }));
     } catch (error) {
@@ -85,12 +167,42 @@ export function useCommit(initial, sessionRef) {
     } finally {
       syncing.current = false;
     }
-  }, []);
+  }, [sessionRef]);
 
+  pullRemoteRef.current = pullRemote;
+
+  // İlk açılış, sekme değişimi ve görünürlük
   useEffect(() => {
+    if (!canPullRemote(sessionRef)) return undefined;
+
     pullRemote(true);
-    const timer = setInterval(() => pullRemote(false), SYNC_INTERVAL_MS);
-    return () => clearInterval(timer);
+    scheduleSyncTimer();
+
+    function onVisibilityChange() {
+      const visible = document.visibilityState === 'visible';
+      pageVisibleRef.current = visible;
+
+      if (visible) {
+        pullRemote(true);
+        scheduleSyncTimer();
+        return;
+      }
+
+      clearSyncTimer();
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearSyncTimer();
+    };
+  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef, tab]);
+
+  // Kasada LP sonrası manuel sync
+  useEffect(() => {
+    return subscribeRemoteSyncRequest((force) => {
+      pullRemote(force);
+    });
   }, [pullRemote]);
 
   // Arka planda buluta kaydet
@@ -98,11 +210,12 @@ export function useCommit(initial, sessionRef) {
     savingCount.current += 1;
     setSyncState((prev) => ({ ...prev, status: 'saving', lastError: null }));
 
-    saveRemote(nextDb).then((result) => {
+    saveRemote(nextDb, { baseUpdatedAt: lastRemoteAt.current }).then((result) => {
       savingCount.current = Math.max(0, savingCount.current - 1);
       if (seq !== saveSeq.current) return;
 
       if (result.ok) {
+        if (result.updatedAt) lastRemoteAt.current = result.updatedAt;
         setMode('cloud');
         setSyncState({
           status: 'synced',
@@ -110,6 +223,10 @@ export function useCommit(initial, sessionRef) {
           lastOkAt: Date.now()
         });
         return;
+      }
+
+      if (result.conflict) {
+        pullRemoteRef.current(true);
       }
 
       if (!result.skipped) {

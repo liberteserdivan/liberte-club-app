@@ -1,7 +1,8 @@
 import { applyCors, publicErrorMessage, readBodySafe } from '../http.js';
-import { loadAppState, saveAppState } from '../appState.js';
+import { loadAppState, saveAppStateIfUnchanged } from '../appState.js';
 import { requireAdminSession } from '../auth.js';
 import { verifyCustomerQrToken } from '../qrToken.js';
+import { logServerError } from '../logServerError.js';
 import {
   applyCategoryStamp,
   applyCheckIn,
@@ -36,6 +37,11 @@ export async function handleAdminQrVerify(req, res) {
 
     return res.status(200).json({ ok: true, customer });
   } catch (error) {
+    await logServerError({
+      source: 'admin.qr-verify',
+      error,
+      customerId: session?.customerId || null
+    });
     return res.status(500).json({ error: publicErrorMessage(error, 'QR doğrulanamadı') });
   }
 }
@@ -59,6 +65,7 @@ export async function handleAdminLoyaltyAction(req, res) {
     const remote = await loadAppState();
     if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
 
+    const baseUpdatedAt = remote.updatedAt;
     const nextState = structuredClone(remote.data);
     const action = String(body.action || '').trim();
     const category = String(body.category || 'coffee').trim();
@@ -88,15 +95,29 @@ export async function handleAdminLoyaltyAction(req, res) {
       return res.status(400).json({ error: result.error || 'İşlem yapılamadı' });
     }
 
-    await saveAppState(nextState);
+    const saved = await saveAppStateIfUnchanged(nextState, baseUpdatedAt);
+    if (!saved.ok) {
+      return res.status(409).json({
+        error: 'Başka bir kasa işlemi veriyi güncelledi. Lütfen QR\'ı yeniden okut.',
+        conflict: true,
+        updated_at: saved.updatedAt
+      });
+    }
+
     const customer = customerSummary(nextState, verified.customerId);
 
     return res.status(200).json({
       ok: true,
       customer,
-      loyalty: customer?.loyalty || null
+      loyalty: customer?.loyalty || null,
+      updated_at: saved.updatedAt
     });
   } catch (error) {
+    await logServerError({
+      source: 'admin.loyalty-action',
+      error,
+      customerId: session?.customerId || null
+    });
     return res.status(500).json({ error: publicErrorMessage(error, 'Sadakat işlemi başarısız') });
   }
 }

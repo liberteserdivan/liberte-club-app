@@ -5,7 +5,7 @@ import { useLocalAuth } from './lib/devAuth.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
-import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered } from './lib/firebasePush.js';
+import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
 import { canRequestPushOnThisDevice, deactivateDevicePushToken } from './lib/pushPrompt.js';
@@ -34,10 +34,10 @@ const CUSTOMER_HYDRATE_MS = 8000;
 
 export default function App() {
   const sessionRef = useRef(null);
-  const [db, commit, sync, refreshRemote, syncState, retrySave] = useCommit(load(), sessionRef);
+  const [tab, setTab] = useState('home');
+  const [db, commit, , refreshRemote, syncState, retrySave] = useCommit(load(), sessionRef, { tab });
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [tab, setTab] = useState('home');
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
   const [splashImageReady, setSplashImageReady] = useState(false);
   const [adminGateSkipped, setAdminGateSkipped] = useState(false);
@@ -209,12 +209,34 @@ export default function App() {
   }, [customer?.id]);
 
   useEffect(() => {
-    if (!customer?.id) return;
+    if (!customer?.id) return undefined;
+
     refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
-    if (isNativeApp()) {
+
+    if (!isNativeApp()) return undefined;
+
+    let appListener = null;
+    const unbindTokenRefresh = bindNativeTokenRefresh(customer, db, commit);
+
+    function registerNativePush() {
       ensureNativePushRegistered(customer, db, commit).catch(() => {});
     }
-  }, [customer?.id]);
+
+    registerNativePush();
+
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) registerNativePush();
+      }).then((listener) => {
+        appListener = listener;
+      });
+    }).catch(() => {});
+
+    return () => {
+      appListener?.remove?.();
+      unbindTokenRefresh();
+    };
+  }, [customer?.id, db, commit]);
 
   const theme = cssVars(db.settings);
   const shellBooting = splashPhase !== 'hidden';
@@ -242,7 +264,16 @@ export default function App() {
     mainContent = (
       <main className="app" style={theme}>
         <div className="appTabView" key={tab}>
-          {tab === 'home' && <HomePage db={db} customer={customer} card={card} setTab={setTab} commit={commit} />}
+          {tab === 'home' && (
+            <HomePage
+              db={db}
+              customer={customer}
+              card={card}
+              setTab={setTab}
+              commit={commit}
+              pushBannerDeferred={showOnboarding}
+            />
+          )}
           {tab === 'menu' && <MenuPage db={db} />}
           {tab === 'qr' && (
             <QrPage
@@ -280,7 +311,13 @@ export default function App() {
         </div>
 
         {showOnboarding && (
-          <OnboardingOverlay customerId={customer.id} onDone={() => setShowOnboarding(false)} />
+          <OnboardingOverlay
+            customerId={customer.id}
+            customer={customer}
+            db={db}
+            commit={commit}
+            onDone={() => setShowOnboarding(false)}
+          />
         )}
 
         {isAdmin && !adminVerified && !adminGateSkipped && (

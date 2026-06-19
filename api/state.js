@@ -1,5 +1,5 @@
 import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
-import { loadAppState, saveAppState } from './_lib/appState.js';
+import { loadAppState, loadAppStateRevision, saveAppState, isSameAppStateRevision } from './_lib/appState.js';
 import { getSession, requireAdminSession, requireSession } from './_lib/auth.js';
 import { createCustomerQrToken } from './_lib/qrToken.js';
 import { logServerError } from './_lib/logServerError.js';
@@ -41,6 +41,21 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const session = await requireSession(req, res);
       if (!session) return;
+
+      const since = String(req.query?.since || '').trim();
+      if (since) {
+        const revision = await loadAppStateRevision();
+        if (isSameAppStateRevision(revision.updatedAt, since)) {
+          return res.status(200).json({
+            unchanged: true,
+            updated_at: revision.updatedAt,
+            mode: 'cloud',
+            role: session.role,
+            isAdmin: session.isAdmin,
+            adminVerified: session.adminVerified
+          });
+        }
+      }
 
       const remote = await loadAppState();
       if (!remote.data) {
@@ -84,7 +99,17 @@ export default async function handler(req, res) {
       const session = await requireSession(req, res);
       if (!session) return;
 
+      const clientBaseAt = String(body?.updated_at || body?.baseUpdatedAt || '').trim();
       const remote = await loadAppState();
+
+      if (clientBaseAt && remote.updatedAt && !isSameAppStateRevision(remote.updatedAt, clientBaseAt)) {
+        return res.status(409).json({
+          error: 'Veri başka bir oturumda güncellendi. Lütfen yenileyip tekrar dene.',
+          conflict: true,
+          updated_at: remote.updatedAt
+        });
+      }
+
       const canonical = remote.data || data;
 
       // Admin yalnızca PIN doğrulamasıyla tam state yazabilir
@@ -92,7 +117,8 @@ export default async function handler(req, res) {
         const adminSession = await requireAdminSession(req, res, { pinRequired: true });
         if (!adminSession) return;
         await saveAppState(mergeAdminState(canonical, data));
-        return res.status(200).json({ ok: true, mode: 'cloud' });
+        const saved = await loadAppStateRevision();
+        return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
       }
 
       // Müşteri sadakat/ödül/yetki alanlarını değiştiremez → 403 + log
@@ -111,7 +137,8 @@ export default async function handler(req, res) {
       // Müşteri yalnızca güvenli profil alanlarını günceller
       const merged = mergeUserState(canonical, data, session.customerId);
       await saveAppState(merged);
-      return res.status(200).json({ ok: true, mode: 'cloud' });
+      const saved = await loadAppStateRevision();
+      return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

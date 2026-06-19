@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Bell, QrCode, Sparkles, X } from 'lucide-react';
+import { usePushEnableFlow } from '../hooks/usePushEnableFlow.js';
+import { canRequestPushOnThisDevice } from '../lib/pushPrompt.js';
+import { PushEnableActions } from './Cards.jsx';
 
 const STEPS = [
   {
@@ -42,11 +45,19 @@ export function markOnboardingDone(customerId) {
   }
 }
 
-export default function OnboardingOverlay({ customerId, onDone }) {
+export default function OnboardingOverlay({ customerId, customer, db, commit, onDone }) {
   const [step, setStep] = useState(0);
   const current = STEPS[step];
   const Icon = current.icon;
   const isLast = step >= STEPS.length - 1;
+  const canAskPush = Boolean(isLast && customer && db && commit && canRequestPushOnThisDevice());
+  const {
+    needsSettings,
+    statusMessage,
+    busy,
+    attemptEnable,
+    openSettings
+  } = usePushEnableFlow(customer, db, commit);
 
   function finish() {
     markOnboardingDone(customerId);
@@ -61,6 +72,13 @@ export default function OnboardingOverlay({ customerId, onDone }) {
     setStep((value) => value + 1);
   }
 
+  async function enablePushAndFinish() {
+    if (canAskPush) {
+      await attemptEnable();
+    }
+    finish();
+  }
+
   return (
     <div className="onboardingOverlay" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
       <div className="onboardingCard">
@@ -71,14 +89,30 @@ export default function OnboardingOverlay({ customerId, onDone }) {
         <span className="onboardingStep">{step + 1} / {STEPS.length}</span>
         <h2 id="onboardingTitle">{current.title}</h2>
         <p>{current.body}</p>
+        {canAskPush && statusMessage && !needsSettings && (
+          <p className="onboardingPushNote">{statusMessage}</p>
+        )}
         <div className="onboardingDots" aria-hidden="true">
           {STEPS.map((_, index) => (
             <i key={index} className={index === step ? 'isActive' : ''} />
           ))}
         </div>
-        <button type="button" className="goldBtn onboardingNext" onClick={next}>
-          {isLast ? 'Başla' : 'Devam'}
-        </button>
+        {canAskPush ? (
+          <div className="pushWelcomeActions onboardingPushActions">
+            <PushEnableActions
+              needsSettings={needsSettings}
+              busy={busy}
+              onEnable={enablePushAndFinish}
+              onOpenSettings={openSettings}
+              onDismiss={finish}
+              showDismiss
+            />
+          </div>
+        ) : (
+          <button type="button" className="goldBtn onboardingNext" onClick={next}>
+            {isLast ? 'Başla' : 'Devam'}
+          </button>
+        )}
       </div>
     </div>
   );

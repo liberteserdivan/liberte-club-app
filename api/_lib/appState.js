@@ -41,6 +41,15 @@ function customerCount(data) {
   return Array.isArray(data?.customers) ? data.customers.length : 0;
 }
 
+// İstemci ve sunucu güncelleme zamanını karşılaştır
+export function isSameAppStateRevision(serverAt, clientAt) {
+  if (!serverAt || !clientAt) return false;
+  const serverParsed = Date.parse(String(serverAt));
+  const clientParsed = Date.parse(String(clientAt));
+  if (Number.isNaN(serverParsed) || Number.isNaN(clientParsed)) return false;
+  return new Date(serverParsed).toISOString() === new Date(clientParsed).toISOString();
+}
+
 // Üzerine yazmadan önce mevcut durumu yedekle — üye kaybı geri alınabilsin
 async function backupCurrentState(sql, nextData) {
   await ensureBackupTable(sql);
@@ -72,6 +81,16 @@ async function backupCurrentState(sql, nextData) {
       ORDER BY created_at DESC
       LIMIT ${MAX_AUTO_BACKUPS}
     )`;
+}
+
+// Yalnızca güncelleme zamanını oku — tam JSON çekmeden değişiklik kontrolü
+export async function loadAppStateRevision() {
+  const sql = getSql();
+  if (!sql) return { updatedAt: null };
+
+  await ensureTables(sql);
+  const rows = await sql`SELECT updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
+  return { updatedAt: rows[0]?.updated_at ?? null };
 }
 
 // Tüm uygulama durumunu yükle
@@ -120,6 +139,49 @@ export async function saveAppState(data) {
   await sql`INSERT INTO app_state (id, data, updated_at)
     VALUES (${STATE_ID}, ${JSON.stringify(data)}::jsonb, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+}
+
+// Optimistic lock — beklenen updated_at uyuşmazsa yazma
+export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
+  const sql = getSql();
+  if (!sql) throw new Error('DATABASE_URL eksik');
+
+  await ensureTables(sql);
+
+  if (!expectedUpdatedAt) {
+    await saveAppState(data);
+    const revision = await loadAppStateRevision();
+    return { ok: true, updatedAt: revision.updatedAt };
+  }
+
+  const currentRows = await sql`
+    SELECT updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1
+  `;
+  const serverAt = currentRows[0]?.updated_at ?? null;
+
+  if (!isSameAppStateRevision(serverAt, expectedUpdatedAt)) {
+    return { ok: false, conflict: true, updatedAt: serverAt };
+  }
+
+  try {
+    await backupCurrentState(sql, data);
+  } catch {
+    // Yedek başarısız olsa bile kayıt denenir
+  }
+
+  const updated = await sql`
+    UPDATE app_state
+    SET data = ${JSON.stringify(data)}::jsonb, updated_at = now()
+    WHERE id = ${STATE_ID} AND updated_at = ${serverAt}
+    RETURNING updated_at
+  `;
+
+  if (!updated.length) {
+    const revision = await loadAppStateRevision();
+    return { ok: false, conflict: true, updatedAt: revision.updatedAt };
+  }
+
+  return { ok: true, updatedAt: updated[0].updated_at };
 }
 
 // Yedek listesini getir (veri hariç, hafif özet)

@@ -4,7 +4,7 @@ import {
   generateUniqueReferralCode,
   legacyReferralCode,
   findReferrerByInviteCode
-} from '../api/lib/referralCode.js';
+} from '../api/_lib/referralCode.js';
 
 const code = generateReferralCode();
 assert.match(code, /^LC[A-Z2-9]{6}$/);
