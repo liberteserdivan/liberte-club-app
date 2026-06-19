@@ -1,3 +1,4 @@
+import { formatClientApiError } from './apiErrors.js';
 import { isNativeApp } from './platform.js';
 
 const TOKEN_KEY = 'liberteAuthToken';
@@ -146,7 +147,9 @@ export async function apiFetch(path, options = {}) {
   } catch (error) {
     if (error?.name === 'AbortError' || error?.code === 'FETCH_TIMEOUT') throw error;
     if (native && error?.message === 'Failed to fetch') {
-      throw new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.');
+      const netErr = new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.');
+      netErr.code = 'NETWORK_ERROR';
+      throw netErr;
     }
     throw error;
   }
@@ -177,6 +180,12 @@ export async function apiJson(path, options = {}) {
 
   if (!response.ok && !data.error && !data.message) {
     data.error = data.message || `İstek başarısız (${response.status})`;
+  }
+
+  if (!response.ok || data?.ok === false) {
+    const formatted = formatClientApiError({ response, data, fallback: data?.error || data?.message });
+    data.clientMessage = formatted.message;
+    data.clientCode = formatted.code;
   }
 
   return { response, data };

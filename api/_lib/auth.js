@@ -130,6 +130,35 @@ export async function getSessionForQr(req) {
   };
 }
 
+// Oturum bootstrap — invalidate etmeden müşteri yükle
+export async function getSessionForBootstrap(req) {
+  const identity = await getSessionForQr(req);
+  if (!identity) return null;
+
+  const sql = getSql();
+  let customer = null;
+  let loyalty = null;
+
+  if (sql) {
+    const {
+      findCustomerById,
+      findLoyaltyByCustomerId,
+      loyaltyRowToCard
+    } = await import('./customersStore.js');
+    customer = await findCustomerById(sql, identity.customerId);
+    if (customer) {
+      const row = await findLoyaltyByCustomerId(sql, identity.customerId);
+      loyalty = loyaltyRowToCard(row, identity.customerId);
+    }
+  }
+
+  return {
+    ...identity,
+    customer: customer ? toCustomerSnapshot(customer) : null,
+    loyalty
+  };
+}
+
 // Oturumu veritabanından sil — yanıt gövdesi yazmadan
 export async function invalidateCurrentSession(req) {
   const token = readAuthToken(req);

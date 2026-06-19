@@ -81,7 +81,7 @@ export default function Login({ db, commit, setSession }) {
     if (code === 'SESSION_CREATE_FAILED') {
       return `Oturum oluşturulamadı. Ref: ${data?.requestId || '—'}`;
     }
-    const base = data?.message || data?.error || fallback;
+    const base = data?.clientMessage || data?.message || data?.error || fallback;
     if (data?.requestId) {
       return `${base} (Ref: ${data.requestId})`;
     }

@@ -18,6 +18,12 @@ export function isRemoteFetchBlocked() {
   return Date.now() < blockedUntil;
 }
 
+// Kalan backoff süresi (sn)
+export function remoteFetchBlockedSeconds() {
+  if (!isRemoteFetchBlocked()) return 0;
+  return Math.max(1, Math.ceil((blockedUntil - Date.now()) / 1000));
+}
+
 // Başarılı istek — backoff sıfırla
 export function markRemoteFetchSuccess() {
   failStreak = 0;
@@ -33,10 +39,10 @@ export function markRemoteFetchFailure() {
 // Tekilleştirilmiş apiJson — aynı path için paylaşılan promise
 export function dedupedApiJson(path, options = {}) {
   if (isRemoteFetchBlocked()) {
-    return Promise.resolve({
-      response: { ok: false, status: 0 },
-      data: { error: 'Sunucu yanıt vermedi. Biraz sonra tekrar dene.' }
-    });
+    const seconds = remoteFetchBlockedSeconds();
+    const err = new Error(`Sunucu geçici olarak meşgul. ${seconds} sn sonra tekrar dene.`);
+    err.code = 'REMOTE_BACKOFF';
+    return Promise.reject(err);
   }
 
   if (path.startsWith('/api/state') && inflightStateRequest) {

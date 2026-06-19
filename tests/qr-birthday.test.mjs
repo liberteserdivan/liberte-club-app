@@ -93,6 +93,7 @@ test('qrClient production debug logları DEV ile sınırlı', () => {
 test('auth session bootstrap sessionToken döndürür', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/authSession.js'), 'utf8');
   assert.match(source, /sessionToken/);
+  assert.match(source, /getSessionForBootstrap/);
   const sessionJs = readFileSync(join(root, 'src/lib/session.js'), 'utf8');
   assert.match(sessionJs, /data\.sessionToken/);
   assert.match(sessionJs, /hydrateSessionTokenFromServer/);

@@ -104,7 +104,7 @@ function handleQrStatus(res) {
     signingReady: Boolean(signing.secret),
     sampleTokenCreated: sampleOk,
     samplePayloadLength,
-    qrEndpoint: '/api/state?qrToken=1',
+    qrEndpoint: '/api/qr/generate',
     hint: signing.source === 'missing'
       ? 'Vercel production: QR_SIGNING_SECRET veya ADMIN_PIN ekleyin.'
       : null
@@ -136,13 +136,14 @@ async function handleDbStatus(res) {
   }
 
   return res.status(200).json({
-    ok: pingOk,
+    ok: pingOk && info.provider !== 'neon',
     ...info,
     pingOk,
     publicTableCount: tableCount,
     useRelationalState: info.relationalState,
+    neonBlocked: info.provider === 'neon' && (info.env === 'production' || process.env.VERCEL_ENV === 'production'),
     recommendation: info.provider === 'neon'
-      ? 'Production hâlâ Neon görünüyor — Vercel DATABASE_URL Supabase pooler :6543 olmalı.'
+      ? 'KRİTİK: Production hâlâ Neon — Vercel DATABASE_URL Supabase pooler :6543 olmalı.'
       : info.provider === 'supabase' && !info.transactionPooler
         ? 'Supabase transaction pooler (:6543) önerilir.'
         : null
