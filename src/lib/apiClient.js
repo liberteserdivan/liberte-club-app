@@ -5,25 +5,8 @@ const NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
 
 let onUnauthorized = null;
 
-// 401 yanıtında oturumu sonlandır
 export function setUnauthorizedHandler(handler) {
   onUnauthorized = typeof handler === 'function' ? handler : null;
-}
-
-// Native token depolama — localStorage soğuk açılışta kalır
-function authStorage() {
-  if (isNativeApp()) {
-    try {
-      return localStorage;
-    } catch {
-      return null;
-    }
-  }
-  try {
-    return sessionStorage;
-  } catch {
-    return null;
-  }
 }
 
 // İstek yolunu tam URL'ye çevir
@@ -36,19 +19,24 @@ function resolveApiUrl(path) {
   return path;
 }
 
-// Native uygulamada Bearer token sakla
-export function saveNativeAuthToken(token) {
-  if (!token || !isNativeApp()) return;
+// Oturum tokenını sakla — web + native (Capacitor cross-origin için Bearer şart)
+export function saveAuthToken(token) {
+  if (!token) return;
   try {
-    authStorage()?.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(TOKEN_KEY, token);
   } catch {
     // Sessizce geç
   }
 }
 
+// Geriye uyumluluk
+export function saveNativeAuthToken(token) {
+  saveAuthToken(token);
+}
+
 export function clearNativeAuthToken() {
   try {
-    authStorage()?.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
   } catch {
@@ -56,15 +44,16 @@ export function clearNativeAuthToken() {
   }
 }
 
-function readNativeAuthToken() {
+// Saklanan oturum tokenı var mı — QR debug için
+export function hasStoredAuthToken() {
+  return Boolean(readStoredAuthToken());
+}
+
+function readStoredAuthToken() {
   try {
-    const store = authStorage();
-    let token = store?.getItem(TOKEN_KEY) || '';
-    if (!token && isNativeApp()) {
-      token = sessionStorage.getItem(TOKEN_KEY) || '';
-      if (token) store?.setItem(TOKEN_KEY, token);
-    }
-    return token;
+    return sessionStorage.getItem(TOKEN_KEY)
+      || localStorage.getItem(TOKEN_KEY)
+      || '';
   } catch {
     return '';
   }
@@ -107,7 +96,7 @@ export async function apiFetch(path, options = {}) {
     ...(fetchOptions.headers || {})
   };
 
-  const token = readNativeAuthToken();
+  const token = readStoredAuthToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const native = isNativeApp();

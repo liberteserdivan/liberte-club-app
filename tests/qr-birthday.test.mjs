@@ -51,10 +51,25 @@ test('QR generate endpoint qrPayload döndürür', () => {
   assert.match(source, /resolveQrSigningSecret/);
 });
 
-test('qrClient token ve qrPayload normalize eder', () => {
+test('qrClient Bearer token ve debug meta içerir', () => {
   const source = readFileSync(join(root, 'src/lib/qrClient.js'), 'utf8');
-  assert.match(source, /data\.qrPayload/);
-  assert.match(source, /QR_INVALID_RESPONSE/);
+  assert.match(source, /hasBearerToken/);
+  assert.match(source, /buildQrFetchDebug/);
+  assert.match(source, /QR_ENDPOINT/);
+});
+
+test('apiClient token tüm platformlarda saklanır', () => {
+  const source = readFileSync(join(root, 'src/lib/apiClient.js'), 'utf8');
+  assert.match(source, /saveAuthToken/);
+  assert.match(source, /sessionStorage\.setItem/);
+  assert.match(source, /localStorage\.setItem/);
+});
+
+test('QrPage Tekrar Dene force ile yeni istek atar', () => {
+  const source = readFileSync(join(root, 'src/pages/QrPage.jsx'), 'utf8');
+  assert.match(source, /force: true/);
+  assert.match(source, /requestGenRef/);
+  assert.match(source, /String\(qrValue\)/);
 });
 
 test('Profil ekranında doğum günü alanı yok', () => {

@@ -1,20 +1,25 @@
-import { apiJson } from './apiClient.js';
+import { apiJson, hasStoredAuthToken } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
+import { isNativeApp } from './platform.js';
 
 const QR_PREFIX = 'liberte-qr:';
+const QR_ENDPOINT = '/api/state?qrToken=1';
 
 // API hata mesajını kullanıcıya uygun metne çevir
 function mapQrApiError(response, data, fallback) {
   if (response?.status === 401) {
-    return 'Oturum süresi doldu. Lütfen tekrar giriş yap.';
+    return data?.message || 'Oturum süresi doldu. Lütfen tekrar giriş yap.';
+  }
+  if (response?.status === 403) {
+    return data?.message || 'QR oluşturma yetkisi yok.';
   }
   if (response?.status === 409) {
     return 'Veri güncellendi. Lütfen tekrar dene.';
   }
   if (response?.status >= 500) {
-    return 'Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene.';
+    return data?.message || data?.error || 'Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene.';
   }
-  return data?.error || fallback;
+  return data?.message || data?.error || fallback;
 }
 
 // Ağ hatasını kasa ekranına uygun mesaja çevir
@@ -61,23 +66,50 @@ export function isSignedQrRequired() {
   return !useLocalAuth();
 }
 
+// QR isteği debug özeti
+export function buildQrFetchDebug(response, data) {
+  return {
+    endpoint: QR_ENDPOINT,
+    method: 'GET',
+    httpStatus: response?.status ?? null,
+    durationMs: data?._meta?.durationMs ?? null,
+    requestId: data?.requestId || null,
+    code: data?.code || null,
+    step: data?.step || null,
+    hasBearerToken: hasStoredAuthToken(),
+    isNativeApp: isNativeApp(),
+    ok: Boolean(response?.ok && data?.ok !== false),
+    hasQrToken: Boolean(data?.token || data?.qrToken),
+    hasQrPayload: Boolean(data?.qrPayload),
+    payloadLength: String(data?.qrPayload || data?.token || '').length
+  };
+}
+
 // Müşteri — sunucudan kısa ömürlü QR token al
 export async function fetchCustomerQrToken(options = {}) {
-  const { signal, timeoutMs = 5000 } = options;
+  const { signal, timeoutMs = 10000 } = options;
+  let response;
+  let data = {};
+
   try {
-    const { response, data } = await apiJson('/api/state?qrToken=1', { signal, timeoutMs });
+    ({ response, data } = await apiJson(QR_ENDPOINT, { signal, timeoutMs }));
+
     if (!response.ok || data?.ok === false) {
       const err = new Error(mapQrApiError(response, data, data?.message || 'QR oluşturulamadı.'));
       err.requestId = data?.requestId || null;
       err.code = data?.code || 'QR_GENERATE_FAILED';
+      err.httpStatus = response.status;
+      err.debug = buildQrFetchDebug(response, data);
       throw err;
     }
 
     const token = String(data.token || data.qrToken || '').trim();
     if (!token) {
-      const err = new Error('QR yanıtı geçersiz.');
+      const err = new Error('QR yanıtı geçersiz — token boş.');
       err.requestId = data?.requestId || null;
       err.code = 'QR_INVALID_RESPONSE';
+      err.httpStatus = response.status;
+      err.debug = buildQrFetchDebug(response, data);
       throw err;
     }
 
@@ -86,11 +118,23 @@ export async function fetchCustomerQrToken(options = {}) {
       ...data,
       token,
       qrToken: token,
-      qrPayload
+      qrPayload,
+      debug: buildQrFetchDebug(response, data)
     };
   } catch (error) {
-    if (error?.requestId || error?.code) throw error;
-    throw wrapQrNetworkError(error, 'QR oluşturulamadı.');
+    if (error?.requestId || error?.code || error?.debug) throw error;
+    const wrapped = wrapQrNetworkError(error, 'QR oluşturulamadı.');
+    wrapped.debug = {
+      endpoint: QR_ENDPOINT,
+      method: 'GET',
+      httpStatus: response?.status ?? null,
+      durationMs: data?._meta?.durationMs ?? null,
+      hasBearerToken: hasStoredAuthToken(),
+      isNativeApp: isNativeApp(),
+      ok: false,
+      code: 'NETWORK_ERROR'
+    };
+    throw wrapped;
   }
 }
 

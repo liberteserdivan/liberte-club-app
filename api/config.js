@@ -2,8 +2,7 @@ import { readFirebaseWebConfig } from './_lib/firebaseConfig.js';
 import { isValidVapidPublicKey, normalizeVapidKey, readVapidKeyFromEnv } from './_lib/vapid.js';
 import { getServiceAccountStatus, parseServiceAccount, validateServiceAccount } from './_lib/serviceAccount.js';
 import { probeFcmCredentials } from './_lib/fcmProbe.js';
-import { describeDatabaseUrl } from './_lib/dbConnection.js';
-import { getSql } from './_lib/sql.js';
+import { resolveQrSigningSecret, createCustomerQrToken, formatQrPayload } from './_lib/qrToken.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -82,8 +81,40 @@ async function handlePushStatus(res) {
   });
 }
 
+// QR imza yapılandırması — secret sızdırmaz
+function handleQrStatus(res) {
+  const signing = resolveQrSigningSecret();
+  let sampleOk = false;
+  let samplePayloadLength = 0;
+
+  if (signing.secret) {
+    try {
+      const issued = createCustomerQrToken(1);
+      const payload = formatQrPayload(issued.token);
+      sampleOk = Boolean(issued.token && payload);
+      samplePayloadLength = payload.length;
+    } catch {
+      sampleOk = false;
+    }
+  }
+
+  return res.status(200).json({
+    ok: sampleOk,
+    signingSource: signing.source,
+    signingReady: Boolean(signing.secret),
+    sampleTokenCreated: sampleOk,
+    samplePayloadLength,
+    qrEndpoint: '/api/state?qrToken=1',
+    hint: signing.source === 'missing'
+      ? 'Vercel production: QR_SIGNING_SECRET veya ADMIN_PIN ekleyin.'
+      : null
+  });
+}
+
 // Veritabanı bağlantı özeti — secret sızdırmaz, cutover doğrulama
 async function handleDbStatus(res) {
+  const { describeDatabaseUrl } = await import('./_lib/dbConnection.js');
+  const { getSql } = await import('./_lib/sql.js');
   const info = describeDatabaseUrl(process.env.DATABASE_URL);
   let pingOk = false;
   let tableCount = 0;
@@ -130,6 +161,7 @@ export default async function handler(req, res) {
   if (resource === 'push') return handlePush(res);
   if (resource === 'push-status') return handlePushStatus(res);
   if (resource === 'db-status') return handleDbStatus(res);
+  if (resource === 'qr-status') return handleQrStatus(res);
 
-  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status veya db-status' });
+  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status veya qr-status' });
 }

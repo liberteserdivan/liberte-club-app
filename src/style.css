@@ -8110,7 +8110,17 @@ body.menuDetailOpen{
 }
 
 /* QR yeniden dene */
-.qrPassRetry{
+.qrPassDummy{
+  margin-bottom:12px;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(0,0,0,.06);
+  text-align:center;
+}
+.qrPassDummy canvas{
+  display:block!important;
+  margin:8px auto 0;
+}
   display:flex;
   flex-direction:column;
   align-items:center;
