@@ -49,6 +49,7 @@ test('QR generate endpoint qrPayload döndürür', () => {
   assert.match(source, /qrPayload/);
   assert.match(source, /qr\.generate/);
   assert.match(source, /resolveQrSigningSecret/);
+  assert.match(source, /getSessionForQr/);
 });
 
 test('qrClient Bearer token ve debug meta içerir', () => {
@@ -56,6 +57,8 @@ test('qrClient Bearer token ve debug meta içerir', () => {
   assert.match(source, /hasBearerToken/);
   assert.match(source, /buildQrFetchDebug/);
   assert.match(source, /QR_ENDPOINT/);
+  assert.match(source, /\[qr\.frontend\]/);
+  assert.match(source, /skipUnauthorized/);
 });
 
 test('apiClient token tüm platformlarda saklanır', () => {
@@ -63,6 +66,7 @@ test('apiClient token tüm platformlarda saklanır', () => {
   assert.match(source, /saveAuthToken/);
   assert.match(source, /sessionStorage\.setItem/);
   assert.match(source, /localStorage\.setItem/);
+  assert.match(source, /skipUnauthorized/);
 });
 
 test('QrPage Tekrar Dene force ile yeni istek atar', () => {
@@ -70,6 +74,16 @@ test('QrPage Tekrar Dene force ile yeni istek atar', () => {
   assert.match(source, /force: true/);
   assert.match(source, /requestGenRef/);
   assert.match(source, /String\(qrValue\)/);
+  assert.match(source, /LIBERTE-QR-TEST/);
+  assert.match(source, /\[qr\.frontend\]/);
+});
+
+test('auth session bootstrap sessionToken döndürür', () => {
+  const source = readFileSync(join(root, 'api/_lib/handlers/authSession.js'), 'utf8');
+  assert.match(source, /sessionToken/);
+  const sessionJs = readFileSync(join(root, 'src/lib/session.js'), 'utf8');
+  assert.match(sessionJs, /data\.sessionToken/);
+  assert.match(sessionJs, /hydrateSessionTokenFromServer/);
 });
 
 test('Profil ekranında doğum günü alanı yok', () => {

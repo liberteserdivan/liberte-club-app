@@ -102,6 +102,34 @@ export async function getSession(req) {
   return syncSessionWithCustomer(req, session);
 }
 
+// QR üretimi için hafif oturum — müşteri sync ve invalidate yok
+export async function getSessionForQr(req) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  const sql = getSql();
+  if (!sql) return null;
+
+  await ensureSessionTable(sql);
+  const rows = await sql`
+    SELECT customer_id, role, admin_verified
+    FROM auth_sessions
+    WHERE token_hash = ${hashToken(token)}
+      AND expires_at > now()
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    customerId: Number(row.customer_id),
+    role: row.role,
+    isAdmin: row.role === 'admin',
+    adminVerified: Boolean(row.admin_verified)
+  };
+}
+
 // Oturumu veritabanından sil — yanıt gövdesi yazmadan
 export async function invalidateCurrentSession(req) {
   const token = readAuthToken(req);

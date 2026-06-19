@@ -1,4 +1,4 @@
-import { apiJson, hasStoredAuthToken } from './apiClient.js';
+import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 import { isNativeApp } from './platform.js';
 
@@ -87,12 +87,36 @@ export function buildQrFetchDebug(response, data) {
 
 // Müşteri — sunucudan kısa ömürlü QR token al
 export async function fetchCustomerQrToken(options = {}) {
-  const { signal, timeoutMs = 10000 } = options;
+  const { signal, timeoutMs = 10000, customerId = null } = options;
+  const tokenMeta = getStoredAuthTokenMeta();
+
+  console.log('[qr.frontend] start', {
+    customerId,
+    sessionTokenExists: tokenMeta.exists,
+    sessionTokenLength: tokenMeta.length,
+    endpoint: QR_ENDPOINT,
+    state: 'loading'
+  });
+
   let response;
   let data = {};
 
   try {
-    ({ response, data } = await apiJson(QR_ENDPOINT, { signal, timeoutMs }));
+    ({ response, data } = await apiJson(QR_ENDPOINT, {
+      signal,
+      timeoutMs,
+      skipUnauthorized: true
+    }));
+
+    console.log('[qr.frontend] response', {
+      status: response?.status,
+      ok: data?.ok,
+      code: data?.code,
+      qrPayload: data?.qrPayload,
+      qrToken: data?.qrToken,
+      requestId: data?.requestId,
+      fullData: data
+    });
 
     if (!response.ok || data?.ok === false) {
       const err = new Error(mapQrApiError(response, data, data?.message || 'QR oluşturulamadı.'));
@@ -114,14 +138,24 @@ export async function fetchCustomerQrToken(options = {}) {
     }
 
     const qrPayload = String(data.qrPayload || '').trim() || formatSignedQrValue(token);
-    return {
+    const result = {
       ...data,
       token,
       qrToken: token,
       qrPayload,
       debug: buildQrFetchDebug(response, data)
     };
+
+    console.log('[qr.frontend] render', {
+      qrValue: qrPayload,
+      qrValueType: typeof qrPayload,
+      qrValueLength: qrPayload?.length,
+      state: 'ready'
+    });
+
+    return result;
   } catch (error) {
+    console.error('[qr.frontend] error', error);
     if (error?.requestId || error?.code || error?.debug) throw error;
     const wrapped = wrapQrNetworkError(error, 'QR oluşturulamadı.');
     wrapped.debug = {

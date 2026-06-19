@@ -15,10 +15,13 @@ import {
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
 import { fetchCustomerQrToken, formatSignedQrValue, isSignedQrRequired } from '../lib/qrClient.js';
+import { getStoredAuthTokenMeta, hasStoredAuthToken } from '../lib/apiClient.js';
+import { isNativeApp } from '../lib/platform.js';
+import { hydrateSessionTokenFromServer } from '../lib/session.js';
 
 const QR_FETCH_MS = 10000;
 const QR_REFRESH_MS = 60_000;
-const QR_LOADING_CAP_MS = 5000;
+const QR_LOADING_CAP_MS = 11000;
 const QR_DUMMY_VALUE = 'LIBERTE-QR-TEST';
 
 // QR debug modu — localStorage liberteQrDebug=1
@@ -64,13 +67,11 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
   const [qrDebug, setQrDebug] = useState(null);
   const [dummyQrOk, setDummyQrOk] = useState(false);
   const signedQrRequired = isSignedQrRequired();
-  const showDebug = isQrDebugMode();
 
   useEffect(() => {
-    if (!showDebug) return undefined;
     const t = setTimeout(() => setDummyQrOk(true), 300);
     return () => clearTimeout(t);
-  }, [showDebug]);
+  }, []);
 
   const refreshBusyRef = useRef(false);
   const abortRef = useRef(null);
@@ -119,10 +120,36 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
     const hadQr = Boolean(qrValueRef.current);
     setQrStatus(isRefresh && hadQr ? 'refreshing' : 'loading');
 
+    const tokenMeta = getStoredAuthTokenMeta();
+    console.log('[qr.frontend] start', {
+      customerId: customer.id,
+      sessionTokenExists: tokenMeta.exists,
+      sessionTokenLength: tokenMeta.length,
+      endpoint: '/api/state?qrToken=1',
+      state: isRefresh && hadQr ? 'refreshing' : 'loading',
+      isNativeApp: isNativeApp(),
+      force
+    });
+
+    if (signedQrRequired && !hasStoredAuthToken()) {
+      await hydrateSessionTokenFromServer();
+    }
+
+    if (signedQrRequired && !hasStoredAuthToken()) {
+      const msg = isNativeApp()
+        ? 'Oturum tokenı bulunamadı. Çıkış yapıp tekrar giriş yapın.'
+        : 'Oturum doğrulanamadı. Çıkış yapıp tekrar giriş yapın.';
+      setQrError(msg);
+      setQrStatus('error');
+      refreshBusyRef.current = false;
+      return;
+    }
+
     try {
       const issued = await fetchCustomerQrToken({
         signal: controller.signal,
-        timeoutMs: QR_FETCH_MS
+        timeoutMs: QR_FETCH_MS,
+        customerId: customer.id
       });
 
       if (!mountedRef.current || gen !== requestGenRef.current) return;
@@ -143,7 +170,15 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
       setQrRequestId(issued.requestId || '');
       setQrDebug(issued.debug || null);
       setQrStatus('ready');
+
+      console.log('[qr.frontend] render', {
+        qrValue: nextValue,
+        qrValueType: typeof nextValue,
+        qrValueLength: nextValue?.length,
+        state: 'ready'
+      });
     } catch (error) {
+      console.error('[qr.frontend] error', error);
       if (!mountedRef.current || gen !== requestGenRef.current) return;
 
       if (error?.name === 'AbortError') return;
@@ -226,6 +261,7 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshRemote, customer.id]);
 
+  const showDebug = isQrDebugMode();
   const showQr = Boolean(qrValue) && qrStatus !== 'error';
   const showRetry = signedQrRequired && (qrStatus === 'error' || qrStatus === 'offline' || (!showQr && qrStatus !== 'loading'));
   const statusHint = qrError
@@ -258,24 +294,25 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
             <QRCodeCanvas value={String(qrValue)} size={196} level="H" includeMargin={false} />
           ) : (
             <div className="qrPassRetry">
-              {showDebug && (
-                <div className="qrPassDummy">
-                  <p className="qrPassTip">Render testi (dummy)</p>
-                  <QRCodeCanvas
-                    value={QR_DUMMY_VALUE}
-                    size={120}
-                    level="H"
-                    includeMargin={false}
-                  />
-                  <p className="qrPassRef">{dummyQrOk ? 'Dummy QR OK' : 'Dummy QR bekleniyor…'}</p>
-                </div>
-              )}
+              <div className="qrPassDummy" aria-label="QR render testi">
+                <p className="qrPassTip">Render testi (dummy)</p>
+                <QRCodeCanvas
+                  value={QR_DUMMY_VALUE}
+                  size={120}
+                  level="H"
+                  includeMargin={false}
+                />
+                <p className="qrPassRef">{dummyQrOk ? 'Dummy QR OK' : 'Dummy QR bekleniyor…'}</p>
+              </div>
               <p className="qrPassTip">{statusHint}</p>
               {showRetry && (
                 <button
                   type="button"
                   className="ghost qrRetryBtn"
-                  onClick={() => refreshSignedQr({ force: true })}
+                  onClick={() => {
+                    console.log('[qr.frontend] retry', { force: true, customerId: customer.id });
+                    refreshSignedQr({ force: true });
+                  }}
                   disabled={qrStatus === 'loading'}
                 >
                   <RefreshCw size={16} aria-hidden="true" />
@@ -286,7 +323,7 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
           )}
         </div>
 
-        {(qrRequestId || qrDebug) && (qrStatus === 'error' || showDebug) && (
+        {(qrRequestId || qrDebug || qrStatus === 'error') && (
           <div className="qrPassRef">
             {qrRequestId && <p>Ref: {qrRequestId}</p>}
             {qrDebug && (
@@ -294,6 +331,12 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
                 {qrDebug.endpoint} · HTTP {qrDebug.httpStatus ?? '—'} · {qrDebug.durationMs ?? '—'}ms
                 · Bearer {qrDebug.hasBearerToken ? 'var' : 'yok'}
                 · token {qrDebug.hasQrToken ? 'var' : 'yok'}
+                · payload {qrDebug.hasQrPayload ? 'var' : 'yok'}
+              </p>
+            )}
+            {showDebug && (
+              <p>
+                native={String(isNativeApp())} · bearerStorage={hasStoredAuthToken() ? 'var' : 'yok'}
               </p>
             )}
           </div>

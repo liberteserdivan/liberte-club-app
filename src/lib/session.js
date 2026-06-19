@@ -1,4 +1,10 @@
-import { apiJson, AUTH_REQUEST_OPTIONS, clearNativeAuthToken, saveNativeAuthToken } from './apiClient.js';
+import {
+  apiJson,
+  AUTH_REQUEST_OPTIONS,
+  clearNativeAuthToken,
+  hasStoredAuthToken,
+  saveNativeAuthToken
+} from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
@@ -26,7 +32,10 @@ export async function bootstrapSession() {
   }
 
   try {
-    const { response, data } = await apiJson('/api/auth/session', AUTH_REQUEST_OPTIONS);
+    const { response, data } = await apiJson('/api/auth/session', {
+      ...AUTH_REQUEST_OPTIONS,
+      skipUnauthorized: true
+    });
     if (!response.ok || !data?.ok) {
       memorySession = null;
       return null;
@@ -39,6 +48,10 @@ export async function bootstrapSession() {
       adminVerified: Boolean(data.adminVerified)
     };
 
+    if (data.sessionToken) {
+      saveNativeAuthToken(data.sessionToken);
+    }
+
     return {
       session: memorySession,
       customer: data.customer || null,
@@ -48,6 +61,28 @@ export async function bootstrapSession() {
     memorySession = null;
     return null;
   }
+}
+
+// Cookie oturumu varsa Bearer tokenı storage'a yaz — QR/native için
+export async function hydrateSessionTokenFromServer() {
+  if (useLocalAuth() || hasStoredAuthToken()) {
+    return hasStoredAuthToken();
+  }
+
+  try {
+    const { response, data } = await apiJson('/api/auth/session', {
+      ...AUTH_REQUEST_OPTIONS,
+      skipUnauthorized: true
+    });
+
+    if (response.ok && data?.ok && data.sessionToken) {
+      saveNativeAuthToken(data.sessionToken);
+    }
+  } catch {
+    // Sessizce geç
+  }
+
+  return hasStoredAuthToken();
 }
 
 // Oturum aç

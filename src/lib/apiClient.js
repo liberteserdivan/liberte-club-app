@@ -49,6 +49,16 @@ export function hasStoredAuthToken() {
   return Boolean(readStoredAuthToken());
 }
 
+// Debug — token uzunluğu (gizli tutulur)
+export function getStoredAuthTokenMeta() {
+  const token = readStoredAuthToken();
+  return {
+    exists: Boolean(token),
+    length: token.length,
+    prefix: token ? `${token.slice(0, 6)}…` : null
+  };
+}
+
 function readStoredAuthToken() {
   try {
     return sessionStorage.getItem(TOKEN_KEY)
@@ -90,7 +100,7 @@ function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
 
 // Kimlik bilgili API isteği
 export async function apiFetch(path, options = {}) {
-  const { timeoutMs, ...fetchOptions } = options;
+  const { timeoutMs, skipUnauthorized = false, ...fetchOptions } = options;
   const headers = {
     'Content-Type': 'application/json',
     ...(fetchOptions.headers || {})
@@ -110,7 +120,7 @@ export async function apiFetch(path, options = {}) {
       credentials: native ? 'omit' : 'include'
     }, requestTimeout);
 
-    if (response.status === 401 && onUnauthorized) {
+    if (response.status === 401 && onUnauthorized && !skipUnauthorized) {
       onUnauthorized('expired');
     }
 

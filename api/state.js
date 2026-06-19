@@ -1,6 +1,6 @@
 import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
 import { loadAppState, loadAppStateRevision, saveAppState, isSameAppStateRevision } from './_lib/appState.js';
-import { getSession, requireAdminSession, requireSession } from './_lib/auth.js';
+import { getSession, getSessionForQr, requireAdminSession, requireSession } from './_lib/auth.js';
 import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from './_lib/qrToken.js';
 import { logServerError } from './_lib/logServerError.js';
 import {
@@ -159,16 +159,20 @@ async function handleCustomerQrToken(req, res) {
   const startedAt = Date.now();
   const signing = resolveQrSigningSecret();
 
-  const session = await getSession(req);
-  trace.log('session_check', {
+  trace.log('start', {
+    step: 'start',
+    hasQrSecret: signing.source === 'QR_SIGNING_SECRET',
+    hasSigningFallback: signing.source === 'ADMIN_PIN_DERIVED',
+    signingSource: signing.source
+  });
+
+  const session = await getSessionForQr(req);
+  trace.log('verify_session', {
+    step: 'verify_session',
     hasSession: Boolean(session),
     sessionValid: Boolean(session?.customerId),
     customerId: session?.customerId || null,
-    memberNo: session?.customerId ? `LC-${session.customerId}` : null,
-    hasQrSecret: signing.source === 'QR_SIGNING_SECRET',
-    hasSigningFallback: signing.source === 'ADMIN_PIN_DERIVED',
-    signingSource: signing.source,
-    step: 'session_read'
+    memberNo: session?.customerId ? `LC-${session.customerId}` : null
   });
 
   if (!session) {
@@ -197,10 +201,13 @@ async function handleCustomerQrToken(req, res) {
   }
 
   try {
+    trace.log('create_payload', { step: 'create_payload', customerId: session.customerId });
     const issued = createCustomerQrToken(session.customerId);
+    trace.log('sign_token', { step: 'sign_token', customerId: session.customerId });
     const qrPayload = formatQrPayload(issued.token);
 
-    trace.log('complete_ok', {
+    trace.log('response_ok', {
+      step: 'response_ok',
       customerId: session.customerId,
       memberNo: `LC-${session.customerId}`,
       payloadCreated: Boolean(qrPayload),
