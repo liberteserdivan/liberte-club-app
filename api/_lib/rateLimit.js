@@ -1,5 +1,8 @@
 import { getSql } from './appState.js';
 
+// Rate limit penceresi (15 dakika)
+const WINDOW_MS = 15 * 60 * 1000;
+
 // Rate limit tablosunu hazırla
 async function ensureRateLimitTable(sql) {
   await sql`CREATE TABLE IF NOT EXISTS auth_rate_limits (

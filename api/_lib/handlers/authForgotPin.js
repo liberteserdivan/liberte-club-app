@@ -1,4 +1,5 @@
 import { getSql } from '../appState.js';
+import { applyCors, readBody } from '../http.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
 import { upsertCustomerEmail } from '../customerEmails.js';
