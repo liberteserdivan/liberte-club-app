@@ -71,6 +71,7 @@ function readNativeAuthToken() {
 }
 
 const FETCH_TIMEOUT_MS = 12000;
+const AUTH_FETCH_TIMEOUT_MS = 25000;
 
 // Fetch isteğine üst zaman sınırı ekle
 function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -89,9 +90,10 @@ function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
 
 // Kimlik bilgili API isteği
 export async function apiFetch(path, options = {}) {
+  const { timeoutMs, ...fetchOptions } = options;
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(fetchOptions.headers || {})
   };
 
   const token = readNativeAuthToken();
@@ -99,13 +101,14 @@ export async function apiFetch(path, options = {}) {
 
   const native = isNativeApp();
   const url = resolveApiUrl(path);
+  const requestTimeout = Number(timeoutMs) > 0 ? Number(timeoutMs) : FETCH_TIMEOUT_MS;
 
   try {
     const response = await fetchWithTimeout(url, {
-      ...options,
+      ...fetchOptions,
       headers,
       credentials: native ? 'omit' : 'include'
-    });
+    }, requestTimeout);
 
     if (response.status === 401 && onUnauthorized) {
       onUnauthorized('expired');
@@ -143,3 +146,6 @@ export async function apiJson(path, options = {}) {
 
   return { response, data };
 }
+
+// Auth uçları — soğuk başlangıç + DB yazımı için daha uzun zaman aşımı
+export const AUTH_REQUEST_OPTIONS = { timeoutMs: AUTH_FETCH_TIMEOUT_MS };

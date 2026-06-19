@@ -58,7 +58,8 @@ async function dispatchVerificationEmail({ email, subject, greeting, code }) {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ from, to: email, subject, html })
+    body: JSON.stringify({ from, to: email, subject, html }),
+    signal: AbortSignal.timeout(10000)
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

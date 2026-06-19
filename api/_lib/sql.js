@@ -12,7 +12,7 @@ function buildClientOptions(connectionString) {
     ssl: 'require',
     max: 1,
     idle_timeout: 20,
-    connect_timeout: 20
+    connect_timeout: 10
   };
 
   if (isTransactionPooler(connectionString)) {
@@ -22,9 +22,19 @@ function buildClientOptions(connectionString) {
   return options;
 }
 
-// Ortak SQL istemcisi — Neon, Supabase ve standart Postgres ile uyumlu
+let cachedSql = null;
+let cachedConnectionString = '';
+
+// Ortak SQL istemcisi — aynı invocation içinde tek pool yeniden kullanılır
 export function getSql() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return null;
-  return postgres(connectionString, buildClientOptions(connectionString));
+
+  if (cachedSql && cachedConnectionString === connectionString) {
+    return cachedSql;
+  }
+
+  cachedConnectionString = connectionString;
+  cachedSql = postgres(connectionString, buildClientOptions(connectionString));
+  return cachedSql;
 }

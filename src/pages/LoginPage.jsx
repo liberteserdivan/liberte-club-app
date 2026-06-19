@@ -4,7 +4,7 @@ import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
-import { apiJson } from '../lib/apiClient.js';
+import { apiJson, AUTH_REQUEST_OPTIONS } from '../lib/apiClient.js';
 import {
   isValidDevPin,
   makeDevAuthCode,
@@ -158,6 +158,7 @@ export default function Login({ db, commit, setSession }) {
       }
 
       const { response, data } = await apiJson('/api/auth/login', {
+        ...AUTH_REQUEST_OPTIONS,
         method: 'POST',
         body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
       });
@@ -215,6 +216,7 @@ export default function Login({ db, commit, setSession }) {
       }
 
       const { response, data } = await apiJson('/api/auth/register-complete', {
+        ...AUTH_REQUEST_OPTIONS,
         method: 'POST',
         body: JSON.stringify({
           action: 'send-code',
@@ -269,6 +271,7 @@ export default function Login({ db, commit, setSession }) {
       }
 
       const { response, data } = await apiJson('/api/auth/register-complete', {
+        ...AUTH_REQUEST_OPTIONS,
         method: 'POST',
         body: JSON.stringify({
           action: 'complete',
@@ -352,6 +355,7 @@ export default function Login({ db, commit, setSession }) {
       }
 
       const { response, data } = await apiJson('/api/auth/forgot-pin', {
+        ...AUTH_REQUEST_OPTIONS,
         method: 'POST',
         body: JSON.stringify({ action: 'send-code', identifier })
       });
@@ -397,6 +401,7 @@ export default function Login({ db, commit, setSession }) {
       }
 
       const { response, data } = await apiJson('/api/auth/forgot-pin', {
+        ...AUTH_REQUEST_OPTIONS,
         method: 'POST',
         body: JSON.stringify({
           action: 'reset',
