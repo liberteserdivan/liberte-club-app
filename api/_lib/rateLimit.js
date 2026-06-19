@@ -1,15 +1,12 @@
 import { getSql } from './appState.js';
+import { ensureSchemaReady } from './schemaReady.js';
 
 // Rate limit penceresi (15 dakika)
 const WINDOW_MS = 15 * 60 * 1000;
 
 // Rate limit tablosunu hazırla
 async function ensureRateLimitTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS auth_rate_limits (
-    rate_key text PRIMARY KEY,
-    hit_count int NOT NULL DEFAULT 0,
-    window_start timestamptz NOT NULL DEFAULT now()
-  )`;
+  await ensureSchemaReady(sql);
 }
 
 // İstek IP adresini oku

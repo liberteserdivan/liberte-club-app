@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
+import { ensureSchemaReady } from './schemaReady.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -20,18 +21,21 @@ function hashToken(token) {
 
 // Oturum tablosunu hazırla
 async function ensureSessionTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS auth_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    token_hash text NOT NULL UNIQUE,
-    customer_id bigint NOT NULL,
-    role text NOT NULL DEFAULT 'user',
-    admin_verified boolean NOT NULL DEFAULT false,
-    device_id text,
-    expires_at timestamptz NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
-  )`;
-  await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_failed int NOT NULL DEFAULT 0`;
-  await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_locked_until timestamptz`;
+  await ensureSchemaReady(sql);
+}
+
+// API yanıtı için müşteri özeti
+export function toCustomerSnapshot(customer) {
+  if (!customer) return null;
+  return {
+    id: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    email: customer.email,
+    isAdmin: Boolean(customer.isAdmin),
+    birthDate: customer.birthDate || '',
+    referralCode: customer.referralCode || null
+  };
 }
 
 // Cookie'den veya Authorization başlığından token oku
@@ -151,6 +155,11 @@ export async function syncSessionWithCustomer(req, session) {
     session.isAdmin = liveRole === 'admin';
     session.adminVerified = nextVerified;
   }
+
+  session.customer = toCustomerSnapshot(customer);
+  session.loyalty = data?.loyalty?.[customer.id]
+    || data?.loyalty?.[String(customer.id)]
+    || null;
 
   return session;
 }

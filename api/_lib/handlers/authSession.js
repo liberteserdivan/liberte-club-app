@@ -1,6 +1,5 @@
 import { applyCors } from '../http.js';
 import { destroySession, getSession } from '../auth.js';
-import { loadAppState } from '../appState.js';
 
 // Oturum okuma ve çıkış
 export async function handleAuthSession(req, res) {
@@ -20,14 +19,7 @@ export async function handleAuthSession(req, res) {
 
   try {
     const session = await getSession(req);
-    if (!session) return res.status(200).json({ ok: false });
-
-    const remote = await loadAppState();
-    const customer = (remote.data?.customers || []).find(
-      (c) => Number(c.id) === Number(session.customerId)
-    );
-
-    if (!customer) return res.status(200).json({ ok: false });
+    if (!session?.customer) return res.status(200).json({ ok: false });
 
     return res.status(200).json({
       ok: true,
@@ -35,12 +27,8 @@ export async function handleAuthSession(req, res) {
       role: session.role,
       isAdmin: session.isAdmin,
       adminVerified: session.adminVerified,
-      customer: {
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        email: customer.email
-      }
+      customer: session.customer,
+      loyalty: session.loyalty || null
     });
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Oturum okunamadı' });

@@ -32,7 +32,7 @@ import {
   UNIVERSAL_MEMBERSHIP_BENEFITS,
   TIER_DISCOUNT_RULES
 } from './membershipTier.js';
-import { apiJson } from './apiClient.js';
+import { apiJson, SYNC_REQUEST_OPTIONS } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
 import { legacyReferralCode, generateUniqueReferralCode } from './referralCode.js';
@@ -222,6 +222,30 @@ export function mergeDb(x){
   }:seed;
 }
 
+// Auth yanıtından müşteriyi yerel db'ye yaz — /api/state beklemeden ana ekran
+export function mergeAuthSnapshot(db, { customer, loyalty } = {}) {
+  if (!customer?.id) return mergeDb(db);
+  const base = mergeDb(db);
+  const customers = [...(base.customers || [])];
+  const index = customers.findIndex((row) => Number(row.id) === Number(customer.id));
+  if (index >= 0) {
+    customers[index] = { ...customers[index], ...customer };
+  } else {
+    customers.push(customer);
+  }
+
+  const loyaltyMap = { ...(base.loyalty || {}) };
+  if (loyalty) {
+    loyaltyMap[customer.id] = migrateLoyaltyCard(loyalty);
+  }
+
+  return {
+    ...base,
+    customers,
+    loyalty: loyaltyMap
+  };
+}
+
 // Bozuk yerel önbelleği güvenle ayıkla
 function parseLocalCache(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -262,7 +286,7 @@ export async function loadRemote(options = {}){
   const path = since ? `/api/state?since=${encodeURIComponent(since)}` : '/api/state';
 
   try{
-    const {response,data:j}=await apiJson(path);
+    const {response,data:j}=await apiJson(path, SYNC_REQUEST_OPTIONS);
     if(response.status === 401){
       return { unauthorized: true };
     }
@@ -305,6 +329,7 @@ export async function saveRemote(db, options = {}){
 
   try{
     const {response,data}=await apiJson('/api/state',{
+      ...SYNC_REQUEST_OPTIONS,
       method:'POST',
       body:JSON.stringify(payload)
     });

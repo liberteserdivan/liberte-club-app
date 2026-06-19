@@ -1,4 +1,5 @@
 import { getSql } from './appState.js';
+import { ensureSchemaReady } from './schemaReady.js';
 
 // Log saklama süresi — 7 gün
 const LOG_RETENTION_DAYS = 7;
@@ -7,19 +8,7 @@ const MAX_MESSAGE_LENGTH = 500;
 
 // Log tablosunu hazırla
 async function ensureErrorLogTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS app_error_logs (
-    id bigserial PRIMARY KEY,
-    level text NOT NULL DEFAULT 'error',
-    source text NOT NULL,
-    message text NOT NULL,
-    code text,
-    detail jsonb,
-    customer_id bigint,
-    platform text,
-    created_at timestamptz NOT NULL DEFAULT now()
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS app_error_logs_created_at_idx
-    ON app_error_logs (created_at DESC)`;
+  await ensureSchemaReady(sql);
 }
 
 // Eski logları temizle — son 7 gün dışındakileri sil

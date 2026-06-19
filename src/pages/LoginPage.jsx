@@ -28,6 +28,7 @@ import {
   loyaltyTemplate,
   generateUniqueReferralCode,
   mergeDb,
+  mergeAuthSnapshot,
   norm,
   addStampToCustomer
 } from '../lib/db.js';
@@ -91,6 +92,12 @@ export default function Login({ db, commit, setSession }) {
   function finishSession(result) {
     setPin('');
     setPinConfirm('');
+    if (result.customer) {
+      commit(mergeAuthSnapshot(db, {
+        customer: result.customer,
+        loyalty: result.loyalty
+      }));
+    }
     const session = applyAuthResult(result);
     localStorage.setItem('liberteLastPhone', phone || '');
     if (email) localStorage.setItem('liberteLastEmail', email);

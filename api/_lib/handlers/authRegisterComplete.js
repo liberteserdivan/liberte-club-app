@@ -2,7 +2,7 @@ import { getSql } from '../appState.js';
 import { findReferrerByInviteCode } from '../referralCode.js';
 import { applyCors, readBody } from '../http.js';
 import { cleanPhone } from '../phone.js';
-import { buildCustomerRecord, createSession, indexCustomerEmail } from '../auth.js';
+import { buildCustomerRecord, createSession, indexCustomerEmail, toCustomerSnapshot } from '../auth.js';
 import { loadAppState, saveAppState } from '../appState.js';
 import { loyaltyTemplate, applyCategoryStamp } from '../loyaltyOps.js';
 import { verifyEmailCode } from '../emailCodes.js';
@@ -32,7 +32,7 @@ async function handleSendCode(req, res) {
     return res.status(400).json({ error: 'İsim soyisim zorunlu' });
   }
 
-  const remote = await loadAppState();
+  const remote = await loadAppState({ skipPersist: true });
   const state = remote.data || { customers: [] };
   const duplicatePhone = (state.customers || []).some((c) => cleanPhone(c.phone) === phone);
   const duplicateEmail = (state.customers || []).some(
@@ -90,7 +90,7 @@ async function handleComplete(req, res) {
     return res.status(400).json({ error: '6 haneli doğrulama kodunu gir.' });
   }
 
-  const remote = await loadAppState();
+  const remote = await loadAppState({ skipPersist: true });
   const state = remote.data || { customers: [], loyalty: {}, history: [] };
 
   const duplicatePhone = (state.customers || []).some((c) => cleanPhone(c.phone) === phone);
@@ -164,13 +164,17 @@ async function handleComplete(req, res) {
     deviceId
   });
 
+  const loyaltyCard = state.loyalty?.[customer.id] || state.loyalty?.[String(customer.id)] || null;
+
   return res.status(200).json({
     ok: true,
     customerId: customer.id,
     role: session.role,
     isAdmin: false,
     adminVerified: false,
-    sessionToken: session.token
+    sessionToken: session.token,
+    customer: toCustomerSnapshot(customer),
+    loyalty: loyaltyCard
   });
 }
 

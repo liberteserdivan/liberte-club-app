@@ -1,5 +1,6 @@
 import { getSql } from './appState.js';
 import { cleanPhone } from './phone.js';
+import { ensureSchemaReady } from './schemaReady.js';
 
 // E-posta karşılaştırması için normalize et
 export function normalizeEmail(email = '') {
@@ -17,12 +18,7 @@ export function listCustomers(data) {
 
 // E-posta indeks tablosunu hazırla
 export async function ensureCustomerEmailTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS customer_emails (
-    email text PRIMARY KEY,
-    customer_id bigint NOT NULL,
-    phone text NOT NULL,
-    updated_at timestamptz NOT NULL DEFAULT now()
-  )`;
+  await ensureSchemaReady(sql);
 }
 
 // Tek müşteri e-postasını indekse yaz

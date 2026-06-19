@@ -4,11 +4,13 @@ import { cleanPhone } from '../phone.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
 import {
   createSession,
-  findCustomerByPhone,
   getSession,
   indexCustomerEmail,
-  readAuthToken
+  readAuthToken,
+  toCustomerSnapshot
 } from '../auth.js';
+import { listCustomers } from '../customerEmails.js';
+import { loadAppState } from '../appState.js';
 import { repairCustomerDirectory } from '../customerRepair.js';
 import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js';
 
@@ -32,13 +34,21 @@ export async function handleAuthLogin(req, res) {
     if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
 
     await repairCustomerDirectory();
-    const customer = await findCustomerByPhone(phone);
+    const existing = await getSession(req);
+    let customer = existing?.customer || null;
+
+    if (!customer) {
+      const remote = await loadAppState({ skipPersist: true });
+      customer = listCustomers(remote.data).find(
+        (row) => cleanPhone(row.phone) === phone
+      ) || null;
+    }
+
     if (!customer) {
       return res.status(404).json({ error: 'Bu telefon ile kayıt bulunamadı. Önce kayıt olun.' });
     }
 
     const expectedRole = customer.isAdmin ? 'admin' : 'user';
-    const existing = await getSession(req);
     if (
       existing
       && Number(existing.customerId) === Number(customer.id)
@@ -50,7 +60,8 @@ export async function handleAuthLogin(req, res) {
         customerId: customer.id,
         role: existing.role,
         isAdmin: existing.isAdmin,
-        adminVerified: existing.adminVerified
+        adminVerified: existing.adminVerified,
+        customer: toCustomerSnapshot(customer)
       });
     }
 
@@ -83,7 +94,8 @@ export async function handleAuthLogin(req, res) {
       role: session.role,
       isAdmin: session.isAdmin,
       adminVerified: false,
-      sessionToken: session.token
+      sessionToken: session.token,
+      customer: toCustomerSnapshot(customer)
     });
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Giriş yapılamadı' });

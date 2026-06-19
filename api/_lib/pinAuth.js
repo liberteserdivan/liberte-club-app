@@ -1,5 +1,6 @@
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cleanPhone } from './phone.js';
+import { ensureSchemaReady } from './schemaReady.js';
 
 const PIN_ITERATIONS = 120000;
 const PIN_KEYLEN = 64;
@@ -9,15 +10,7 @@ const LOCK_MINUTES = 10;
 
 // PIN tablosunu hazırla
 export async function ensurePinTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS customer_pin_auth (
-    phone text PRIMARY KEY,
-    customer_id bigint NOT NULL,
-    pin_hash text NOT NULL,
-    pin_salt text NOT NULL,
-    failed_attempts int NOT NULL DEFAULT 0,
-    locked_until timestamptz,
-    updated_at timestamptz NOT NULL DEFAULT now()
-  )`;
+  await ensureSchemaReady(sql);
 }
 
 // PIN formatını doğrula — 4 veya 6 hane

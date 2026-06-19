@@ -2,6 +2,7 @@ import { applyMenuSync } from './menuSync.js';
 import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 import { buildInitialAppState } from './appStateSeed.js';
 import { getSql } from './sql.js';
+import { ensureSchemaReady } from './schemaReady.js';
 
 export { getSql } from './sql.js';
 
@@ -38,22 +39,12 @@ const BACKUP_THROTTLE_MS = 30 * 60 * 1000;
 
 // Uygulama durum tablosunu hazırla
 async function ensureTables(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS app_state (
-    id text PRIMARY KEY,
-    data jsonb NOT NULL,
-    updated_at timestamptz NOT NULL DEFAULT now()
-  )`;
+  await ensureSchemaReady(sql);
 }
 
 // Yedek tablosunu hazırla
 async function ensureBackupTable(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS app_state_backups (
-    id bigserial PRIMARY KEY,
-    data jsonb NOT NULL,
-    reason text NOT NULL DEFAULT 'auto',
-    customer_count int NOT NULL DEFAULT 0,
-    created_at timestamptz NOT NULL DEFAULT now()
-  )`;
+  await ensureSchemaReady(sql);
 }
 
 // Durumdaki müşteri sayısını güvenli oku
@@ -114,7 +105,8 @@ export async function loadAppStateRevision() {
 }
 
 // Tüm uygulama durumunu yükle
-export async function loadAppState() {
+export async function loadAppState(options = {}) {
+  const skipPersist = Boolean(options.skipPersist);
   const sql = getSql();
   if (!sql) return { data: null, updatedAt: null };
 
@@ -127,22 +119,21 @@ export async function loadAppState() {
     data = buildInitialAppState();
     await saveAppState(data);
     updatedAt = new Date().toISOString();
+    return { data, updatedAt };
   }
 
-  if (data) {
-    const synced = applyMenuSync(data);
-    data = synced.state;
+  const synced = applyMenuSync(data);
+  data = synced.state;
 
-    const migratedLoyalty = migrateAllLoyalty(data.loyalty || {});
-    const loyaltyChanged = JSON.stringify(migratedLoyalty) !== JSON.stringify(data.loyalty || {});
-    if (loyaltyChanged) {
-      data = { ...data, loyalty: migratedLoyalty };
-    }
+  const migratedLoyalty = migrateAllLoyalty(data.loyalty || {});
+  const loyaltyChanged = JSON.stringify(migratedLoyalty) !== JSON.stringify(data.loyalty || {});
+  if (loyaltyChanged) {
+    data = { ...data, loyalty: migratedLoyalty };
+  }
 
-    if (synced.changed || loyaltyChanged) {
-      await saveAppState(data);
-      updatedAt = new Date().toISOString();
-    }
+  if (!skipPersist && (synced.changed || loyaltyChanged)) {
+    await saveAppState(data);
+    updatedAt = new Date().toISOString();
   }
 
   return { data, updatedAt };

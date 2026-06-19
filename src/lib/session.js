@@ -1,4 +1,4 @@
-import { apiJson, clearNativeAuthToken, saveNativeAuthToken } from './apiClient.js';
+import { apiJson, AUTH_REQUEST_OPTIONS, clearNativeAuthToken, saveNativeAuthToken } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
@@ -22,11 +22,11 @@ export function patchMemorySession(patch) {
 // Sunucudan oturumu doğrula
 export async function bootstrapSession() {
   if (useLocalAuth()) {
-    return memorySession;
+    return memorySession ? { session: memorySession } : null;
   }
 
   try {
-    const { response, data } = await apiJson('/api/auth/session');
+    const { response, data } = await apiJson('/api/auth/session', AUTH_REQUEST_OPTIONS);
     if (!response.ok || !data?.ok) {
       memorySession = null;
       return null;
@@ -38,7 +38,12 @@ export async function bootstrapSession() {
       isAdmin: Boolean(data.isAdmin),
       adminVerified: Boolean(data.adminVerified)
     };
-    return memorySession;
+
+    return {
+      session: memorySession,
+      customer: data.customer || null,
+      loyalty: data.loyalty || null
+    };
   } catch {
     memorySession = null;
     return null;

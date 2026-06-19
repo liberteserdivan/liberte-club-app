@@ -1,6 +1,6 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useEffect, useRef, useState } from 'react';
-import { cssVars, load } from './lib/db.js';
+import { cssVars, load, mergeAuthSnapshot } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
@@ -69,8 +69,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    bootstrapSessionWithTimeout().then((active) => {
-      if (active) setSession(active);
+    bootstrapSessionWithTimeout().then((result) => {
+      if (result?.session) {
+        setSession(result.session);
+        if (result.customer) {
+          commit(mergeAuthSnapshot(db, {
+            customer: result.customer,
+            loyalty: result.loyalty
+          }));
+        }
+      }
       setAuthReady(true);
     });
   }, []);
