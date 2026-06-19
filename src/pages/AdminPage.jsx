@@ -24,7 +24,7 @@ const ADMIN_TABS=[
   {id:'ayarlar',label:'Ayarlar',Icon:Settings}
 ];
 
-export default function AdminPage({db,commit}){
+export default function AdminPage({db,commit,refreshRemote}){
   const[tab,setTab]=useState('overview');
   const[focusUserId,setFocusUserId]=useState(null);
   const deviceCount=(db.pushSubscriptions||[]).filter((row)=>row.active!==false).length;
@@ -74,7 +74,7 @@ export default function AdminPage({db,commit}){
       {tab==='overview'&&<OverviewAdmin db={db} commit={commit} onManageUsers={openUserManage}/>}
       {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
       {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
-      {tab==='uyeler'&&<MembersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={()=>setFocusUserId(null)}/>}
+      {tab==='uyeler'&&<MembersAdmin db={db} commit={commit} refreshRemote={refreshRemote} focusUserId={focusUserId} onFocusHandled={()=>setFocusUserId(null)}/>}
       {tab==='ayarlar'&&<SettingsAdmin db={db} commit={commit}/>}
     </div>
   </section>;
@@ -94,9 +94,9 @@ function KampanyaAdmin({db,commit}){
   </div>;
 }
 
-function MembersAdmin({db,commit,focusUserId,onFocusHandled}){
+function MembersAdmin({db,commit,refreshRemote,focusUserId,onFocusHandled}){
   return <div className="adminStack">
-    <ReviewApprovalAdmin db={db} commit={commit}/>
+    <ReviewApprovalAdmin db={db} commit={commit} refreshRemote={refreshRemote}/>
     <UsersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={onFocusHandled}/>
   </div>;
 }

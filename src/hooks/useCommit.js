@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { formatClientApiError } from '../lib/apiErrors.js';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
 import { saveAdminSnapshot } from '../lib/adminFullSnapshot.js';
@@ -46,10 +47,16 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
   // Uzak kayıt hatasını merkezi hub'a ilet
   function handleSaveFailure(result) {
+    const formatted = formatClientApiError({
+      data: { message: result.error, requestId: result.requestId },
+      error: result.network ? { code: result.code || 'NETWORK_ERROR' } : null,
+      fallback: result.error || 'Kaydedilemedi'
+    });
+
     setMode('sync-error');
     setSyncState({
       status: 'error',
-      lastError: result.error || 'Kaydedilemedi',
+      lastError: formatted.message || result.error || 'Kaydedilemedi',
       lastOkAt: null
     });
 
@@ -60,10 +67,10 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
         ? 'Başka bir cihaz veriyi güncelledi. En güncel veriler yüklendi.'
         : result.fields
           ? 'Bu işlem için yetkin yok veya veri reddedildi.'
-          : (result.error || 'Değişiklikler sunucuya kaydedilemedi. Bağlantını kontrol et.'),
+          : (formatted.message || result.error || 'Değişiklikler sunucuya kaydedilemedi.'),
       level: result.status === 403 ? 'warn' : 'error',
       code: result.network ? 'network' : `http_${result.status || 0}`,
-      detail: { fields: result.fields || null },
+      detail: { fields: result.fields || null, requestId: result.requestId || null },
       showToast: true,
       persist: true
     });

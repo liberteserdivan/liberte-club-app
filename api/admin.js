@@ -3,6 +3,7 @@ import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
 import { handleAdminPushCleanup } from './_lib/handlers/adminPushCleanup.js';
 import { handleAdminAccountDelete } from './_lib/handlers/adminAccountDelete.js';
 import { handleAdminLoyaltyAction, handleAdminQrVerify } from './_lib/handlers/adminLoyalty.js';
+import { handleAdminReviewAction } from './_lib/handlers/adminReview.js';
 
 // Yönetici ve hesap işlemleri — Vercel Hobby 12 function limiti
 const ADMIN_RESOURCES = {
@@ -11,7 +12,8 @@ const ADMIN_RESOURCES = {
   'push-cleanup': handleAdminPushCleanup,
   'account-delete': handleAdminAccountDelete,
   'qr-verify': handleAdminQrVerify,
-  'loyalty-action': handleAdminLoyaltyAction
+  'loyalty-action': handleAdminLoyaltyAction,
+  'review-action': handleAdminReviewAction
 };
 
 export default async function handler(req, res) {

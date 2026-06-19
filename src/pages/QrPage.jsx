@@ -21,7 +21,7 @@ import { hydrateSessionTokenFromServer } from '../lib/session.js';
 
 const QR_FETCH_MS = 10000;
 const QR_LOADING_CAP_MS = 11000;
-const QR_SIZE = 220;
+const QR_SIZE = 260;
 const DEFAULT_TTL_SECONDS = 90;
 
 // Geliştirme ortamında QR debug logları
@@ -327,10 +327,10 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
                 <QRCodeCanvas
                   value={String(qrValue)}
                   size={QR_SIZE}
-                  level="H"
+                  level="M"
                   includeMargin
-                  bgColor="#FAF6EE"
-                  fgColor="#0B2F26"
+                  bgColor="#FFFFFF"
+                  fgColor="#000000"
                 />
                 {isRefreshing && (
                   <div className="qrPassRefreshOverlay" aria-live="polite">

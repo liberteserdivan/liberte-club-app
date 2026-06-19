@@ -34,12 +34,14 @@ export async function scanQrWithNativeCamera() {
     throw new Error('Bu cihazda native QR okuma desteklenmiyor.');
   }
 
+  const { camera } = await BarcodeScanner.requestPermissions();
+  if (camera !== 'granted' && camera !== 'limited') {
+    throw new Error('Kamera izni kapalı. Ayarlardan Liberte için kamerayı aç.');
+  }
+
   const googleModuleReady = await ensureGoogleScannerModule();
-  if (!googleModuleReady) {
-    const { camera } = await BarcodeScanner.requestPermissions();
-    if (camera !== 'granted' && camera !== 'limited') {
-      throw new Error('Kamera izni kapalı. Ayarlardan Liberte için kamerayı aç.');
-    }
+  if (!googleModuleReady && camera !== 'granted' && camera !== 'limited') {
+    throw new Error('Kamera izni kapalı. Ayarlardan Liberte için kamerayı aç.');
   }
 
   const { barcodes } = await BarcodeScanner.scan({

@@ -144,6 +144,12 @@ export async function applyLoyaltyActionRelational({
     result = applyTierDiscount(miniState, customerId, 'QR kasiyer');
   } else if (action === 'birthday_coffee') {
     result = applyBirthdayCoffee(miniState, customerId, 'QR kasiyer');
+  } else if (action === 'google_review_bonus') {
+    result = applyCategoryStamp(miniState, customerId, category, 3, note || 'Admin Google yorum onayı');
+    if (result.ok && miniState.history?.[0]) {
+      miniState.history[0].type = 'google_review_bonus';
+      miniState.history[0].count = 3;
+    }
   } else {
     return { ok: false, error: 'Geçersiz işlem' };
   }

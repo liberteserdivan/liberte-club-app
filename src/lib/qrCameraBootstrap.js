@@ -2,12 +2,12 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { ensureAndroidCameraPermission } from './androidCameraPermission.js';
 import { isAndroid, isNativeApp } from './platform.js';
 
-const SCAN_OPTIONS = { fps: 12, aspectRatio: 1, disableFlip: false };
+const SCAN_OPTIONS = { fps: 15, aspectRatio: 1, disableFlip: false };
 
-// QR kutusu — ekranın %72'si
+// QR kutusu — ekranın %78'i (daha hızlı yakalama)
 function buildQrBox() {
   return (viewWidth, viewHeight) => {
-    const size = Math.floor(Math.min(viewWidth, viewHeight) * 0.72);
+    const size = Math.floor(Math.min(viewWidth, viewHeight) * 0.78);
     return { width: size, height: size };
   };
 }

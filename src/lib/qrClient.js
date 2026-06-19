@@ -1,4 +1,4 @@
-import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken } from './apiClient.js';
+import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
 import { isNativeApp } from './platform.js';
 
@@ -263,7 +263,8 @@ export async function verifyCustomerQr(token) {
   try {
     const { response, data } = await apiJson('/api/admin?resource=qr-verify', {
       method: 'POST',
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token }),
+      ...ADMIN_REQUEST_OPTIONS
     });
 
     if (!response.ok) {
@@ -284,7 +285,8 @@ export async function postLoyaltyAction({ token, action, category, menuItemId = 
   try {
     const { response, data } = await apiJson('/api/admin?resource=loyalty-action', {
       method: 'POST',
-      body: JSON.stringify({ token, action, category, menuItemId })
+      body: JSON.stringify({ token, action, category, menuItemId }),
+      ...ADMIN_REQUEST_OPTIONS
     });
 
     if (!response.ok) {

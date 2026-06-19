@@ -8,6 +8,7 @@ import{
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
 import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,customerBadges,redeemRewardForCustomer,getLpBalance,getRedeemableRewards}from'../lib/db.js';
+import{apiJson,ADMIN_REQUEST_OPTIONS}from'../lib/apiClient.js';
 import{historyTypeLabel,historyAmountLabel}from'../lib/loyaltyStamps.js';
 import{isNativeApp,isAndroid,isIos}from'../lib/platform.js';
 import{
@@ -405,34 +406,47 @@ export function NotificationCenterCard({db,customer}){
   </div>;
 }
 
-export function ReviewApprovalAdmin({db,commit}){
+export function ReviewApprovalAdmin({db,commit,refreshRemote}){
   const rows=(db.googleReviewRequests||[]).filter(r=>r.status==='pending');
+  const [busyId,setBusyId]=useState(null);
+  const [actionMsg,setActionMsg]=useState('');
+
+  async function runReviewAction(request,action){
+    if(busyId) return;
+    setBusyId(request.id);
+    setActionMsg('');
+    try{
+      const {response,data}=await apiJson('/api/admin?resource=review-action',{
+        method:'POST',
+        body:JSON.stringify({action,requestId:request.id}),
+        ...ADMIN_REQUEST_OPTIONS
+      });
+      if(!response.ok||!data?.ok){
+        const msg=data?.clientMessage||data?.message||data?.error||'İşlem tamamlanamadı.';
+        setActionMsg(msg);
+        return;
+      }
+      if(refreshRemote) await refreshRemote(true);
+      setActionMsg(action==='approve'?'+3 LP onaylandı.':'Talep reddedildi.');
+    }catch(error){
+      setActionMsg(error?.message||'İşlem tamamlanamadı.');
+    }finally{
+      setBusyId(null);
+    }
+  }
+
   function approve(r){
-    const createdAt=new Date().toLocaleString('tr-TR');
-    let next=addStampToCustomer(db,r.customerId,3,'Admin Google yorum onayı');
-    next={
-      ...next,
-      googleReviewRequests:(next.googleReviewRequests||db.googleReviewRequests||[]).map(x=>x.id===r.id?{...x,status:'approved',approvedAt:createdAt}:x),
-      notifications:[
-        {id:Date.now()+10,customerId:r.customerId,title:'Google yorum bonusun onaylandı',body:'+3 LP hesabına işlendi. Teşekkür ederiz.',createdAt},
-        ...(next.notifications||[])
-      ],
-      history:[
-        {id:Date.now()+11,customerId:r.customerId,name:r.name,phone:r.phone,type:'google_review_bonus',count:3,source:'Admin Google yorum onayı',createdAt},
-        ...(next.history||[])
-      ]
-    };
-    commit(next);
+    void runReviewAction(r,'approve');
   }
   function reject(r){
-    const createdAt=new Date().toLocaleString('tr-TR');
-    commit({...db,googleReviewRequests:(db.googleReviewRequests||[]).map(x=>x.id===r.id?{...x,status:'rejected',rejectedAt:createdAt}:x),notifications:[{id:Date.now(),customerId:r.customerId,title:'Google yorum talebi kapatıldı',body:'Yorum bonus talebin admin tarafından kapatıldı.',createdAt},...(db.notifications||[])]});
+    void runReviewAction(r,'reject');
   }
   return <div className="list">
     <div className="card"><h3>Google Yorum Onayları</h3><p>Kullanıcı yorum sayfasına yönlendikten sonra talep buraya düşer. Onaylayınca +3 LP işlenir.</p></div>
+    {actionMsg&&<div className="card"><p className="scanMsg">{actionMsg}</p></div>}
     {rows.length?rows.map(r=><div className="card reviewRequest" key={r.id}>
       <div><b>{r.name}</b><p>{r.phone} · {r.email}</p><small>{r.createdAt}</small></div>
-      <div className="userActions wide"><button className="goldBtn" onClick={()=>approve(r)}><Plus/> +3 LP Onayla</button><button className="ghost" onClick={()=>reject(r)}>Reddet</button></div>
+      <div className="userActions wide"><button className="goldBtn" onClick={()=>approve(r)} disabled={busyId===r.id}><Plus/> {busyId===r.id?'İşleniyor…':'+3 LP Onayla'}</button><button className="ghost" onClick={()=>reject(r)} disabled={busyId===r.id}>Reddet</button></div>
     </div>):<div className="empty">Bekleyen Google yorum talebi yok.</div>}
   </div>;
 }

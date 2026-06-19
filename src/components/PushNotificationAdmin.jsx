@@ -155,7 +155,8 @@ export default function PushNotificationAdmin({ db, commit }) {
       sent: response.sent || 0,
       failed: response.failed || 0,
       invalidRemoved: response.removedInvalid || 0,
-      note: response.note || ''
+      note: response.note || '',
+      requestId: response.requestId || null
     });
     setSending(false);
   }
@@ -278,6 +279,7 @@ export default function PushNotificationAdmin({ db, commit }) {
               )}
             </ul>
             {result.note && <p>{result.note}</p>}
+            {result.requestId && <p className="pushAudienceNote">Ref: {result.requestId}</p>}
           </div>
         )}
       </div>

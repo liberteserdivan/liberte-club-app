@@ -5,13 +5,14 @@ import { applyCors, readBodySafe } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { loadAppState, saveAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
+import { composeStateFromRelational } from '../relationalState.js';
 import { loadPushSubscriptionsFromSql, deactivatePushTokens, insertPushSendLog } from '../pushStore.js';
 import { getSql } from '../sql.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
 import { sanitizePushSubscriptions } from '../../../src/lib/pushSubscriptionSanitize.js';
 import { collectFailedPushTokens, pruneInvalidPushTokens } from '../../../src/lib/pushTokens.js';
-import { probeFcmCredentials } from '../fcmProbe.js';
+import { probeFcmCredentials, isValidPrivateKeyPem } from '../fcmProbe.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -183,6 +184,7 @@ function summarizeFailuresByPlatform(tokens, responses, tokenPlatforms) {
 export async function handleAdminPushSend(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   const trace = createRequestTrace('admin.push-send');
+  const startedAt = Date.now();
 
   try {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -197,20 +199,47 @@ export async function handleAdminPushSend(req, res) {
     const message = String(body.body || body.message || 'Yeni kampanya var!').trim();
     const pushText = formatPushNotification(title, message);
 
-    const remote = await loadAppState();
-    if (!remote.data) {
+    trace.log('start', {
+      adminCustomerId: adminSession.customerId,
+      audience,
+      step: 'parse_body'
+    });
+
+    let stateData = null;
+    const simpleAudience = audience === 'all' || audience === 'granted_devices';
+
+    if (useRelationalState()) {
+      const sqlSubs = await loadPushSubscriptionsFromSql();
+      if (simpleAudience) {
+        stateData = {
+          pushSubscriptions: sqlSubs,
+          customers: [],
+          loyalty: {},
+          history: [],
+          checkIns: []
+        };
+      } else {
+        const composed = await composeStateFromRelational();
+        stateData = {
+          ...composed.data,
+          pushSubscriptions: sqlSubs.length ? sqlSubs : (composed.data?.pushSubscriptions || [])
+        };
+      }
+    } else {
+      const remote = await loadAppState();
+      if (!remote.data) {
+        return res.status(404).json(trace.failBody('state', 'NOT_FOUND', 'Veri bulunamadı'));
+      }
+      stateData = remote.data;
+    }
+
+    if (!stateData) {
       return res.status(404).json(trace.failBody('state', 'NOT_FOUND', 'Veri bulunamadı'));
     }
 
-    let stateData = remote.data;
-    if (useRelationalState()) {
-      const sqlSubs = await loadPushSubscriptionsFromSql();
-      if (sqlSubs.length) {
-        stateData = { ...stateData, pushSubscriptions: sqlSubs };
-      }
-    }
-
-    const preparedState = await preparePushState(stateData);
+    const preparedState = useRelationalState()
+      ? { ...stateData, pushSubscriptions: stateData.pushSubscriptions || [] }
+      : await preparePushState(stateData);
     const resolved = resolvePushAudience(preparedState, audience);
     const platformCounts = summarizeTargetPlatforms(resolved.subscriptions);
     if (resolved.disabled) {
@@ -239,14 +268,50 @@ export async function handleAdminPushSend(req, res) {
 
     const serviceAccount = parseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     const validationError = validateServiceAccount(serviceAccount);
+    const hasFirebaseProjectId = Boolean(serviceAccount?.project_id);
+    const hasFirebaseClientEmail = Boolean(serviceAccount?.client_email);
+    const hasFirebasePrivateKey = Boolean(serviceAccount?.private_key);
+    const privateKeyLooksValid = hasFirebasePrivateKey && isValidPrivateKeyPem(serviceAccount?.private_key);
+
+    trace.log('provider_config', {
+      adminCustomerId: adminSession.customerId,
+      hasFirebaseProjectId,
+      hasFirebaseClientEmail,
+      hasFirebasePrivateKey,
+      privateKeyLooksValid,
+      provider: 'firebase',
+      step: 'provider_config'
+    });
+
     if (validationError) {
-      return res.status(200).json({ ok: false, sent: 0, note: validationError });
+      return res.status(200).json({
+        ok: false,
+        savedInApp: true,
+        code: 'PUSH_PROVIDER_UNAVAILABLE',
+        message: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.',
+        pushErrorStep: 'validate_service_account',
+        requestId: trace.requestId,
+        sent: 0,
+        failed: clean.length,
+        note: validationError
+      });
     }
 
     const authProbe = await probeFcmCredentials(serviceAccount);
     if (!authProbe.ok) {
+      trace.log('provider_auth_failed', {
+        adminCustomerId: adminSession.customerId,
+        step: 'fcm_oauth',
+        code: authProbe.code,
+        durationMs: Date.now() - startedAt
+      });
       return res.status(200).json({
         ok: false,
+        savedInApp: true,
+        code: 'PUSH_PROVIDER_UNAVAILABLE',
+        message: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.',
+        pushErrorStep: 'fcm_oauth',
+        requestId: trace.requestId,
         sent: 0,
         failed: clean.length,
         note: `Firebase service account doğrulanamadı: ${authProbe.message}`
@@ -267,6 +332,18 @@ export async function handleAdminPushSend(req, res) {
 
     const result = await fb.messaging().sendEach(messages);
     const failuresByPlatform = summarizeFailuresByPlatform(clean, result.responses, tokenPlatforms);
+
+    trace.log('send_complete', {
+      adminCustomerId: adminSession.customerId,
+      audience,
+      selectedDeviceCount: clean.length,
+      grantedDeviceCount: resolved.subscriptions.filter((row) => row?.token).length,
+      sent: result.successCount,
+      failed: result.failureCount,
+      provider: 'firebase',
+      durationMs: Date.now() - startedAt,
+      step: 'fcm_send'
+    });
 
     const failures = summarizeFailures(result.responses);
     const invalidTokens = collectFailedPushTokens(clean, result.responses, {
@@ -326,10 +403,17 @@ export async function handleAdminPushSend(req, res) {
       note
     });
   } catch (error) {
+    trace.log('error', {
+      step: 'unexpected',
+      message: error?.message || 'Push gönderilemedi',
+      durationMs: Date.now() - startedAt
+    });
     return res.status(500).json({
       ok: false,
+      savedInApp: true,
       code: 'PUSH_SEND_FAILED',
-      message: 'Bildirim gönderilemedi.',
+      message: 'Push gönderilemedi.',
+      pushErrorStep: 'unexpected',
       requestId: trace.requestId,
       sent: 0,
       error: error?.message || 'Push gönderilemedi',

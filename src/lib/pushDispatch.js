@@ -1,8 +1,22 @@
 // Push bildirimi gönder — hedef kitle + FCM (sunucu tarafı)
 import { resolvePushAudience } from './pushAudience.js';
 import { pruneInvalidPushTokens } from './pushTokens.js';
-import { apiFetch } from './apiClient.js';
-import { reportApiError, reportError } from './errorHub.js';
+import { apiJson } from './apiClient.js';
+import { formatClientApiError } from './apiErrors.js';
+import { reportApiError } from './errorHub.js';
+
+const PUSH_SEND_TIMEOUT_MS = 60_000;
+
+// Ref'li hata metni üret
+function formatPushErrorMessage(result = {}, error = null) {
+  const formatted = formatClientApiError({
+    response: result.response || null,
+    data: result.data || {},
+    error,
+    fallback: 'Push gönderilemedi.'
+  });
+  return formatted.message || 'Push gönderilemedi.';
+}
 
 export async function dispatchPush(db, commit, { title, body, audience = 'all', customerId = null }) {
   const resolved = resolvePushAudience(db, audience);
@@ -40,7 +54,8 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
     ].slice(0, 30)
   };
 
-  commit(next);
+  // Uygulama içi kayıt — tam state sync tetikleme
+  commit(next, { skipRemote: true });
 
   if (resolved.disabled) {
     return {
@@ -61,41 +76,36 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
   }
 
   try {
-    const response = await apiFetch('/api/push/send', {
+    const { response, data } = await apiJson('/api/admin?resource=push-send', {
       method: 'POST',
-      body: JSON.stringify({ title, body, audience })
+      body: JSON.stringify({ title, body, audience }),
+      timeoutMs: PUSH_SEND_TIMEOUT_MS
     });
 
-    let result = {};
-    try {
-      result = await response.json();
-    } catch {
-      return {
-        ok: false,
-        sent: 0,
-        failed: 0,
-        note: `Push sunucusu geçersiz yanıt döndü (HTTP ${response.status}).`
-      };
-    }
+    const requestId = data?.requestId || null;
+    const note = data.note
+      || data.message
+      || data.error
+      || `${data.sent || 0} cihaza iletildi${data.failed ? `, ${data.failed} başarısız` : ''}.`;
 
-    const note = result.note
-      || result.error
-      || `${result.sent || 0} cihaza iletildi${result.failed ? `, ${result.failed} başarısız` : ''}.`;
+    const userNote = data?.ok === false && data?.savedInApp
+      ? `${note}${requestId ? ` Ref: ${requestId}` : ''}`
+      : (requestId && !note.includes('Ref:') ? `${note} Ref: ${requestId}` : note);
 
-    if (!response.ok || result.ok === false) {
+    if (!response.ok || data.ok === false) {
       reportApiError({
-        source: 'push.dispatch',
+        source: 'admin.push.send',
         response,
-        data: result,
-        userMessage: note,
-        level: result.failed ? 'warn' : 'error',
+        data,
+        userMessage: userNote,
+        level: data.failed ? 'warn' : 'error',
         showToast: false
       });
     }
 
     const { subscriptions, removed } = pruneInvalidPushTokens(
       next.pushSubscriptions || [],
-      result.invalidTokens || []
+      data.invalidTokens || []
     );
 
     const synced = removed
@@ -108,36 +118,34 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
         row.id === logId
           ? {
             ...row,
-            sent: result.sent || 0,
-            failed: result.failed || 0,
-            deviceCount: result.deviceCount ?? row.deviceCount,
-            targetUserCount: result.targetUserCount ?? row.targetUserCount,
-            note
+            sent: data.sent || 0,
+            failed: data.failed || 0,
+            deviceCount: data.deviceCount ?? row.deviceCount,
+            targetUserCount: data.targetUserCount ?? row.targetUserCount,
+            note: userNote,
+            requestId
           }
           : row
       ))
-    });
+    }, { skipRemote: true });
 
     return {
-      ok: response.ok && result.ok !== false,
-      sent: result.sent || 0,
-      failed: result.failed || 0,
-      note,
+      ok: response.ok && data.ok !== false,
+      sent: data.sent || 0,
+      failed: data.failed || 0,
+      note: userNote,
+      requestId,
       removedInvalid: removed
     };
   } catch (error) {
-    reportError({
-      source: 'push.dispatch',
-      message: error?.message || 'Push request failed',
-      userMessage: 'Push sunucusuna ulaşılamadı.',
-      showToast: false,
-      persist: true
-    });
+    const message = formatPushErrorMessage({}, error);
     return {
       ok: false,
       sent: 0,
       failed: 0,
-      note: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.'
+      note: message.includes('Ref:')
+        ? `Uygulama içi kaydedildi. ${message}`
+        : `Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.${message ? ` ${message}` : ''}`
     };
   }
 }

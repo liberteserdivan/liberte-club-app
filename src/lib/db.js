@@ -34,6 +34,7 @@ import {
 } from './membershipTier.js';
 import { apiJson, SYNC_REQUEST_OPTIONS } from './apiClient.js';
 import { dedupedApiJson } from './remoteFetch.js';
+import { formatClientApiError } from './apiErrors.js';
 import { useLocalAuth } from './devAuth.js';
 import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
 import { legacyReferralCode, generateUniqueReferralCode } from './referralCode.js';
@@ -348,20 +349,25 @@ export async function saveRemote(db, options = {}){
       return {
         ok:false,
         status:response.status,
-        error:data?.error||'Veriler sunucuya kaydedilemedi.',
+        error:data?.clientMessage||data?.message||data?.error||'Veriler sunucuya kaydedilemedi.',
+        requestId:data?.requestId||null,
         fields:data?.fields||null
       };
     }
 
     return {
       ok:true,
-      updatedAt:data?.updated_at||null
+      updatedAt:data?.updated_at||null,
+      requestId:data?.requestId||null
     };
   }catch(error){
+    const formatted = formatClientApiError({ error, fallback: 'Sunucuya ulaşılamadı.' });
     return {
       ok:false,
       network:true,
-      error:error?.message||'Sunucuya bağlanılamadı.'
+      code:error?.code||'NETWORK_ERROR',
+      error:formatted.message||error?.message||'Sunucuya ulaşılamadı.',
+      requestId:null
     };
   }
 }

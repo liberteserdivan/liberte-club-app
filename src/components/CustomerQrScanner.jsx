@@ -107,17 +107,19 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }, [db, signedQrRequired]);
 
   const onScanSuccess = useCallback(async (txt) => {
-    if (decodeLockRef.current) return;
+    if (decodeLockRef.current || busy) return;
     decodeLockRef.current = true;
 
+    let scanOk = false;
     try {
       setBusy(true);
       const { customer, token } = await resolveCustomerFromScan(txt);
       setFound(customer);
       setScannedToken(token);
       setSuccess(true);
-      setMsg('Müşteri bulundu!');
+      setMsg('QR okundu!');
       await stopScanner();
+      scanOk = true;
     } catch (error) {
       const message = error?.message || 'Geçerli Liberte QR kodu okut.';
       if (message.includes('PIN doğrulaması')) {
@@ -127,9 +129,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       }
     } finally {
       setBusy(false);
-      decodeLockRef.current = false;
+      if (!scanOk) decodeLockRef.current = false;
     }
-  }, [resolveCustomerFromScan, stopScanner]);
+  }, [busy, resolveCustomerFromScan, stopScanner]);
 
   // Native ML Kit — tam ekran kamera (Play Store güvenilir yol)
   const requestNativeScan = useCallback(async () => {
@@ -244,6 +246,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   // Sunucu veya yerel state üzerinde sadakat işlemi — başarılıysa true
   async function runLoyaltyAction(action, category, menuItem = null) {
     if (!found || busy) return false;
+    decodeLockRef.current = true;
 
     if (signedQrRequired && typeof navigator !== 'undefined' && !navigator.onLine) {
       setMsg('İnternet bağlantısı yok. LP işlemi kaydedilmedi.');

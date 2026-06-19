@@ -308,7 +308,7 @@ export default function App() {
               }}
             />
           )}
-          {tab === 'admin' && isAdmin && adminVerified && <AdminPage db={db} commit={commit} />}
+          {tab === 'admin' && isAdmin && adminVerified && <AdminPage db={db} commit={commit} refreshRemote={refreshRemote} />}
           {tab === 'admin' && isAdmin && !adminVerified && (
             <section className="adminGatePlaceholder">
               <p>Yönetim paneli için PIN doğrulaması gerekli.</p>

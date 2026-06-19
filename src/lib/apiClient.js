@@ -107,7 +107,7 @@ function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
     .catch((error) => {
       if (error?.name !== 'AbortError') throw error;
       if (timedOut) {
-        const timeoutErr = new Error('Sunucu yanıt vermedi. Bağlantını kontrol edip tekrar dene.');
+        const timeoutErr = new Error('Sunucuya ulaşılamadı.');
         timeoutErr.code = 'FETCH_TIMEOUT';
         throw timeoutErr;
       }
@@ -195,3 +195,4 @@ export async function apiJson(path, options = {}) {
 export const AUTH_REQUEST_OPTIONS = { timeoutMs: AUTH_FETCH_TIMEOUT_MS };
 export const REGISTER_REQUEST_OPTIONS = { timeoutMs: 90_000 };
 export const SYNC_REQUEST_OPTIONS = { timeoutMs: 25000 };
+export const ADMIN_REQUEST_OPTIONS = { timeoutMs: 60_000 };
