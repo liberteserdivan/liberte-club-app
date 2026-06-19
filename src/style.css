@@ -8121,6 +8121,7 @@ body.menuDetailOpen{
   display:block!important;
   margin:8px auto 0;
 }
+.qrPassRetry{
   display:flex;
   flex-direction:column;
   align-items:center;
