@@ -58,7 +58,7 @@ export async function insertErrorLog({
       ${safeSource},
       ${safeMessage},
       ${safeCode},
-      ${safeDetail ? JSON.stringify(safeDetail) : null}::jsonb,
+      ${safeDetail ? JSON.stringify(safeDetail) : null},
       ${customerId ? Number(customerId) : null},
       ${safePlatform}
     )

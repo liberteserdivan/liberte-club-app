@@ -8,7 +8,7 @@ import {
   indexCustomerEmail,
   toCustomerSnapshot
 } from '../auth.js';
-import { loadAppState, saveAppState } from '../appState.js';
+import { loadAppState, patchAppStateRegistration } from '../appState.js';
 import { loyaltyTemplate, applyCategoryStamp } from '../loyaltyOps.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
@@ -237,20 +237,21 @@ async function handleComplete(req, res, trace) {
     return res.status(500).json(trace.failBody('database', 'DATABASE_URL', 'Veritabanı yapılandırması eksik'));
   }
 
-  trace.log('complete.verify_code', { email });
+  trace.log('verify_code', { email });
   const verified = await verifyEmailCode(sql, { email, phone, code, purpose: 'register' });
   if (!verified.ok) {
     return res.status(verified.status).json(trace.failBody('verify_code', 'CODE_INVALID', verified.error));
   }
+  trace.log('email_code_mark_used', { email });
 
-  trace.log('complete.load_state');
+  trace.log('load_app_state');
   const remote = await loadAppState({ skipPersist: true, skipCache: true });
   const state = remote.data || { customers: [], loyalty: {}, history: [] };
 
-  trace.log('complete.conflict_check');
+  trace.log('customer_create_or_find');
   const conflict = await resolveRegistrationConflict(sql, state, phone, email);
   if (conflict.blocked) {
-    return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'));
+    return res.status(409).json(trace.failBody('duplicate', 'ALREADY_REGISTERED', conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'));
   }
 
   const referrer = findReferrerByInviteCode(listCustomers(state), inviteCode);
@@ -275,21 +276,48 @@ async function handleComplete(req, res, trace) {
     };
   }
 
-  const nextState = applyRegistrationToState(state, customer, referrer);
+  const nextState = applyRegistrationToState(
+    { customers: [], loyalty: {}, history: [], referrals: [] },
+    customer,
+    referrer
+  );
+  const historyEntry = nextState.history?.[0] || null;
+  const referralEntry = referrer ? nextState.referrals?.[0] || null : null;
+  const extraLoyaltyEntries = referrer && nextState.loyalty?.[referrer.id]
+    ? { [String(referrer.id)]: nextState.loyalty[referrer.id] }
+    : {};
 
-  trace.log('complete.save_state');
-  await saveAppState(nextState, { skipBackup: true });
+  const loyaltyCard = conflict.resumeCustomer
+    ? (state.loyalty?.[customer.id] || state.loyalty?.[String(customer.id)] || loyaltyTemplate(customer.id))
+    : (nextState.loyalty?.[customer.id] || nextState.loyalty?.[String(customer.id)] || null);
 
-  trace.log('complete.auth_rows');
+  trace.log('loyalty_init', { customerId: customer.id });
+  if (conflict.resumeCustomer) {
+    trace.log('save_app_state_resume_skip', { customerId: customer.id });
+  } else {
+    trace.log('patch_app_state');
+    await patchAppStateRegistration(sql, {
+      customer,
+      loyaltyEntry: loyaltyCard,
+      historyEntry,
+      referralEntry,
+      extraLoyaltyEntries
+    });
+  }
+
+  trace.log('auth_transaction_start');
   let session;
   try {
     await sql.begin(async (tx) => {
+      trace.log('pin_auth_upsert', { customerId: customer.id });
       await saveCustomerPin(tx, phone, customer.id, pin);
+      trace.log('customer_email_upsert', { customerId: customer.id });
       await upsertCustomerEmail(tx, {
         email: customer.email,
         customerId: customer.id,
         phone: customer.phone
       });
+      trace.log('auth_session_create', { customerId: customer.id });
       session = await createSession(res, {
         customerId: customer.id,
         role: 'user',
@@ -298,15 +326,11 @@ async function handleComplete(req, res, trace) {
       });
     });
   } catch (error) {
-    await logRegisterFailure(trace, 'create_session', error, { email, phone });
-    return res.status(500).json(trace.failBody('create_session', 'REGISTER_FINAL_FAILED', 'Kayıt tamamlanamadı. Lütfen tekrar dene.'));
+    await logRegisterFailure(trace, 'auth_session_create', error, { email, phone });
+    return res.status(500).json(trace.failBody('auth_session_create', 'REGISTER_FINAL_FAILED', 'Kayıt tamamlanamadı. Lütfen tekrar dene.'));
   }
 
-  const loyaltyCard = nextState.loyalty?.[customer.id]
-    || nextState.loyalty?.[String(customer.id)]
-    || null;
-
-  trace.log('complete.ok', { customerId: customer.id });
+  trace.log('complete_ok', { customerId: customer.id });
 
   return res.status(200).json({
     ok: true,

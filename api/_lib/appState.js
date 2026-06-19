@@ -33,9 +33,13 @@ export function parseAppStateData(raw) {
   return null;
 }
 
-// jsonb yazımı — string spread hatasını önler
-function toJsonbParam(sql, data) {
-  return sql.json(data);
+// jsonb yazımı — büyük payload'da sql.json pooler ile hata verebilir; string parametre kullan
+export function serializeAppStateJson(data) {
+  return JSON.stringify(JSON.parse(JSON.stringify(data)));
+}
+
+function toJsonbParam(data) {
+  return serializeAppStateJson(data);
 }
 
 // Tutulacak otomatik yedek sayısı ('pre-delete' yedekleri sınırsız korunur)
@@ -88,7 +92,7 @@ async function backupCurrentState(sql, nextData) {
 
   const reason = destructive ? 'pre-delete' : 'auto';
   await sql`INSERT INTO app_state_backups (data, reason, customer_count)
-    VALUES (${toJsonbParam(sql, current)}, ${reason}, ${prevCount})`;
+    VALUES (${toJsonbParam(current)}, ${reason}, ${prevCount})`;
 
   // Budama: yalnızca en yeni 'auto' yedekleri tut; 'pre-delete' kayıtları korunur
   await sql`DELETE FROM app_state_backups
@@ -194,10 +198,96 @@ export async function saveAppState(data, options = {}) {
   }
 
   await sql`INSERT INTO app_state (id, data, updated_at)
-    VALUES (${STATE_ID}, ${toJsonbParam(sql, data)}, now())
+    VALUES (${STATE_ID}, ${toJsonbParam(data)}, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
 
   logAppStatePerf(skipBackup ? 'saveAppState.fast' : 'saveAppState', t0, { skipBackup });
+}
+
+// Yeni üye kaydı — 50MB+ app_state tam yazımı yerine jsonb patch
+export async function patchAppStateRegistration(sql, {
+  customer,
+  loyaltyEntry,
+  historyEntry = null,
+  referralEntry = null,
+  extraLoyaltyEntries = {}
+}) {
+  const t0 = perfNow();
+  invalidateAppStateCache();
+  await ensureTables(sql);
+
+  const loyaltyPatch = { [String(customer.id)]: loyaltyEntry, ...extraLoyaltyEntries };
+  const loyaltyJson = serializeAppStateJson(loyaltyPatch);
+
+  if (referralEntry && historyEntry) {
+    await sql`
+      UPDATE app_state
+      SET data = jsonb_set(
+        jsonb_set(
+          jsonb_set(
+            jsonb_set(
+              COALESCE(data, '{}'::jsonb),
+              '{customers}',
+              COALESCE(data->'customers', '[]'::jsonb) || jsonb_build_array(${sql.json(customer)}),
+              true
+            ),
+            '{loyalty}',
+            COALESCE(data->'loyalty', '{}'::jsonb) || ${loyaltyJson}::jsonb,
+            true
+          ),
+          '{history}',
+          ${serializeAppStateJson([historyEntry])}::jsonb || COALESCE(data->'history', '[]'::jsonb),
+          true
+        ),
+        '{referrals}',
+        ${serializeAppStateJson([referralEntry])}::jsonb || COALESCE(data->'referrals', '[]'::jsonb),
+        true
+      ),
+      updated_at = now()
+      WHERE id = ${STATE_ID}
+    `;
+  } else if (historyEntry) {
+    await sql`
+      UPDATE app_state
+      SET data = jsonb_set(
+        jsonb_set(
+          jsonb_set(
+            COALESCE(data, '{}'::jsonb),
+            '{customers}',
+            COALESCE(data->'customers', '[]'::jsonb) || jsonb_build_array(${sql.json(customer)}),
+            true
+          ),
+          '{loyalty}',
+          COALESCE(data->'loyalty', '{}'::jsonb) || ${loyaltyJson}::jsonb,
+          true
+        ),
+        '{history}',
+        ${serializeAppStateJson([historyEntry])}::jsonb || COALESCE(data->'history', '[]'::jsonb),
+        true
+      ),
+      updated_at = now()
+      WHERE id = ${STATE_ID}
+    `;
+  } else {
+    await sql`
+      UPDATE app_state
+      SET data = jsonb_set(
+        jsonb_set(
+          COALESCE(data, '{}'::jsonb),
+          '{customers}',
+          COALESCE(data->'customers', '[]'::jsonb) || jsonb_build_array(${sql.json(customer)}),
+          true
+        ),
+        '{loyalty}',
+        COALESCE(data->'loyalty', '{}'::jsonb) || ${loyaltyJson}::jsonb,
+        true
+      ),
+      updated_at = now()
+      WHERE id = ${STATE_ID}
+    `;
+  }
+
+  logAppStatePerf('patchAppStateRegistration', t0);
 }
 
 // Optimistic lock — beklenen updated_at uyuşmazsa yazma
@@ -233,7 +323,7 @@ export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
 
   const updated = await sql`
     UPDATE app_state
-    SET data = ${toJsonbParam(sql, data)}, updated_at = now()
+    SET data = ${toJsonbParam(data)}, updated_at = now()
     WHERE id = ${STATE_ID} AND updated_at = ${serverAt}
     RETURNING updated_at
   `;

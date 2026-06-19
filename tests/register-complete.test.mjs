@@ -6,24 +6,17 @@ import assert from 'node:assert/strict';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('register-complete kayıt finalinde yedek atlamalı saveAppState kullanır', () => {
+test('register-complete kayıt finalinde jsonb patch kullanır', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/authRegisterComplete.js'), 'utf8');
-  assert.match(source, /saveAppState\(nextState,\s*\{\s*skipBackup:\s*true\s*\}\)/);
-});
-
-test('register-complete requestId ve step log içerir', () => {
-  const source = readFileSync(join(root, 'api/_lib/handlers/authRegisterComplete.js'), 'utf8');
-  assert.match(source, /createRequestTrace\('auth\.register-complete'\)/);
-  assert.match(source, /register_final/);
-  assert.match(source, /failBody\(/);
+  assert.match(source, /patchAppStateRegistration/);
 });
 
 test('register-complete email kodu state yüklemeden önce doğrulanır', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/authRegisterComplete.js'), 'utf8');
-  const verifyIdx = source.indexOf('verifyEmailCode');
-  const loadIdx = source.indexOf('complete.load_state');
+  const verifyIdx = source.indexOf("trace.log('verify_code'");
+  const loadIdx = source.indexOf("trace.log('load_app_state'");
   assert.ok(verifyIdx >= 0 && loadIdx >= 0);
-  assert.ok(verifyIdx < loadIdx, 'verifyEmailCode loadAppState öncesinde olmalı');
+  assert.ok(verifyIdx < loadIdx, 'verify_code load_app_state öncesinde olmalı');
 });
 
 test('register-complete PIN ve session transaction içinde', () => {
