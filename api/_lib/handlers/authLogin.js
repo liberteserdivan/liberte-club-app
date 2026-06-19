@@ -82,17 +82,28 @@ export async function handleAuthLogin(req, res) {
       customer = await findCustomerByPhone(phone);
     }
 
+    const sql = getSql();
+    const hasPinAuth = sql ? await hasCustomerPinAuth(sql, phone) : false;
+
     trace.log('lookup', {
       rawPhone,
       normalizedPhone: phone,
       step: 'customer_lookup',
       foundCustomer: Boolean(customer),
       customerId: customer?.id || null,
+      hasPinAuth,
       role: customer?.isAdmin ? 'admin' : 'user',
       isAdmin: Boolean(customer?.isAdmin)
     });
 
     if (!customer) {
+      if (hasPinAuth) {
+        return res.status(500).json(trace.failBody(
+          'customer_repair',
+          'CUSTOMER_REPAIR_FAILED',
+          'Hesap kaydı eksik görünüyor. Destek ile iletişime geçin veya PIN sıfırlamayı deneyin.'
+        ));
+      }
       return res.status(404).json(trace.failBody(
         'customer_lookup',
         'CUSTOMER_NOT_FOUND',
@@ -120,13 +131,18 @@ export async function handleAuthLogin(req, res) {
       return res.status(400).json(trace.failBody('validate_pin', 'VALIDATION', 'PIN 4 veya 6 haneli olmalı.'));
     }
 
-    const sql = getSql();
     if (!sql) {
       return res.status(500).json(trace.failBody('database', 'DATABASE_URL', 'Veritabanı yapılandırması eksik'));
     }
 
-    const hasPinAuth = await hasCustomerPinAuth(sql, phone);
     trace.markStep('pin_lookup');
+
+    trace.log('pin_check', {
+      rawPhone,
+      normalizedPhone: phone,
+      hasPinAuth,
+      customerId: customer.id
+    });
 
     const verified = await verifyCustomerPin(sql, phone, pin);
     trace.markStep('pin_verify');
@@ -142,7 +158,7 @@ export async function handleAuthLogin(req, res) {
       const message = verified.code === 'PIN_INVALID'
         ? 'PIN hatalı.'
         : verified.code === 'PIN_NOT_FOUND'
-          ? 'Bu hesap için PIN bulunamadı.'
+          ? 'Bu hesap için PIN bulunamadı. PIN sıfırlayın.'
           : (verified.error || 'PIN doğrulanamadı.');
       return res.status(verified.status).json({
         ok: false,

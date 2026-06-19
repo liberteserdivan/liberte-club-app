@@ -3,7 +3,6 @@ import { normalizeEmail, findCustomerIdByPhone } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
 import { loyaltyTemplate } from './loyaltyOps.js';
 import { migrateLoyaltyCard, getCategoryLpGain, levelByLp } from './loyaltyPointsServer.js';
-import { hasCustomerPinAuth } from './customerEmails.js';
 
 // Normalize müşteri tablolarını hazırla
 export async function ensureCustomersTables(sql) {
@@ -115,10 +114,13 @@ async function resolveCustomerRowByPhone(sql, phone) {
   return row;
 }
 
-// Telefon ile müşteri bul
+// Telefon ile müşteri bul — yarım kayıt varsa onar
 export async function findCustomerByPhone(sql, phone) {
   const row = await resolveCustomerRowByPhone(sql, phone);
-  return customerRowToRecord(row);
+  if (row) return customerRowToRecord(row);
+
+  const { repairIncompleteCustomer } = await import('./customerPhoneRepair.js');
+  return repairIncompleteCustomer(sql, phone);
 }
 
 // E-posta ile müşteri bul
@@ -191,28 +193,14 @@ export function buildWelcomeLoyalty(customerId, extraCoffeeStamps = 0) {
   });
 }
 
-// Kayıt çakışması — app_state olmadan
+// Kayıt çakışması — detaylı duplicate analizi
 export async function resolveRegistrationDuplicate(sql, phone, email) {
-  const byPhone = await findCustomerByPhone(sql, phone);
-  const byEmail = await findCustomerByEmail(sql, email);
-
-  if (byPhone && byEmail && Number(byPhone.id) !== Number(byEmail.id)) {
-    return { blocked: true, reason: 'Bu telefon ve e-posta farklı hesaplara ait.' };
+  const { resolveRegistrationDuplicateDetailed } = await import('./customerPhoneRepair.js');
+  const result = await resolveRegistrationDuplicateDetailed(sql, phone, email);
+  if (result.blocked) {
+    return { blocked: true, reason: result.reason, duplicateSource: result.duplicateSource };
   }
-
-  const existing = byPhone || byEmail;
-  if (!existing) {
-    if (await hasCustomerPinAuth(sql, phone)) {
-      return { blocked: true, reason: 'Bu telefon veya e-posta zaten kayıtlı' };
-    }
-    return { blocked: false, resumeCustomer: null };
-  }
-
-  if (await hasCustomerPinAuth(sql, phone)) {
-    return { blocked: true, reason: 'Bu telefon veya e-posta zaten kayıtlı' };
-  }
-
-  return { blocked: false, resumeCustomer: existing };
+  return { blocked: false, resumeCustomer: result.resumeCustomer };
 }
 
 // Yeni müşteri kaydı oluştur

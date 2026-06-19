@@ -157,6 +157,16 @@ async function findCustomerByPhoneDeep(phone) {
       }
       return { customer: fromSql, deliveryEmail };
     }
+
+    const { repairIncompleteCustomer } = await import('./customerPhoneRepair.js');
+    const repaired = await repairIncompleteCustomer(sql, normalizedPhone);
+    if (repaired) {
+      const deliveryEmail = normalizeEmail(repaired.email);
+      if (!deliveryEmail) {
+        return { error: 'Hesabında kayıtlı e-posta yok. Destek ile iletişime geç.' };
+      }
+      return { customer: repaired, deliveryEmail };
+    }
   }
 
   if (useRelationalState()) return null;

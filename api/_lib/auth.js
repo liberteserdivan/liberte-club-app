@@ -260,7 +260,7 @@ export async function markAdminVerified(req) {
   return true;
 }
 
-// Müşteriyi telefon ile bul — önce normalize tablo
+// Müşteriyi telefon ile bul — normalize tablo + yarım kayıt onarımı
 export async function findCustomerByPhone(phone) {
   const normalized = cleanPhone(phone);
   const sql = getSql();
@@ -269,6 +269,10 @@ export async function findCustomerByPhone(phone) {
     const { findCustomerByPhone: findByPhoneSql } = await import('./customersStore.js');
     const fromSql = await findByPhoneSql(sql, phone);
     if (fromSql) return fromSql;
+
+    const { repairIncompleteCustomer } = await import('./customerPhoneRepair.js');
+    const repaired = await repairIncompleteCustomer(sql, phone);
+    if (repaired) return repaired;
   }
 
   if (useRelationalState()) return null;

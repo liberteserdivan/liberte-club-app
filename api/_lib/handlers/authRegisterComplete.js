@@ -9,9 +9,6 @@ import { enforceAuthRateLimit } from '../rateLimit.js';
 import { logServerError } from '../logServerError.js';
 import { createRequestTrace } from '../requestTrace.js';
 import {
-  findCustomerIdByEmail,
-  findCustomerIdByPhone,
-  hasCustomerPinAuth,
   normalizeEmail,
   upsertCustomerEmail
 } from '../customerEmails.js';
@@ -26,6 +23,7 @@ import {
   upsertLoyaltyRow,
   applyReferrerBonus
 } from '../customersStore.js';
+import { inspectRegistrationConflict } from '../customerPhoneRepair.js';
 import { queueRegisterAppStateSync } from '../registerAppStateSync.js';
 import { useRelationalState } from '../relationalConfig.js';
 
@@ -58,13 +56,26 @@ async function listExistingReferralCodes(sql) {
   return rows.map((r) => String(r.referral_code || '').toUpperCase()).filter(Boolean);
 }
 
+// Duplicate kontrolünü logla — phone/email kaynağını netleştir
+function logRegisterDuplicate(trace, step, conflict, extra = {}) {
+  trace.log(step, {
+    duplicateSource: conflict.duplicateSource || null,
+    foundCustomerId: conflict.foundCustomerId || null,
+    normalizedPhone: conflict.normalizedPhone || null,
+    normalizedEmail: conflict.normalizedEmail || null,
+    hasPinAuth: conflict.hasPinAuth ?? null,
+    blocked: conflict.blocked ?? null,
+    status: conflict.blocked ? 'duplicate' : 'ok',
+    ...extra
+  });
+}
+
 // Kayıt öncesi — e-postaya doğrulama kodu gönder (app_state yok)
-async function handleSendCode(req, res, trace) {
+async function handleSendCode(req, res, trace, body) {
   if (await enforceAuthRateLimit(req, 'auth_send_code', { maxHits: 8 })) {
     return res.status(429).json(trace.failBody('rate_limit', 'RATE_LIMITED', 'Çok fazla kod isteği. Lütfen 15 dakika sonra tekrar dene.'));
   }
 
-  const body = readBody(req);
   const phone = cleanPhone(body.phone);
   const email = normalizeEmail(body.email);
   const name = String(body.name || '').trim();
@@ -82,23 +93,25 @@ async function handleSendCode(req, res, trace) {
   }
 
   trace.markStep('send_code_check_index');
-  if (await hasCustomerPinAuth(sql, phone)) {
-    return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', 'Bu telefon veya e-posta zaten kayıtlı'));
-  }
-
-  const indexedEmail = await findCustomerIdByEmail(email);
-  const indexedPhone = await findCustomerIdByPhone(sql, phone);
-  if (indexedEmail && await hasCustomerPinAuth(sql, indexedEmail.phone || phone)) {
-    return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', 'Bu telefon veya e-posta zaten kayıtlı'));
-  }
-  if (indexedPhone && await hasCustomerPinAuth(sql, phone)) {
-    return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', 'Bu telefon veya e-posta zaten kayıtlı'));
-  }
-
-  trace.markStep('customer_find');
   const conflict = await resolveRegistrationDuplicate(sql, phone, email);
+  const analysis = await inspectRegistrationConflict(sql, phone, email);
+  logRegisterDuplicate(trace, 'register_check', {
+    ...analysis,
+    blocked: conflict.blocked,
+    rawPhone: body.phone,
+    rawEmail: body.email
+  });
+
   if (conflict.blocked) {
-    return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'));
+    const code = analysis.duplicateSource === 'email' || analysis.duplicateSource === 'email_index'
+      ? 'DUPLICATE_EMAIL'
+      : 'DUPLICATE_PHONE';
+    return res.status(409).json({
+      ...trace.failBody('duplicate', code, conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'),
+      duplicateSource: analysis.duplicateSource,
+      foundCustomerId: analysis.foundCustomerId,
+      hasPinAuth: analysis.hasPinAuth
+    });
   }
 
   trace.markStep('send_code_mail');
@@ -126,8 +139,7 @@ async function handleSendCode(req, res, trace) {
 }
 
 // Kayıt tamamla — normalize tablolara yaz, app_state arka planda
-async function handleComplete(req, res, trace) {
-  const body = readBody(req);
+async function handleComplete(req, res, trace, body) {
   const phone = cleanPhone(body.phone);
   const email = normalizeEmail(body.email);
   const name = String(body.name || '').trim();
@@ -176,9 +188,24 @@ async function handleComplete(req, res, trace) {
 
   trace.markStep('customer_find_start');
   const conflict = await resolveRegistrationDuplicate(sql, phone, email);
+  const analysis = await inspectRegistrationConflict(sql, phone, email);
+  logRegisterDuplicate(trace, 'register_complete_check', {
+    ...analysis,
+    blocked: conflict.blocked,
+    rawPhone: body.phone,
+    rawEmail: body.email
+  });
   trace.markStep('customer_find');
   if (conflict.blocked) {
-    return res.status(409).json(trace.failBody('duplicate', 'ALREADY_REGISTERED', conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'));
+    const code = analysis.duplicateSource === 'email' || analysis.duplicateSource === 'email_index'
+      ? 'DUPLICATE_EMAIL'
+      : 'DUPLICATE_PHONE';
+    return res.status(409).json({
+      ...trace.failBody('duplicate', code, conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'),
+      duplicateSource: analysis.duplicateSource,
+      foundCustomerId: analysis.foundCustomerId,
+      hasPinAuth: analysis.hasPinAuth
+    });
   }
 
   const referrer = await findCustomerByReferralCode(sql, inviteCode);
@@ -258,6 +285,14 @@ async function handleComplete(req, res, trace) {
     return res.status(500).json(trace.failBody('auth_session_create', 'REGISTER_FINAL_FAILED', 'Kayıt tamamlanamadı. Lütfen tekrar dene.'));
   }
 
+  // Yarım kayıt önlemi — customers satırı kesin oluşsun
+  try {
+    const { repairIncompleteCustomer } = await import('../customerPhoneRepair.js');
+    await repairIncompleteCustomer(sql, phone);
+  } catch (repairError) {
+    console.warn('[register.customer_repair]', trace.requestId, repairError?.message || repairError);
+  }
+
   if (isNewCustomer && referrer) {
     try {
       await applyReferrerBonus(sql, referrer.id, customer.name);
@@ -310,14 +345,13 @@ export async function handleAuthRegisterComplete(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const trace = createRequestTrace('auth.register-complete');
+  const body = readBody(req);
+  const action = String(body.action || 'complete').trim();
+  const trace = createRequestTrace(action === 'send-code' ? 'auth.register-check' : 'auth.register-complete');
 
   try {
-    const body = readBody(req);
-    const action = String(body.action || 'complete').trim();
-
-    if (action === 'send-code') return await handleSendCode(req, res, trace);
-    if (action === 'complete') return await handleComplete(req, res, trace);
+    if (action === 'send-code') return await handleSendCode(req, res, trace, body);
+    if (action === 'complete') return await handleComplete(req, res, trace, body);
 
     return res.status(400).json(trace.failBody('action', 'INVALID_ACTION', 'Geçersiz işlem'));
   } catch (e) {

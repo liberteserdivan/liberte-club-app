@@ -61,6 +61,15 @@ export default function Login({ db, commit, setSession }) {
     if (code === 'CUSTOMER_NOT_FOUND') {
       return 'Bu telefon ile kayıt bulunamadı. Önce kayıt olun.';
     }
+    if (code === 'DUPLICATE_PHONE') {
+      return 'Bu telefon zaten kayıtlı. Giriş yap veya PIN sıfırla.';
+    }
+    if (code === 'DUPLICATE_EMAIL') {
+      return 'Bu e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.';
+    }
+    if (code === 'CUSTOMER_REPAIR_FAILED') {
+      return `Hesap kaydı eksik görünüyor. PIN sıfırlamayı deneyin. Ref: ${data?.requestId || '—'}`;
+    }
     if (code === 'NOT_ADMIN') {
       return 'Bu hesap admin yetkisine sahip değil.';
     }
@@ -68,7 +77,7 @@ export default function Login({ db, commit, setSession }) {
       return 'PIN hatalı.';
     }
     if (code === 'PIN_NOT_FOUND') {
-      return 'Bu hesap için PIN bulunamadı.';
+      return 'Bu hesap için PIN bulunamadı. PIN sıfırlayın.';
     }
     if (code === 'SESSION_CREATE_FAILED') {
       return `Oturum oluşturulamadı. Ref: ${data?.requestId || '—'}`;
@@ -262,7 +271,7 @@ export default function Login({ db, commit, setSession }) {
 
       if (!response.ok) {
         if (response.status === 409) {
-          notify('Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.', 'info');
+          notify(readApiError(data, 'Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.'), 'info');
           return;
         }
         throw new Error(readApiError(data, 'Kod gönderilemedi'));
@@ -323,7 +332,7 @@ export default function Login({ db, commit, setSession }) {
 
       if (!response.ok) {
         if (response.status === 409) {
-          notify('Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.', 'info');
+          notify(readApiError(data, 'Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.'), 'info');
           return;
         }
         throw new Error(readApiError(data, 'Kayıt tamamlanamadı'));
