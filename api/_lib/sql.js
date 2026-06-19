@@ -1,4 +1,5 @@
 import postgres from 'postgres';
+import { logDatabaseConnectionOnce } from './dbConnection.js';
 
 // Supabase transaction pooler (6543) prepared statement desteklemez
 function isTransactionPooler(connectionString) {
@@ -31,6 +32,8 @@ let cachedConnectionString = '';
 export function getSql() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return null;
+
+  logDatabaseConnectionOnce(connectionString);
 
   const globalCache = globalThis[GLOBAL_SQL_KEY];
   if (globalCache?.connectionString === connectionString && globalCache?.client) {

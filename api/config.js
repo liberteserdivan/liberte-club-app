@@ -2,6 +2,8 @@ import { readFirebaseWebConfig } from './_lib/firebaseConfig.js';
 import { isValidVapidPublicKey, normalizeVapidKey, readVapidKeyFromEnv } from './_lib/vapid.js';
 import { getServiceAccountStatus, parseServiceAccount, validateServiceAccount } from './_lib/serviceAccount.js';
 import { probeFcmCredentials } from './_lib/fcmProbe.js';
+import { describeDatabaseUrl } from './_lib/dbConnection.js';
+import { getSql } from './_lib/sql.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -80,6 +82,42 @@ async function handlePushStatus(res) {
   });
 }
 
+// Veritabanı bağlantı özeti — secret sızdırmaz, cutover doğrulama
+async function handleDbStatus(res) {
+  const info = describeDatabaseUrl(process.env.DATABASE_URL);
+  let pingOk = false;
+  let tableCount = 0;
+
+  const sql = getSql();
+  if (sql) {
+    try {
+      await sql`SELECT 1 AS ok`;
+      pingOk = true;
+      const rows = await sql`
+        SELECT count(*)::int AS c
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      `;
+      tableCount = Number(rows[0]?.c || 0);
+    } catch {
+      pingOk = false;
+    }
+  }
+
+  return res.status(200).json({
+    ok: pingOk,
+    ...info,
+    pingOk,
+    publicTableCount: tableCount,
+    useRelationalState: info.relationalState,
+    recommendation: info.provider === 'neon'
+      ? 'Production hâlâ Neon görünüyor — Vercel DATABASE_URL Supabase pooler :6543 olmalı.'
+      : info.provider === 'supabase' && !info.transactionPooler
+        ? 'Supabase transaction pooler (:6543) önerilir.'
+        : null
+  });
+}
+
 // Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
 export default async function handler(req, res) {
   applyPublicCors(res);
@@ -91,6 +129,7 @@ export default async function handler(req, res) {
   if (resource === 'firebase') return handleFirebase(res);
   if (resource === 'push') return handlePush(res);
   if (resource === 'push-status') return handlePushStatus(res);
+  if (resource === 'db-status') return handleDbStatus(res);
 
-  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push veya push-status' });
+  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status veya db-status' });
 }
