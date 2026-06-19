@@ -18,6 +18,7 @@ import {
 } from './_lib/stateAccess.js';
 import { applyBirthdayReward } from './_lib/loyaltyOps.js';
 import { enforceAuthRateLimit } from './_lib/rateLimit.js';
+import { createRequestTrace } from './_lib/requestTrace.js';
 
 export default async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
@@ -154,25 +155,33 @@ export default async function handler(req, res) {
 
 // Müşteri — imzalı QR token üret
 async function handleCustomerQrToken(req, res) {
+  const trace = createRequestTrace('qr.generate');
   const session = await requireSession(req, res);
   if (!session) return;
 
-  if (session.isAdmin) {
-    return res.status(403).json({ error: 'Yönetici hesabı QR üretemez' });
+  // Kasiyer modu (admin PIN doğrulandı) — müşteri QR üretilmez
+  if (session.isAdmin && session.adminVerified) {
+    return res.status(403).json(trace.failBody('forbidden', 'FORBIDDEN', 'Kasiyer modunda müşteri QR üretilemez'));
   }
 
   try {
     const issued = createCustomerQrToken(session.customerId);
+    trace.log('complete_ok', { customerId: session.customerId });
     return res.status(200).json({
       ok: true,
+      requestId: trace.requestId,
       token: issued.token,
+      qrToken: issued.token,
       expiresAt: issued.expiresAt,
-      ttlSeconds: issued.ttlSeconds
+      ttlSeconds: issued.ttlSeconds,
+      serverTime: Date.now()
     });
   } catch (error) {
-    return res.status(503).json({
-      error: publicErrorMessage(error, 'QR token üretilemedi')
-    });
+    return res.status(503).json(trace.failBody(
+      'generate',
+      'QR_GENERATE_FAILED',
+      publicErrorMessage(error, 'QR oluşturulamadı.')
+    ));
   }
 }
 

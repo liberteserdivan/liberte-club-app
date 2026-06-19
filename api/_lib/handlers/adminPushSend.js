@@ -4,6 +4,10 @@ import { formatPushNotification } from '../pushNotificationText.js';
 import { applyCors, readBodySafe } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { loadAppState, saveAppState } from '../appState.js';
+import { useRelationalState } from '../relationalConfig.js';
+import { loadPushSubscriptionsFromSql, deactivatePushTokens, insertPushSendLog } from '../pushStore.js';
+import { getSql } from '../sql.js';
+import { createRequestTrace } from '../requestTrace.js';
 import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
 import { sanitizePushSubscriptions } from '../../../src/lib/pushSubscriptionSanitize.js';
 import { collectFailedPushTokens, pruneInvalidPushTokens } from '../../../src/lib/pushTokens.js';
@@ -178,6 +182,7 @@ function summarizeFailuresByPlatform(tokens, responses, tokenPlatforms) {
 // Push bildirimi gönder
 export async function handleAdminPushSend(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
+  const trace = createRequestTrace('admin.push-send');
 
   try {
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -187,17 +192,25 @@ export async function handleAdminPushSend(req, res) {
     if (!adminSession) return;
 
     const body = readBodySafe(req);
-    const audience = String(body.audience || 'all').trim();
+    const audience = String(body.audience || body.targetType || 'all').trim();
     const title = String(body.title || '').trim();
     const message = String(body.body || body.message || 'Yeni kampanya var!').trim();
     const pushText = formatPushNotification(title, message);
 
     const remote = await loadAppState();
     if (!remote.data) {
-      return res.status(404).json({ ok: false, error: 'Veri bulunamadı', sent: 0, failed: 0 });
+      return res.status(404).json(trace.failBody('state', 'NOT_FOUND', 'Veri bulunamadı'));
     }
 
-    const preparedState = await preparePushState(remote.data);
+    let stateData = remote.data;
+    if (useRelationalState()) {
+      const sqlSubs = await loadPushSubscriptionsFromSql();
+      if (sqlSubs.length) {
+        stateData = { ...stateData, pushSubscriptions: sqlSubs };
+      }
+    }
+
+    const preparedState = await preparePushState(stateData);
     const resolved = resolvePushAudience(preparedState, audience);
     const platformCounts = summarizeTargetPlatforms(resolved.subscriptions);
     if (resolved.disabled) {
@@ -266,6 +279,26 @@ export async function handleAdminPushSend(req, res) {
 
     if (removed > 0) {
       await persistPushSubscriptions(preparedState, cleanedSubscriptions);
+      if (useRelationalState()) {
+        const sql = getSql();
+        if (sql) await deactivatePushTokens(sql, invalidTokens);
+      }
+    }
+
+    const logEntry = {
+      id: Date.now(),
+      title: pushText.title,
+      body: pushText.body,
+      audience,
+      sentCount: result.successCount,
+      createdAt: new Date().toLocaleString('tr-TR'),
+      failed: result.failureCount,
+      requestId: trace.requestId
+    };
+
+    if (useRelationalState()) {
+      const sql = getSql();
+      if (sql) await insertPushSendLog(sql, logEntry);
     }
 
     let note = `${result.successCount} cihaza iletildi`;
@@ -279,8 +312,10 @@ export async function handleAdminPushSend(req, res) {
 
     return res.status(200).json({
       ok: result.successCount > 0,
+      requestId: trace.requestId,
       sent: result.successCount,
       failed: result.failureCount,
+      inactiveTokens: invalidTokens.length,
       invalidRemoved: invalidTokens.length,
       invalidTokens,
       audience,
@@ -293,6 +328,9 @@ export async function handleAdminPushSend(req, res) {
   } catch (error) {
     return res.status(500).json({
       ok: false,
+      code: 'PUSH_SEND_FAILED',
+      message: 'Bildirim gönderilemedi.',
+      requestId: trace.requestId,
       sent: 0,
       error: error?.message || 'Push gönderilemedi',
       note: `Push hatası: ${error?.message || 'bilinmeyen hata'}`

@@ -178,12 +178,14 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
   pullRemoteRef.current = pullRemote;
 
-  // İlk açılış, sekme değişimi ve görünürlük
+  // İlk açılış, sekme değişimi ve görünürlük — tam sync'i UI'dan sonra başlat
   useEffect(() => {
     if (!canPullRemote(sessionRef)) return undefined;
 
-    pullRemote(true);
-    scheduleSyncTimer();
+    const deferTimer = setTimeout(() => {
+      pullRemote(true);
+      scheduleSyncTimer();
+    }, 120);
 
     function onVisibilityChange() {
       const visible = document.visibilityState === 'visible';
@@ -200,6 +202,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
+      clearTimeout(deferTimer);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       clearSyncTimer();
     };
@@ -242,13 +245,15 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     });
   }
 
-  const commit = useCallback((nextDb) => {
+  const commit = useCallback((nextDb, options = {}) => {
     saveSeq.current += 1;
     const seq = saveSeq.current;
 
     setDb(nextDb);
     persistLocal(nextDb);
-    queueSaveRemote(nextDb, seq);
+    if (!options.skipRemote) {
+      queueSaveRemote(nextDb, seq);
+    }
   }, []);
 
   // Senkron hatasından sonra tekrar dene

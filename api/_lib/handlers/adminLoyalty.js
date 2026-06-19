@@ -3,6 +3,11 @@ import { loadAppState, saveAppStateIfUnchanged } from '../appState.js';
 import { requireAdminSession } from '../auth.js';
 import { verifyCustomerQrToken } from '../qrToken.js';
 import { logServerError } from '../logServerError.js';
+import { useRelationalState } from '../relationalConfig.js';
+import {
+  applyLoyaltyActionRelational,
+  loadCustomerSummaryRelational
+} from '../loyaltyStore.js';
 import {
   applyCategoryStamp,
   applyCheckIn,
@@ -27,6 +32,12 @@ export async function handleAdminQrVerify(req, res) {
     const verified = verifyCustomerQrToken(body.token);
     if (!verified.ok) {
       return res.status(400).json({ error: verified.error });
+    }
+
+    if (useRelationalState()) {
+      const customer = await loadCustomerSummaryRelational(verified.customerId);
+      if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
+      return res.status(200).json({ ok: true, customer });
     }
 
     const remote = await loadAppState();
@@ -62,17 +73,38 @@ export async function handleAdminLoyaltyAction(req, res) {
       return res.status(400).json({ error: verified.error });
     }
 
-    const remote = await loadAppState();
-    if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
-
-    const baseUpdatedAt = remote.updatedAt;
-    const nextState = structuredClone(remote.data);
     const action = String(body.action || '').trim();
     const category = String(body.category || 'coffee').trim();
     const menuItemId = body.menuItemId != null ? Number(body.menuItemId) : null;
     const menuItem = menuItemId
       ? menuItems.find((item) => Number(item.id) === menuItemId) || null
       : null;
+
+    if (useRelationalState()) {
+      const result = await applyLoyaltyActionRelational({
+        customerId: verified.customerId,
+        action,
+        category,
+        menuItem
+      });
+
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error || 'İşlem yapılamadı' });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        customer: result.customer,
+        loyalty: result.loyalty,
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    const remote = await loadAppState();
+    if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
+
+    const baseUpdatedAt = remote.updatedAt;
+    const nextState = structuredClone(remote.data);
     let result;
 
     if (action === 'stamp') {
@@ -103,8 +135,6 @@ export async function handleAdminLoyaltyAction(req, res) {
         updated_at: saved.updatedAt
       });
     }
-
-    // İleride: ENABLE_LOYALTY_EVENT_LOG=1 + loyaltyRealtime.js ile loyalty_events yazımı
 
     const customer = customerSummary(nextState, verified.customerId);
 

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS entity_revisions (
 CREATE TABLE IF NOT EXISTS customers (
   id bigint PRIMARY KEY,
   phone text NOT NULL,
+  normalized_phone text,
   name text NOT NULL,
   email text,
   birth_date text,
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers (phone);
+CREATE INDEX IF NOT EXISTS idx_customers_normalized_phone ON customers (normalized_phone);
 
 CREATE TABLE IF NOT EXISTS customer_loyalty (
   customer_id bigint PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
@@ -213,11 +215,18 @@ CREATE TABLE IF NOT EXISTS in_app_notifications (
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id bigint PRIMARY KEY,
   customer_id bigint REFERENCES customers(id) ON DELETE CASCADE,
-  token text NOT NULL,
+  token text,
   channel text,
   platform text,
+  device_id text,
+  permission_status text NOT NULL DEFAULT 'unknown',
+  app_version text,
+  build_number text,
   active boolean NOT NULL DEFAULT true,
   created_at text,
+  last_seen_at text,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  revoked_at timestamptz,
   legacy_json jsonb
 );
 

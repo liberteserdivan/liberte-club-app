@@ -1,15 +1,7 @@
 import { getSql } from '../appState.js';
-import { findReferrerByInviteCode } from '../referralCode.js';
 import { applyCors, readBody } from '../http.js';
 import { cleanPhone } from '../phone.js';
-import {
-  buildCustomerRecord,
-  createSession,
-  indexCustomerEmail,
-  toCustomerSnapshot
-} from '../auth.js';
-import { loadAppState, saveAppState } from '../appState.js';
-import { loyaltyTemplate, applyCategoryStamp } from '../loyaltyOps.js';
+import { createSession, toCustomerSnapshot } from '../auth.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
 import { isValidPinFormat, normalizePin, saveCustomerPin } from '../pinAuth.js';
@@ -20,16 +12,28 @@ import {
   findCustomerIdByEmail,
   findCustomerIdByPhone,
   hasCustomerPinAuth,
-  listCustomers,
   normalizeEmail,
   upsertCustomerEmail
 } from '../customerEmails.js';
+import {
+  buildNewCustomerRecord,
+  buildWelcomeLoyalty,
+  findCustomerByReferralCode,
+  findLoyaltyByCustomerId,
+  loyaltyRowToCard,
+  resolveRegistrationDuplicate,
+  upsertCustomerRow,
+  upsertLoyaltyRow,
+  applyReferrerBonus
+} from '../customersStore.js';
+import { queueRegisterAppStateSync } from '../registerAppStateSync.js';
+import { useRelationalState } from '../relationalConfig.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
 }
 
-// Kayıt hatasını logla — app_error_logs
+// Kayıt hatasını logla
 async function logRegisterFailure(trace, step, error, extra = {}) {
   trace.log(`error:${step}`, { message: error?.message || String(error) });
   await logServerError({
@@ -44,44 +48,17 @@ async function logRegisterFailure(trace, step, error, extra = {}) {
   });
 }
 
-// app_state içinde telefon/e-posta çakışması var mı?
-function findStateCustomer(state, phone, email) {
-  const customers = listCustomers(state);
-  const byPhone = customers.find((c) => cleanPhone(c.phone) === phone) || null;
-  const byEmail = customers.find((c) => normalizeEmail(c.email) === email) || null;
-  return { byPhone, byEmail };
+// Mevcut referans kodlarını oku — yeni kod üretimi için
+async function listExistingReferralCodes(sql) {
+  const rows = await sql`
+    SELECT referral_code
+    FROM customers
+    WHERE referral_code IS NOT NULL
+  `;
+  return rows.map((r) => String(r.referral_code || '').toUpperCase()).filter(Boolean);
 }
 
-// Tamamlanmış kayıt mı yoksa yarım kalmış mı?
-async function resolveRegistrationConflict(sql, state, phone, email) {
-  const { byPhone, byEmail } = findStateCustomer(state, phone, email);
-
-  if (byPhone && byEmail && Number(byPhone.id) !== Number(byEmail.id)) {
-    return { blocked: true, reason: 'Bu telefon ve e-posta farklı hesaplara ait.' };
-  }
-
-  const existing = byPhone || byEmail;
-  if (!existing) {
-    const indexedEmail = await findCustomerIdByEmail(email);
-    const indexedPhone = await findCustomerIdByPhone(sql, phone);
-    if (indexedEmail && indexedPhone && Number(indexedEmail.customer_id) !== Number(indexedPhone.customer_id)) {
-      return { blocked: true, reason: 'Bu telefon ve e-posta farklı hesaplara ait.' };
-    }
-    const indexed = indexedEmail || indexedPhone;
-    if (indexed && await hasCustomerPinAuth(sql, phone)) {
-      return { blocked: true, reason: 'Bu telefon veya e-posta zaten kayıtlı' };
-    }
-    return { blocked: false, resumeCustomer: null };
-  }
-
-  if (await hasCustomerPinAuth(sql, phone)) {
-    return { blocked: true, reason: 'Bu telefon veya e-posta zaten kayıtlı' };
-  }
-
-  return { blocked: false, resumeCustomer: existing };
-}
-
-// Kayıt öncesi — e-postaya doğrulama kodu gönder
+// Kayıt öncesi — e-postaya doğrulama kodu gönder (app_state yok)
 async function handleSendCode(req, res, trace) {
   if (await enforceAuthRateLimit(req, 'auth_send_code', { maxHits: 8 })) {
     return res.status(429).json(trace.failBody('rate_limit', 'RATE_LIMITED', 'Çok fazla kod isteği. Lütfen 15 dakika sonra tekrar dene.'));
@@ -104,7 +81,7 @@ async function handleSendCode(req, res, trace) {
     return res.status(500).json(trace.failBody('database', 'DATABASE_URL', 'Veritabanı yapılandırması eksik'));
   }
 
-  trace.log('send_code.check_index');
+  trace.markStep('send_code_check_index');
   if (await hasCustomerPinAuth(sql, phone)) {
     return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', 'Bu telefon veya e-posta zaten kayıtlı'));
   }
@@ -118,15 +95,13 @@ async function handleSendCode(req, res, trace) {
     return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', 'Bu telefon veya e-posta zaten kayıtlı'));
   }
 
-  trace.log('send_code.load_state');
-  const remote = await loadAppState({ skipPersist: true, skipCache: true });
-  const state = remote.data || { customers: [] };
-  const conflict = await resolveRegistrationConflict(sql, state, phone, email);
+  trace.markStep('customer_find');
+  const conflict = await resolveRegistrationDuplicate(sql, phone, email);
   if (conflict.blocked) {
     return res.status(409).json(trace.failBody('duplicate', 'DUPLICATE', conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'));
   }
 
-  trace.log('send_code.mail');
+  trace.markStep('send_code_mail');
   const sent = await sendVerificationCode({
     email,
     phone,
@@ -139,64 +114,18 @@ async function handleSendCode(req, res, trace) {
     return res.status(sent.status || 500).json(trace.failBody('send_mail', 'MAIL_FAILED', sent.error || 'Kod gönderilemedi'));
   }
 
-  trace.log('send_code.ok');
+  trace.log('send_code_ok');
   return res.status(200).json({
     ok: true,
     requestId: trace.requestId,
     emailMasked: sent.emailMasked,
     testCode: sent.testCode,
-    warning: sent.warning
+    warning: sent.warning,
+    timings: trace.successTimings()
   });
 }
 
-// Yeni müşteri veya yarım kalmış kayıt için state güncelle
-function applyRegistrationToState(state, customer, referrer) {
-  const next = { ...state };
-  const customers = listCustomers(next);
-  const exists = customers.some((c) => Number(c.id) === Number(customer.id));
-  next.customers = exists
-    ? customers.map((c) => (Number(c.id) === Number(customer.id) ? { ...c, ...customer } : c))
-    : [...customers, customer];
-
-  if (!next.loyalty?.[customer.id] && !next.loyalty?.[String(customer.id)]) {
-    next.loyalty = { ...(next.loyalty || {}), [customer.id]: loyaltyTemplate(customer.id) };
-    applyCategoryStamp(next, customer.id, 'coffee', 2, 'Yeni üye hoş geldin bonusu');
-  }
-
-  if (referrer) {
-    applyCategoryStamp(next, customer.id, 'coffee', 2, 'Referans kayıt bonusu');
-    applyCategoryStamp(next, referrer.id, 'coffee', 2, `${customer.name} referans kaydı`);
-    next.referrals = [
-      {
-        id: Date.now(),
-        referrerId: referrer.id,
-        customerId: customer.id,
-        createdAt: new Date().toLocaleString('tr-TR')
-      },
-      ...(next.referrals || [])
-    ];
-  }
-
-  if (!exists) {
-    next.history = [
-      {
-        id: Date.now(),
-        customerId: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        type: 'register',
-        count: 0,
-        source: 'Uygulama kayıt',
-        createdAt: new Date().toLocaleString('tr-TR')
-      },
-      ...(next.history || [])
-    ];
-  }
-
-  return next;
-}
-
-// Kayıt tamamla — kodları doğrula, hesap oluştur
+// Kayıt tamamla — normalize tablolara yaz, app_state arka planda
 async function handleComplete(req, res, trace) {
   const body = readBody(req);
   const phone = cleanPhone(body.phone);
@@ -237,35 +166,37 @@ async function handleComplete(req, res, trace) {
     return res.status(500).json(trace.failBody('database', 'DATABASE_URL', 'Veritabanı yapılandırması eksik'));
   }
 
-  trace.log('verify_code', { email });
+  trace.markStep('verify_code_start');
   const verified = await verifyEmailCode(sql, { email, phone, code, purpose: 'register' });
+  trace.markStep('verify_code');
   if (!verified.ok) {
     return res.status(verified.status).json(trace.failBody('verify_code', 'CODE_INVALID', verified.error));
   }
-  trace.log('email_code_mark_used', { email });
+  trace.markStep('email_code_mark_used');
 
-  trace.log('load_app_state');
-  const remote = await loadAppState({ skipPersist: true, skipCache: true });
-  const state = remote.data || { customers: [], loyalty: {}, history: [] };
-
-  trace.log('customer_create_or_find');
-  const conflict = await resolveRegistrationConflict(sql, state, phone, email);
+  trace.markStep('customer_find_start');
+  const conflict = await resolveRegistrationDuplicate(sql, phone, email);
+  trace.markStep('customer_find');
   if (conflict.blocked) {
     return res.status(409).json(trace.failBody('duplicate', 'ALREADY_REGISTERED', conflict.reason || 'Bu telefon veya e-posta zaten kayıtlı'));
   }
 
-  const referrer = findReferrerByInviteCode(listCustomers(state), inviteCode);
+  const referrer = await findCustomerByReferralCode(sql, inviteCode);
   let customer = conflict.resumeCustomer;
+  const isNewCustomer = !customer;
 
   if (!customer) {
-    customer = buildCustomerRecord({
+    trace.markStep('customer_create_start');
+    const existingCodes = await listExistingReferralCodes(sql);
+    customer = buildNewCustomerRecord({
       phone,
       email,
       name,
       birthDate,
       referredBy: referrer?.id || null,
-      isAdmin: false
-    }, listCustomers(state));
+      existingCodes
+    });
+    trace.markStep('customer_create');
   } else {
     customer = {
       ...customer,
@@ -274,59 +205,102 @@ async function handleComplete(req, res, trace) {
       name,
       birthDate: birthDate || customer.birthDate || ''
     };
+    trace.markStep('customer_create');
   }
 
-  const nextState = applyRegistrationToState(state, customer, referrer);
-  const loyaltyCard = conflict.resumeCustomer
-    ? (state.loyalty?.[customer.id] || state.loyalty?.[String(customer.id)] || loyaltyTemplate(customer.id))
-    : (nextState.loyalty?.[customer.id] || nextState.loyalty?.[String(customer.id)] || null);
-
-  trace.log('loyalty_init', { customerId: customer.id });
-  if (!conflict.resumeCustomer) {
-    trace.log('save_app_state');
-    await saveAppState(nextState, { skipBackup: true });
+  let loyaltyCard;
+  if (isNewCustomer) {
+    trace.markStep('loyalty_init_start');
+    loyaltyCard = buildWelcomeLoyalty(customer.id, referrer ? 2 : 0);
+    trace.markStep('loyalty_init');
   } else {
-    trace.log('save_app_state_resume_skip', { customerId: customer.id });
+    const existingLoyalty = await findLoyaltyByCustomerId(sql, customer.id);
+    loyaltyCard = loyaltyRowToCard(existingLoyalty, customer.id);
+    trace.markStep('loyalty_init');
   }
 
-  trace.log('auth_transaction_start');
+  trace.markStep('auth_transaction_start');
   let session;
   try {
     await sql.begin(async (tx) => {
-      trace.log('pin_auth_upsert', { customerId: customer.id });
+      trace.markStep('customer_upsert_start');
+      await upsertCustomerRow(tx, customer);
+      trace.markStep('customer_upsert');
+
+      if (isNewCustomer) {
+        await upsertLoyaltyRow(tx, customer.id, loyaltyCard);
+      }
+
+      trace.markStep('pin_auth_upsert_start');
       await saveCustomerPin(tx, phone, customer.id, pin);
-      trace.log('customer_email_upsert', { customerId: customer.id });
+      trace.markStep('pin_auth_upsert');
+
+      trace.markStep('customer_email_upsert_start');
       await upsertCustomerEmail(tx, {
         email: customer.email,
         customerId: customer.id,
         phone: customer.phone
       });
-      trace.log('auth_session_create', { customerId: customer.id });
+      trace.markStep('customer_email_upsert');
+
+      const role = customer.isAdmin ? 'admin' : 'user';
+      trace.markStep('auth_session_create_start');
       session = await createSession(res, {
         customerId: customer.id,
-        role: 'user',
+        role,
         deviceId,
         sql: tx
       });
+      trace.markStep('auth_session_create');
     });
   } catch (error) {
     await logRegisterFailure(trace, 'auth_session_create', error, { email, phone });
     return res.status(500).json(trace.failBody('auth_session_create', 'REGISTER_FINAL_FAILED', 'Kayıt tamamlanamadı. Lütfen tekrar dene.'));
   }
 
-  trace.log('complete_ok', { customerId: customer.id });
+  if (isNewCustomer && referrer) {
+    try {
+      await applyReferrerBonus(sql, referrer.id, customer.name);
+    } catch (error) {
+      console.warn('[register.referrer_bonus]', trace.requestId, error?.message || error);
+    }
+  }
+
+  const historyEntry = isNewCustomer
+    ? {
+        id: Date.now(),
+        customerId: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        type: 'register',
+        count: 0,
+        source: 'Uygulama kayıt',
+        createdAt: new Date().toLocaleString('tr-TR')
+      }
+    : null;
+
+  if (!useRelationalState()) {
+    queueRegisterAppStateSync(
+      { customer, loyalty: loyaltyCard, historyEntry, referrer },
+      trace.requestId
+    );
+  }
+
+  const timings = trace.successTimings();
+  trace.log('complete_ok', { customerId: customer.id, ...timings });
 
   return res.status(200).json({
     ok: true,
     requestId: trace.requestId,
     customerId: customer.id,
     role: session.role,
-    isAdmin: false,
+    isAdmin: Boolean(customer.isAdmin),
     adminVerified: false,
     sessionToken: session.token,
     next: 'home',
     customer: toCustomerSnapshot(customer),
-    loyalty: loyaltyCard
+    loyalty: loyaltyCard,
+    timings
   });
 }
 

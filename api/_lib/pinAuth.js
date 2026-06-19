@@ -1,5 +1,5 @@
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
-import { cleanPhone } from './phone.js';
+import { cleanPhone, phoneLookupVariants } from './phone.js';
 import { ensureSchemaReady } from './schemaReady.js';
 
 const PIN_ITERATIONS = 120000;
@@ -81,23 +81,43 @@ export async function saveCustomerPin(sql, phone, customerId, pin) {
   `;
 }
 
+// PIN satırını telefon varyantlarıyla bul
+async function resolvePinAuthRow(sql, phone) {
+  const normalizedPhone = cleanPhone(phone);
+  const variants = phoneLookupVariants(phone);
+
+  const rows = await sql`
+    SELECT pin_hash, pin_salt, failed_attempts, locked_until, phone, customer_id
+    FROM customer_pin_auth
+    WHERE phone = ANY(${variants})
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+  if (!row) return null;
+
+  if (row.phone !== normalizedPhone) {
+    await sql`
+      UPDATE customer_pin_auth
+      SET phone = ${normalizedPhone}, updated_at = now()
+      WHERE phone = ${row.phone}
+    `;
+  }
+
+  return row;
+}
+
 // Müşteri PIN doğrula — deneme sayısı ve kilit yönetimi
 export async function verifyCustomerPin(sql, phone, pin) {
   await ensurePinTable(sql);
   const normalizedPhone = cleanPhone(phone);
 
-  const rows = await sql`
-    SELECT pin_hash, pin_salt, failed_attempts, locked_until
-    FROM customer_pin_auth
-    WHERE phone = ${normalizedPhone}
-    LIMIT 1
-  `;
-
-  const row = rows[0];
+  const row = await resolvePinAuthRow(sql, phone);
   if (!row) {
     return {
       ok: false,
       status: 404,
+      code: 'PIN_NOT_FOUND',
       error: 'Bu hesap için PIN tanımlı değil. PIN sıfırlama ile yeni PIN belirle.'
     };
   }
@@ -154,6 +174,7 @@ export async function verifyCustomerPin(sql, phone, pin) {
   return {
     ok: false,
     status: 401,
+    code: 'PIN_INVALID',
     error: `PIN hatalı. Kalan deneme: ${remaining}.`
   };
 }

@@ -4,9 +4,22 @@ import { levelByLp, migrateLoyaltyCard } from './loyaltyPoints.js';
 const MS_DAY = 24 * 60 * 60 * 1000;
 const VISIT_WINDOW_DAYS = 30;
 
+// Aktif token kaydı mı
+export function isActivePushSubscription(row) {
+  return Boolean(row?.token) && row.active !== false;
+}
+
+// İzin verilmiş aktif token mı
+export function isGrantedPushSubscription(row) {
+  if (!isActivePushSubscription(row)) return false;
+  const status = String(row.permissionStatus || row.permission_status || 'granted').toLowerCase();
+  return status === 'granted' || status === 'unknown';
+}
+
 // Hedef kitle tanımları
 export const PUSH_AUDIENCE_OPTIONS = [
   { id: 'all', label: 'Tüm kullanıcılar' },
+  { id: 'granted_devices', label: 'Sadece izin vermiş cihazlar' },
   { id: 'bronze', label: 'Bronze üyeler' },
   { id: 'silver', label: 'Silver üyeler' },
   { id: 'gold', label: 'Gold üyeler' },
@@ -129,6 +142,8 @@ export function customerMatchesAudience(customer, audienceId, db) {
   switch (audienceId) {
     case 'all':
       return true;
+    case 'granted_devices':
+      return true;
     case 'bronze':
       return level === 'Bronze' || lifetime < 50;
     case 'silver':
@@ -152,11 +167,6 @@ export function customerMatchesAudience(customer, audienceId, db) {
     default:
       return false;
   }
-}
-
-// Aktif token kaydı mı
-export function isActivePushSubscription(row) {
-  return Boolean(row?.token) && row.active !== false;
 }
 
 // Bildirim kanalı — platform ios/android ise native kabul et
@@ -213,12 +223,16 @@ export function resolvePushAudience(db, audienceId = 'all') {
   );
 
   const matchedSubscriptions = (db.pushSubscriptions || []).filter((row) => {
-    if (!isActivePushSubscription(row)) return false;
+    if (!isGrantedPushSubscription(row)) return false;
+    if (audienceId === 'granted_devices') return true;
     return matchedIds.has(Number(row.customerId));
   });
 
   const subscriptions = selectDeliverySubscriptions(matchedSubscriptions);
   const tokens = [...new Set(subscriptions.map((row) => row.token).filter(Boolean))];
+  const targetIds = audienceId === 'granted_devices'
+    ? new Set(subscriptions.map((row) => Number(row.customerId)))
+    : matchedIds;
 
   return {
     audienceId,
@@ -227,7 +241,7 @@ export function resolvePushAudience(db, audienceId = 'all') {
     disabledReason: '',
     subscriptions,
     tokens,
-    targetUserCount: matchedIds.size,
+    targetUserCount: targetIds.size,
     deviceCount: tokens.length
   };
 }

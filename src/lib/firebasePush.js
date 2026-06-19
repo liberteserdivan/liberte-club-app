@@ -9,6 +9,45 @@ import { ensureAndroidNotificationPermission } from './androidNotificationPermis
 import { registerNativePushToken, getPushSettingsHint, hasNativePushPermission, onNativeTokenRefresh } from './nativePush.js';
 import { Capacitor } from '@capacitor/core';
 import { reportError } from './errorHub.js';
+import { getDeviceId } from './deviceId.js';
+import { apiJson } from './apiClient.js';
+
+// Sunucuya cihaz token kaydı — session cookie ile doğrulanır
+async function syncPushDeviceRegistration(customer, {
+  token = null,
+  permissionStatus = 'unknown',
+  platform = detectPushPlatform()
+}) {
+  if (!customer?.id) return { ok: false };
+
+  try {
+    const { response, data } = await apiJson('/api/push/register-device', {
+      method: 'POST',
+      body: JSON.stringify({
+        customerId: customer.id,
+        token,
+        platform,
+        deviceId: getDeviceId(),
+        permissionStatus,
+        appVersion: import.meta.env?.VITE_APP_VERSION || '1.1.2',
+        buildNumber: String(import.meta.env?.VITE_BUILD_NUMBER || '')
+      })
+    });
+    return { ok: response.ok, data };
+  } catch (error) {
+    console.warn('[push.register-device]', error?.message || error);
+    return { ok: false };
+  }
+}
+
+// İzin sonucunu logla — store review için
+function logPushPermissionResult(source, result) {
+  if (!import.meta.env.PROD) return;
+  console.info('[push.permission]', source, {
+    status: result?.permissionStatus || result?.reason || 'unknown',
+    ok: Boolean(result?.ok)
+  });
+}
 
 // Service worker yolu — Capacitor WebView'da göreli yol gerekir
 export function getFirebaseSwUrl() {
@@ -270,6 +309,7 @@ function upsertPushSubscription(db, customer, token) {
     token,
     platform,
     channel,
+    permissionStatus: 'granted',
     active: true,
     lastSeenAt: now,
     appVersion,
@@ -302,7 +342,13 @@ export async function enableNativePush(customer, db, commit) {
   }
 
   const result = await registerNativePushToken();
+  logPushPermissionResult('native', result);
+
   if (!result.ok) {
+    await syncPushDeviceRegistration(customer, {
+      permissionStatus: result.permissionStatus || result.reason || 'denied',
+      platform: result.platform || detectPushPlatform()
+    });
     if (result.reason === 'denied') {
       throw new Error(getPushSettingsHint());
     }
@@ -314,6 +360,11 @@ export async function enableNativePush(customer, db, commit) {
 
   commit(upsertPushSubscription(db, customer, result.token));
   markPushEnabledOnDevice(customer.id, result.token);
+  await syncPushDeviceRegistration(customer, {
+    token: result.token,
+    permissionStatus: 'granted',
+    platform: result.platform || detectPushPlatform()
+  });
   return result.token;
 }
 
@@ -353,6 +404,10 @@ export async function enablePush(customer, db, commit) {
     permission = await Notification.requestPermission();
   }
   if (permission !== 'granted') {
+    await syncPushDeviceRegistration(customer, {
+      permissionStatus: permission === 'denied' ? 'denied' : 'prompt',
+      platform: detectPushPlatform()
+    });
     throw new Error('Bildirim izni verilmedi.');
   }
 
@@ -384,6 +439,11 @@ export async function enablePush(customer, db, commit) {
 
   commit(upsertPushSubscription(db, customer, token));
   markPushEnabledOnDevice(customer.id, token);
+  await syncPushDeviceRegistration(customer, {
+    token,
+    permissionStatus: 'granted',
+    platform: detectPushPlatform()
+  });
 
   attachForegroundPushListener(messaging, onMessage);
 
@@ -477,6 +537,11 @@ export function bindNativeTokenRefresh(customer, db, commit) {
     try {
       commit(upsertPushSubscription(db, customer, token));
       markPushEnabledOnDevice(customer.id, token);
+      void syncPushDeviceRegistration(customer, {
+        token,
+        permissionStatus: 'granted',
+        platform: detectPushPlatform()
+      });
     } catch {
       // Token kaydı başarısız olsa uygulama çalışmaya devam etsin
     }

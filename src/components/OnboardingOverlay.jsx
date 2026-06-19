@@ -17,8 +17,8 @@ const STEPS = [
   },
   {
     icon: Bell,
-    title: 'Kampanyalardan haberdar ol',
-    body: 'Bildirimleri aç; yeni fırsat ve ödül duyurularını kaçırma.'
+    title: 'Bildirimlere izin ver',
+    body: 'Kampanyalar, puan bildirimleri ve özel fırsatlardan haberdar olmak için bildirimleri açabilirsin.'
   }
 ];
 

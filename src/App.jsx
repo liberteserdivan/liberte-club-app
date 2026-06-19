@@ -1,6 +1,6 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useEffect, useRef, useState } from 'react';
-import { cssVars, load, mergeAuthSnapshot } from './lib/db.js';
+import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
@@ -153,7 +153,7 @@ export default function App() {
   }
 
   const customer = session
-    ? (db.customers || []).find((c) => c.id === session.customerId) || null
+    ? (db.customers || []).find((c) => sameCustomerId(c.id, session.customerId)) || null
     : null;
 
   const isAdmin = Boolean(session?.isAdmin);

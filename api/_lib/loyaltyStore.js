@@ -1,0 +1,194 @@
+import { getSql } from './sql.js';
+import {
+  ensureCustomersTables,
+  findCustomerById,
+  findLoyaltyByCustomerId,
+  loyaltyRowToCard,
+  upsertLoyaltyRow
+} from './customersStore.js';
+import {
+  applyCategoryStamp,
+  applyCheckIn,
+  applyBirthdayCoffee,
+  applyTierDiscount,
+  customerSummary,
+  redeemCategoryReward
+} from './loyaltyOps.js';
+import { bumpAppStateRevision } from './relationalState.js';
+
+// loyalty_events satırını history formatına çevir
+function eventRowToHistory(row) {
+  if (row.legacy_json && typeof row.legacy_json === 'object') {
+    return row.legacy_json;
+  }
+  return {
+    id: Number(row.id),
+    customerId: Number(row.customer_id),
+    type: row.event_type,
+    category: row.category || null,
+    delta: row.delta != null ? Number(row.delta) : null,
+    note: row.note || null,
+    menuItemId: row.menu_item_id != null ? Number(row.menu_item_id) : null,
+    menuItemName: row.menu_item_name || null,
+    createdAt: row.created_at || new Date().toLocaleString('tr-TR')
+  };
+}
+
+// Sadakat geçmişini SQL'den oku
+export async function loadHistoryFromSql(externalSql = null, customerId = null) {
+  const sql = externalSql || getSql();
+  if (!sql) return [];
+
+  await ensureCustomersTables(sql);
+  const rows = customerId
+    ? await sql`
+        SELECT *
+        FROM loyalty_events
+        WHERE customer_id = ${Number(customerId)}
+        ORDER BY id DESC
+        LIMIT 500
+      `
+    : await sql`
+        SELECT *
+        FROM loyalty_events
+        ORDER BY id DESC
+        LIMIT 2000
+      `;
+
+  return rows.map(eventRowToHistory);
+}
+
+// Tüm sadakat kartlarını map olarak oku
+export async function loadLoyaltyMapFromSql(externalSql = null) {
+  const sql = externalSql || getSql();
+  if (!sql) return {};
+
+  await ensureCustomersTables(sql);
+  const rows = await sql`SELECT * FROM customer_loyalty`;
+  const map = {};
+  for (const row of rows) {
+    const id = Number(row.customer_id);
+    map[id] = loyaltyRowToCard(row, id);
+  }
+  return map;
+}
+
+// Tek müşteri sadakat kartını oku
+export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
+  const sql = externalSql || getSql();
+  if (!sql || !customerId) return null;
+  const row = await findLoyaltyByCustomerId(sql, customerId);
+  return loyaltyRowToCard(row, customerId);
+}
+
+// Sadakat olayını kaydet
+async function insertLoyaltyEvent(sql, customerId, historyEntry) {
+  const createdAt = historyEntry.createdAt
+    ? new Date(String(historyEntry.createdAt).replace(
+      /^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/,
+      (_, d, m, y, h, min, s) => `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${h.padStart(2, '0')}:${min}:${s}`
+    ))
+    : null;
+
+  await sql`
+    INSERT INTO loyalty_events (
+      customer_id, event_type, category, delta, note, menu_item_id, menu_item_name, created_at, legacy_json
+    )
+    VALUES (
+      ${Number(customerId)},
+      ${historyEntry.type || historyEntry.eventType || 'unknown'},
+      ${historyEntry.category || null},
+      ${historyEntry.delta != null ? Number(historyEntry.delta) : null},
+      ${historyEntry.note || historyEntry.source || null},
+      ${historyEntry.menuItemId != null ? Number(historyEntry.menuItemId) : null},
+      ${historyEntry.menuItemName || null},
+      ${createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : sql`now()`},
+      ${JSON.stringify(historyEntry)}
+    )
+  `;
+}
+
+// Kasa QR sadakat işlemi — normalize tablolara yaz
+export async function applyLoyaltyActionRelational({
+  customerId,
+  action,
+  category = 'coffee',
+  menuItem = null,
+  note = 'QR kamera'
+}) {
+  const sql = getSql();
+  if (!sql) throw new Error('DATABASE_URL eksik');
+
+  const customer = await findCustomerById(sql, customerId);
+  if (!customer) {
+    return { ok: false, error: 'Müşteri bulunamadı' };
+  }
+
+  const loyaltyCard = await loadLoyaltyForCustomer(customerId, sql);
+  const miniState = {
+    customers: [customer],
+    loyalty: { [customerId]: loyaltyCard },
+    history: []
+  };
+
+  let result;
+  if (action === 'stamp') {
+    result = applyCategoryStamp(miniState, customerId, category, 1, note, { menuItem });
+  } else if (action === 'remove') {
+    result = applyCategoryStamp(miniState, customerId, category, -1, 'QR düzeltme');
+  } else if (action === 'redeem') {
+    result = redeemCategoryReward(miniState, customerId, category, 'QR kasiyer');
+  } else if (action === 'checkin') {
+    result = applyCheckIn(miniState, customerId, 'Kasa QR check-in');
+  } else if (action === 'tier_discount') {
+    result = applyTierDiscount(miniState, customerId, 'QR kasiyer');
+  } else if (action === 'birthday_coffee') {
+    result = applyBirthdayCoffee(miniState, customerId, 'QR kasiyer');
+  } else {
+    return { ok: false, error: 'Geçersiz işlem' };
+  }
+
+  if (!result.ok) {
+    return result;
+  }
+
+  const nextCard = miniState.loyalty[customerId] || miniState.loyalty[String(customerId)];
+  await upsertLoyaltyRow(sql, customerId, nextCard);
+
+  const lastHistory = (miniState.history || [])[0];
+  if (lastHistory) {
+    await insertLoyaltyEvent(sql, customerId, lastHistory);
+  }
+
+  await bumpAppStateRevision(sql);
+
+  const summaryState = {
+    customers: miniState.customers,
+    loyalty: miniState.loyalty,
+    history: miniState.history
+  };
+
+  return {
+    ok: true,
+    customer: customerSummary(summaryState, customerId),
+    loyalty: nextCard
+  };
+}
+
+// QR doğrulama — müşteri özeti normalize tablodan
+export async function loadCustomerSummaryRelational(customerId) {
+  const sql = getSql();
+  if (!sql) return null;
+
+  const customer = await findCustomerById(sql, customerId);
+  if (!customer) return null;
+
+  const loyalty = await loadLoyaltyForCustomer(customerId, sql);
+  const miniState = {
+    customers: [customer],
+    loyalty: { [customerId]: loyalty },
+    history: []
+  };
+
+  return customerSummary(miniState, customerId);
+}

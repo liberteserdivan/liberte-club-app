@@ -57,6 +57,22 @@ export default function Login({ db, commit, setSession }) {
 
   // API hata mesajını kullanıcı dostu metne çevir
   function readApiError(data, fallback) {
+    const code = String(data?.code || '').trim();
+    if (code === 'CUSTOMER_NOT_FOUND') {
+      return 'Bu telefon ile kayıt bulunamadı. Önce kayıt olun.';
+    }
+    if (code === 'NOT_ADMIN') {
+      return 'Bu hesap admin yetkisine sahip değil.';
+    }
+    if (code === 'PIN_INVALID') {
+      return 'PIN hatalı.';
+    }
+    if (code === 'PIN_NOT_FOUND') {
+      return 'Bu hesap için PIN bulunamadı.';
+    }
+    if (code === 'SESSION_CREATE_FAILED') {
+      return `Oturum oluşturulamadı. Ref: ${data?.requestId || '—'}`;
+    }
     const base = data?.message || data?.error || fallback;
     if (data?.requestId) {
       return `${base} (Ref: ${data.requestId})`;
@@ -105,7 +121,7 @@ export default function Login({ db, commit, setSession }) {
       commit(mergeAuthSnapshot(db, {
         customer: result.customer,
         loyalty: result.loyalty
-      }));
+      }), { skipRemote: true });
     }
     const session = applyAuthResult(result);
     localStorage.setItem('liberteLastPhone', phone || '');
@@ -179,7 +195,9 @@ export default function Login({ db, commit, setSession }) {
         body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
       });
 
-      if (!response.ok) throw new Error(data.error || 'Giriş yapılamadı');
+      if (!response.ok || data?.ok === false) {
+        throw new Error(readApiError(data, 'Giriş yapılamadı'));
+      }
       finishSession(data);
     } catch (e) {
       notify(e.message || 'Giriş yapılamadı');

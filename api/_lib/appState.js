@@ -9,28 +9,32 @@ import {
   writeAppStateCache
 } from './appStateCache.js';
 import { logAppStatePerf, perfNow } from './appStatePerf.js';
+import { useRelationalState, composeStateFromRelational, persistStateToRelational } from './relationalState.js';
 
 export { getSql } from './sql.js';
 
 const STATE_ID = 'liberte';
 
-// jsonb sütununu nesneye çevir — transaction pooler bazen ham JSON string döndürür
-export function parseAppStateData(raw) {
-  if (raw == null) return null;
-  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+// jsonb sütununu nesneye çevir — çift kodlanmış string ve pooler ham JSON desteklenir
+export function parseAppStateData(raw, maxDepth = 4) {
+  let current = raw;
 
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
+  for (let depth = 0; depth <= maxDepth; depth += 1) {
+    if (current == null) return null;
+    if (typeof current === 'object' && !Array.isArray(current)) return current;
+    if (typeof current !== 'string') return null;
+
+    const trimmed = current.trim();
     if (!trimmed) return null;
+
     try {
-      const parsed = JSON.parse(trimmed);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+      current = JSON.parse(trimmed);
     } catch {
       return null;
     }
   }
 
-  return null;
+  return typeof current === 'object' && !Array.isArray(current) ? current : null;
 }
 
 // jsonb yazımı — büyük payload'da sql.json hata verir; string parametre jsonb'ye yazılır
@@ -128,6 +132,23 @@ export async function loadAppState(options = {}) {
   const skipCache = Boolean(options.skipCache);
   const t0 = perfNow();
 
+  if (useRelationalState()) {
+    if (!skipCache) {
+      const cached = readAppStateCache();
+      if (cached?.data) {
+        logAppStatePerf('loadAppState.relational.cache_hit', t0);
+        return { data: cached.data, updatedAt: cached.updatedAt };
+      }
+    }
+
+    const composed = await composeStateFromRelational();
+    if (composed.data) {
+      writeAppStateCache(composed.data, composed.updatedAt);
+      logAppStatePerf('loadAppState.relational', t0);
+      return composed;
+    }
+  }
+
   if (!skipCache) {
     const cached = readAppStateCache();
     if (cached?.data) {
@@ -186,6 +207,12 @@ export async function saveAppState(data, options = {}) {
 
   const sql = getSql();
   if (!sql) throw new Error('DATABASE_URL eksik');
+
+  if (useRelationalState()) {
+    const updatedAt = await persistStateToRelational(data, sql);
+    logAppStatePerf('saveAppState.relational', t0);
+    return updatedAt;
+  }
 
   await ensureTables(sql);
 
@@ -324,6 +351,11 @@ export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
   await ensureTables(sql);
 
   if (!expectedUpdatedAt) {
+    if (useRelationalState()) {
+      await persistStateToRelational(data, sql);
+      const revision = await loadAppStateRevision();
+      return { ok: true, updatedAt: revision.updatedAt };
+    }
     await saveAppState(data);
     const revision = await loadAppStateRevision();
     return { ok: true, updatedAt: revision.updatedAt };
@@ -339,9 +371,17 @@ export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
   }
 
   try {
-    await backupCurrentState(sql, data);
+    if (!useRelationalState()) {
+      await backupCurrentState(sql, data);
+    }
   } catch {
     // Yedek başarısız olsa bile kayıt denenir
+  }
+
+  if (useRelationalState()) {
+    const updatedAt = await persistStateToRelational(data, sql);
+    logAppStatePerf('saveAppStateIfUnchanged.relational', t0);
+    return { ok: true, updatedAt };
   }
 
   const updated = await sql`

@@ -1,5 +1,5 @@
 import React,{useEffect,useState}from'react';
-import{Database,Download,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
+import{Database,Download,Edit2,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
 import PushNotificationAdmin from '../components/PushNotificationAdmin.jsx';
@@ -235,9 +235,13 @@ function OverviewAdmin({db,commit,onManageUsers}){
   const history=db.history||[];
   const totalLp=Object.values(loyalty).reduce((a,l)=>a+(getLpBalance(l)||0),0);
   const activeRewards=Object.values(loyalty).reduce((a,l)=>a+getRedeemableRewards(l).length,0);
-  const pushCount=(db.pushSubscriptions||[]).length;
+  const pushGranted=(db.pushSubscriptions||[]).filter(s=>s.active!==false&&s.permissionStatus==='granted').length;
   const today=new Date().toLocaleDateString('tr-TR');
   const todayEvents=history.filter(h=>String(h.createdAt||'').startsWith(today)).length;
+  const todaySignups=customers.filter(c=>String(c.createdAt||'').startsWith(today)).length;
+  const activeCoupons=(db.coupons||[]).filter(c=>c.active!==false).length;
+  const activeCampaigns=(db.campaigns||[]).filter(c=>c.active!==false).length+(db.dailyCampaign?.active!==false?1:0);
+  const menuItemCount=(db.items||[]).length;
   const topCustomers=[...customers]
     .map(c=>({c,l:loyalty[c.id]||loyaltyTemplate(c.id)}))
     .sort((a,b)=>(getLpBalance(b.l)||0)-(getLpBalance(a.l)||0))
@@ -252,12 +256,15 @@ function OverviewAdmin({db,commit,onManageUsers}){
     </div>
 
     <div className="analyticsGrid adminMetricsCompact adminMetricsPremium">
-      <div className="metricCard"><span>Üye</span><b>{customers.length}</b><small>Kayıtlı</small></div>
+      <div className="metricCard"><span>Toplam Üye</span><b>{customers.length}</b><small>Kayıtlı</small></div>
+      <div className="metricCard"><span>Bugünkü Kayıt</span><b>{todaySignups}</b><small>Yeni üye</small></div>
       <div className="metricCard"><span>Toplam LP</span><b>{totalLp}</b><small>Bakiye</small></div>
       <div className="metricCard"><span>Ödül</span><b>{activeRewards}</b><small>Kullanılabilir</small></div>
+      <div className="metricCard"><span>Aktif Kupon</span><b>{activeCoupons}</b><small>Promosyon</small></div>
+      <div className="metricCard"><span>Aktif Kampanya</span><b>{activeCampaigns}</b><small>Yayında</small></div>
+      <div className="metricCard"><span>Menü Ürün</span><b>{menuItemCount}</b><small>Ürün</small></div>
+      <div className="metricCard"><span>Push Cihaz</span><b>{pushGranted}</b><small>İzinli</small></div>
       <div className="metricCard"><span>Bugün</span><b>{todayEvents}</b><small>İşlem</small></div>
-      <div className="metricCard"><span>Cihaz</span><b>{pushCount}</b><small>Bildirim</small></div>
-      <div className="metricCard"><span>Çark</span><b>{(db.wheelSpins||[]).length}</b><small>Çevirme</small></div>
     </div>
 
     <UserManageOverview db={db} commit={commit} onManageUsers={onManageUsers}/>
@@ -406,34 +413,130 @@ function ItemAdmin({db,commit}){
 function CategoryAdmin({db,commit}){
   const[name,setName]=useState('');
   const[icon,setIcon]=useState('✨');
+  const[query,setQuery]=useState('');
+  const[editId,setEditId]=useState(null);
+  const[editName,setEditName]=useState('');
+  const[editIcon,setEditIcon]=useState('');
+  const[pendingDelete,setPendingDelete]=useState(null);
 
   function add(){
     if(!name.trim())return;
-    commit({...db,categories:[...db.categories,{id:Date.now(),name:name.trim(),icon,description:''}]});
+    commit({...db,categories:[...db.categories,{id:Date.now(),name:name.trim(),icon,description:'',active:true}]});
     setName('');
   }
 
-  return <div className="card">
-    <h3>Kategori Yönetimi</h3>
+  function startEdit(category){
+    setEditId(category.id);
+    setEditName(category.name);
+    setEditIcon(category.icon||'✨');
+  }
 
-    <div className="formRow">
+  function saveEdit(){
+    if(!editName.trim())return;
+    commit({...db,categories:db.categories.map(c=>c.id===editId?{...c,name:editName.trim(),icon:editIcon}:c)});
+    setEditId(null);
+  }
+
+  function confirmDelete(category){
+    setPendingDelete(category);
+  }
+
+  function executeDelete(){
+    if(!pendingDelete)return;
+    const fallbackId=db.categories.find(c=>c.id!==pendingDelete.id)?.id||1;
+    commit({
+      ...db,
+      categories:db.categories.filter(x=>x.id!==pendingDelete.id),
+      items:db.items.map(i=>i.categoryId===pendingDelete.id?{...i,categoryId:fallbackId}:i)
+    });
+    setPendingDelete(null);
+  }
+
+  const filtered=db.categories.filter(c=>{
+    if(!query.trim())return true;
+    const needle=query.trim().toLowerCase();
+    return String(c.name||'').toLowerCase().includes(needle);
+  });
+
+  return <div className="card adminSectionCard adminMenuCard">
+    <div className="adminSectionHead">
+      <div><span>MENÜ</span><h3>Kategori Yönetimi</h3></div>
+    </div>
+    <p className="adminHint">Kategorileri düzenle, ürün sayısını gör ve silmeden önce onay iste.</p>
+
+    <div className="formRow adminCategoryForm">
       <input placeholder="Kategori adı" value={name} onChange={e=>setName(e.target.value)}/>
-      <input placeholder="İkon" value={icon} onChange={e=>setIcon(e.target.value)}/>
-      <button onClick={add}><Plus/> Ekle</button>
+      <input placeholder="İkon" value={icon} onChange={e=>setIcon(e.target.value)} aria-label="Kategori ikonu"/>
+      <button type="button" onClick={add}><Plus/> Ekle</button>
     </div>
 
-    {db.categories.map(c=>
-      <div className="row" key={c.id}>
-        <span>{c.icon} {c.name}</span>
-        <button className="danger" onClick={()=>commit({
-          ...db,
-          categories:db.categories.filter(x=>x.id!==c.id),
-          items:db.items.map(i=>i.categoryId===c.id?{...i,categoryId:db.categories[0]?.id||1}:i)
-        })}>
-          <Trash2/> Sil
-        </button>
-      </div>
+    <input
+      className="adminCategorySearch"
+      placeholder="Kategori ara…"
+      value={query}
+      onChange={e=>setQuery(e.target.value)}
+    />
+
+    <div className="adminCategoryList">
+      {filtered.length?filtered.map(c=>{
+        const itemCount=db.items.filter(i=>i.categoryId===c.id).length;
+        const isEditing=editId===c.id;
+        return <div className="adminCategoryCard" key={c.id}>
+          <div className="adminCategoryCardMain">
+            <span className="adminCategoryIcon" aria-hidden="true">{c.icon||'✨'}</span>
+            <div className="adminCategoryMeta">
+              {isEditing?(
+                <div className="adminCategoryEditRow">
+                  <input value={editName} onChange={e=>setEditName(e.target.value)} placeholder="Kategori adı"/>
+                  <input value={editIcon} onChange={e=>setEditIcon(e.target.value)} placeholder="İkon" aria-label="Düzenle ikon"/>
+                </div>
+              ):(
+                <>
+                  <strong>{c.name}</strong>
+                  <small>{itemCount} ürün · {c.active===false?'Pasif':'Aktif'}</small>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="adminCategoryActions">
+            {isEditing?(
+              <>
+                <button type="button" className="ghost" onClick={()=>setEditId(null)}>İptal</button>
+                <button type="button" onClick={saveEdit}>Kaydet</button>
+              </>
+            ):(
+              <>
+                <button type="button" className="ghost" aria-label="Düzenle" onClick={()=>startEdit(c)}><Edit2 size={16}/></button>
+                <button type="button" className="danger" aria-label="Sil" onClick={()=>confirmDelete(c)}><Trash2 size={16}/></button>
+              </>
+            )}
+          </div>
+        </div>;
+      }):<div className="empty">Eşleşen kategori yok.</div>}
+    </div>
+
+    {pendingDelete&&(
+      <AdminConfirmModal
+        title="Kategoriyi sil"
+        message={`"${pendingDelete.name}" kategorisini silmek istediğine emin misin?`}
+        onCancel={()=>setPendingDelete(null)}
+        onConfirm={executeDelete}
+      />
     )}
+  </div>;
+}
+
+// Silme onay modalı — admin panel genel kullanım
+function AdminConfirmModal({title,message,onCancel,onConfirm}){
+  return <div className="adminConfirmBackdrop" role="dialog" aria-modal="true">
+    <div className="adminConfirmCard">
+      <h4>{title}</h4>
+      <p>{message}</p>
+      <div className="adminConfirmActions">
+        <button type="button" className="ghost" onClick={onCancel}>İptal</button>
+        <button type="button" className="danger" onClick={onConfirm}>Sil</button>
+      </div>
+    </div>
   </div>;
 }
 
@@ -490,37 +593,84 @@ function CouponsAdmin({db,commit}){
   const[title,setTitle]=useState('Bonus LP');
   const[value,setValue]=useState(1);
   const[type,setType]=useState('stamp');
+  const[query,setQuery]=useState('');
+  const[pendingDelete,setPendingDelete]=useState(null);
+  const coupons=db.coupons||[];
 
   function createCoupon(){
     const clean=String(code||'').trim().toUpperCase();
     if(clean.length<3)return alert('Kupon kodu en az 3 karakter olmalı.');
-    if((db.coupons||[]).some(c=>String(c.code||'').toUpperCase()===clean))return alert('Bu kupon kodu zaten var.');
-    commit({...db,coupons:[{id:Date.now(),code:clean,title,rewardType:type,rewardValue:Number(value||1),active:true,createdAt:new Date().toLocaleString('tr-TR')},...(db.coupons||[])]});
+    if(coupons.some(c=>String(c.code||'').toUpperCase()===clean))return alert('Bu kupon kodu zaten var.');
+    commit({...db,coupons:[{id:Date.now(),code:clean,title,rewardType:type,rewardValue:Number(value||1),active:true,createdAt:new Date().toLocaleString('tr-TR')},...coupons]});
     setCode('');
   }
 
   function toggleCoupon(id){
-    commit({...db,coupons:(db.coupons||[]).map(c=>c.id===id?{...c,active:!c.active}:c)});
+    commit({...db,coupons:coupons.map(c=>c.id===id?{...c,active:!c.active}:c)});
   }
 
-  return <div className="card adminSectionCard">
+  function executeDelete(){
+    if(!pendingDelete)return;
+    commit({...db,coupons:coupons.filter(c=>c.id!==pendingDelete.id)});
+    setPendingDelete(null);
+  }
+
+  const filtered=coupons.filter(c=>{
+    if(!query.trim())return true;
+    const needle=query.trim().toLowerCase();
+    return String(c.code||'').toLowerCase().includes(needle)
+      ||String(c.title||'').toLowerCase().includes(needle);
+  });
+
+  return <div className="card adminSectionCard adminCouponCard">
     <div className="adminSectionHead"><div><span>KUPON</span><h3>Promosyon kodları</h3></div></div>
+    <p className="adminHint">Kupon kodları üyelere LP veya ikram tanımlar. Silmeden önce onay istenir.</p>
 
-    <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
-    <input placeholder="Kupon başlığı" value={title} onChange={e=>setTitle(e.target.value)}/>
-    <select value={type} onChange={e=>setType(e.target.value)}>
-      <option value="stamp">LP ver</option>
-      <option value="reward">İkram (7 LP) ver</option>
-    </select>
-    <input type="number" min="1" value={value} onChange={e=>setValue(e.target.value)}/>
-    <button type="button" onClick={createCoupon}><Plus/> Kupon oluştur</button>
-
-    <div className="couponList">
-      {(db.coupons||[]).map(c=><div className="historyMini" key={c.id}>
-        <div><b>{c.code}</b><p>{c.title} · {c.rewardType==='reward'?'İkram (7 LP)':'LP'} +{c.rewardValue}</p></div>
-        <button type="button" className={c.active?'ghost':'danger'} onClick={()=>toggleCoupon(c.id)}>{c.active?'Aktif':'Pasif'}</button>
-      </div>)}
+    <div className="adminCouponForm">
+      <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
+      <input placeholder="Kupon başlığı" value={title} onChange={e=>setTitle(e.target.value)}/>
+      <select value={type} onChange={e=>setType(e.target.value)}>
+        <option value="stamp">LP ver</option>
+        <option value="reward">İkram (7 LP) ver</option>
+      </select>
+      <input type="number" min="1" value={value} onChange={e=>setValue(e.target.value)} aria-label="Ödül miktarı"/>
+      <button type="button" onClick={createCoupon}><Plus/> Kupon oluştur</button>
     </div>
+
+    <input
+      className="adminCategorySearch"
+      placeholder="Kupon kodu veya başlık ara…"
+      value={query}
+      onChange={e=>setQuery(e.target.value)}
+    />
+
+    <div className="adminPremiumList">
+      {filtered.length?filtered.map(c=>{
+        const usageCount=(db.history||[]).filter(h=>h.type==='coupon'&&String(h.source||'').includes(c.code)).length;
+        return <div className="adminPremiumRow" key={c.id}>
+          <div className="adminPremiumRowMain">
+            <span className="adminPremiumBadge" aria-hidden="true">🎟️</span>
+            <div className="adminPremiumRowMeta">
+              <strong>{c.code}</strong>
+              <small>{c.title} · {c.rewardType==='reward'?'İkram':'LP'} +{c.rewardValue} · {c.active===false?'Pasif':'Aktif'} · {usageCount} kullanım</small>
+            </div>
+          </div>
+          <div className="adminCategoryActions">
+            <button type="button" className={c.active===false?'danger':'ghost'} onClick={()=>toggleCoupon(c.id)}>{c.active===false?'Pasif':'Aktif'}</button>
+            <button type="button" className="danger" aria-label="Sil" onClick={()=>setPendingDelete(c)}><Trash2 size={16}/></button>
+          </div>
+        </div>;
+      }):<div className="empty">Eşleşen kupon yok.</div>}
+    </div>
+
+    {pendingDelete&&(
+      <AdminConfirmModal
+        title="Kuponu sil"
+        message={`"${pendingDelete.code}" kuponunu silmek istediğine emin misin?`}
+        onCancel={()=>setPendingDelete(null)}
+        onConfirm={executeDelete}
+      />
+    )}
   </div>;
 }
 
@@ -579,12 +729,20 @@ function GameAdmin({db,commit}){
 
     <div className="card adminSectionCard">
       <div className="adminSectionHead"><div><span>LİSTE</span><h3>Uygulama kampanyaları</h3></div></div>
-      {campaigns.map((item,i)=><div className="prizeEdit" key={item.id||i}>
-        <input value={item.emoji||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,emoji:e.target.value}:x))} placeholder="Emoji"/>
-        <input value={item.title||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,title:e.target.value}:x))} placeholder="Başlık"/>
-        <input value={item.body||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,body:e.target.value}:x))} placeholder="Açıklama"/>
-        <label className="adminToggle inline"><input type="checkbox" checked={item.active!==false} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,active:e.target.checked}:x))}/><span>Aktif</span></label>
+      <p className="adminHint">Kampanyalar uygulama içinde listelenir. Kayıt sonrası isteğe bağlı push gönderilebilir.</p>
+      <div className="adminPremiumList">
+      {campaigns.map((item,i)=><div className="adminPremiumRow adminCampaignRow" key={item.id||i}>
+        <div className="adminPremiumRowMain adminCampaignFields">
+          <span className="adminPremiumBadge" aria-hidden="true">{item.emoji||'🎁'}</span>
+          <div className="adminCampaignInputs">
+            <input value={item.title||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,title:e.target.value}:x))} placeholder="Başlık"/>
+            <input value={item.body||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,body:e.target.value}:x))} placeholder="Açıklama"/>
+            <input value={item.emoji||''} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,emoji:e.target.value}:x))} placeholder="Emoji" aria-label="Kampanya emoji"/>
+          </div>
+        </div>
+        <label className="adminToggle inline"><input type="checkbox" checked={item.active!==false} onChange={e=>setCampaigns(campaigns.map((x,n)=>n===i?{...x,active:e.target.checked}:x))}/><span>{item.active!==false?'Aktif':'Pasif'}</span></label>
       </div>)}
+      </div>
       <button type="button" className="ghost" onClick={()=>setCampaigns([...campaigns,{id:Date.now(),title:'Yeni kampanya',body:'Detayları uygulamada gör.',active:true,emoji:'🎁'}])}><Plus/> Kampanya ekle</button>
       <label className="adminToggle"><input type="checkbox" checked={campaignNotify} onChange={e=>setCampaignNotify(e.target.checked)}/><span>Kaydedince üyelere bildir</span></label>
       <button type="button" onClick={saveCampaigns}><Send/> Kampanyaları kaydet</button>
@@ -616,9 +774,18 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
   const[editing,setEditing]=useState(null);
   const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false,note:''});
   const[message,setMessage]=useState('');
+  const[query,setQuery]=useState('');
+  const[pendingDelete,setPendingDelete]=useState(null);
   const[lpProductPick,setLpProductPick]=useState(null);
 
   const customers=db.customers||[];
+  const needle=query.trim().toLowerCase();
+  const filtered=customers.filter(c=>{
+    if(!needle)return true;
+    return String(c.name||'').toLowerCase().includes(needle)
+      ||String(c.phone||'').includes(needle)
+      ||String(c.email||'').toLowerCase().includes(needle);
+  });
 
   function beginEdit(c){
     setMessage('');
@@ -698,10 +865,12 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
       const adminCount=customers.filter(x=>x.isAdmin).length;
       if(adminCount<=1){setMessage('Son admin kullanıcı silinemez.');return;}
     }
+    setPendingDelete(c);
+  }
 
-    const ok=confirm(`${c.name} kullanıcısı silinsin mi? Bu işlem LP ve ödül kayıtlarını da kaldırır.`);
-    if(!ok)return;
-
+  function executeDeleteUser(){
+    if(!pendingDelete)return;
+    const c=pendingDelete;
     const loyalty={...(db.loyalty||{})};
     delete loyalty[c.id];
     const createdAt=new Date().toLocaleString('tr-TR');
@@ -718,6 +887,7 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
     });
 
     setEditing(null);
+    setPendingDelete(null);
     setMessage('Kullanıcı silindi.');
   }
 
@@ -763,28 +933,53 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
     commit(redeemCategoryRewardForCustomer(db,c.id,category,'Admin manuel'));
   }
 
-  return <div className="list">
-    <div className="card userAdminIntro">
-      <h3>Kullanıcı Yönetimi</h3>
-      <p>Telefon ve e-posta tekil tutulur. Aynı numara veya aynı mail ikinci kez kullanılamaz.</p>
+  return <div className="adminMemberPanel">
+    <div className="card adminSectionCard userAdminIntro">
+      <div className="adminSectionHead"><div><span>ÜYELER</span><h3>Üye ayarları</h3></div></div>
+      <p className="adminHint">Telefon ve e-posta tekil tutulur. Arama yapıp üye detayına geçebilirsin.</p>
       {message&&<p className="info">{message}</p>}
+      <input
+        className="adminCategorySearch"
+        placeholder="İsim, telefon veya e-posta ara…"
+        value={query}
+        onChange={e=>setQuery(e.target.value)}
+      />
     </div>
 
-    {customers.map(c=>{
+    {filtered.map(c=>{
       const l=db.loyalty[c.id]||loyaltyTemplate(c.id);
       const lpBalance=getLpBalance(l);
       const redeemableCount=getRedeemableRewards(l).length;
       const isEdit=editing===c.id;
 
-      return <div className={isEdit?'card user editing':'card user'} key={c.id}>
+      const pushRow=(db.pushSubscriptions||[]).find(s=>s.customerId===c.id&&s.active!==false);
+      const pushLabel=pushRow?.permissionStatus==='granted'?'Bildirim açık':pushRow?'Bildirim kapalı':'Cihaz yok';
+
+      return <div className={isEdit?'card adminMemberCard editing':'card adminMemberCard'} key={c.id}>
         {!isEdit? <>
-          <div>
-            <b>{c.name}</b>
-            <p>{c.phone} · {c.email||'mail yok'} · {c.birthDate||'doğum tarihi yok'} · {l.level||'Bronze'}</p>
-            <p>Referans kodu: <b>{getReferralCode(c)}</b></p>
-            <small>{lpBalance} LP · {redeemableCount} ödül · {l.usedRewards||0} kullanılan · toplam {l.lpLifetime||l.lifetimeStamps||0} LP</small>
-            {(db.customerNotes||{})[c.id]&&<p className="customerNote">Not: {(db.customerNotes||{})[c.id]}</p>}
+          <div className="adminMemberCardHead">
+            <div className="adminPremiumRowMain">
+              <span className="adminPremiumBadge" aria-hidden="true">{c.isAdmin?'🛡️':'👤'}</span>
+              <div className="adminPremiumRowMeta">
+                <strong>{c.name}</strong>
+                <small>{c.phone} · {c.email||'e-posta yok'} · {c.isAdmin?'Admin':'Müşteri'} · {pushLabel}</small>
+              </div>
+            </div>
+            <div className="adminCategoryActions">
+              <button type="button" className="ghost" aria-label="Düzenle" onClick={()=>beginEdit(c)}><Edit2 size={16}/></button>
+              <button type="button" className="danger" aria-label="Sil" onClick={()=>deleteUser(c)}><Trash2 size={16}/></button>
+            </div>
           </div>
+
+          <div className="adminMemberStats">
+            <span><em>LP</em><b>{lpBalance}</b></span>
+            <span><em>Ödül</em><b>{redeemableCount}</b></span>
+            <span><em>Seviye</em><b>{l.level||'Bronze'}</b></span>
+            <span><em>Kayıt</em><b>{c.createdAt||'—'}</b></span>
+          </div>
+
+          <p className="adminMemberRef">Referans: <b>{getReferralCode(c)}</b></p>
+          {(db.customerNotes||{})[c.id]&&<p className="customerNote">Not: {(db.customerNotes||{})[c.id]}</p>}
 
           <StampCategoryPanel
             mode="admin"
@@ -795,8 +990,7 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
           />
 
           <div className="userActions wide">
-            <button className="ghost" onClick={()=>beginEdit(c)}>Düzenle</button>
-            <button className="danger" onClick={()=>deleteUser(c)}><Trash2/> Kullanıcı Sil</button>
+            <button className="ghost" onClick={()=>beginEdit(c)}>Profil düzenle</button>
           </div>
         </> : <>
           <div className="userEditForm">
@@ -830,6 +1024,17 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
         </>}
       </div>;
     })}
+
+    {!filtered.length&&<div className="empty">Eşleşen üye yok.</div>}
+
+    {pendingDelete&&(
+      <AdminConfirmModal
+        title="Üyeyi sil"
+        message={`${pendingDelete.name} silinsin mi? LP ve ödül kayıtları da kaldırılır.`}
+        onCancel={()=>setPendingDelete(null)}
+        onConfirm={executeDeleteUser}
+      />
+    )}
 
     {lpProductPick && (
       <CashierProductPickModal

@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
+import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
 import {
   findCustomerIdByEmail,
@@ -128,14 +129,43 @@ async function persistSessionRole(token, { role, adminVerified }) {
   `;
 }
 
-// Oturumu canlı kayıtla doğrula — rol düşürüldüyse admin yetkisini kapat
+// Oturumu canlı kayıtla doğrula — önce normalize tablo, gerekirse legacy app_state
 export async function syncSessionWithCustomer(req, session) {
   if (!session) return null;
 
-  const { data } = await loadAppState();
-  const customer = listCustomers(data).find(
-    (row) => Number(row.id) === Number(session.customerId)
-  );
+  const sql = getSql();
+  let customer = null;
+  let loyalty = null;
+
+  if (sql) {
+    const {
+      findCustomerById,
+      findLoyaltyByCustomerId,
+      loyaltyRowToCard
+    } = await import('./customersStore.js');
+    customer = await findCustomerById(sql, session.customerId);
+    if (customer) {
+      const row = await findLoyaltyByCustomerId(sql, session.customerId);
+      loyalty = loyaltyRowToCard(row, session.customerId);
+    }
+  }
+
+  if (!customer) {
+    if (useRelationalState()) {
+      await invalidateCurrentSession(req);
+      return null;
+    }
+
+    const { data } = await loadAppState({ skipPersist: true, skipCache: true });
+    customer = listCustomers(data).find(
+      (row) => Number(row.id) === Number(session.customerId)
+    );
+    if (customer) {
+      loyalty = data?.loyalty?.[customer.id]
+        || data?.loyalty?.[String(customer.id)]
+        || null;
+    }
+  }
 
   if (!customer) {
     await invalidateCurrentSession(req);
@@ -157,9 +187,7 @@ export async function syncSessionWithCustomer(req, session) {
   }
 
   session.customer = toCustomerSnapshot(customer);
-  session.loyalty = data?.loyalty?.[customer.id]
-    || data?.loyalty?.[String(customer.id)]
-    || null;
+  session.loyalty = loyalty;
 
   return session;
 }
@@ -232,20 +260,49 @@ export async function markAdminVerified(req) {
   return true;
 }
 
-// Müşteriyi telefon ile bul
+// Müşteriyi telefon ile bul — önce normalize tablo
 export async function findCustomerByPhone(phone) {
-  const { data } = await loadAppState();
-  if (!data) return null;
   const normalized = cleanPhone(phone);
+  const sql = getSql();
+
+  if (sql) {
+    const { findCustomerByPhone: findByPhoneSql } = await import('./customersStore.js');
+    const fromSql = await findByPhoneSql(sql, phone);
+    if (fromSql) return fromSql;
+  }
+
+  if (useRelationalState()) return null;
+
+  const { data } = await loadAppState({ skipPersist: true, skipCache: true });
+  if (!data) return null;
   return listCustomers(data).find((c) => cleanPhone(c.phone) === normalized) || null;
 }
 
-// Müşteriyi e-posta ile bul — app_state + SQL indeks
+// Müşteriyi e-posta ile bul — önce normalize tablo
 export async function findCustomerByEmail(email) {
   const normalized = normalizeEmail(email);
   if (!normalized) return null;
 
-  const { data } = await loadAppState();
+  const sql = getSql();
+  if (sql) {
+    const { findCustomerByEmail: findByEmailSql } = await import('./customersStore.js');
+    const fromSql = await findByEmailSql(sql, normalized);
+    if (fromSql) return fromSql;
+  }
+
+  if (useRelationalState()) {
+    const indexed = await findCustomerIdByEmail(normalized);
+    if (!indexed) return null;
+    return {
+      id: indexed.customer_id,
+      phone: indexed.phone,
+      email: normalized,
+      name: 'Liberte Üye',
+      isAdmin: false
+    };
+  }
+
+  const { data } = await loadAppState({ skipPersist: true, skipCache: true });
   if (data) {
     await syncCustomerEmailsFromState(data);
     const fromState = listCustomers(data).find((c) => normalizeEmail(c.email) === normalized);

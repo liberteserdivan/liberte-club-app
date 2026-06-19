@@ -366,10 +366,17 @@ export async function saveRemote(db, options = {}){
   }
 }
 
-export const norm=p=>{
+// Müşteri kimliği karşılaştırması — string/number uyumu
+export function sameCustomerId(a, b) {
+  if (a == null || b == null) return false;
+  return Number(a) === Number(b);
+}
+
+export const norm=(p)=>{
   let digits=String(p||'').replace(/\D/g,'');
-  if(digits.startsWith('90')&&digits.length>10) digits=digits.slice(2);
-  if(digits.startsWith('0')&&digits.length>10) digits=digits.slice(1);
+  if(!digits) return '';
+  if(digits.startsWith('90')&&digits.length>=12) digits=digits.slice(2);
+  if(digits.startsWith('0')) digits=digits.slice(1);
   if(digits.length>10) digits=digits.slice(-10);
   return digits;
 };

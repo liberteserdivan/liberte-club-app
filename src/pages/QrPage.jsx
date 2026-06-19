@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Crown, RefreshCw } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PageShell from '../components/PageShell.jsx';
@@ -15,6 +15,10 @@ import {
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { CLUB_APP_NAME } from '../lib/constants.js';
 import { fetchCustomerQrToken, formatSignedQrValue, isSignedQrRequired } from '../lib/qrClient.js';
+
+const QR_FETCH_MS = 5000;
+const QR_REFRESH_MS = 60_000;
+const QR_LOADING_CAP_MS = 5000;
 
 // Kartım — müşteri QR gösterir, yönetici müşteri QR tarar
 export default function QrPage({
@@ -45,53 +49,114 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
   const [entered, setEntered] = useState(false);
   const [qrValue, setQrValue] = useState('');
   const [qrError, setQrError] = useState('');
-  const [qrLoading, setQrLoading] = useState(false);
+  const [qrRequestId, setQrRequestId] = useState('');
+  const [qrStatus, setQrStatus] = useState('idle');
   const signedQrRequired = isSignedQrRequired();
+
+  const refreshBusyRef = useRef(false);
+  const abortRef = useRef(null);
+  const qrValueRef = useRef('');
+  const mountedRef = useRef(true);
 
   const lp = getLpCardView(card);
   const remaining = stampsRemaining(card);
   const progress = stampCardProgress(card);
   const level = lp.level;
 
-  const refreshSignedQr = useCallback(async () => {
+  const refreshSignedQr = useCallback(async ({ isRefresh = false } = {}) => {
     if (!signedQrRequired) {
-      setQrValue(JSON.stringify({ type: 'liberte-customer', id: customer.id, phone: customer.phone }));
+      const legacy = JSON.stringify({ type: 'liberte-customer', id: customer.id, phone: customer.phone });
+      qrValueRef.current = legacy;
+      setQrValue(legacy);
       setQrError('');
+      setQrStatus('ready');
       return;
     }
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setQrError('İnternet bağlantısı yok. QR kodu yüklenemedi.');
+      setQrStatus(qrValueRef.current ? 'ready' : 'offline');
       return;
     }
 
-    setQrLoading(true);
+    if (refreshBusyRef.current) return;
+    refreshBusyRef.current = true;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const hadQr = Boolean(qrValueRef.current);
+    setQrStatus(isRefresh && hadQr ? 'refreshing' : 'loading');
+
     try {
-      const issued = await fetchCustomerQrToken();
-      setQrValue(formatSignedQrValue(issued.token));
+      const issued = await fetchCustomerQrToken({
+        signal: controller.signal,
+        timeoutMs: QR_FETCH_MS
+      });
+      if (!mountedRef.current) return;
+
+      const nextValue = formatSignedQrValue(issued.token);
+      qrValueRef.current = nextValue;
+      setQrValue(nextValue);
       setQrError('');
+      setQrRequestId(issued.requestId || '');
+      setQrStatus('ready');
     } catch (error) {
-      setQrValue('');
-      setQrError(error?.message || 'QR kodu yüklenemedi. İnternet bağlantını kontrol edip tekrar dene.');
+      if (!mountedRef.current || error?.name === 'AbortError') return;
+
+      const ref = error?.requestId || '';
+      const base = error?.message || 'QR yüklenemedi. Bağlantını kontrol edip tekrar dene.';
+      const message = ref ? `${base} Ref: ${ref}` : base;
+      setQrError(message);
+      if (ref) setQrRequestId(ref);
+
+      if (!hadQr) {
+        qrValueRef.current = '';
+        setQrValue('');
+        setQrStatus('error');
+      } else {
+        setQrStatus('ready');
+      }
     } finally {
-      setQrLoading(false);
+      refreshBusyRef.current = false;
     }
   }, [customer.id, customer.phone, signedQrRequired]);
 
   useEffect(() => {
+    mountedRef.current = true;
     const t = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(t);
+    return () => {
+      mountedRef.current = false;
+      cancelAnimationFrame(t);
+      abortRef.current?.abort();
+    };
   }, []);
 
   useEffect(() => {
     refreshSignedQr();
     if (!signedQrRequired) return undefined;
 
-    const timer = setInterval(refreshSignedQr, 60 * 1000);
+    const timer = setInterval(() => {
+      refreshSignedQr({ isRefresh: true });
+    }, QR_REFRESH_MS);
+
     return () => clearInterval(timer);
   }, [refreshSignedQr, signedQrRequired]);
 
-  // Kasada LP sonrası müşteri kartını hemen güncelle — useCommit QR aralığı yeterli
+  // 5 sn sonra hâlâ QR yoksa fallback göster
+  useEffect(() => {
+    if (qrStatus !== 'loading') return undefined;
+
+    const capTimer = setTimeout(() => {
+      if (qrValueRef.current) return;
+      setQrStatus('error');
+      setQrError((prev) => prev || 'QR yüklenemedi. Bağlantını kontrol edip tekrar dene.');
+    }, QR_LOADING_CAP_MS);
+
+    return () => clearTimeout(capTimer);
+  }, [qrStatus]);
+
   useEffect(() => {
     if (!refreshRemote) return undefined;
 
@@ -105,6 +170,14 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshRemote, customer.id]);
+
+  const showQr = Boolean(qrValue) && qrStatus !== 'error';
+  const showRetry = signedQrRequired && (qrStatus === 'error' || qrStatus === 'offline' || !showQr);
+  const statusHint = qrError
+    || (qrStatus === 'loading' ? 'QR hazırlanıyor…' : '')
+    || (qrStatus === 'refreshing' ? 'QR yenileniyor…' : '')
+    || (qrStatus === 'offline' ? 'Çevrimdışısın.' : '')
+    || 'QR kodu bekleniyor…';
 
   return (
     <PageShell
@@ -124,22 +197,31 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
           <div className="qrPassLevel"><Crown aria-hidden="true" /> {level}</div>
         </div>
 
-        <div className="qrPassFrame">
+        <div className={`qrPassFrame${qrStatus === 'refreshing' ? ' isRefreshing' : ''}`}>
           <div className="qrPassPulse" aria-hidden="true" />
-          {qrValue ? (
+          {showQr ? (
             <QRCodeCanvas value={qrValue} size={196} level="H" includeMargin={false} />
           ) : (
             <div className="qrPassRetry">
-              <p className="qrPassTip">{qrError || (qrLoading ? 'QR hazırlanıyor…' : 'QR kodu bekleniyor…')}</p>
-              {signedQrRequired && (
-                <button type="button" className="ghost qrRetryBtn" onClick={refreshSignedQr} disabled={qrLoading}>
+              <p className="qrPassTip">{statusHint}</p>
+              {showRetry && (
+                <button
+                  type="button"
+                  className="ghost qrRetryBtn"
+                  onClick={() => refreshSignedQr()}
+                  disabled={qrStatus === 'loading'}
+                >
                   <RefreshCw size={16} aria-hidden="true" />
-                  {qrLoading ? 'Yükleniyor…' : 'Tekrar dene'}
+                  {qrStatus === 'loading' ? 'Yükleniyor…' : 'Tekrar Dene'}
                 </button>
               )}
             </div>
           )}
         </div>
+
+        {qrRequestId && qrStatus === 'error' && (
+          <p className="qrPassRef">Ref: {qrRequestId}</p>
+        )}
 
         <div className="qrPassMeta">
           <div><span>Üye No</span><b>LC-{customer.id}</b></div>

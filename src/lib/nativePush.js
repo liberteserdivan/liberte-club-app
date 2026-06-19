@@ -67,7 +67,7 @@ export async function registerNativePushToken() {
     }
 
     if (perm.receive !== 'granted') {
-      return { ok: false, reason: 'denied' };
+      return { ok: false, reason: 'denied', permissionStatus: perm.receive || 'denied' };
     }
 
     const { token } = await FirebaseMessaging.getToken();
@@ -89,10 +89,11 @@ export async function registerNativePushToken() {
       ok: true,
       token,
       tokenType: 'fcm',
-      platform: Capacitor.getPlatform()
+      platform: Capacitor.getPlatform(),
+      permissionStatus: 'granted'
     };
   } catch (error) {
-    return { ok: false, reason: error?.message || 'registration_failed' };
+    return { ok: false, reason: error?.message || 'registration_failed', permissionStatus: 'error' };
   }
 }
 

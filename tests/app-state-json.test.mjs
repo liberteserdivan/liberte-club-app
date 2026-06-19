@@ -16,6 +16,13 @@ test('parseAppStateData bozuk stringde null döner', () => {
   assert.equal(parseAppStateData('{bad'), null);
 });
 
+test('parseAppStateData çift kodlanmış jsonb stringini açar', () => {
+  const inner = JSON.stringify({ settings: { cafe_name: 'Liberte' }, menuRevision: 3 });
+  const parsed = parseAppStateData(JSON.stringify(inner));
+  assert.equal(parsed.settings.cafe_name, 'Liberte');
+  assert.equal(parsed.menuRevision, 3);
+});
+
 test('serializeAppStateJson geçerli JSON string üretir', () => {
   const text = serializeAppStateJson({ customers: [{ id: 1, name: 'A' }] });
   assert.equal(typeof text, 'string');

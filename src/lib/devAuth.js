@@ -6,8 +6,9 @@ const devPinStore = new Map();
 
 function normPhone(phone) {
   let digits = String(phone || '').replace(/\D/g, '');
-  if (digits.startsWith('90') && digits.length > 10) digits = digits.slice(2);
-  if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1);
+  if (!digits) return '';
+  if (digits.startsWith('90') && digits.length >= 12) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = digits.slice(1);
   if (digits.length > 10) digits = digits.slice(-10);
   return digits;
 }

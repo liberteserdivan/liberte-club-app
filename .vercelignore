@@ -1,0 +1,13 @@
+# Vercel deploy — yalnızca web + API gerekli
+android/
+ios/
+node_modules/
+node_modules_old/
+backups/
+*.zip
+*.neon-backup.json
+*adminsdk*.json
+service-account*.txt
+liberte-app-review-package.zip
+.codemagic/
+.git/

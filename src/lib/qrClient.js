@@ -62,15 +62,20 @@ export function isSignedQrRequired() {
 }
 
 // Müşteri — sunucudan kısa ömürlü QR token al
-export async function fetchCustomerQrToken() {
+export async function fetchCustomerQrToken(options = {}) {
+  const { signal, timeoutMs = 5000 } = options;
   try {
-    const { response, data } = await apiJson('/api/state?qrToken=1');
-    if (!response.ok) {
-      throw new Error(mapQrApiError(response, data, 'QR token alınamadı'));
+    const { response, data } = await apiJson('/api/state?qrToken=1', { signal, timeoutMs });
+    if (!response.ok || data?.ok === false) {
+      const err = new Error(mapQrApiError(response, data, 'QR oluşturulamadı.'));
+      err.requestId = data?.requestId || null;
+      err.code = data?.code || 'QR_GENERATE_FAILED';
+      throw err;
     }
     return data;
   } catch (error) {
-    throw wrapQrNetworkError(error, 'QR token alınamadı');
+    if (error?.requestId || error?.code) throw error;
+    throw wrapQrNetworkError(error, 'QR oluşturulamadı.');
   }
 }
 

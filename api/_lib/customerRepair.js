@@ -1,5 +1,6 @@
-import { loadAppState, saveAppState } from './appState.js';
+import { loadAppState, saveAppState, getSql } from './appState.js';
 import { cleanPhone } from './phone.js';
+import { useRelationalState } from './relationalConfig.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -135,12 +136,33 @@ async function findCustomerByEmailDeep(email) {
   return null;
 }
 
-// Telefon ile müşteri ara — kodlar kayıtlı e-postaya gider
+// Telefon ile müşteri ara — önce normalize tablo
 async function findCustomerByPhoneDeep(phone) {
   const normalizedPhone = cleanPhone(phone);
+  const sql = getSql();
+
+  if (sql) {
+    const { findCustomerByPhone: findByPhoneSql } = await import('./customersStore.js');
+    const fromSql = await findByPhoneSql(sql, normalizedPhone);
+    if (fromSql) {
+      let deliveryEmail = normalizeEmail(fromSql.email);
+      if (!deliveryEmail) {
+        const baseline = BASELINE_CONTACTS.find(
+          (item) => cleanPhone(item.phone) === normalizedPhone
+        );
+        deliveryEmail = normalizeEmail(baseline?.email || '');
+      }
+      if (!deliveryEmail) {
+        return { error: 'Hesabında kayıtlı e-posta yok. Destek ile iletişime geç.' };
+      }
+      return { customer: fromSql, deliveryEmail };
+    }
+  }
+
+  if (useRelationalState()) return null;
+
   const { data } = await loadAppState();
   const fromPhone = listCustomers(data).find((c) => cleanPhone(c.phone) === normalizedPhone);
-
   if (!fromPhone) return null;
 
   let deliveryEmail = normalizeEmail(fromPhone.email);
