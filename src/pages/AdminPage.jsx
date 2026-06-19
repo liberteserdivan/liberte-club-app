@@ -9,7 +9,7 @@ import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,downloadLocalBackup,downloadAdminSnapshotBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
-import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
+import{ReviewApprovalAdmin}from'../components/Cards.jsx';
 import CashierProductPickModal from '../components/CashierProductPickModal.jsx';
 import {
   assertMenuItemCanEarnLp,
@@ -46,7 +46,7 @@ export default function AdminPage({db,commit}){
         <div>
           <span>{db.settings.cafe_name||STORE_APP_NAME}</span>
           <h2>Yönetim Paneli</h2>
-          <p>{memberCount} üye · {deviceCount} aktif bildirim cihazı</p>
+          <p>Liberte Club yönetim merkezi · {memberCount} üye · {deviceCount} bildirim cihazı</p>
         </div>
       </div>
       <div className="adminHeroActions">
@@ -354,57 +354,206 @@ function ItemAdmin({db,commit}){
     imageUrl:'',
     tone:'#b9f5d0',
     featured:false,
-    best:false
+    best:false,
+    active:true,
+    inStock:true
   };
 
   const[f,setF]=useState(blank);
+  const[query,setQuery]=useState('');
+  const[categoryFilter,setCategoryFilter]=useState('all');
+  const[statusFilter,setStatusFilter]=useState('all');
+  const[editId,setEditId]=useState(null);
+  const[editForm,setEditForm]=useState(null);
+  const[pendingDelete,setPendingDelete]=useState(null);
 
-  async function onFile(e){
+  function categoryName(categoryId){
+    return db.categories.find(c=>c.id===categoryId)?.name||'—';
+  }
+
+  function matchesFilters(item){
+    if(categoryFilter!=='all'&&Number(item.categoryId)!==Number(categoryFilter))return false;
+    const isActive=item.active!==false;
+    if(statusFilter==='active'&&!isActive)return false;
+    if(statusFilter==='passive'&&isActive)return false;
+    if(!query.trim())return true;
+    const needle=query.trim().toLowerCase();
+    return String(item.name||'').toLowerCase().includes(needle)
+      ||String(item.description||'').toLowerCase().includes(needle);
+  }
+
+  async function onFile(e,isEdit=false){
     const file=e.target.files?.[0];
-    if(file)setF({...f,imageUrl:await fileToDataUrl(file)});
+    if(!file)return;
+    const url=await fileToDataUrl(file);
+    if(isEdit)setEditForm(prev=>({...prev,imageUrl:url}));
+    else setF({...f,imageUrl:url});
   }
 
   function saveItem(){
     if(!f.name||!f.price)return alert('Ürün adı ve fiyat zorunlu.');
-    commit({...db,items:[...db.items,{...f,id:Date.now(),price:Number(f.price)}]});
+    commit({...db,items:[...db.items,{
+      ...f,
+      id:Date.now(),
+      price:Number(f.price),
+      active:f.active!==false,
+      inStock:f.inStock!==false
+    }]});
     setF(blank);
   }
 
-  function upd(id,patch){
-    commit({...db,items:db.items.map(i=>i.id===id?{...i,...patch}:i)});
+  function startEdit(item){
+    setEditId(item.id);
+    setEditForm({
+      name:item.name||'',
+      price:item.price||'',
+      description:item.description||'',
+      categoryId:item.categoryId,
+      image:item.image||'☕',
+      imageUrl:item.imageUrl||'',
+      tone:item.tone||'#b9f5d0',
+      featured:!!item.featured,
+      best:!!item.best,
+      active:item.active!==false,
+      inStock:item.inStock!==false
+    });
   }
 
-  return <div className="adminGrid">
-    <div className="card">
-      <h3>Ürün Ekle</h3>
-      <input placeholder="Ürün adı" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
-      <input placeholder="Fiyat" type="number" value={f.price} onChange={e=>setF({...f,price:e.target.value})}/>
-      <textarea placeholder="Açıklama" value={f.description} onChange={e=>setF({...f,description:e.target.value})}/>
+  function saveEdit(){
+    if(!editForm?.name||!editForm?.price)return alert('Ürün adı ve fiyat zorunlu.');
+    commit({...db,items:db.items.map(i=>i.id===editId?{
+      ...i,
+      ...editForm,
+      price:Number(editForm.price),
+      active:editForm.active!==false,
+      inStock:editForm.inStock!==false
+    }:i)});
+    setEditId(null);
+    setEditForm(null);
+  }
 
-      <select value={f.categoryId} onChange={e=>setF({...f,categoryId:Number(e.target.value)})}>
-        {db.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-      </select>
+  function executeDelete(){
+    if(!pendingDelete)return;
+    commit({...db,items:db.items.filter(x=>x.id!==pendingDelete.id)});
+    setPendingDelete(null);
+    if(editId===pendingDelete.id){
+      setEditId(null);
+      setEditForm(null);
+    }
+  }
 
-      <input placeholder="Emoji" value={f.image} onChange={e=>setF({...f,image:e.target.value})}/>
+  const filtered=db.items.filter(matchesFilters);
 
-      <label className="file">
-        <UploadCloud/> Görsel Yükle
-        <input type="file" accept="image/*" onChange={onFile}/>
-      </label>
+  return <div className="adminStack">
+    <div className="card adminSectionCard adminMenuCard">
+      <div className="adminSectionHead">
+        <div><span>MENÜ</span><h3>Ürün Ekle</h3></div>
+      </div>
+      <p className="adminHint">Yeni ürün ekle; kategori, fiyat ve görseli buradan yönet.</p>
 
-      <button onClick={saveItem}><Plus/> Ürün Ekle</button>
+      <div className="adminItemForm">
+        <input placeholder="Ürün adı" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
+        <input placeholder="Fiyat" type="number" value={f.price} onChange={e=>setF({...f,price:e.target.value})}/>
+        <textarea placeholder="Açıklama" value={f.description} onChange={e=>setF({...f,description:e.target.value})}/>
+        <select value={f.categoryId} onChange={e=>setF({...f,categoryId:Number(e.target.value)})}>
+          {db.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <input placeholder="Emoji" value={f.image} onChange={e=>setF({...f,image:e.target.value})} aria-label="Ürün emoji"/>
+        <label className="file">
+          <UploadCloud/> Görsel yükle
+          <input type="file" accept="image/*" onChange={onFile}/>
+        </label>
+        <label className="adminToggle"><input type="checkbox" checked={f.active!==false} onChange={e=>setF({...f,active:e.target.checked})}/><span>Aktif</span></label>
+        <label className="adminToggle"><input type="checkbox" checked={f.inStock!==false} onChange={e=>setF({...f,inStock:e.target.checked})}/><span>Stokta var</span></label>
+        <button type="button" onClick={saveItem}><Plus/> Ürün ekle</button>
+      </div>
     </div>
 
-    <div className="list">
-      {db.items.map(i=>
-        <div className="card mini" key={i.id}>
-          <Product item={i}/>
-          <input value={i.name} onChange={e=>upd(i.id,{name:e.target.value})}/>
-          <input type="number" value={i.price} onChange={e=>upd(i.id,{price:Number(e.target.value)})}/>
-          <button className="danger" onClick={()=>commit({...db,items:db.items.filter(x=>x.id!==i.id)})}>
-            <Trash2/> Sil
-          </button>
-        </div>
+    <div className="card adminSectionCard adminMenuCard">
+      <div className="adminSectionHead">
+        <div><span>MENÜ</span><h3>Ürün Listesi</h3></div>
+      </div>
+
+      <input
+        className="adminCategorySearch"
+        placeholder="Ürün ara…"
+        value={query}
+        onChange={e=>setQuery(e.target.value)}
+      />
+
+      <div className="adminItemFilters">
+        <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} aria-label="Kategori filtresi">
+          <option value="all">Tüm kategoriler</option>
+          {db.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} aria-label="Durum filtresi">
+          <option value="all">Tümü</option>
+          <option value="active">Aktif</option>
+          <option value="passive">Pasif</option>
+        </select>
+      </div>
+
+      <div className="adminPremiumList">
+        {filtered.length?filtered.map(item=>{
+          const isEditing=editId===item.id;
+          const isActive=item.active!==false;
+          const inStock=item.inStock!==false;
+          return <div className="adminPremiumRow adminItemRow" key={item.id}>
+            <div className="adminPremiumRowMain">
+              <span className="adminPremiumBadge" aria-hidden="true">{item.image||'☕'}</span>
+              <div className="adminPremiumRowMeta">
+                {isEditing?(
+                  <div className="adminItemEditGrid">
+                    <input value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})} placeholder="Ürün adı"/>
+                    <input type="number" value={editForm.price} onChange={e=>setEditForm({...editForm,price:e.target.value})} placeholder="Fiyat"/>
+                    <textarea value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})} placeholder="Açıklama"/>
+                    <select value={editForm.categoryId} onChange={e=>setEditForm({...editForm,categoryId:Number(e.target.value)})}>
+                      {db.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <input value={editForm.image} onChange={e=>setEditForm({...editForm,image:e.target.value})} placeholder="Emoji" aria-label="Düzenle emoji"/>
+                    <label className="file adminItemFile">
+                      <UploadCloud size={14}/> Görsel
+                      <input type="file" accept="image/*" onChange={e=>onFile(e,true)}/>
+                    </label>
+                    <label className="adminToggle adminToggle--onDark"><input type="checkbox" checked={editForm.active!==false} onChange={e=>setEditForm({...editForm,active:e.target.checked})}/><span>Aktif</span></label>
+                    <label className="adminToggle adminToggle--onDark"><input type="checkbox" checked={editForm.inStock!==false} onChange={e=>setEditForm({...editForm,inStock:e.target.checked})}/><span>Stokta</span></label>
+                  </div>
+                ):(
+                  <>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {categoryName(item.categoryId)} · {money(item.price)}
+                      · {isActive?'Aktif':'Pasif'} · {inStock?'Stokta':'Tükendi'}
+                    </small>
+                    {item.description&&<small className="adminItemDesc">{item.description}</small>}
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="adminCategoryActions">
+              {isEditing?(
+                <>
+                  <button type="button" className="ghost" onClick={()=>{setEditId(null);setEditForm(null);}}>İptal</button>
+                  <button type="button" onClick={saveEdit}>Kaydet</button>
+                </>
+              ):(
+                <>
+                  <button type="button" className="ghost" aria-label="Düzenle" onClick={()=>startEdit(item)}><Edit2 size={16}/></button>
+                  <button type="button" className="danger" aria-label="Sil" onClick={()=>setPendingDelete(item)}><Trash2 size={16}/></button>
+                </>
+              )}
+            </div>
+          </div>;
+        }):<div className="empty">Eşleşen ürün yok.</div>}
+      </div>
+
+      {pendingDelete&&(
+        <AdminConfirmModal
+          title="Ürünü sil"
+          message={`"${pendingDelete.name}" ürününü silmek istediğine emin misin?`}
+          onCancel={()=>setPendingDelete(null)}
+          onConfirm={executeDelete}
+        />
       )}
     </div>
   </div>;

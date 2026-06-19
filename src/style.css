@@ -8436,6 +8436,64 @@ body.menuDetailOpen{
   .adminMemberStats{
     grid-template-columns:repeat(4,minmax(0,1fr));
   }
+  .adminItemForm{
+    grid-template-columns:1fr 1fr;
+  }
+  .adminItemForm button,
+  .adminItemForm textarea{
+    grid-column:1/-1;
+  }
+  .adminItemFilters{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+/* —— Admin ürün yönetimi —— */
+.adminItemForm{
+  display:grid;
+  gap:10px;
+}
+.adminItemFilters{
+  display:grid;
+  gap:10px;
+  margin-bottom:12px;
+}
+.adminItemFilters select{
+  margin:0;
+}
+.adminItemRow{
+  align-items:flex-start;
+}
+.adminItemDesc{
+  display:block!important;
+  margin-top:6px!important;
+  color:var(--color-text-desc-on-dark)!important;
+  font-size:11px!important;
+  line-height:1.4!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box!important;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+.adminItemEditGrid{
+  display:grid;
+  gap:8px;
+  width:100%;
+}
+.adminItemEditGrid input,
+.adminItemEditGrid textarea,
+.adminItemEditGrid select{
+  margin:0;
+  background:#fff;
+  color:var(--text);
+}
+.adminItemFile{
+  padding:10px 12px!important;
+  font-size:12px!important;
+}
+.adminToggle--onDark span{
+  color:var(--color-text-muted-on-dark)!important;
 }
 .pageProHero .menuProCats button:not(.on){
   border-color:rgba(255,255,255,.22);
