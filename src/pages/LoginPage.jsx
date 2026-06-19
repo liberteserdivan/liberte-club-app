@@ -41,7 +41,6 @@ export default function Login({ db, commit, setSession }) {
   const [phone, setPhone] = useState(() => formatPhoneInput(localStorage.getItem('liberteLastPhone') || ''));
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => localStorage.getItem('liberteLastEmail') || '');
-  const [birthDate, setBirthDate] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
@@ -154,7 +153,7 @@ export default function Login({ db, commit, setSession }) {
       isAdmin: false,
       createdAt: new Date().toLocaleString('tr-TR'),
       lastVisit: new Date().toISOString(),
-      birthDate: fields.birthDate || '',
+      birthDate: '',
       referralCode: generateUniqueReferralCode(next.customers),
       referredBy: referrer?.id || null
     };
@@ -234,7 +233,6 @@ export default function Login({ db, commit, setSession }) {
       ph,
       nm,
       em,
-      birthDate,
       referralCode: referralCode.trim().toUpperCase().replace(/\s/g, '')
     };
   }
@@ -321,7 +319,6 @@ export default function Login({ db, commit, setSession }) {
           phone: fields.ph,
           name: fields.nm,
           email: fields.em,
-          birthDate: fields.birthDate,
           referralCode: fields.referralCode,
           pin: pinValue,
           pinConfirm: pinValue,
@@ -546,9 +543,6 @@ export default function Login({ db, commit, setSession }) {
               <label>E-posta <em>*</em></label>
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresiniz" inputMode="email" autoComplete="email" />
               <p className="loginHint loginHint--verify">Doğrulama kodu bu adrese gönderilir.</p>
-
-              <label>Doğum Tarihi</label>
-              <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date" />
 
               <label>Referans Kodu</label>
               <input value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} placeholder="Varsa davet kodunuzu giriniz" />

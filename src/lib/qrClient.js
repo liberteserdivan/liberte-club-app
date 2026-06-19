@@ -67,12 +67,27 @@ export async function fetchCustomerQrToken(options = {}) {
   try {
     const { response, data } = await apiJson('/api/state?qrToken=1', { signal, timeoutMs });
     if (!response.ok || data?.ok === false) {
-      const err = new Error(mapQrApiError(response, data, 'QR oluşturulamadı.'));
+      const err = new Error(mapQrApiError(response, data, data?.message || 'QR oluşturulamadı.'));
       err.requestId = data?.requestId || null;
       err.code = data?.code || 'QR_GENERATE_FAILED';
       throw err;
     }
-    return data;
+
+    const token = String(data.token || data.qrToken || '').trim();
+    if (!token) {
+      const err = new Error('QR yanıtı geçersiz.');
+      err.requestId = data?.requestId || null;
+      err.code = 'QR_INVALID_RESPONSE';
+      throw err;
+    }
+
+    const qrPayload = String(data.qrPayload || '').trim() || formatSignedQrValue(token);
+    return {
+      ...data,
+      token,
+      qrToken: token,
+      qrPayload
+    };
   } catch (error) {
     if (error?.requestId || error?.code) throw error;
     throw wrapQrNetworkError(error, 'QR oluşturulamadı.');

@@ -86,8 +86,8 @@ export function filterStateForAdmin(state) {
   return next;
 }
 
-// Müşterinin yalnızca güncelleyebileceği güvenli profil alanları
-const SAFE_PROFILE_FIELDS = ['name', 'email', 'birthDate', 'notificationPreferences'];
+// Müşterinin yalnızca güncelleyebileceği güvenli profil alanları — birthDate admin only
+const SAFE_PROFILE_FIELDS = ['name', 'email', 'notificationPreferences'];
 
 // Müşteri oturumunun asla yazamayacağı hassas, müşteriye özel satır alanları
 const SENSITIVE_ROW_FIELDS = [
@@ -108,9 +108,6 @@ function applySafeProfile(current, patch) {
   }
   if (typeof patch.email === 'string' && patch.email.trim()) {
     next.email = patch.email.trim().toLowerCase();
-  }
-  if ('birthDate' in patch) {
-    next.birthDate = String(patch.birthDate || '');
   }
   if ('notificationPreferences' in patch) {
     next.notificationPreferences = patch.notificationPreferences;
@@ -162,6 +159,12 @@ export function findCustomerWriteViolations(canonical, clientState, customerId) 
   const clientCustomer = (clientState.customers || []).find((c) => Number(c.id) === id);
   if (clientCustomer && (clientCustomer.isAdmin === true || clientCustomer.role)) {
     violations.push('isAdmin');
+  }
+
+  // Doğum tarihi — yalnızca admin değiştirebilir
+  const canonCustomer = (canon.customers || []).find((c) => Number(c.id) === id);
+  if (clientCustomer && canonCustomer && clientCustomer.birthDate !== canonCustomer.birthDate) {
+    violations.push('birthDate');
   }
 
   // Hassas müşteriye özel satırları değiştirme denemesi

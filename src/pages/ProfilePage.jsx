@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User, Calendar, ExternalLink } from 'lucide-react';
+import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User, ExternalLink } from 'lucide-react';
 import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
@@ -27,8 +27,6 @@ export default function ProfilePage({
 }) {
   const [legalType, setLegalType] = useState('');
   const [message, setMessage] = useState('');
-  const [birthDate, setBirthDate] = useState(customer.birthDate || '');
-  const [savingBirthDate, setSavingBirthDate] = useState(false);
   const lp = getLpCardView(card);
   const level = lp.level;
   const tierTone = TIER_TONE[level] || 'bronze';
@@ -37,26 +35,6 @@ export default function ProfilePage({
     deactivateDevicePushToken(customer.id, db, commit);
     await logoutSession();
     setSession(null);
-  }
-
-  function saveBirthDate() {
-    const value = String(birthDate || '').trim();
-    if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      setMessage('Doğum tarihi YYYY-AA-GG formatında olmalı.');
-      return;
-    }
-
-    setSavingBirthDate(true);
-    setMessage('');
-    const next = {
-      ...db,
-      customers: (db.customers || []).map((row) => (
-        row.id === customer.id ? { ...row, birthDate: value || '' } : row
-      ))
-    };
-    commit(next);
-    setSavingBirthDate(false);
-    setMessage(value ? 'Doğum tarihin kaydedildi.' : 'Doğum tarihi kaldırıldı.');
   }
 
   async function removeAccount() {
@@ -106,23 +84,6 @@ export default function ProfilePage({
     >
       <PageSection>
         <MembershipTierCard card={card} customer={customer} history={db.history || []} />
-      </PageSection>
-
-      <PageSection label="Doğum günü">
-        <div className="profileBirthDateCard">
-          <p className="profileHint">Doğum günü kahve ikramı için tarihini ekleyebilirsin.</p>
-          <label className="profileBirthLabel">
-            <Calendar size={16} aria-hidden="true" />
-            <input
-              type="date"
-              value={birthDate}
-              onChange={(event) => setBirthDate(event.target.value)}
-            />
-          </label>
-          <button type="button" className="profileAction" onClick={saveBirthDate} disabled={savingBirthDate}>
-            {savingBirthDate ? 'Kaydediliyor…' : 'Doğum Tarihini Kaydet'}
-          </button>
-        </div>
       </PageSection>
 
       <PageSection label="İletişim">

@@ -146,7 +146,8 @@ async function handleComplete(req, res, trace, body) {
   const pin = normalizePin(body.pin);
   const pinConfirm = normalizePin(body.pinConfirm);
   const code = String(body.code || '').replace(/\D/g, '');
-  const birthDate = String(body.birthDate || '');
+  // Doğum tarihi müşteri tarafından girilemez — yalnızca admin panelinden
+  const birthDate = '';
   const inviteCode = String(body.referralCode || body.inviteCode || '').trim().toUpperCase();
   const deviceId = String(body.deviceId || '').trim();
 
@@ -230,7 +231,7 @@ async function handleComplete(req, res, trace, body) {
       phone,
       email,
       name,
-      birthDate: birthDate || customer.birthDate || ''
+      birthDate: conflict.resumeCustomer?.birthDate || '',
     };
     trace.markStep('customer_create');
   }

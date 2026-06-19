@@ -1,7 +1,7 @@
 import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
 import { loadAppState, loadAppStateRevision, saveAppState, isSameAppStateRevision } from './_lib/appState.js';
 import { getSession, requireAdminSession, requireSession } from './_lib/auth.js';
-import { createCustomerQrToken } from './_lib/qrToken.js';
+import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from './_lib/qrToken.js';
 import { logServerError } from './_lib/logServerError.js';
 import {
   clearAllErrorLogs,
@@ -156,27 +156,92 @@ export default async function handler(req, res) {
 // Müşteri — imzalı QR token üret
 async function handleCustomerQrToken(req, res) {
   const trace = createRequestTrace('qr.generate');
-  const session = await requireSession(req, res);
-  if (!session) return;
+  const startedAt = Date.now();
+  const signing = resolveQrSigningSecret();
+
+  const session = await getSession(req);
+  trace.log('session_check', {
+    hasSession: Boolean(session),
+    sessionValid: Boolean(session?.customerId),
+    customerId: session?.customerId || null,
+    memberNo: session?.customerId ? `LC-${session.customerId}` : null,
+    hasQrSecret: signing.source === 'QR_SIGNING_SECRET',
+    hasSigningFallback: signing.source === 'ADMIN_PIN_DERIVED',
+    signingSource: signing.source,
+    step: 'session_read'
+  });
+
+  if (!session) {
+    return res.status(401).json(trace.failBody('session', 'SESSION_REQUIRED', 'Oturum gerekli. Lütfen tekrar giriş yap.'));
+  }
 
   // Kasiyer modu (admin PIN doğrulandı) — müşteri QR üretilmez
   if (session.isAdmin && session.adminVerified) {
     return res.status(403).json(trace.failBody('forbidden', 'FORBIDDEN', 'Kasiyer modunda müşteri QR üretilemez'));
   }
 
+  if (!signing.secret) {
+    await insertErrorLog({
+      level: 'error',
+      source: 'qr.generate',
+      message: 'QR imza anahtarı yapılandırılmadı',
+      code: 'QR_SECRET_MISSING',
+      customerId: session.customerId,
+      detail: { requestId: trace.requestId, step: 'signing_secret' }
+    });
+    return res.status(503).json(trace.failBody(
+      'signing_secret',
+      'QR_SECRET_MISSING',
+      'QR yapılandırması eksik. Destek ile iletişime geç.'
+    ));
+  }
+
   try {
     const issued = createCustomerQrToken(session.customerId);
-    trace.log('complete_ok', { customerId: session.customerId });
+    const qrPayload = formatQrPayload(issued.token);
+
+    trace.log('complete_ok', {
+      customerId: session.customerId,
+      memberNo: `LC-${session.customerId}`,
+      payloadCreated: Boolean(qrPayload),
+      tokenCreated: Boolean(issued.token),
+      durationMs: Date.now() - startedAt,
+      status: 'ok'
+    });
+
     return res.status(200).json({
       ok: true,
       requestId: trace.requestId,
       token: issued.token,
       qrToken: issued.token,
+      qrPayload,
       expiresAt: issued.expiresAt,
       ttlSeconds: issued.ttlSeconds,
       serverTime: Date.now()
     });
   } catch (error) {
+    await insertErrorLog({
+      level: 'error',
+      source: 'qr.generate',
+      message: error?.message || 'QR oluşturulamadı',
+      code: 'QR_GENERATE_FAILED',
+      customerId: session.customerId,
+      detail: {
+        requestId: trace.requestId,
+        step: 'generate',
+        stack: error?.stack || null,
+        durationMs: Date.now() - startedAt
+      }
+    });
+
+    trace.log('error', {
+      customerId: session.customerId,
+      step: 'generate',
+      error: error?.message || String(error),
+      durationMs: Date.now() - startedAt,
+      status: 'error'
+    });
+
     return res.status(503).json(trace.failBody(
       'generate',
       'QR_GENERATE_FAILED',

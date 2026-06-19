@@ -1,18 +1,35 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const TOKEN_VERSION = 1;
 const TOKEN_TTL_MS = 90 * 1000;
+const QR_PREFIX = 'liberte-qr:';
 
-// İmza anahtarı — production'da yalnızca QR_SIGNING_SECRET
-function signingSecret() {
-  const secret = String(process.env.QR_SIGNING_SECRET || '').trim();
-  if (secret) return secret;
+// İmza anahtarı — önce QR_SIGNING_SECRET, yoksa ADMIN_PIN türetmesi
+export function resolveQrSigningSecret() {
+  const qrSecret = String(process.env.QR_SIGNING_SECRET || '').trim();
+  if (qrSecret) return { secret: qrSecret, source: 'QR_SIGNING_SECRET' };
 
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
-    throw new Error('QR imza anahtarı yapılandırılmadı');
+  const adminPin = String(process.env.ADMIN_PIN || '').trim();
+  if (adminPin) {
+    return {
+      secret: createHash('sha256').update(`liberte-qr-v1:${adminPin}`).digest('hex'),
+      source: 'ADMIN_PIN_DERIVED'
+    };
   }
 
-  return String(process.env.QR_SIGNING_SECRET || 'dev-qr-signing-secret').trim();
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
+    return { secret: null, source: 'missing' };
+  }
+
+  return { secret: 'dev-qr-signing-secret', source: 'dev_fallback' };
+}
+
+function signingSecret() {
+  const { secret, source } = resolveQrSigningSecret();
+  if (!secret) {
+    throw new Error('QR_SIGNING_SECRET veya ADMIN_PIN yapılandırılmadı');
+  }
+  return secret;
 }
 
 // Base64url kodla
@@ -42,6 +59,11 @@ export function createCustomerQrToken(customerId) {
     expiresAt: exp,
     ttlSeconds: Math.floor(TOKEN_TTL_MS / 1000)
   };
+}
+
+// QR render için tam metin — frontend ile uyumlu
+export function formatQrPayload(token) {
+  return `${QR_PREFIX}${token}`;
 }
 
 // QR token doğrula

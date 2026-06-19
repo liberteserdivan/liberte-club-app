@@ -96,7 +96,13 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
       });
       if (!mountedRef.current) return;
 
-      const nextValue = formatSignedQrValue(issued.token);
+      const nextValue = String(issued.qrPayload || formatSignedQrValue(issued.token)).trim();
+      if (!nextValue || nextValue === 'liberte-qr:') {
+        throw Object.assign(new Error('QR yanıtı boş.'), {
+          requestId: issued.requestId,
+          code: 'QR_INVALID_RESPONSE'
+        });
+      }
       qrValueRef.current = nextValue;
       setQrValue(nextValue);
       setQrError('');
@@ -141,7 +147,15 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
       refreshSignedQr({ isRefresh: true });
     }, QR_REFRESH_MS);
 
-    return () => clearInterval(timer);
+    function onOnline() {
+      if (!qrValueRef.current) refreshSignedQr();
+    }
+    window.addEventListener('online', onOnline);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('online', onOnline);
+    };
   }, [refreshSignedQr, signedQrRequired]);
 
   // 5 sn sonra hâlâ QR yoksa fallback göster
