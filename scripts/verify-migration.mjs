@@ -6,18 +6,9 @@
  *   DATABASE_URL=... node scripts/verify-migration.mjs
  */
 import { createHash } from 'node:crypto';
-import { neon } from '@neondatabase/serverless';
+import { getSql } from './_lib/getSql.mjs';
 
 const STATE_ID = 'liberte';
-
-function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error('DATABASE_URL eksik.');
-    process.exit(1);
-  }
-  return neon(connectionString);
-}
 
 function checksum(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');

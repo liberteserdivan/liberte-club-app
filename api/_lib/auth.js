@@ -1,7 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { neon } from '@neondatabase/serverless';
 import { cleanPhone } from './phone.js';
-import { loadAppState } from './appState.js';
+import { loadAppState, getSql } from './appState.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -33,13 +32,6 @@ async function ensureSessionTable(sql) {
   )`;
   await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_failed int NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_locked_until timestamptz`;
-}
-
-// SQL bağlantısı
-function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  return neon(connectionString);
 }
 
 // Cookie'den veya Authorization başlığından token oku

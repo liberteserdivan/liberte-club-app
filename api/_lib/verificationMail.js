@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { getSql } from './appState.js';
 import { ensureEmailCodesTable } from './emailCodesSchema.js';
 
 function makeCode() {
@@ -77,11 +77,10 @@ export async function sendVerificationCode({
   greeting
 }) {
   try {
-    if (!process.env.DATABASE_URL) {
+    const sql = getSql();
+    if (!sql) {
       return { ok: false, status: 500, error: 'DATABASE_URL eksik' };
     }
-
-    const sql = neon(process.env.DATABASE_URL);
     await ensureEmailCodesTable(sql);
 
     const code = await storeVerificationCode(sql, { email, phone, purpose });

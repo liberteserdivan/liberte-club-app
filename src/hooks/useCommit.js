@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
+import { saveAdminSnapshot } from '../lib/adminFullSnapshot.js';
 import { reportError } from '../lib/errorHub.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
@@ -148,6 +149,12 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       lastRemoteAt.current = remote.updatedAt;
       setDb(remote.data);
       persistLocal(remote.data);
+
+      const session = sessionRef?.current;
+      if (session?.isAdmin && session?.adminVerified) {
+        saveAdminSnapshot(remote.data);
+      }
+
       setMode('cloud');
       setSyncState((prev) => ({
         ...prev,

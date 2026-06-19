@@ -6,7 +6,7 @@
  *   DATABASE_URL=... node scripts/restore-state-backup.mjs --latest-pre-delete
  *   DATABASE_URL=... node scripts/restore-state-backup.mjs --id 42
  */
-import { neon } from '@neondatabase/serverless';
+import { getSql } from './_lib/getSql.mjs';
 
 const STATE_ID = 'liberte';
 
@@ -19,15 +19,6 @@ function parseArgs(argv) {
     if (token === '--id') args.id = Number(argv[i + 1]);
   }
   return args;
-}
-
-function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error('DATABASE_URL eksik. Neon connection string gerekli.');
-    process.exit(1);
-  }
-  return neon(connectionString);
 }
 
 // Yedek listesini yazdır

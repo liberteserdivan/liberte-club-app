@@ -6,6 +6,19 @@ function errorFrom(data, response, fallback) {
   return data?.error || (response.ok ? '' : fallback) || fallback;
 }
 
+import { loadAdminSnapshot } from './adminFullSnapshot.js';
+
+// JSON dosyasını indir
+function saveJsonDownload(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // Tam yedeği sunucudan indir ve JSON dosyası olarak kaydet
 export async function downloadBackup() {
   const response = await apiFetch('/api/backup');
@@ -16,14 +29,40 @@ export async function downloadBackup() {
     throw new Error(message);
   }
 
-  const blob = new Blob([text], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `liberte-yedek-${stamp}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
+  saveJsonDownload(JSON.parse(text), `liberte-yedek-${stamp}.json`);
+}
+
+// Sunucu erişilemezken — bellekteki/önbellekteki veriyi indir
+export function downloadLocalBackup(db) {
+  if (!db || !Array.isArray(db.customers)) {
+    throw new Error('Önbellekte yedeklenecek veri yok.');
+  }
+
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  saveJsonDownload({
+    exportedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    source: 'local-cache',
+    data: db
+  }, `liberte-onbellek-yedek-${stamp}.json`);
+}
+
+// Son başarılı admin sync anlık görüntüsünü indir (tüm üyeler)
+export function downloadAdminSnapshotBackup() {
+  const snapshot = loadAdminSnapshot();
+  if (!snapshot?.data?.customers?.length) {
+    throw new Error('Tam yönetici yedeği yok. Sunucu açıkken admin olarak bir kez giriş yapıp senkron olması gerekir.');
+  }
+
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  saveJsonDownload({
+    exportedAt: new Date().toISOString(),
+    updatedAt: snapshot.savedAt || new Date().toISOString(),
+    source: 'admin-snapshot',
+    customerCount: snapshot.customerCount,
+    data: snapshot.data
+  }, `liberte-tam-yedek-${stamp}.json`);
 }
 
 // Sunucudaki anlık yedek listesini getir

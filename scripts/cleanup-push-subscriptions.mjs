@@ -5,23 +5,18 @@
  *   DATABASE_URL=... node scripts/cleanup-push-subscriptions.mjs
  *   DATABASE_URL=... node scripts/cleanup-push-subscriptions.mjs --reset
  */
-import { neon } from '@neondatabase/serverless';
+import { getSql } from './_lib/getSql.mjs';
 import { sanitizePushSubscriptions } from '../src/lib/pushSubscriptionSanitize.js';
 
 const STATE_ID = 'liberte';
 const resetMode = process.argv.includes('--reset');
 
-function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+async function main() {
+  const sql = getSql();
+  if (!sql) {
     console.error('DATABASE_URL eksik.');
     process.exit(1);
   }
-  return neon(connectionString);
-}
-
-async function main() {
-  const sql = getSql();
   const rows = await sql`SELECT data FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
   const data = rows[0]?.data;
   if (!data) {

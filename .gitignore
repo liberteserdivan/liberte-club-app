@@ -76,5 +76,8 @@ android/app/*.keystore
 
 # Firebase admin ve gizli anahtar yedekleri — commit etme
 service-account*.txt
+backups/
+*.neon-backup.json
+
 *adminsdk*.json
 liberte-app-review-package.zip

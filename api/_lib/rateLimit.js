@@ -1,6 +1,4 @@
-import { neon } from '@neondatabase/serverless';
-
-const WINDOW_MS = 15 * 60 * 1000;
+import { getSql } from './appState.js';
 
 // Rate limit tablosunu hazırla
 async function ensureRateLimitTable(sql) {
@@ -9,13 +7,6 @@ async function ensureRateLimitTable(sql) {
     hit_count int NOT NULL DEFAULT 0,
     window_start timestamptz NOT NULL DEFAULT now()
   )`;
-}
-
-// SQL bağlantısı
-function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  return neon(connectionString);
 }
 
 // İstek IP adresini oku

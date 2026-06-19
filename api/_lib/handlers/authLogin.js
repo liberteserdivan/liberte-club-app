@@ -1,5 +1,4 @@
-import { neon } from '@neondatabase/serverless';
-import { applyCors, readBody } from '../http.js';
+import { getSql } from '../appState.js';
 import { cleanPhone } from '../phone.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
 import {
@@ -58,7 +57,8 @@ export async function handleAuthLogin(req, res) {
       return res.status(400).json({ error: 'PIN 4 veya 6 haneli olmalı.' });
     }
 
-    const sql = neon(process.env.DATABASE_URL);
+    const sql = getSql();
+    if (!sql) return res.status(500).json({ error: 'DATABASE_URL eksik' });
     const verified = await verifyCustomerPin(sql, phone, pin);
     if (!verified.ok) {
       return res.status(verified.status).json({

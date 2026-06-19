@@ -1,9 +1,7 @@
-import { neon } from '@neondatabase/serverless';
-import { applyCors, readBody } from '../http.js';
+import { getSql } from '../appState.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
 import { upsertCustomerEmail } from '../customerEmails.js';
-import { getSql } from '../appState.js';
 import { resolveRecoveryCustomer } from '../customerRepair.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
 import {
@@ -76,7 +74,8 @@ async function handleReset(req, res) {
   }
 
   const { customer, deliveryEmail, phone } = resolved;
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = getSql();
+  if (!sql) return res.status(500).json({ error: 'DATABASE_URL eksik' });
   const verified = await verifyEmailCode(sql, {
     email: deliveryEmail,
     phone,

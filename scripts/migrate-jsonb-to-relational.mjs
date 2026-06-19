@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { neon } from '@neondatabase/serverless';
+import { getSql } from './_lib/getSql.mjs';
 
 const STATE_ID = 'liberte';
 const MIGRATION_ID = '001_jsonb_to_relational';
@@ -22,15 +22,6 @@ function parseArgs(argv) {
     dryRun: argv.includes('--dry-run'),
     force: argv.includes('--force')
   };
-}
-
-function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error('DATABASE_URL eksik.');
-    process.exit(1);
-  }
-  return neon(connectionString);
 }
 
 function checksum(value) {

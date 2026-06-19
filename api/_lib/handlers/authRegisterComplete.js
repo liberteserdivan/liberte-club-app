@@ -1,5 +1,4 @@
-import { neon } from '@neondatabase/serverless';
-import { findReferrerByInviteCode } from '../referralCode.js';
+import { getSql } from '../appState.js';
 import { applyCors, readBody } from '../http.js';
 import { cleanPhone } from '../phone.js';
 import { buildCustomerRecord, createSession, indexCustomerEmail } from '../auth.js';
@@ -101,7 +100,8 @@ async function handleComplete(req, res) {
     return res.status(409).json({ error: 'Bu telefon veya e-posta zaten kayıtlı' });
   }
 
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = getSql();
+  if (!sql) return res.status(500).json({ error: 'DATABASE_URL eksik' });
   const verified = await verifyEmailCode(sql, {
     email,
     phone,

@@ -7,7 +7,7 @@ import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileT
 import{historyTypeLabel}from'../lib/loyaltyStamps.js';
 import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
-import{downloadBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
+import{downloadBackup,downloadLocalBackup,downloadAdminSnapshotBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
 import{ReviewApprovalAdmin,Product}from'../components/Cards.jsx';
 import CashierProductPickModal from '../components/CashierProductPickModal.jsx';
@@ -105,13 +105,13 @@ function SettingsAdmin({db,commit}){
   return <div className="adminStack">
     <DesignAdmin db={db} commit={commit}/>
     <CouponsAdmin db={db} commit={commit}/>
-    <BackupAdmin/>
+    <BackupAdmin db={db}/>
     <ErrorLogsAdmin/>
   </div>;
 }
 
 // Veri yedeği — sunucudan tam yedek indir / yedekten geri yükle (PIN doğrulamalı)
-function BackupAdmin(){
+function BackupAdmin({ db }){
   const[backups,setBackups]=useState([]);
   const[busy,setBusy]=useState('');
   const[status,setStatus]=useState('');
@@ -136,6 +136,27 @@ function BackupAdmin(){
       setStatus('Yedek indirildi.');
     }catch(e){
       setStatus(e.message||'Yedek indirilemedi.');
+    }finally{setBusy('');}
+  }
+
+  // Önbellekten yedek — sunucu kapalıyken
+  function handleLocalDownload(){
+    setBusy('local');setStatus('');
+    try{
+      downloadLocalBackup(db);
+      setStatus('Önbellek yedeği indirildi (yalnızca bu oturumdaki üye).');
+    }catch(e){
+      setStatus(e.message||'Önbellek yedeği alınamadı.');
+    }finally{setBusy('');}
+  }
+
+  function handleAdminSnapshotDownload(){
+    setBusy('snapshot');setStatus('');
+    try{
+      downloadAdminSnapshotBackup();
+      setStatus('Tam yönetici yedeği indirildi.');
+    }catch(e){
+      setStatus(e.message||'Tam yedek alınamadı.');
     }finally{setBusy('');}
   }
 
@@ -176,7 +197,13 @@ function BackupAdmin(){
 
     <div className="adminBackupActions">
       <button type="button" className="goldBtn" disabled={busy==='download'} onClick={handleDownload}>
-        <Download size={16}/> {busy==='download'?'İndiriliyor...':'Yedeği indir'}
+        <Download size={16}/> {busy==='download'?'İndiriliyor...':'Sunucudan indir'}
+      </button>
+      <button type="button" className="ghost" disabled={busy==='snapshot'} onClick={handleAdminSnapshotDownload}>
+        <Database size={16}/> {busy==='snapshot'?'Hazırlanıyor...':'Tam yedek (önbellek)'}
+      </button>
+      <button type="button" className="ghost" disabled={busy==='local'} onClick={handleLocalDownload}>
+        <Smartphone size={16}/> {busy==='local'?'Hazırlanıyor...':'Önbellekten indir'}
       </button>
       <label className="ghost adminBackupUpload">
         <UploadCloud size={16}/> {busy==='file'?'Yükleniyor...':'Dosyadan geri yükle'}

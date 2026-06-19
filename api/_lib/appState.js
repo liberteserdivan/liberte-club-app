@@ -1,6 +1,9 @@
-import { neon } from '@neondatabase/serverless';
 import { applyMenuSync } from './menuSync.js';
 import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
+import { buildInitialAppState } from './appStateSeed.js';
+import { getSql } from './sql.js';
+
+export { getSql } from './sql.js';
 
 const STATE_ID = 'liberte';
 
@@ -27,13 +30,6 @@ async function ensureBackupTable(sql) {
     customer_count int NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now()
   )`;
-}
-
-// Neon bağlantısı oluştur
-export function getSql() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  return neon(connectionString);
 }
 
 // Durumdaki müşteri sayısını güvenli oku
@@ -102,6 +98,12 @@ export async function loadAppState() {
   const rows = await sql`SELECT data, updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
   let data = rows[0]?.data ?? null;
   let updatedAt = rows[0]?.updated_at ?? null;
+
+  if (!data) {
+    data = buildInitialAppState();
+    await saveAppState(data);
+    updatedAt = new Date().toISOString();
+  }
 
   if (data) {
     const synced = applyMenuSync(data);

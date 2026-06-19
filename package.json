@@ -7,6 +7,13 @@
   "scripts": {
     "dev": "node scripts/generate-firebase-sw.mjs && vite",
     "test": "node --test tests/*.mjs",
+    "codemagic:ios": "node scripts/trigger-codemagic.mjs ios-release main",
+    "codemagic:android": "node scripts/trigger-codemagic.mjs android-release main",
+    "neon:export": "node scripts/export-neon-backup.mjs",
+    "neon:import": "node scripts/import-neon-backup.mjs",
+    "neon:restore": "node scripts/restore-app-backup.mjs",
+    "db:init": "node scripts/init-db.mjs",
+    "db:migrate:neon-to-supabase": "node scripts/migrate-neon-to-supabase.mjs",
     "build": "node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/prepare-transparent-logo.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-ios-assets.mjs && node scripts/generate-android-splash.mjs && node scripts/generate-notification-badge.mjs && node scripts/generate-legal-pages.mjs && vite build && npm test",
     "build:release": "node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/prepare-transparent-logo.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-ios-assets.mjs && node scripts/generate-android-splash.mjs && node scripts/generate-notification-badge.mjs && node scripts/generate-legal-pages.mjs && vite build",
     "preview": "vite preview",
@@ -42,6 +49,7 @@
     "firebase-admin": "^13.10.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.511.0",
+    "postgres": "^3.4.9",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

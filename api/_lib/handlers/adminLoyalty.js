@@ -104,6 +104,8 @@ export async function handleAdminLoyaltyAction(req, res) {
       });
     }
 
+    // İleride: ENABLE_LOYALTY_EVENT_LOG=1 + loyaltyRealtime.js ile loyalty_events yazımı
+
     const customer = customerSummary(nextState, verified.customerId);
 
     return res.status(200).json({
