@@ -9,6 +9,7 @@ import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
 import { isValidPinFormat, normalizePin, saveCustomerPin } from '../pinAuth.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
+import { logServerError } from '../logServerError.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
@@ -193,6 +194,8 @@ export async function handleAuthRegisterComplete(req, res) {
 
     return res.status(400).json({ error: 'Geçersiz işlem' });
   } catch (e) {
+    console.error('[auth.register-complete]', e?.stack || e?.message || e);
+    await logServerError({ source: 'auth.register-complete', error: e });
     return res.status(500).json({ error: e.message || 'Kayıt tamamlanamadı' });
   }
 }

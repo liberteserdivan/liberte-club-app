@@ -33,6 +33,7 @@ import {
   TIER_DISCOUNT_RULES
 } from './membershipTier.js';
 import { apiJson, SYNC_REQUEST_OPTIONS } from './apiClient.js';
+import { dedupedApiJson } from './remoteFetch.js';
 import { useLocalAuth } from './devAuth.js';
 import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
 import { legacyReferralCode, generateUniqueReferralCode } from './referralCode.js';
@@ -286,12 +287,12 @@ export async function loadRemote(options = {}){
   const path = since ? `/api/state?since=${encodeURIComponent(since)}` : '/api/state';
 
   try{
-    const {response,data:j}=await apiJson(path, SYNC_REQUEST_OPTIONS);
+    const {response,data:j}=await dedupedApiJson(path);
     if(response.status === 401){
       return { unauthorized: true };
     }
     if(!response.ok){
-      return { network: response.status >= 500, status: response.status };
+      return { network: response.status >= 500 || response.status === 0, status: response.status };
     }
     if(j?.unchanged){
       return{
@@ -328,8 +329,7 @@ export async function saveRemote(db, options = {}){
   if (baseUpdatedAt) payload.updated_at = baseUpdatedAt;
 
   try{
-    const {response,data}=await apiJson('/api/state',{
-      ...SYNC_REQUEST_OPTIONS,
+    const {response,data}=await dedupedApiJson('/api/state',{
       method:'POST',
       body:JSON.stringify(payload)
     });

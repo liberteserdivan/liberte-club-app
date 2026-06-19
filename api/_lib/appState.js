@@ -3,6 +3,12 @@ import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 import { buildInitialAppState } from './appStateSeed.js';
 import { getSql } from './sql.js';
 import { ensureSchemaReady } from './schemaReady.js';
+import {
+  invalidateAppStateCache,
+  readAppStateCache,
+  writeAppStateCache
+} from './appStateCache.js';
+import { logAppStatePerf, perfNow } from './appStatePerf.js';
 
 export { getSql } from './sql.js';
 
@@ -96,22 +102,47 @@ async function backupCurrentState(sql, nextData) {
 
 // Yalnızca güncelleme zamanını oku — tam JSON çekmeden değişiklik kontrolü
 export async function loadAppStateRevision() {
+  const t0 = perfNow();
+  const cached = readAppStateCache();
+  if (cached?.updatedAt) {
+    logAppStatePerf('loadAppStateRevision.cache_hit', t0);
+    return { updatedAt: cached.updatedAt };
+  }
+
   const sql = getSql();
   if (!sql) return { updatedAt: null };
 
   await ensureTables(sql);
   const rows = await sql`SELECT updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
+  logAppStatePerf('loadAppStateRevision', t0);
   return { updatedAt: rows[0]?.updated_at ?? null };
 }
 
 // Tüm uygulama durumunu yükle
 export async function loadAppState(options = {}) {
   const skipPersist = Boolean(options.skipPersist);
+  const skipCache = Boolean(options.skipCache);
+  const t0 = perfNow();
+
+  if (!skipCache) {
+    const cached = readAppStateCache();
+    if (cached?.data) {
+      logAppStatePerf('loadAppState.cache_hit', t0);
+      return { data: cached.data, updatedAt: cached.updatedAt };
+    }
+  }
+
   const sql = getSql();
   if (!sql) return { data: null, updatedAt: null };
 
+  const tEnsure = perfNow();
   await ensureTables(sql);
+  logAppStatePerf('ensureTables', tEnsure);
+
+  const tSelect = perfNow();
   const rows = await sql`SELECT data, updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
+  logAppStatePerf('select_app_state', tSelect);
+
   let data = parseAppStateData(rows[0]?.data);
   let updatedAt = rows[0]?.updated_at ?? null;
 
@@ -119,6 +150,8 @@ export async function loadAppState(options = {}) {
     data = buildInitialAppState();
     await saveAppState(data);
     updatedAt = new Date().toISOString();
+    writeAppStateCache(data, updatedAt);
+    logAppStatePerf('loadAppState.seed', t0);
     return { data, updatedAt };
   }
 
@@ -136,30 +169,39 @@ export async function loadAppState(options = {}) {
     updatedAt = new Date().toISOString();
   }
 
+  writeAppStateCache(data, updatedAt);
+  logAppStatePerf('loadAppState', t0, { skipPersist, skipCache });
   return { data, updatedAt };
 }
 
 // Uygulama durumunu kaydet — kaydetmeden önce mevcut durumu yedekle
 export async function saveAppState(data) {
+  const t0 = perfNow();
+  invalidateAppStateCache();
+
   const sql = getSql();
   if (!sql) throw new Error('DATABASE_URL eksik');
 
   await ensureTables(sql);
 
-  // Üzerine yazmadan önce mevcut durumun yedeğini al (geri dönülebilsin)
   try {
     await backupCurrentState(sql, data);
-  } catch {
-    // Yedek başarısız olsa bile asıl kaydetmeyi engelleme
+  } catch (error) {
+    console.error('[appState.save] backup failed', error?.message || error);
   }
 
   await sql`INSERT INTO app_state (id, data, updated_at)
     VALUES (${STATE_ID}, ${toJsonbParam(sql, data)}, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+
+  logAppStatePerf('saveAppState', t0);
 }
 
 // Optimistic lock — beklenen updated_at uyuşmazsa yazma
 export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
+  const t0 = perfNow();
+  invalidateAppStateCache();
+
   const sql = getSql();
   if (!sql) throw new Error('DATABASE_URL eksik');
 
@@ -198,6 +240,7 @@ export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
     return { ok: false, conflict: true, updatedAt: revision.updatedAt };
   }
 
+  logAppStatePerf('saveAppStateIfUnchanged', t0);
   return { ok: true, updatedAt: updated[0].updated_at };
 }
 

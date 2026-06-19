@@ -15,7 +15,7 @@ function canPullRemote(sessionRef) {
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
 export function useCommit(initial, sessionRef, syncContext = {}) {
-  const { tab = 'home' } = syncContext;
+  const { tab = 'home', sessionCustomerId = null } = syncContext;
   const [db, setDb] = useState(initial);
   const [mode, setMode] = useState('local');
   const [syncState, setSyncState] = useState({
@@ -203,7 +203,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       clearSyncTimer();
     };
-  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef, tab]);
+  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef, tab, sessionCustomerId]);
 
   // Kasada LP sonrası manuel sync
   useEffect(() => {
