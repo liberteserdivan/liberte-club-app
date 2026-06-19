@@ -8,7 +8,7 @@ import {
   indexCustomerEmail,
   toCustomerSnapshot
 } from '../auth.js';
-import { loadAppState, patchAppStateRegistration } from '../appState.js';
+import { loadAppState, saveAppState } from '../appState.js';
 import { loyaltyTemplate, applyCategoryStamp } from '../loyaltyOps.js';
 import { verifyEmailCode } from '../emailCodes.js';
 import { sendVerificationCode } from '../verificationMail.js';
@@ -276,33 +276,17 @@ async function handleComplete(req, res, trace) {
     };
   }
 
-  const nextState = applyRegistrationToState(
-    { customers: [], loyalty: {}, history: [], referrals: [] },
-    customer,
-    referrer
-  );
-  const historyEntry = nextState.history?.[0] || null;
-  const referralEntry = referrer ? nextState.referrals?.[0] || null : null;
-  const extraLoyaltyEntries = referrer && nextState.loyalty?.[referrer.id]
-    ? { [String(referrer.id)]: nextState.loyalty[referrer.id] }
-    : {};
-
+  const nextState = applyRegistrationToState(state, customer, referrer);
   const loyaltyCard = conflict.resumeCustomer
     ? (state.loyalty?.[customer.id] || state.loyalty?.[String(customer.id)] || loyaltyTemplate(customer.id))
     : (nextState.loyalty?.[customer.id] || nextState.loyalty?.[String(customer.id)] || null);
 
   trace.log('loyalty_init', { customerId: customer.id });
-  if (conflict.resumeCustomer) {
-    trace.log('save_app_state_resume_skip', { customerId: customer.id });
+  if (!conflict.resumeCustomer) {
+    trace.log('save_app_state');
+    await saveAppState(nextState, { skipBackup: true });
   } else {
-    trace.log('patch_app_state');
-    await patchAppStateRegistration(sql, {
-      customer,
-      loyaltyEntry: loyaltyCard,
-      historyEntry,
-      referralEntry,
-      extraLoyaltyEntries
-    });
+    trace.log('save_app_state_resume_skip', { customerId: customer.id });
   }
 
   trace.log('auth_transaction_start');

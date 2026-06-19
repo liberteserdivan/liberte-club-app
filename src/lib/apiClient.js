@@ -169,4 +169,5 @@ export async function apiJson(path, options = {}) {
 
 // Auth uçları — soğuk başlangıç + DB yazımı için daha uzun zaman aşımı
 export const AUTH_REQUEST_OPTIONS = { timeoutMs: AUTH_FETCH_TIMEOUT_MS };
+export const REGISTER_REQUEST_OPTIONS = { timeoutMs: 90_000 };
 export const SYNC_REQUEST_OPTIONS = { timeoutMs: 25000 };

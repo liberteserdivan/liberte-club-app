@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('register-complete kayıt finalinde jsonb patch kullanır', () => {
+test('register-complete kayıt finalinde hızlı saveAppState kullanır', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/authRegisterComplete.js'), 'utf8');
-  assert.match(source, /patchAppStateRegistration/);
+  assert.match(source, /saveAppState\(nextState,\s*\{\s*skipBackup:\s*true\s*\}\)/);
 });
 
 test('register-complete email kodu state yüklemeden önce doğrulanır', () => {
