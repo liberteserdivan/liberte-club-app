@@ -54,6 +54,15 @@ export default function Login({ db, commit, setSession }) {
   const [notice, setNotice] = useState(null);
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
+
+  // API hata mesajını kullanıcı dostu metne çevir
+  function readApiError(data, fallback) {
+    const base = data?.message || data?.error || fallback;
+    if (data?.requestId) {
+      return `${base} (Ref: ${data.requestId})`;
+    }
+    return base;
+  }
   const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   const findByPhone = (ph) => (db.customers || []).find((x) => norm(x.phone) === norm(ph));
   const findByEmail = (em) => (db.customers || []).find((x) => String(x.email || '').toLowerCase() === em);
@@ -238,7 +247,7 @@ export default function Login({ db, commit, setSession }) {
           notify('Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.', 'info');
           return;
         }
-        throw new Error(data.error || 'Kod gönderilemedi');
+        throw new Error(readApiError(data, 'Kod gönderilemedi'));
       }
 
       setRegisterStep('verify');
@@ -299,7 +308,7 @@ export default function Login({ db, commit, setSession }) {
           notify('Bu telefon veya e-posta zaten kayıtlı. Giriş yap veya PIN sıfırla.', 'info');
           return;
         }
-        throw new Error(data.error || 'Kayıt tamamlanamadı');
+        throw new Error(readApiError(data, 'Kayıt tamamlanamadı'));
       }
       finishSession(data);
     } catch (e) {

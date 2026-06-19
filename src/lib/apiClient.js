@@ -73,6 +73,17 @@ function readNativeAuthToken() {
 const FETCH_TIMEOUT_MS = 12000;
 const AUTH_FETCH_TIMEOUT_MS = 25000;
 
+// İstek süresini ölç — hata ayıklama için
+function withRequestMeta(path, startedAt, data = {}) {
+  return {
+    ...data,
+    _meta: {
+      path,
+      durationMs: Date.now() - startedAt
+    }
+  };
+}
+
 // Fetch isteğine üst zaman sınırı ekle
 function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -128,6 +139,7 @@ export async function apiFetch(path, options = {}) {
 
 // JSON API isteği — sunucu HTML hata dönerse güvenli parse
 export async function apiJson(path, options = {}) {
+  const startedAt = Date.now();
   const response = await apiFetch(path, options);
   const text = await response.text();
   let data = {};
@@ -139,9 +151,17 @@ export async function apiJson(path, options = {}) {
       data = {
         error: response.ok
           ? 'Sunucu yanıtı okunamadı.'
-          : 'Sunucu geçici olarak yanıt veremedi. Biraz sonra tekrar dene.'
+          : 'Sunucu geçici olarak yanıt veremedi. Biraz sonra tekrar dene.',
+        requestId: null,
+        step: 'parse_response'
       };
     }
+  }
+
+  data = withRequestMeta(path, startedAt, data);
+
+  if (!response.ok && !data.error && !data.message) {
+    data.error = data.message || `İstek başarısız (${response.status})`;
   }
 
   return { response, data };

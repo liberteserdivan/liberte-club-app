@@ -53,6 +53,33 @@ export async function syncCustomerEmailsFromState(state) {
   }
 }
 
+// İndeksten telefon ile müşteri kimliğini bul
+export async function findCustomerIdByPhone(sql, phone) {
+  const normalizedPhone = cleanPhone(phone);
+  if (!sql || normalizedPhone.length < 10) return null;
+
+  await ensureCustomerEmailTable(sql);
+  const rows = await sql`
+    SELECT customer_id, email
+    FROM customer_emails
+    WHERE phone = ${normalizedPhone}
+    LIMIT 1
+  `;
+
+  return rows[0] || null;
+}
+
+// PIN kaydı var mı — tamamlanmış kayıt kontrolü
+export async function hasCustomerPinAuth(sql, phone) {
+  const normalizedPhone = cleanPhone(phone);
+  if (!sql || normalizedPhone.length < 10) return false;
+
+  const rows = await sql`
+    SELECT phone FROM customer_pin_auth WHERE phone = ${normalizedPhone} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
 // İndeksten müşteri kimliğini bul
 export async function findCustomerIdByEmail(email) {
   const sql = getSql();

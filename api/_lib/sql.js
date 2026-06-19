@@ -22,13 +22,20 @@ function buildClientOptions(connectionString) {
   return options;
 }
 
+const GLOBAL_SQL_KEY = '__libertePostgresSql';
+
 let cachedSql = null;
 let cachedConnectionString = '';
 
-// Ortak SQL istemcisi — aynı invocation içinde tek pool yeniden kullanılır
+// Ortak SQL istemcisi — warm serverless instance içinde tek pool yeniden kullanılır
 export function getSql() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return null;
+
+  const globalCache = globalThis[GLOBAL_SQL_KEY];
+  if (globalCache?.connectionString === connectionString && globalCache?.client) {
+    return globalCache.client;
+  }
 
   if (cachedSql && cachedConnectionString === connectionString) {
     return cachedSql;
@@ -36,5 +43,6 @@ export function getSql() {
 
   cachedConnectionString = connectionString;
   cachedSql = postgres(connectionString, buildClientOptions(connectionString));
+  globalThis[GLOBAL_SQL_KEY] = { connectionString, client: cachedSql };
   return cachedSql;
 }

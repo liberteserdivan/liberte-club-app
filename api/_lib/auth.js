@@ -165,8 +165,8 @@ export async function syncSessionWithCustomer(req, session) {
 }
 
 // Yeni oturum oluştur
-export async function createSession(res, { customerId, role = 'user', deviceId = '' }) {
-  const sql = getSql();
+export async function createSession(res, { customerId, role = 'user', deviceId = '', sql: externalSql = null }) {
+  const sql = externalSql || getSql();
   if (!sql) throw new Error('DATABASE_URL eksik');
 
   await ensureSessionTable(sql);

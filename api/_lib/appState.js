@@ -175,7 +175,8 @@ export async function loadAppState(options = {}) {
 }
 
 // Uygulama durumunu kaydet — kaydetmeden önce mevcut durumu yedekle
-export async function saveAppState(data) {
+export async function saveAppState(data, options = {}) {
+  const skipBackup = Boolean(options.skipBackup);
   const t0 = perfNow();
   invalidateAppStateCache();
 
@@ -184,17 +185,19 @@ export async function saveAppState(data) {
 
   await ensureTables(sql);
 
-  try {
-    await backupCurrentState(sql, data);
-  } catch (error) {
-    console.error('[appState.save] backup failed', error?.message || error);
+  if (!skipBackup) {
+    try {
+      await backupCurrentState(sql, data);
+    } catch (error) {
+      console.error('[appState.save] backup failed', error?.message || error);
+    }
   }
 
   await sql`INSERT INTO app_state (id, data, updated_at)
     VALUES (${STATE_ID}, ${toJsonbParam(sql, data)}, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
 
-  logAppStatePerf('saveAppState', t0);
+  logAppStatePerf(skipBackup ? 'saveAppState.fast' : 'saveAppState', t0, { skipBackup });
 }
 
 // Optimistic lock — beklenen updated_at uyuşmazsa yazma
