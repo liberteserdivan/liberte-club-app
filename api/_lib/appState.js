@@ -7,6 +7,30 @@ export { getSql } from './sql.js';
 
 const STATE_ID = 'liberte';
 
+// jsonb sütununu nesneye çevir — transaction pooler bazen ham JSON string döndürür
+export function parseAppStateData(raw) {
+  if (raw == null) return null;
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+// jsonb yazımı — string spread hatasını önler
+function toJsonbParam(sql, data) {
+  return sql.json(data);
+}
+
 // Tutulacak otomatik yedek sayısı ('pre-delete' yedekleri sınırsız korunur)
 const MAX_AUTO_BACKUPS = 100;
 // İki periyodik yedek arası en az süre (ms)
@@ -51,7 +75,7 @@ async function backupCurrentState(sql, nextData) {
   await ensureBackupTable(sql);
 
   const rows = await sql`SELECT data FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
-  const current = rows[0]?.data;
+  const current = parseAppStateData(rows[0]?.data);
   if (!current) return; // İlk kayıt — yedeklenecek eski veri yok
 
   const prevCount = customerCount(current);
@@ -67,7 +91,7 @@ async function backupCurrentState(sql, nextData) {
 
   const reason = destructive ? 'pre-delete' : 'auto';
   await sql`INSERT INTO app_state_backups (data, reason, customer_count)
-    VALUES (${JSON.stringify(current)}::jsonb, ${reason}, ${prevCount})`;
+    VALUES (${toJsonbParam(sql, current)}, ${reason}, ${prevCount})`;
 
   // Budama: yalnızca en yeni 'auto' yedekleri tut; 'pre-delete' kayıtları korunur
   await sql`DELETE FROM app_state_backups
@@ -96,7 +120,7 @@ export async function loadAppState() {
 
   await ensureTables(sql);
   const rows = await sql`SELECT data, updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
-  let data = rows[0]?.data ?? null;
+  let data = parseAppStateData(rows[0]?.data);
   let updatedAt = rows[0]?.updated_at ?? null;
 
   if (!data) {
@@ -139,7 +163,7 @@ export async function saveAppState(data) {
   }
 
   await sql`INSERT INTO app_state (id, data, updated_at)
-    VALUES (${STATE_ID}, ${JSON.stringify(data)}::jsonb, now())
+    VALUES (${STATE_ID}, ${toJsonbParam(sql, data)}, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
 }
 
@@ -173,7 +197,7 @@ export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
 
   const updated = await sql`
     UPDATE app_state
-    SET data = ${JSON.stringify(data)}::jsonb, updated_at = now()
+    SET data = ${toJsonbParam(sql, data)}, updated_at = now()
     WHERE id = ${STATE_ID} AND updated_at = ${serverAt}
     RETURNING updated_at
   `;
@@ -213,7 +237,7 @@ export async function restoreBackup(backupId) {
 
   await ensureBackupTable(sql);
   const rows = await sql`SELECT data FROM app_state_backups WHERE id = ${backupId} LIMIT 1`;
-  const data = rows[0]?.data;
+  const data = parseAppStateData(rows[0]?.data);
   if (!data) return false;
 
   await saveAppState(data);
