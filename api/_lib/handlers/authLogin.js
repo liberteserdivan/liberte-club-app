@@ -21,10 +21,6 @@ export async function handleAuthLogin(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    if (await enforceAuthRateLimit(req, 'auth_login', { maxHits: 20 })) {
-      return res.status(429).json({ error: 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.' });
-    }
-
     const body = readBody(req);
     const phone = cleanPhone(body.phone);
     const pin = normalizePin(body.pin);
@@ -32,6 +28,10 @@ export async function handleAuthLogin(req, res) {
 
     if (phone.length < 10) return res.status(400).json({ error: 'Telefon eksik' });
     if (!process.env.DATABASE_URL) return res.status(500).json({ error: 'DATABASE_URL eksik' });
+
+    if (await enforceAuthRateLimit(req, 'auth_login', { maxHits: 20 })) {
+      return res.status(429).json({ error: 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.' });
+    }
 
     await repairCustomerDirectory();
     const existing = await getSession(req);
@@ -98,6 +98,7 @@ export async function handleAuthLogin(req, res) {
       customer: toCustomerSnapshot(customer)
     });
   } catch (e) {
+    console.error('[auth.login]', e?.message || e);
     return res.status(500).json({ error: e.message || 'Giriş yapılamadı' });
   }
 }
