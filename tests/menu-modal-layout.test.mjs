@@ -45,3 +45,13 @@ test('Açılış bootstrap zaman aşımı tanımlı', () => {
   assert.match(app, /bootstrapSessionWithTimeout/);
   assert.doesNotMatch(app, /hideNativeSplash\(\);\s*\n\s*\}, \[\]\)/);
 });
+
+// session useCommit'ten önce tanımlanmalı — aksi halde production TDZ crash
+test('App.jsx session useCommit öncesinde tanımlı', () => {
+  const app = readFileSync(join(root, 'src/App.jsx'), 'utf8');
+  const sessionIdx = app.indexOf('const [session, setSession] = useState(null)');
+  const commitIdx = app.indexOf('sessionCustomerId: session?.customerId');
+  assert.ok(sessionIdx >= 0, 'session state tanımı bulunamadı');
+  assert.ok(commitIdx >= 0, 'sessionCustomerId kullanımı bulunamadı');
+  assert.ok(sessionIdx < commitIdx, 'session useCommit çağrısından önce tanımlanmalı');
+});

@@ -35,11 +35,11 @@ const CUSTOMER_HYDRATE_MS = 8000;
 export default function App() {
   const sessionRef = useRef(null);
   const [tab, setTab] = useState('home');
+  const [session, setSession] = useState(null);
   const [db, commit, , refreshRemote, syncState, retrySave] = useCommit(load(), sessionRef, {
     tab,
     sessionCustomerId: session?.customerId ?? null
   });
-  const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
   const [splashImageReady, setSplashImageReady] = useState(false);

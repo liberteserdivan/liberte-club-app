@@ -71,9 +71,9 @@ test('Xcode Push Notifications capability aktif', () => {
   assert.match(pbx, /com\.apple\.Push/);
 });
 
-test('iOS minimum build number 27', () => {
+test('iOS minimum build number 28', () => {
   const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
-  assert.match(pbx, /CURRENT_PROJECT_VERSION = 27;/);
+  assert.match(pbx, /CURRENT_PROJECT_VERSION = 28;/);
 });
 
 test('Codemagic build number alt siniri tanimli', () => {
