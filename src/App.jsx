@@ -13,8 +13,8 @@ import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
-import { mergeAdminSnapshotIntoDb, saveAdminSnapshot } from './lib/adminFullSnapshot.js';
-import { fetchAdminCustomers } from './lib/realtimeFetch.js';
+import { mergeAdminSnapshotIntoDb } from './lib/adminFullSnapshot.js';
+import { syncAdminMembersFromServer } from './lib/adminMemberSync.js';
 import { App as CapApp } from '@capacitor/app';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
@@ -283,17 +283,9 @@ export default function App() {
     patchMemorySession({ adminVerified: true });
     setSession(getMemorySession());
     setAdminGateSkipped(false);
-    refreshRemote(true);
-    fetchAdminCustomers().then((slice) => {
-      if (!slice?.customers) return;
-      const next = {
-        ...db,
-        customers: slice.customers,
-        loyalty: { ...(db.loyalty || {}), ...(slice.loyalty || {}) }
-      };
-      commit(next, { skipRemote: true });
-      saveAdminSnapshot(next);
-    }).catch(() => {});
+    void syncAdminMembersFromServer(db, commit).finally(() => {
+      refreshRemote(true);
+    });
   }
 
   function handleAdminSkip() {

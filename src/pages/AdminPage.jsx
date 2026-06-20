@@ -1,4 +1,4 @@
-import React,{useEffect,useState}from'react';
+import React,{useEffect,useRef,useState}from'react';
 import{Database,Download,Edit2,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
@@ -15,6 +15,7 @@ import {
   assertMenuItemCanEarnLp,
   requiresProductPickForLpCategory
 } from '../lib/menuLp.js';
+import { syncAdminMembersFromServer } from '../lib/adminMemberSync.js';
 
 const ADMIN_TABS=[
   {id:'overview',label:'Özet',Icon:LayoutDashboard},
@@ -95,6 +96,14 @@ function KampanyaAdmin({db,commit}){
 }
 
 function MembersAdmin({db,commit,refreshRemote,focusUserId,onFocusHandled}){
+  const dbRef = useRef(db);
+  dbRef.current = db;
+
+  // Üyeler sekmesi açılınca tam listeyi sunucudan tazele
+  useEffect(() => {
+    void syncAdminMembersFromServer(dbRef.current, commit);
+  }, [commit]);
+
   return <div className="adminStack">
     <ReviewApprovalAdmin db={db} commit={commit} refreshRemote={refreshRemote}/>
     <UsersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={onFocusHandled}/>

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { fetchAdminCustomers } from '../lib/realtimeFetch.js';
-import { saveAdminSnapshot } from '../lib/adminFullSnapshot.js';
+import { syncAdminMembersFromServer } from '../lib/adminMemberSync.js';
 
 // Yönetici paneli — hafif üye listesi sync (tam /api/state yerine)
 export function useAdminMembers({ enabled = false, db, commit }) {
@@ -13,27 +12,16 @@ export function useAdminMembers({ enabled = false, db, commit }) {
     let cancelled = false;
 
     async function pullMembers() {
-      let slice;
+      if (cancelled) return;
       try {
-        slice = await fetchAdminCustomers();
+        await syncAdminMembersFromServer(dbRef.current, commit);
       } catch {
-        return;
+        // Arka plan sync — toast gösterme
       }
-      if (cancelled || !slice?.customers) return;
-
-      const current = dbRef.current;
-      const next = {
-        ...current,
-        customers: slice.customers,
-        loyalty: { ...(current.loyalty || {}), ...(slice.loyalty || {}) }
-      };
-
-      commit(next, { skipRemote: true });
-      saveAdminSnapshot(next);
     }
 
     pullMembers();
-    const timer = setInterval(pullMembers, 20_000);
+    const timer = setInterval(pullMembers, 15_000);
 
     return () => {
       cancelled = true;

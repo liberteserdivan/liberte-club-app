@@ -3,6 +3,11 @@ import { formatClientApiError } from '../lib/apiErrors.js';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
 import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullSnapshot.js';
+import {
+  applyAdminMemberSlice,
+  mergeAdminRemoteIntoDb
+} from '../lib/adminMemberSync.js';
+import { fetchAdminCustomers } from '../lib/realtimeFetch.js';
 import { reportError } from '../lib/errorHub.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
@@ -164,12 +169,28 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       if (!force && remote.updatedAt && remote.updatedAt === lastRemoteAt.current) return;
 
       lastRemoteAt.current = remote.updatedAt;
-      setDb(remote.data);
-      persistLocal(remote.data);
-
       const session = sessionRef?.current;
+      setDb((current) => {
+        const next = mergeAdminRemoteIntoDb(current, remote.data, session);
+        persistLocal(next);
+        if (session?.isAdmin && session?.adminVerified) {
+          saveAdminSnapshot(next);
+        }
+        return next;
+      });
+
       if (session?.isAdmin && session?.adminVerified) {
-        saveAdminSnapshot(remote.data);
+        fetchAdminCustomers()
+          .then((slice) => {
+            if (!slice?.customers?.length) return;
+            setDb((current) => {
+              const next = applyAdminMemberSlice(current, slice);
+              persistLocal(next);
+              saveAdminSnapshot(next);
+              return next;
+            });
+          })
+          .catch(() => {});
       }
 
       setMode('cloud');
