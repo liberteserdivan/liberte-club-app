@@ -3,14 +3,18 @@ import { parseAppStateData, serializeAppStateJson } from './appState.js';
 import { GLOBAL_STATE_KEYS, RELATIONAL_STATE_KEYS, useRelationalState } from './relationalConfig.js';
 import { loadMenuFromSql, upsertMenuToSql } from './menuStore.js';
 import { loadHistoryFromSql, loadLoyaltyMapFromSql } from './loyaltyStore.js';
-import { loadPushSubscriptionsFromSql } from './pushStore.js';
+import { loadPushSubscriptionsFromSql, loadPushSubscriptionsForCustomer } from './pushStore.js';
 import {
   ensureCustomersTables,
   customerRowToRecord,
+  findCustomerById,
+  findLoyaltyByCustomerId,
+  loyaltyRowToCard,
   upsertCustomerRow,
   upsertLoyaltyRow
 } from './customersStore.js';
 import { upsertCustomerEmail } from './customerEmails.js';
+import { listInAppNotificationsForCustomer } from './inAppNotificationStore.js';
 import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 
 const STATE_ID = 'liberte';
@@ -116,6 +120,57 @@ export async function composeStateFromRelational(externalSql = null) {
   };
 
   return { data, updatedAt };
+}
+
+// Tek üye için hafif state — ana ekran sync'i tüm tabloyu çekmesin
+export async function composeStateForCustomer(customerId, externalSql = null) {
+  const sql = externalSql || getSql();
+  const id = Number(customerId);
+  if (!sql || !id) return { data: null, updatedAt: null };
+
+  const [
+    { global, updatedAt, legacyFull },
+    menu,
+    customer,
+    loyaltyRow,
+    history,
+    pushSubscriptions,
+    inAppRows
+  ] = await Promise.all([
+    loadGlobalSliceFromDb(sql),
+    loadMenuFromSql(sql),
+    findCustomerById(sql, id),
+    findLoyaltyByCustomerId(sql, id),
+    loadHistoryFromSql(sql, id),
+    loadPushSubscriptionsForCustomer(sql, id),
+    listInAppNotificationsForCustomer(sql, id, 30)
+  ]);
+
+  const notifications = (inAppRows || []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    customerId: row.customerId,
+    createdAt: row.createdAt
+  }));
+
+  const data = {
+    ...global,
+    customers: customer ? [customer] : [],
+    loyalty: loyaltyRow ? { [id]: loyaltyRowToCard(loyaltyRow, id) } : {},
+    categories: menu.categories.length ? menu.categories : (legacyFull?.categories || []),
+    items: menu.items.length ? menu.items : (legacyFull?.items || []),
+    history: history.length ? history : rowsForCustomer(legacyFull?.history, id),
+    pushSubscriptions,
+    notifications: notifications.length ? notifications : (global.notifications || [])
+  };
+
+  return { data, updatedAt };
+}
+
+// Müşteri geçmiş satırlarını filtrele
+function rowsForCustomer(list, customerId) {
+  return (list || []).filter((row) => Number(row.customerId) === Number(customerId));
 }
 
 // Tam state'i normalize tablolara ve küçük global blob'a yaz

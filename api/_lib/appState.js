@@ -9,7 +9,7 @@ import {
   writeAppStateCache
 } from './appStateCache.js';
 import { logAppStatePerf, perfNow } from './appStatePerf.js';
-import { useRelationalState, composeStateFromRelational, persistStateToRelational } from './relationalState.js';
+import { useRelationalState, composeStateFromRelational, composeStateForCustomer, persistStateToRelational } from './relationalState.js';
 
 export { getSql } from './sql.js';
 
@@ -197,6 +197,31 @@ export async function loadAppState(options = {}) {
   writeAppStateCache(data, updatedAt);
   logAppStatePerf('loadAppState', t0, { skipPersist, skipCache });
   return { data, updatedAt };
+}
+
+// Üye oturumu için hafif state yükle
+export async function loadAppStateForCustomer(customerId, options = {}) {
+  const skipCache = Boolean(options.skipCache);
+  const t0 = perfNow();
+
+  if (!useRelationalState() || !customerId) {
+    return loadAppState(options);
+  }
+
+  if (!skipCache) {
+    const cached = readAppStateCache();
+    if (cached?.data) {
+      logAppStatePerf('loadAppStateForCustomer.cache_hit', t0);
+      return { data: cached.data, updatedAt: cached.updatedAt };
+    }
+  }
+
+  const composed = await composeStateForCustomer(customerId);
+  if (composed.data) {
+    writeAppStateCache(composed.data, composed.updatedAt);
+    logAppStatePerf('loadAppStateForCustomer', t0);
+  }
+  return composed;
 }
 
 // Uygulama durumunu kaydet — kaydetmeden önce mevcut durumu yedekle

@@ -5,7 +5,6 @@ import { useLocalAuth } from './lib/devAuth.js';
 import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
 import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
 import { useAdminRealtime } from './hooks/useAdminRealtime.js';
-import { useInAppNotifications } from './hooks/useInAppNotifications.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
@@ -165,17 +164,12 @@ export default function App() {
   const adminVerified = Boolean(session?.adminVerified);
   const awaitingCustomer = Boolean(session?.customerId && !customer);
   const realtimeEnabled = Boolean(session?.customerId && customer && !useLocalAuth());
-  const { showNotification } = useInAppNotifications({
-    customerId: customer?.id,
-    enabled: realtimeEnabled
-  });
 
   useCustomerRealtime({
     enabled: realtimeEnabled,
     customerId: customer?.id,
     db,
-    commit,
-    onInAppNotification: showNotification
+    commit
   });
 
   useAdminRealtime({

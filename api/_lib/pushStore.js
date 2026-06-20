@@ -72,6 +72,21 @@ export async function loadPushSubscriptionsFromSql(externalSql = null) {
   return rows.map(rowToSubscription).filter(Boolean);
 }
 
+// Üye push kayıtlarını listele — tam tablo taraması yapma
+export async function loadPushSubscriptionsForCustomer(sql, customerId) {
+  if (!sql || !customerId) return [];
+
+  const rows = await sql`
+    SELECT *
+    FROM push_subscriptions
+    WHERE active = true
+      AND revoked_at IS NULL
+      AND customer_id = ${Number(customerId)}
+    ORDER BY updated_at DESC
+  `;
+  return rows.map(rowToSubscription).filter(Boolean);
+}
+
 // Cihaz token kaydı — oturum doğrulaması handler'da yapılır
 export async function upsertPushDevice(sql, {
   customerId,

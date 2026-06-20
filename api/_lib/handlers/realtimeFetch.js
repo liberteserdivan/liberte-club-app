@@ -1,5 +1,5 @@
 import { applyCors } from '../http.js';
-import { requireSession, requireAdminSession } from '../auth.js';
+import { requireSession, requireAdminSession, getSessionForBootstrap } from '../auth.js';
 import { loadLoyaltyForCustomer, loadHistoryFromSql } from '../loyaltyStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
@@ -107,8 +107,10 @@ export async function handleRealtimeFetch(req, res) {
       return handleAdminFeed(req, res);
     }
 
-    const session = await requireSession(req, res);
-    if (!session) return;
+    const session = await getSessionForBootstrap(req);
+    if (!session?.customerId) {
+      return res.status(401).json({ error: 'Oturum gerekli' });
+    }
 
     if (resource === 'customer-loyalty') return handleCustomerLoyalty(req, res, session);
     if (resource === 'customer-history') return handleCustomerHistory(req, res, session);

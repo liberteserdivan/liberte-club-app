@@ -1,6 +1,6 @@
 import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
-import { loadAppState, loadAppStateRevision, saveAppState, isSameAppStateRevision } from './_lib/appState.js';
-import { getSession, requireAdminSession, requireSession } from './_lib/auth.js';
+import { loadAppState, loadAppStateRevision, loadAppStateForCustomer, saveAppState, isSameAppStateRevision } from './_lib/appState.js';
+import { getSession, getSessionForBootstrap, requireAdminSession, requireSession } from './_lib/auth.js';
 import { handleQrGenerate } from './_lib/handlers/qrGenerate.js';
 import { logServerError } from './_lib/logServerError.js';
 import {
@@ -18,6 +18,7 @@ import {
 } from './_lib/stateAccess.js';
 import { applyBirthdayReward } from './_lib/loyaltyOps.js';
 import { enforceAuthRateLimit } from './_lib/rateLimit.js';
+import { useRelationalState } from './_lib/relationalConfig.js';
 
 export default async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
@@ -39,8 +40,10 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const session = await requireSession(req, res);
-      if (!session) return;
+      const session = await getSessionForBootstrap(req);
+      if (!session?.customerId) {
+        return res.status(401).json({ error: 'Oturum gerekli' });
+      }
 
       const since = String(req.query?.since || '').trim();
       if (since) {
@@ -57,15 +60,18 @@ export default async function handler(req, res) {
         }
       }
 
-      const remote = await loadAppState();
+      const isFullAdmin = session.isAdmin && session.adminVerified;
+      const remote = isFullAdmin
+        ? await loadAppState()
+        : await loadAppStateForCustomer(session.customerId);
       if (!remote.data) {
         return res.status(200).json({ data: null, updated_at: null, mode: 'cloud' });
       }
 
       let stateData = remote.data;
 
-      // Doğum günü bonusu — müşteri oturumunda sunucu tarafında uygula
-      if (session.customerId && !session.isAdmin) {
+      // Doğum günü bonusu — relational modda tam state yazımı yapma
+      if (session.customerId && !session.isAdmin && !useRelationalState()) {
         const nextState = structuredClone(stateData);
         const birthday = applyBirthdayReward(nextState, session.customerId);
         if (birthday.changed) {
@@ -74,7 +80,7 @@ export default async function handler(req, res) {
         }
       }
 
-      const data = session.isAdmin && session.adminVerified
+      const data = isFullAdmin
         ? filterStateForAdmin(stateData)
         : filterStateForUser(stateData, session.customerId);
 

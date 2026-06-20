@@ -16,7 +16,17 @@ test('USE_RELATIONAL_STATE bayrağı relationalConfig içinde tanımlı', () => 
 test('appState loadAppState relational modu destekler', () => {
   const source = readFileSync(join(root, 'api/_lib/appState.js'), 'utf8');
   assert.match(source, /composeStateFromRelational/);
+  assert.match(source, /composeStateForCustomer/);
+  assert.match(source, /loadAppStateForCustomer/);
   assert.match(source, /persistStateToRelational/);
+});
+
+test('üye state sync hafif compose kullanır', () => {
+  const stateApi = readFileSync(join(root, 'api/state.js'), 'utf8');
+  assert.match(stateApi, /loadAppStateForCustomer/);
+  assert.match(stateApi, /getSessionForBootstrap/);
+  const relational = readFileSync(join(root, 'api/_lib/relationalState.js'), 'utf8');
+  assert.match(relational, /composeStateForCustomer/);
 });
 
 test('adminLoyalty relational sadakat yolunu kullanır', () => {

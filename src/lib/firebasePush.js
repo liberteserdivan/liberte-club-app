@@ -358,7 +358,7 @@ export async function enableNativePush(customer, db, commit) {
     throw new Error('Bildirim kurulamadı. Daha sonra tekrar deneyebilirsin.');
   }
 
-  commit(upsertPushSubscription(db, customer, result.token));
+  commit(upsertPushSubscription(db, customer, result.token), { skipRemote: true });
   markPushEnabledOnDevice(customer.id, result.token);
   await syncPushDeviceRegistration(customer, {
     token: result.token,
@@ -437,7 +437,7 @@ export async function enablePush(customer, db, commit) {
     throw new Error('Bildirim tokenı alınamadı.');
   }
 
-  commit(upsertPushSubscription(db, customer, token));
+  commit(upsertPushSubscription(db, customer, token), { skipRemote: true });
   markPushEnabledOnDevice(customer.id, token);
   await syncPushDeviceRegistration(customer, {
     token,
@@ -466,7 +466,7 @@ export async function refreshNativePushIfSubscribed(customer, db, commit) {
   try {
     const result = await registerNativePushToken();
     if (!result.ok || !result.token || result.token === localToken) return;
-    commit(upsertPushSubscription(db, customer, result.token));
+    commit(upsertPushSubscription(db, customer, result.token), { skipRemote: true });
     markPushEnabledOnDevice(customer.id, result.token);
   } catch {
     // Arka planda sessizce dene
@@ -519,7 +519,7 @@ export async function refreshPushTokenIfSubscribed(customer, db, commit) {
 
     if (!token || token === localToken) return;
 
-    commit(upsertPushSubscription(db, customer, token));
+    commit(upsertPushSubscription(db, customer, token), { skipRemote: true });
     markPushEnabledOnDevice(customer.id, token);
   } catch {
     // Arka planda sessizce dene
@@ -535,7 +535,7 @@ export function bindNativeTokenRefresh(customer, db, commit) {
   return onNativeTokenRefresh((token) => {
     if (!token) return;
     try {
-      commit(upsertPushSubscription(db, customer, token));
+      commit(upsertPushSubscription(db, customer, token), { skipRemote: true });
       markPushEnabledOnDevice(customer.id, token);
       void syncPushDeviceRegistration(customer, {
         token,

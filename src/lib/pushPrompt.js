@@ -48,7 +48,7 @@ export function deactivateDevicePushToken(customerId, db, commit) {
   });
 
   clearLocalPushDevice(customerId);
-  commit({ ...db, pushSubscriptions });
+  commit({ ...db, pushSubscriptions }, { skipRemote: true });
 }
 
 // Bu cihazda bildirim isteği gösterilmeli mi?

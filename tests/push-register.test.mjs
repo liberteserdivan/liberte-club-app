@@ -46,4 +46,5 @@ test('firebasePush sunucu kayıt API çağırır', () => {
   const source = readFileSync(join(root, 'src/lib/firebasePush.js'), 'utf8');
   assert.match(source, /syncPushDeviceRegistration/);
   assert.match(source, /\/api\/push\/register-device/);
+  assert.match(source, /skipRemote:\s*true/);
 });
