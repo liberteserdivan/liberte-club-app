@@ -71,7 +71,7 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
       ok: false,
       sent: 0,
       failed: 0,
-      note: 'Seçilen hedef kitlede kayıtlı cihaz yok. Bildirim yalnızca uygulama içi kaydedildi.'
+      note: 'Seçilen hedef kitlede kayıtlı cihaz yok.'
     };
   }
 
@@ -88,9 +88,9 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
       || data.error
       || `${data.sent || 0} cihaza iletildi${data.failed ? `, ${data.failed} başarısız` : ''}.`;
 
-    const userNote = data?.ok === false && data?.savedInApp
-      ? `${note}${requestId ? ` Ref: ${requestId}` : ''}`
-      : (requestId && !note.includes('Ref:') ? `${note} Ref: ${requestId}` : note);
+    const userNote = requestId && !note.includes('Ref:')
+      ? `${note} Ref: ${requestId}`
+      : note;
 
     if (!response.ok || data.ok === false) {
       reportApiError({
@@ -147,8 +147,8 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
       sent: 0,
       failed: 0,
       note: message.includes('Ref:')
-        ? `Uygulama içi kaydedildi. ${message}`
-        : `Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.${timeoutHint}${message ? ` ${message}` : ''}`
+        ? message
+        : `Push sunucusuna ulaşılamadı.${timeoutHint}${message ? ` ${message}` : ''}`
     };
   }
 }

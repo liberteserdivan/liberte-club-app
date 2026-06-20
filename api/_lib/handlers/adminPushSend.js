@@ -7,7 +7,6 @@ import { loadAppState, saveAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
 import { composeStateFromRelational } from '../relationalState.js';
 import { loadPushSubscriptionsFromSql, deactivatePushTokens, insertPushSendLog } from '../pushStore.js';
-import { insertInAppNotificationsForAudience } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
@@ -84,33 +83,6 @@ function explainPushFailure(codes = '', platformCounts = null) {
     return 'Cihaz tokenı geçersiz veya pasif. Üye uygulamada Bildirimleri yeniden açmalı.';
   }
   return text;
-}
-
-// Uygulama içi bildirimi arka planda kaydet — FCM yanıtını geciktirmesin
-function queueInAppNotificationSave({
-  audience,
-  pushText,
-  resolved,
-  requestId
-}) {
-  if (!useRelationalState()) return;
-
-  const sqlNotify = getSql();
-  if (!sqlNotify) return;
-
-  const targetIds = resolved.targetCustomerIds?.length
-    ? resolved.targetCustomerIds
-    : (resolved.subscriptions || []).map((row) => Number(row.customerId)).filter((id) => id > 0);
-
-  void insertInAppNotificationsForAudience(sqlNotify, {
-    customerIds: targetIds,
-    title: pushText.title,
-    body: pushText.body,
-    audience,
-    payload: { source: 'admin_push', requestId }
-  }).catch(() => {
-    // Realtime bildirim yazımı push yanıtını etkilemesin
-  });
 }
 
 // Platforma göre FCM mesajı oluştur
@@ -282,12 +254,6 @@ export async function handleAdminPushSend(req, res) {
     const clean = [...new Set(resolved.tokens.filter(Boolean))];
 
     if (!clean.length) {
-      queueInAppNotificationSave({
-        audience,
-        pushText,
-        resolved,
-        requestId: trace.requestId
-      });
       const hadSubscriptions = (preparedState.pushSubscriptions || []).some(
         (row) => row?.token && row.active !== false
       );
@@ -295,7 +261,6 @@ export async function handleAdminPushSend(req, res) {
         ok: false,
         sent: 0,
         failed: 0,
-        savedInApp: true,
         audience,
         audienceLabel: resolved.audienceLabel,
         targetUserCount: resolved.targetUserCount,
@@ -326,9 +291,8 @@ export async function handleAdminPushSend(req, res) {
     if (validationError) {
       return res.status(200).json({
         ok: false,
-        savedInApp: true,
         code: 'PUSH_PROVIDER_UNAVAILABLE',
-        message: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.',
+        message: 'Push sunucusuna ulaşılamadı.',
         pushErrorStep: 'validate_service_account',
         requestId: trace.requestId,
         sent: 0,
@@ -409,13 +373,6 @@ export async function handleAdminPushSend(req, res) {
       note += '. Görünmüyorsa uygulamayı arka plana alın veya Bildirimleri yeniden açın.';
     }
 
-    queueInAppNotificationSave({
-      audience,
-      pushText,
-      resolved,
-      requestId: trace.requestId
-    });
-
     return res.status(200).json({
       ok: result.successCount > 0,
       requestId: trace.requestId,
@@ -439,7 +396,6 @@ export async function handleAdminPushSend(req, res) {
     });
     return res.status(500).json({
       ok: false,
-      savedInApp: true,
       code: 'PUSH_SEND_FAILED',
       message: 'Push gönderilemedi.',
       pushErrorStep: 'unexpected',

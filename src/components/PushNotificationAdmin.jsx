@@ -295,7 +295,7 @@ export default function PushNotificationAdmin({ db, commit }) {
               {result.sent > 0
                 ? 'Bildirim gönderildi'
                 : result.ok
-                  ? 'Uygulama içi kaydedildi — cihaza push ulaşmadı'
+                  ? 'Cihaza push ulaşmadı'
                   : 'Gönderim tamamlanamadı'}
             </strong>
             <ul>

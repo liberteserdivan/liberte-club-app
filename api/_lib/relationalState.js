@@ -14,7 +14,6 @@ import {
   upsertLoyaltyRow
 } from './customersStore.js';
 import { upsertCustomerEmail } from './customerEmails.js';
-import { listInAppNotificationsForCustomer } from './inAppNotificationStore.js';
 import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 
 const STATE_ID = 'liberte';
@@ -134,25 +133,15 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
     customer,
     loyaltyRow,
     history,
-    pushSubscriptions,
-    inAppRows
+    pushSubscriptions
   ] = await Promise.all([
     loadGlobalSliceFromDb(sql),
     loadMenuFromSql(sql),
     findCustomerById(sql, id),
     findLoyaltyByCustomerId(sql, id),
     loadHistoryFromSql(sql, id),
-    loadPushSubscriptionsForCustomer(sql, id),
-    listInAppNotificationsForCustomer(sql, id, 30)
+    loadPushSubscriptionsForCustomer(sql, id)
   ]);
-
-  const notifications = (inAppRows || []).map((row) => ({
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    customerId: row.customerId,
-    createdAt: row.createdAt
-  }));
 
   const data = {
     ...global,
@@ -162,7 +151,7 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
     items: menu.items.length ? menu.items : (legacyFull?.items || []),
     history: history.length ? history : rowsForCustomer(legacyFull?.history, id),
     pushSubscriptions,
-    notifications: notifications.length ? notifications : (global.notifications || [])
+    notifications: []
   };
 
   return { data, updatedAt };

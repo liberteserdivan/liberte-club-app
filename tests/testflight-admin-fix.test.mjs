@@ -67,7 +67,7 @@ test('adminPushSend gönderim öncesi OAuth probe yapmaz', () => {
 test('adminPushSend production hızlı yol kullanır', () => {
   const handler = readFileSync(join(root, 'api/_lib/handlers/adminPushSend.js'), 'utf8');
   assert.match(handler, /light: true/);
-  assert.match(handler, /queueInAppNotificationSave/);
+  assert.doesNotMatch(handler, /queueInAppNotificationSave/);
   const pushStore = readFileSync(join(root, 'api/_lib/pushStore.js'), 'utf8');
   assert.match(pushStore, /isProductionRuntime/);
 });

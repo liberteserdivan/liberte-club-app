@@ -38,8 +38,8 @@ test('Android sürüm numarası güncel', () => {
   const gradle = readFileSync(join(root, 'android', 'app', 'build.gradle'), 'utf8');
   const match = gradle.match(/versionCode\s+(\d+)/);
   assert.ok(match, 'versionCode bulunamadi');
-  assert.ok(Number(match[1]) >= 30, 'versionCode en az 30 olmali');
-  assert.match(gradle, /versionName "1\.1\.4"/);
+  assert.ok(Number(match[1]) >= 31, 'versionCode en az 31 olmali');
+  assert.match(gradle, /versionName "1\.1\.5"/);
 });
 
 test('Capacitor splash yeşil zemin', () => {

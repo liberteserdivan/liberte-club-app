@@ -95,10 +95,12 @@ export async function showPushNotification(payload) {
 
 let foregroundListenerAttached = false;
 
-// iOS'ta onMessage sessiz push sayılır — bildirimleri yalnızca SW gösterir
+// Uygulama açıkken gelen push mesajlarını yoksay — üstte çift bildirim gösterme
 function attachForegroundPushListener(messaging, onMessage) {
   if (isIos() || foregroundListenerAttached) return;
-  onMessage(messaging, showPushNotification);
+  onMessage(messaging, () => {
+    // Arka planda sistem bildirimi yeterli; ön planda toast göstermiyoruz
+  });
   foregroundListenerAttached = true;
 }
 

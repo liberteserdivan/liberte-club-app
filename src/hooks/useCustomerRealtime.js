@@ -7,7 +7,6 @@ import {
 import {
   fetchCustomerHistory,
   fetchCustomerLoyaltySnapshot,
-  fetchCustomerNotifications,
   fetchPromoSlice
 } from '../lib/realtimeFetch.js';
 import { isSupabaseRealtimeEnabled } from '../lib/supabaseClient.js';
@@ -17,8 +16,7 @@ export function useCustomerRealtime({
   enabled = false,
   customerId = null,
   db,
-  commit,
-  onInAppNotification
+  commit
 }) {
   const dbRef = useRef(db);
   dbRef.current = db;
@@ -26,7 +24,6 @@ export function useCustomerRealtime({
   const debouncedLoyalty = useRef(createDebouncedTask(400));
   const debouncedHistory = useRef(createDebouncedTask(400));
   const debouncedPromos = useRef(createDebouncedTask(700));
-  const debouncedNotifications = useRef(createDebouncedTask(300));
 
   useEffect(() => {
     if (!enabled || !customerId || !commit) return undefined;
@@ -79,51 +76,6 @@ export function useCustomerRealtime({
           }
         });
 
-        listen(channel, {
-          table: 'in_app_notifications',
-          event: 'INSERT',
-          filter,
-          onChange: () => {
-            debouncedNotifications.current(async () => {
-              const rows = await fetchCustomerNotifications();
-              if (!rows?.length || cancelled) return;
-              const mapped = rows.map((row) => ({
-                id: row.id,
-                title: row.title,
-                body: row.body,
-                customerId: row.customerId,
-                createdAt: row.createdAt
-              }));
-              commit({
-                ...dbRef.current,
-                notifications: mapped
-              }, { skipRemote: true });
-              onInAppNotification?.(mapped[0]);
-            });
-          }
-        });
-
-        listen(channel, {
-          table: 'in_app_notifications',
-          event: 'INSERT',
-          filter: 'target_type=eq.all',
-          onChange: () => {
-            debouncedNotifications.current(async () => {
-              const rows = await fetchCustomerNotifications();
-              if (!rows?.length || cancelled) return;
-              const mapped = rows.map((row) => ({
-                id: row.id,
-                title: row.title,
-                body: row.body,
-                customerId: row.customerId,
-                createdAt: row.createdAt
-              }));
-              commit({ ...dbRef.current, notifications: mapped }, { skipRemote: true });
-              onInAppNotification?.(mapped[0]);
-            });
-          }
-        });
-
         ['campaigns', 'coupons'].forEach((table) => {
           listen(channel, {
             table,
@@ -154,5 +106,5 @@ export function useCustomerRealtime({
       cancelled = true;
       closeRealtimeChannel(channelKey).catch(() => {});
     };
-  }, [enabled, customerId, commit, onInAppNotification]);
+  }, [enabled, customerId, commit]);
 }
