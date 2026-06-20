@@ -25,6 +25,10 @@ function notifyTokenRefresh(token) {
 }
 
 // Native FCM bildirim dinleyicilerini bir kez bağla
+export function ensureNativePushNavigation() {
+  attachNativePushListeners();
+}
+
 function attachNativePushListeners() {
   if (listenersAttached || !isNativeApp()) return;
   listenersAttached = true;

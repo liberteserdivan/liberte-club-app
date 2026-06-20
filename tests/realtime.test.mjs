@@ -49,8 +49,10 @@ test('adminPushSend uygulama içi bildirim tablosuna yazmaz', () => {
 test('realtime API route ve config kayıtlı', () => {
   const config = readFileSync(join(root, 'api/config.js'), 'utf8');
   const vercel = readFileSync(join(root, 'vercel.json'), 'utf8');
+  const realtime = readFileSync(join(root, 'api/_lib/handlers/realtimeFetch.js'), 'utf8');
   assert.match(config, /resource === 'supabase'/);
   assert.match(vercel, /api\/realtime/);
+  assert.match(realtime, /admin-customers/);
 });
 
 test('App logout realtime cleanup çağırır', () => {

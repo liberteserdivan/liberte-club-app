@@ -370,3 +370,15 @@ export async function grantAdminByPhone(sql, phone) {
 
   return customer;
 }
+
+// Yönetici paneli — tüm üye listesi
+export async function listAllCustomers(sql) {
+  if (!sql) return [];
+  await ensureCustomersTables(sql);
+  const rows = await sql`
+    SELECT id, phone, name, email, birth_date, referral_code, is_admin, created_at, last_visit
+    FROM customers
+    ORDER BY id ASC
+  `;
+  return rows.map(customerRowToRecord);
+}

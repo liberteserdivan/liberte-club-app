@@ -5,12 +5,16 @@ import { useLocalAuth } from './lib/devAuth.js';
 import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
 import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
 import { useAdminRealtime } from './hooks/useAdminRealtime.js';
+import { useAdminMembers } from './hooks/useAdminMembers.js';
+import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
+import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
-import { mergeAdminSnapshotIntoDb } from './lib/adminFullSnapshot.js';
+import { mergeAdminSnapshotIntoDb, saveAdminSnapshot } from './lib/adminFullSnapshot.js';
+import { fetchAdminCustomers } from './lib/realtimeFetch.js';
 import { App as CapApp } from '@capacitor/app';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
@@ -176,6 +180,20 @@ export default function App() {
     commit
   });
 
+  useCustomerLoyaltyPoll({
+    enabled: realtimeEnabled,
+    customerId: customer?.id,
+    tab,
+    db,
+    commit
+  });
+
+  useAdminMembers({
+    enabled: Boolean(isAdmin && adminVerified && !useLocalAuth()),
+    db,
+    commit
+  });
+
   useAdminRealtime({
     enabled: Boolean(
       isAdmin
@@ -266,6 +284,16 @@ export default function App() {
     setSession(getMemorySession());
     setAdminGateSkipped(false);
     refreshRemote(true);
+    fetchAdminCustomers().then((slice) => {
+      if (!slice?.customers) return;
+      const next = {
+        ...db,
+        customers: slice.customers,
+        loyalty: { ...(db.loyalty || {}), ...(slice.loyalty || {}) }
+      };
+      commit(next, { skipRemote: true });
+      saveAdminSnapshot(next);
+    }).catch(() => {});
   }
 
   function handleAdminSkip() {
@@ -287,6 +315,11 @@ export default function App() {
     }
     setShowOnboarding(shouldShowOnboarding(customer.id));
   }, [customer?.id]);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    ensureNativePushNavigation();
+  }, []);
 
   useEffect(() => {
     if (!customer?.id) return undefined;

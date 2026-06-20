@@ -1,10 +1,12 @@
 import { applyCors } from '../http.js';
 import { requireSession, requireAdminSession, getSessionForBootstrap } from '../auth.js';
-import { loadLoyaltyForCustomer, loadHistoryFromSql } from '../loyaltyStore.js';
+import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapFromSql } from '../loyaltyStore.js';
+import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
 import { loadAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
+import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 
 // Kampanya/kupon dilimini state'ten oku
 function readPromoSlice(state) {
@@ -67,6 +69,24 @@ async function handlePromos(req, res) {
   return res.status(200).json({ ok: true, ...promos });
 }
 
+// Admin üye listesi — tam state çekmeden yalnızca customers + loyalty
+async function handleAdminCustomers(req, res) {
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
+
+  const [customers, loyaltyMap] = await Promise.all([
+    listAllCustomers(sql),
+    loadLoyaltyMapFromSql(sql)
+  ]);
+
+  return res.status(200).json({
+    ok: true,
+    customers,
+    loyalty: migrateAllLoyalty(loyaltyMap || {}),
+    count: customers.length
+  });
+}
+
 // Admin özet feed — son işlemler + üye sayısı
 async function handleAdminFeed(req, res) {
   const sql = getSql();
@@ -102,9 +122,15 @@ export async function handleRealtimeFetch(req, res) {
     }
 
     if (resource === 'admin-feed') {
-      const admin = await requireAdminSession(req, res, { pinRequired: true });
+      const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
       if (!admin) return;
       return handleAdminFeed(req, res);
+    }
+
+    if (resource === 'admin-customers') {
+      const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
+      if (!admin) return;
+      return handleAdminCustomers(req, res);
     }
 
     const session = await getSessionForBootstrap(req);
@@ -117,7 +143,7 @@ export async function handleRealtimeFetch(req, res) {
     if (resource === 'customer-notifications') return handleCustomerNotifications(req, res, session);
 
     return res.status(400).json({
-      error: 'resource gerekli: customer-loyalty, customer-history, customer-notifications, promos, admin-feed'
+      error: 'resource gerekli: customer-loyalty, customer-history, customer-notifications, promos, admin-feed, admin-customers'
     });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error?.message || 'Realtime fetch başarısız' });

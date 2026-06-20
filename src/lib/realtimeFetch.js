@@ -38,3 +38,12 @@ export async function fetchAdminFeed() {
   if (!response.ok || !data?.ok) return null;
   return data;
 }
+
+// Admin üye listesi — hafif endpoint
+export async function fetchAdminCustomers() {
+  const { response, data } = await apiJson('/api/realtime?resource=admin-customers', {
+    timeoutMs: 25000
+  });
+  if (!response.ok || !data?.ok) return null;
+  return data;
+}

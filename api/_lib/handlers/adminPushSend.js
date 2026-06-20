@@ -88,23 +88,24 @@ function explainPushFailure(codes = '', platformCounts = null) {
 // Platforma göre FCM mesajı oluştur
 function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
   const normalized = String(platform || 'web').toLowerCase();
-  const base = {
-    token,
-    notification: {
-      title: pushText.title,
-      body: pushText.body || ''
-    },
-    data: {
-      title: pushText.title,
-      body: pushText.body || '',
-      route: 'home',
-      url: SITE_ORIGIN
-    }
+  const nativeData = {
+    title: pushText.title,
+    body: pushText.body || '',
+    route: 'home'
+  };
+  const webData = {
+    ...nativeData,
+    url: SITE_ORIGIN
   };
 
   if (normalized === 'android') {
     return {
-      ...base,
+      token,
+      notification: {
+        title: pushText.title,
+        body: pushText.body || ''
+      },
+      data: nativeData,
       android: {
         priority: 'high',
         notification: {
@@ -118,7 +119,12 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
 
   if (normalized === 'ios') {
     return {
-      ...base,
+      token,
+      notification: {
+        title: pushText.title,
+        body: pushText.body || ''
+      },
+      data: nativeData,
       apns: {
         headers: {
           'apns-priority': '10'
@@ -138,7 +144,12 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
   }
 
   return {
-    ...base,
+    token,
+    notification: {
+      title: pushText.title,
+      body: pushText.body || ''
+    },
+    data: webData,
     webpush: {
       headers: {
         Urgency: 'high',
@@ -147,10 +158,7 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
       fcmOptions: {
         link: SITE_ORIGIN
       },
-      data: {
-        title: pushText.title,
-        body: pushText.body || '',
-        url: SITE_ORIGIN,
+      notification: {
         icon: iconUrl,
         badge: badgeUrl
       }

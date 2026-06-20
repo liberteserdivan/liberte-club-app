@@ -21,8 +21,8 @@ export function useCustomerRealtime({
   const dbRef = useRef(db);
   dbRef.current = db;
 
-  const debouncedLoyalty = useRef(createDebouncedTask(400));
-  const debouncedHistory = useRef(createDebouncedTask(400));
+  const debouncedLoyalty = useRef(createDebouncedTask(150));
+  const debouncedHistory = useRef(createDebouncedTask(200));
   const debouncedPromos = useRef(createDebouncedTask(700));
 
   useEffect(() => {
@@ -63,6 +63,19 @@ export function useCustomerRealtime({
           event: 'INSERT',
           filter,
           onChange: () => {
+            debouncedLoyalty.current(async () => {
+              const loyalty = await fetchCustomerLoyaltySnapshot();
+              if (!loyalty || cancelled) return;
+              const current = dbRef.current;
+              commit({
+                ...current,
+                loyalty: {
+                  ...(current.loyalty || {}),
+                  [customerId]: loyalty
+                }
+              }, { skipRemote: true });
+            });
+
             debouncedHistory.current(async () => {
               const historyRows = await fetchCustomerHistory(20);
               if (!historyRows || cancelled) return;
