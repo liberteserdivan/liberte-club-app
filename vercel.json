@@ -4,6 +4,14 @@
   "env": {
     "USE_RELATIONAL_STATE": "1"
   },
+  "functions": {
+    "api/admin.js": {
+      "maxDuration": 60
+    },
+    "api/push.js": {
+      "maxDuration": 60
+    }
+  },
   "redirects": [
     { "source": "/gizlilik", "destination": "/privacy", "permanent": true },
     { "source": "/kullanim-sartlari", "destination": "/terms", "permanent": true }

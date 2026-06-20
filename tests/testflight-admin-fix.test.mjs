@@ -64,6 +64,14 @@ test('adminPushSend gönderim öncesi OAuth probe yapmaz', () => {
   assert.doesNotMatch(handler, /probeFcmCredentials/);
 });
 
+test('adminPushSend production hızlı yol kullanır', () => {
+  const handler = readFileSync(join(root, 'api/_lib/handlers/adminPushSend.js'), 'utf8');
+  assert.match(handler, /light: true/);
+  assert.match(handler, /queueInAppNotificationSave/);
+  const pushStore = readFileSync(join(root, 'api/_lib/pushStore.js'), 'utf8');
+  assert.match(pushStore, /isProductionRuntime/);
+});
+
 test('PushNotificationAdmin push kayıtlarında skipRemote kullanır', () => {
   const admin = readFileSync(join(root, 'src/components/PushNotificationAdmin.jsx'), 'utf8');
   assert.match(admin, /skipRemote: true/);

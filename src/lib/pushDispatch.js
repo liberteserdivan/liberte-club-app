@@ -139,13 +139,16 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
     };
   } catch (error) {
     const message = formatPushErrorMessage({}, error);
+    const timeoutHint = error?.code === 'FETCH_TIMEOUT'
+      ? ' İstek zaman aşımına uğradı; tekrar dene.'
+      : '';
     return {
       ok: false,
       sent: 0,
       failed: 0,
       note: message.includes('Ref:')
         ? `Uygulama içi kaydedildi. ${message}`
-        : `Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.${message ? ` ${message}` : ''}`
+        : `Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.${timeoutHint}${message ? ` ${message}` : ''}`
     };
   }
 }

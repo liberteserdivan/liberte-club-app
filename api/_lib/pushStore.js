@@ -1,7 +1,9 @@
 import { getSql } from './sql.js';
+import { isProductionRuntime } from './schemaReady.js';
 
-// push_subscriptions tablosunu hazırla
+// push_subscriptions tablosunu hazırla — production'da bootstrap SQL yeterli
 export async function ensurePushTables(sql) {
+  if (isProductionRuntime()) return;
   await sql`CREATE TABLE IF NOT EXISTS push_subscriptions (
     id bigint PRIMARY KEY,
     customer_id bigint REFERENCES customers(id) ON DELETE CASCADE,
@@ -258,17 +260,19 @@ export async function deactivateAllPushSubscriptions(sql) {
   return rows.length;
 }
 
-// Gönderim logu yaz
+// Gönderim logu yaz — production'da tablo bootstrap ile hazır
 export async function insertPushSendLog(sql, entry) {
-  await sql`CREATE TABLE IF NOT EXISTS push_send_log (
-    id bigint PRIMARY KEY,
-    title text,
-    body text,
-    audience text,
-    sent_count int,
-    created_at text,
-    legacy_json jsonb
-  )`;
+  if (!isProductionRuntime()) {
+    await sql`CREATE TABLE IF NOT EXISTS push_send_log (
+      id bigint PRIMARY KEY,
+      title text,
+      body text,
+      audience text,
+      sent_count int,
+      created_at text,
+      legacy_json jsonb
+    )`;
+  }
   await sql`
     INSERT INTO push_send_log (id, title, body, audience, sent_count, created_at, legacy_json)
     VALUES (

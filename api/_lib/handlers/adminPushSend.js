@@ -86,6 +86,33 @@ function explainPushFailure(codes = '', platformCounts = null) {
   return text;
 }
 
+// Uygulama içi bildirimi arka planda kaydet — FCM yanıtını geciktirmesin
+function queueInAppNotificationSave({
+  audience,
+  pushText,
+  resolved,
+  requestId
+}) {
+  if (!useRelationalState()) return;
+
+  const sqlNotify = getSql();
+  if (!sqlNotify) return;
+
+  const targetIds = resolved.targetCustomerIds?.length
+    ? resolved.targetCustomerIds
+    : (resolved.subscriptions || []).map((row) => Number(row.customerId)).filter((id) => id > 0);
+
+  void insertInAppNotificationsForAudience(sqlNotify, {
+    customerIds: targetIds,
+    title: pushText.title,
+    body: pushText.body,
+    audience,
+    payload: { source: 'admin_push', requestId }
+  }).catch(() => {
+    // Realtime bildirim yazımı push yanıtını etkilemesin
+  });
+}
+
 // Platforma göre FCM mesajı oluştur
 function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
   const normalized = String(platform || 'web').toLowerCase();
@@ -191,7 +218,7 @@ export async function handleAdminPushSend(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const adminSession = await requireAdminSession(req, res, { pinRequired: true });
+    const adminSession = await requireAdminSession(req, res, { pinRequired: true, light: true });
     if (!adminSession) return;
 
     const body = readBodySafe(req);
@@ -254,28 +281,13 @@ export async function handleAdminPushSend(req, res) {
 
     const clean = [...new Set(resolved.tokens.filter(Boolean))];
 
-    // Push başarısız olsa bile uygulama içi bildirim kaydı oluştur
-    if (useRelationalState()) {
-      const sqlNotify = getSql();
-      if (sqlNotify) {
-        const targetIds = resolved.targetCustomerIds?.length
-          ? resolved.targetCustomerIds
-          : (resolved.subscriptions || []).map((row) => Number(row.customerId)).filter((id) => id > 0);
-        try {
-          await insertInAppNotificationsForAudience(sqlNotify, {
-            customerIds: targetIds,
-            title: pushText.title,
-            body: pushText.body,
-            audience,
-            payload: { source: 'admin_push', requestId: trace.requestId }
-          });
-        } catch {
-          // Realtime bildirim yazımı push gönderimini durdurmasın
-        }
-      }
-    }
-
     if (!clean.length) {
+      queueInAppNotificationSave({
+        audience,
+        pushText,
+        resolved,
+        requestId: trace.requestId
+      });
       const hadSubscriptions = (preparedState.pushSubscriptions || []).some(
         (row) => row?.token && row.active !== false
       );
@@ -396,6 +408,13 @@ export async function handleAdminPushSend(req, res) {
     } else if (result.successCount > 0) {
       note += '. Görünmüyorsa uygulamayı arka plana alın veya Bildirimleri yeniden açın.';
     }
+
+    queueInAppNotificationSave({
+      audience,
+      pushText,
+      resolved,
+      requestId: trace.requestId
+    });
 
     return res.status(200).json({
       ok: result.successCount > 0,

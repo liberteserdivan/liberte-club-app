@@ -424,8 +424,30 @@ export async function requireSession(req, res) {
   return session;
 }
 
-// Admin oturumu zorunlu
-export async function requireAdminSession(req, res, { pinRequired = true } = {}) {
+// Admin oturumu zorunlu — light: push gibi hızlı uçlar için müşteri sync atlanır
+export async function requireAdminSession(req, res, { pinRequired = true, light = false } = {}) {
+  if (light) {
+    const identity = await getSessionForQr(req);
+    if (!identity) {
+      res.status(401).json({ error: 'Oturum gerekli' });
+      return null;
+    }
+    if (!identity.isAdmin) {
+      res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
+      return null;
+    }
+    if (pinRequired && !identity.adminVerified) {
+      res.status(403).json({ error: 'Yönetici PIN doğrulaması gerekli', needsAdminPin: true });
+      return null;
+    }
+    return {
+      customerId: identity.customerId,
+      isAdmin: true,
+      adminVerified: identity.adminVerified,
+      role: identity.role
+    };
+  }
+
   const session = await requireSession(req, res);
   if (!session) return null;
   if (!session.isAdmin) {

@@ -1,7 +1,9 @@
 import { getSql } from './sql.js';
+import { isProductionRuntime } from './schemaReady.js';
 
-// Uygulama içi bildirim tablosunu hazırla
+// Uygulama içi bildirim tablosunu hazırla — production'da DDL atlanır
 export async function ensureInAppNotificationTable(sql) {
+  if (isProductionRuntime()) return;
   await sql`CREATE TABLE IF NOT EXISTS in_app_notifications (
     id bigint PRIMARY KEY,
     customer_id bigint REFERENCES customers(id) ON DELETE CASCADE,
