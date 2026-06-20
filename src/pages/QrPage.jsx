@@ -19,8 +19,8 @@ import { hasStoredAuthToken } from '../lib/apiClient.js';
 import { isNativeApp } from '../lib/platform.js';
 import { hydrateSessionTokenFromServer } from '../lib/session.js';
 
-const QR_FETCH_MS = 10000;
-const QR_LOADING_CAP_MS = 11000;
+const QR_FETCH_MS = 6000;
+const QR_LOADING_CAP_MS = 7000;
 const QR_SIZE = 260;
 const DEFAULT_TTL_SECONDS = 90;
 
@@ -93,7 +93,7 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
 
     const ttlMs = Math.max(15_000, Number(ttlSeconds) * 1000);
     const exp = Number(expiresAt) > 0 ? Number(expiresAt) : Date.now() + ttlMs;
-    const delay = Math.max(5000, exp - Date.now() - 8000);
+    const delay = Math.max(3000, exp - Date.now() - 5000);
 
     refreshTimerRef.current = setTimeout(() => {
       if (!mountedRef.current) return;
@@ -273,20 +273,6 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
 
     return () => clearTimeout(capTimer);
   }, [qrStatus]);
-
-  useEffect(() => {
-    if (!refreshRemote) return undefined;
-
-    refreshRemote(true);
-
-    function onVisible() {
-      if (document.visibilityState !== 'visible') return;
-      refreshRemote(true);
-    }
-
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [refreshRemote, customer.id]);
 
   const hasQr = Boolean(qrValue);
   const isLoading = qrStatus === 'loading' && !hasQr;

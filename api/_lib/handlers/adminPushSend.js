@@ -97,6 +97,7 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
     data: {
       title: pushText.title,
       body: pushText.body || '',
+      route: 'home',
       url: SITE_ORIGIN
     }
   };

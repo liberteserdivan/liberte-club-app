@@ -33,6 +33,7 @@ test('adminLoyalty relational sadakat yolunu kullanır', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/adminLoyalty.js'), 'utf8');
   assert.match(source, /applyLoyaltyActionRelational/);
   assert.match(source, /loadCustomerSummaryRelational/);
+  assert.match(source, /light: true/);
 });
 
 test('migration script doğru şema yolunu kullanır', () => {

@@ -136,6 +136,16 @@ check('mergeAdminState cashier_pin korur', () => {
   assert.equal(merged.settings.cafe_name, 'Liberte 2', 'cafe_name güncellenmeliydi');
 });
 
+check('mergeAdminState tek müşterilik istemci tüm üyeleri silmez', () => {
+  const canonical = baseState();
+  const partialClient = {
+    settings: canonical.settings,
+    customers: [canonical.customers[0]]
+  };
+  const merged = mergeAdminState(canonical, partialClient);
+  assert.equal(merged.customers.length, canonical.customers.length, 'üye sayısı korunmalıydı');
+});
+
 // 10) filterStateForUser başka üyelerin verisini sızdırmaz
 check('filterStateForUser başka üye verisi sızdırmaz', () => {
   const canonical = baseState();
@@ -146,4 +156,4 @@ check('filterStateForUser başka üye verisi sızdırmaz', () => {
   assert.equal(client.settings.cashier_pin, undefined, 'cashier_pin sızdırılmamalı');
 });
 
-console.log(`\nTüm güvenlik testleri geçti (${passed}/10).`);
+console.log(`\nTüm güvenlik testleri geçti (${passed}/11).`);

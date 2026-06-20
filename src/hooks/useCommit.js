@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatClientApiError } from '../lib/apiErrors.js';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
-import { saveAdminSnapshot } from '../lib/adminFullSnapshot.js';
+import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullSnapshot.js';
 import { reportError } from '../lib/errorHub.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
@@ -47,6 +47,16 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
   // Uzak kayıt hatasını merkezi hub'a ilet
   function handleSaveFailure(result) {
+    if (result.conflict) {
+      pullRemoteRef.current(true);
+      setSyncState((prev) => ({
+        ...prev,
+        status: 'synced',
+        lastError: null
+      }));
+      return;
+    }
+
     const formatted = formatClientApiError({
       data: { message: result.error, requestId: result.requestId },
       error: result.network ? { code: result.code || 'NETWORK_ERROR' } : null,
@@ -224,6 +234,12 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
   // Arka planda buluta kaydet
   function queueSaveRemote(nextDb, seq) {
+    const session = sessionRef?.current;
+    if (isPartialAdminCustomerList(nextDb, session)) {
+      pullRemoteRef.current(true);
+      return;
+    }
+
     savingCount.current += 1;
     setSyncState((prev) => ({ ...prev, status: 'saving', lastError: null }));
 
@@ -246,7 +262,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
         pullRemoteRef.current(true);
       }
 
-      if (!result.skipped) {
+      if (!result.skipped && !result.conflict) {
         handleSaveFailure(result);
       }
     });

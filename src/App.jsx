@@ -9,6 +9,9 @@ import { getMemorySession, patchMemorySession, logoutSession, setMemorySession }
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
+import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
+import { mergeAdminSnapshotIntoDb } from './lib/adminFullSnapshot.js';
+import { App as CapApp } from '@capacitor/app';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
 import { canRequestPushOnThisDevice, deactivateDevicePushToken } from './lib/pushPrompt.js';
@@ -52,6 +55,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const splashStartRef = useRef(Date.now());
   const hydrateStartedRef = useRef(0);
+  const adminHydratedRef = useRef(false);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -82,7 +86,7 @@ export default function App() {
           commit(mergeAuthSnapshot(db, {
             customer: result.customer,
             loyalty: result.loyalty
-          }));
+          }), { skipRemote: true });
         }
       }
       setAuthReady(true);
@@ -173,11 +177,62 @@ export default function App() {
   });
 
   useAdminRealtime({
-    enabled: Boolean(tab === 'admin' && isAdmin && adminVerified && !useLocalAuth()),
+    enabled: Boolean(
+      isAdmin
+      && adminVerified
+      && !useLocalAuth()
+      && (tab === 'admin' || tab === 'qr')
+    ),
     db,
     commit,
     onCustomersChanged: () => refreshRemote(true)
   });
+
+  // Yönetici oturumunda snapshot ile listeyi doldur ve sunucudan doğrula
+  useEffect(() => {
+    if (!authReady || !session?.isAdmin || !session?.adminVerified || adminHydratedRef.current) return;
+    adminHydratedRef.current = true;
+    const merged = mergeAdminSnapshotIntoDb(db, session);
+    if (merged !== db) commit(merged, { skipRemote: true });
+    refreshRemote(true);
+  }, [authReady, session?.isAdmin, session?.adminVerified, session?.customerId, db, commit, refreshRemote]);
+
+  // Yönetim sekmesi açılınca tam üye listesini yenile
+  useEffect(() => {
+    if (tab !== 'admin' || !isAdmin || !adminVerified) return;
+    refreshRemote(true);
+  }, [tab, isAdmin, adminVerified, refreshRemote]);
+
+  // Push bildirimi tıklamasında uygulama içi sekme aç
+  useEffect(() => {
+    return subscribePushNavigation((route) => {
+      const allowed = new Set(['home', 'menu', 'qr', 'campaign', 'profile', 'admin']);
+      setTab(allowed.has(route) ? route : 'home');
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    let disposed = false;
+    let removeOpenListener = () => {};
+
+    CapApp.getLaunchUrl()
+      .then((result) => {
+        if (!disposed && result?.url) handlePushOpenPayload({ url: result.url });
+      })
+      .catch(() => {});
+
+    CapApp.addListener('appUrlOpen', (event) => {
+      handlePushOpenPayload({ url: event.url });
+    }).then((handle) => {
+      removeOpenListener = () => { handle.remove(); };
+    }).catch(() => {});
+
+    return () => {
+      disposed = true;
+      removeOpenListener();
+    };
+  }, []);
 
   // Oturum var ama müşteri henüz yüklenmediyse giriş ekranı gösterme
   useEffect(() => {

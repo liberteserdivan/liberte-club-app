@@ -1,7 +1,7 @@
 import { getSql } from '../appState.js';
 import { applyCors, publicErrorMessage } from '../http.js';
 import { getSessionForQr, readAuthToken } from '../auth.js';
-import { findCustomerById, findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
+import { findCustomerById } from '../customersStore.js';
 import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from '../qrToken.js';
 import { insertErrorLog } from '../errorLogs.js';
 import { createRequestTrace } from '../requestTrace.js';
@@ -116,15 +116,6 @@ export async function handleQrGenerate(req, res) {
         ));
       }
       memberNo = `LC-${customer.id}`;
-
-      trace.log('load_loyalty', { step: 'load_loyalty', customerId: session.customerId });
-      const loyaltyRow = await findLoyaltyByCustomerId(sql, session.customerId);
-      const loyalty = loyaltyRowToCard(loyaltyRow, session.customerId);
-      trace.log('load_loyalty_ok', {
-        step: 'load_loyalty',
-        customerId: session.customerId,
-        lpBalance: loyalty?.lpBalance ?? null
-      });
     }
 
     trace.log('create_payload', { step: 'create_payload', customerId: session.customerId, memberNo });

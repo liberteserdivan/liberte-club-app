@@ -13,6 +13,6 @@ test('normal sekmeler 60 saniye polling kullanır', () => {
 
 test('QR sekmesi hızlı polling kullanır', () => {
   assert.equal(resolveSyncIntervalMs({ tab: 'qr' }), SYNC_INTERVAL_FAST_MS);
-  assert.ok(SYNC_INTERVAL_FAST_MS >= 8000);
-  assert.ok(SYNC_INTERVAL_FAST_MS <= 10000);
+  assert.ok(SYNC_INTERVAL_FAST_MS >= 4000);
+  assert.ok(SYNC_INTERVAL_FAST_MS <= 6000);
 });

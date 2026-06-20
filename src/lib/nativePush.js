@@ -2,6 +2,7 @@ import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from './platform.js';
 import { detectPushTokenType, isFcmRegistrationToken } from './pushTokenFormat.js';
+import { handlePushOpenPayload } from './pushNavigation.js';
 
 let listenersAttached = false;
 const tokenRefreshHandlers = new Set();
@@ -33,17 +34,7 @@ function attachNativePushListeners() {
   });
 
   FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
-    const url = action?.notification?.data?.url || action?.notification?.data?.link;
-    if (url && typeof window !== 'undefined') {
-      try {
-        const target = new URL(String(url), window.location.origin);
-        if (target.origin === window.location.origin || target.hostname === 'app.liberte.cafe') {
-          window.location.href = target.href;
-        }
-      } catch {
-        // Geçersiz URL — sessizce geç
-      }
-    }
+    handlePushOpenPayload(action?.notification?.data || {});
   });
 
   FirebaseMessaging.addListener('tokenReceived', (event) => {

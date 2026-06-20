@@ -7,7 +7,8 @@ export default function StampCategoryPanel({
   onAdd,
   onRemove,
   onRedeem,
-  mode = 'cashier'
+  mode = 'cashier',
+  busy = false
 }) {
   const balance = lpBalance || 0;
 
@@ -45,16 +46,16 @@ export default function StampCategoryPanel({
 
               {mode === 'cashier' ? (
                 <div className="stampCategoryCardActions">
-                  <button type="button" className="stampCategoryMainBtn stampCategoryMainBtn--compact" onClick={() => onAdd?.(cat.id)}>
+                  <button type="button" className="stampCategoryMainBtn stampCategoryMainBtn--compact" disabled={busy} onClick={() => onAdd?.(cat.id)}>
                     +{cat.lpGain} LP {cat.shortLabel}
                   </button>
                   {canRedeem && (
-                    <button type="button" className="stampCategoryRedeemBtn stampCategoryRedeemBtn--compact" onClick={() => onRedeem?.(cat.id)}>
+                    <button type="button" className="stampCategoryRedeemBtn stampCategoryRedeemBtn--compact" disabled={busy} onClick={() => onRedeem?.(cat.id)}>
                       <Gift size={14} /> {cat.rewardLabel}
                     </button>
                   )}
                   {canUndo && (
-                    <button type="button" className="stampCategoryUndoBtn stampCategoryUndoBtn--compact" onClick={() => onRemove?.(cat.id)}>
+                    <button type="button" className="stampCategoryUndoBtn stampCategoryUndoBtn--compact" disabled={busy} onClick={() => onRemove?.(cat.id)}>
                       Geri al
                     </button>
                   )}

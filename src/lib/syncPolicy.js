@@ -1,6 +1,6 @@
 // Uzak veri çekme aralıkları (ms)
 export const SYNC_INTERVAL_NORMAL_MS = 60_000;
-export const SYNC_INTERVAL_FAST_MS = 9_000;
+export const SYNC_INTERVAL_FAST_MS = 5_000;
 
 // Hızlı sync gereken sekmeler — QR / kasa
 const FAST_SYNC_TABS = new Set(['qr']);

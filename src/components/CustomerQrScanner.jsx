@@ -61,8 +61,24 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const [scannedToken, setScannedToken] = useState('');
   const [msg, setMsg] = useState('');
   const [success, setSuccess] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   const [productPickCategory, setProductPickCategory] = useState(null);
+
+  const busy = scanBusy || actionBusy;
+
+  // Tarama sonrası LP önbelleğini güncelle
+  const syncScannedCustomer = useCallback((customer) => {
+    if (!customer?.id || typeof commit !== 'function') return;
+    setFound(customer);
+    commit({
+      ...db,
+      loyalty: {
+        ...(db.loyalty || {}),
+        [customer.id]: customer.loyalty || db.loyalty?.[customer.id] || loyaltyTemplate(customer.id)
+      }
+    }, { skipRemote: true });
+  }, [commit, db]);
 
   useEffect(() => {
     canUseNativeBarcodeScan().then(setNativeScanReady).catch(() => setNativeScanReady(false));
@@ -107,14 +123,14 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }, [db, signedQrRequired]);
 
   const onScanSuccess = useCallback(async (txt) => {
-    if (decodeLockRef.current || busy) return;
+    if (decodeLockRef.current || scanBusy || actionBusy) return;
     decodeLockRef.current = true;
 
     let scanOk = false;
     try {
-      setBusy(true);
+      setScanBusy(true);
       const { customer, token } = await resolveCustomerFromScan(txt);
-      setFound(customer);
+      syncScannedCustomer(customer);
       setScannedToken(token);
       setSuccess(true);
       setMsg('QR okundu!');
@@ -128,10 +144,10 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
         setMsg(message);
       }
     } finally {
-      setBusy(false);
+      setScanBusy(false);
       if (!scanOk) decodeLockRef.current = false;
     }
-  }, [busy, resolveCustomerFromScan, stopScanner]);
+  }, [actionBusy, resolveCustomerFromScan, scanBusy, stopScanner, syncScannedCustomer]);
 
   // Native ML Kit — tam ekran kamera (Play Store güvenilir yol)
   const requestNativeScan = useCallback(async () => {
@@ -254,7 +270,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     }
 
     if (signedQrRequired && scannedToken) {
-      setBusy(true);
+      setActionBusy(true);
       try {
         const result = await postLoyaltyAction({
           token: scannedToken,
@@ -262,14 +278,20 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           category,
           menuItemId: menuItem?.id ?? null
         });
-        if (result.customer) setFound(result.customer);
-        if (refreshRemote) await refreshRemote(true);
+        if (result.customer) syncScannedCustomer(result.customer);
+        else if (result.loyalty && found?.id) {
+          commit({
+            ...db,
+            loyalty: { ...(db.loyalty || {}), [found.id]: result.loyalty }
+          }, { skipRemote: true });
+        }
+        if (refreshRemote) void refreshRemote(false);
         return true;
       } catch (error) {
         setMsg(error?.message || 'İşlem yapılamadı');
         return false;
       } finally {
-        setBusy(false);
+        setActionBusy(false);
       }
     }
 
@@ -361,7 +383,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     setMsg('Doğum günü kahve ikramı kaydedildi.');
   }
 
-  const loyaltySource = found ? (db.loyalty[found.id] || found?.loyalty) : null;
+  const loyaltySource = found ? (found.loyalty || db.loyalty?.[found.id]) : null;
   const loyalty = loyaltySource || (found ? loyaltyTemplate(found.id) : null);
   const lpBalance = loyalty ? getLpBalance(loyalty) : 0;
   const lpLifetime = loyalty ? getLpLifetime(loyalty) : 0;
@@ -455,6 +477,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           <StampCategoryPanel
             mode="cashier"
             lpBalance={lpBalance}
+            busy={actionBusy}
             onAdd={addCategory}
             onRemove={removeCategory}
             onRedeem={redeemCategory}

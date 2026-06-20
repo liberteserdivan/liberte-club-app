@@ -211,6 +211,18 @@ export function mergeUserState(canonical, clientState, customerId) {
 // Admin yazmalarında sunucuya özel gizli ayarları (cashier_pin) koru
 export function mergeAdminState(canonical, clientState) {
   const next = { ...(clientState || {}) };
+  const canonCustomers = canonical?.customers || [];
+  const clientCustomers = clientState?.customers || [];
+
+  // Tek müşterilik istemci önbelleği tüm üye listesini silmesin
+  if (clientCustomers.length > 0 && clientCustomers.length < canonCustomers.length) {
+    const patches = new Map(clientCustomers.map((row) => [Number(row.id), row]));
+    next.customers = canonCustomers.map((row) => {
+      const patch = patches.get(Number(row.id));
+      return patch ? { ...row, ...patch } : row;
+    });
+  }
+
   const canonSettings = canonical?.settings || {};
   next.settings = {
     ...(clientState?.settings || {}),

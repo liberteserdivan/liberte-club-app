@@ -38,3 +38,29 @@ export function clearAdminSnapshot() {
     // yoksay
   }
 }
+
+// Yönetici cihazında eksik üye listesi mi?
+export function isPartialAdminCustomerList(db, session) {
+  if (!session?.isAdmin || !session?.adminVerified) return false;
+  const snap = loadAdminSnapshot();
+  const snapCount = snap?.data?.customers?.length || 0;
+  const currentCount = (db?.customers || []).length;
+  return snapCount >= 2 && currentCount < snapCount;
+}
+
+// Soğuk başlangıçta admin snapshot ile db birleştir
+export function mergeAdminSnapshotIntoDb(db, session) {
+  if (!db || !session?.isAdmin || !session?.adminVerified) return db;
+  const snap = loadAdminSnapshot();
+  const snapData = snap?.data;
+  if (!snapData?.customers?.length) return db;
+  if ((db.customers || []).length >= snapData.customers.length) return db;
+
+  return {
+    ...db,
+    ...snapData,
+    settings: { ...db.settings, ...snapData.settings },
+    customers: snapData.customers,
+    loyalty: { ...(snapData.loyalty || {}), ...(db.loyalty || {}) }
+  };
+}

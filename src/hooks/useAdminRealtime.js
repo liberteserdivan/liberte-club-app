@@ -52,6 +52,8 @@ export function useAdminRealtime({
       const ready = await isSupabaseRealtimeEnabled();
       if (!ready || cancelled) return;
 
+      onCustomersChanged?.();
+
       await openRealtimeChannel(channelKey, (channel, listen) => {
         listen(channel, {
           table: 'customers',
