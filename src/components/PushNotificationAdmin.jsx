@@ -290,8 +290,14 @@ export default function PushNotificationAdmin({ db, commit }) {
         )}
 
         {result && (
-          <div className={`pushSendResult${result.ok ? ' isSuccess' : ''}`}>
-            <strong>{result.ok ? 'Bildirim gönderildi' : 'Gönderim tamamlanamadı'}</strong>
+          <div className={`pushSendResult${result.sent > 0 ? ' isSuccess' : result.ok ? ' isWarning' : ''}`}>
+            <strong>
+              {result.sent > 0
+                ? 'Bildirim gönderildi'
+                : result.ok
+                  ? 'Uygulama içi kaydedildi — cihaza push ulaşmadı'
+                  : 'Gönderim tamamlanamadı'}
+            </strong>
             <ul>
               <li>Hedef kitle: {result.audienceLabel}</li>
               <li>Ulaşılan / kayıtlı cihaz: {result.deviceCount}</li>

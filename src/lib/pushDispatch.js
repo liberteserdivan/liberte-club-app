@@ -68,10 +68,10 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
 
   if (!resolved.deviceCount) {
     return {
-      ok: true,
+      ok: false,
       sent: 0,
       failed: 0,
-      note: 'Seçilen hedef kitlede kayıtlı cihaz yok. Bildirim uygulama içi kaydedildi.'
+      note: 'Seçilen hedef kitlede kayıtlı cihaz yok. Bildirim yalnızca uygulama içi kaydedildi.'
     };
   }
 

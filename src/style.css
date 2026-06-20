@@ -4438,6 +4438,11 @@ body{
   border-color:rgba(31,106,85,.16);
 }
 
+.pushSendResult.isWarning{
+  background:#fffbeb;
+  border-color:rgba(180,120,20,.2);
+}
+
 .pushSendResult strong{
   display:block;
   margin-bottom:8px;

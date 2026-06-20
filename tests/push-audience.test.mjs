@@ -67,6 +67,23 @@ test('Pasif token gönderime dahil edilmez', () => {
   assert.equal(isActivePushSubscription({ token: 'x', active: false }), false);
 });
 
+test('Tüm kullanıcılar — müşteri listesi boşken kayıtlı cihazları seçer (relational API)', () => {
+  const db = {
+    customers: [],
+    loyalty: {},
+    history: [],
+    checkIns: [],
+    pushSubscriptions: [
+      { customerId: 42, token: 'ios-fcm', platform: 'ios', channel: 'native', active: true, permissionStatus: 'granted' },
+      { customerId: 43, token: 'web-old', platform: 'web', channel: 'web', active: true, permissionStatus: 'granted' }
+    ]
+  };
+  const resolved = resolvePushAudience(db, 'all');
+  assert.equal(resolved.deviceCount, 2);
+  assert.deepEqual(resolved.tokens.sort(), ['ios-fcm', 'web-old'].sort());
+  assert.equal(resolved.targetUserCount, 2);
+});
+
 test('Native token varken aynı üyenin web tokenı gönderime alınmaz', () => {
   const db = {
     ...baseDb,

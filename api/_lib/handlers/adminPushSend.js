@@ -276,15 +276,21 @@ export async function handleAdminPushSend(req, res) {
     }
 
     if (!clean.length) {
+      const hadSubscriptions = (preparedState.pushSubscriptions || []).some(
+        (row) => row?.token && row.active !== false
+      );
       return res.status(200).json({
-        ok: true,
+        ok: false,
         sent: 0,
         failed: 0,
+        savedInApp: true,
         audience,
         audienceLabel: resolved.audienceLabel,
         targetUserCount: resolved.targetUserCount,
         deviceCount: 0,
-        note: 'Seçilen hedef kitlede kayıtlı bildirim tokenı yok.'
+        note: hadSubscriptions
+          ? 'Kayıtlı cihaz var ancak hedef kitle filtresine uyan izinli token bulunamadı. Hedefi "Sadece izin vermiş cihazlar" seçip tekrar deneyin.'
+          : 'Seçilen hedef kitlede kayıtlı bildirim tokenı yok.'
       });
     }
 

@@ -225,14 +225,15 @@ export function resolvePushAudience(db, audienceId = 'all') {
 
   const matchedSubscriptions = (db.pushSubscriptions || []).filter((row) => {
     if (!isGrantedPushSubscription(row)) return false;
-    if (audienceId === 'granted_devices') return true;
+    // Tüm kullanıcılar / izin vermiş cihazlar — müşteri listesi olmadan da çalışmalı (relational API)
+    if (audienceId === 'all' || audienceId === 'granted_devices') return true;
     return matchedIds.has(Number(row.customerId));
   });
 
   const subscriptions = selectDeliverySubscriptions(matchedSubscriptions);
   const tokens = [...new Set(subscriptions.map((row) => row.token).filter(Boolean))];
-  const targetIds = audienceId === 'granted_devices'
-    ? new Set(subscriptions.map((row) => Number(row.customerId)))
+  const targetIds = audienceId === 'all' || audienceId === 'granted_devices'
+    ? new Set(subscriptions.map((row) => Number(row.customerId)).filter((id) => id > 0))
     : matchedIds;
 
   return {
