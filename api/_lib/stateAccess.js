@@ -214,8 +214,10 @@ export function mergeAdminState(canonical, clientState) {
   const canonCustomers = canonical?.customers || [];
   const clientCustomers = clientState?.customers || [];
 
-  // Tek müşterilik istemci önbelleği tüm üye listesini silmesin
-  if (clientCustomers.length > 0 && clientCustomers.length < canonCustomers.length) {
+  // Boş veya kısmi müşteri listesi tüm üyeleri silmesin
+  if (clientCustomers.length === 0 && canonCustomers.length > 0) {
+    next.customers = canonCustomers;
+  } else if (clientCustomers.length > 0 && clientCustomers.length < canonCustomers.length) {
     const patches = new Map(clientCustomers.map((row) => [Number(row.id), row]));
     next.customers = canonCustomers.map((row) => {
       const patch = patches.get(Number(row.id));

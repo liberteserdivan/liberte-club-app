@@ -1,5 +1,6 @@
 import { getSql } from './sql.js';
 import { parseAppStateData, serializeAppStateJson } from './appState.js';
+import { invalidateAppStateCache } from './appStateCache.js';
 import { GLOBAL_STATE_KEYS, RELATIONAL_STATE_KEYS, useRelationalState } from './relationalConfig.js';
 import { loadMenuFromSql, upsertMenuToSql } from './menuStore.js';
 import { loadHistoryFromSql, loadLoyaltyMapFromSql } from './loyaltyStore.js';
@@ -51,6 +52,7 @@ export async function bumpAppStateRevision(externalSql = null) {
     WHERE id = ${STATE_ID}
     RETURNING updated_at
   `;
+  invalidateAppStateCache();
   return rows[0]?.updated_at || null;
 }
 

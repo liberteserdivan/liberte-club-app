@@ -432,19 +432,29 @@ export async function requireAdminSession(req, res, { pinRequired = true, light 
       res.status(401).json({ error: 'Oturum gerekli' });
       return null;
     }
-    if (!identity.isAdmin) {
-      res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
-      return null;
-    }
     if (pinRequired && !identity.adminVerified) {
       res.status(403).json({ error: 'Yönetici PIN doğrulaması gerekli', needsAdminPin: true });
       return null;
     }
+
+    const sql = getSql();
+    if (sql) {
+      const { findCustomerById } = await import('./customersStore.js');
+      const live = await findCustomerById(sql, identity.customerId);
+      if (!live?.isAdmin) {
+        res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
+        return null;
+      }
+    } else if (!identity.isAdmin) {
+      res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
+      return null;
+    }
+
     return {
       customerId: identity.customerId,
       isAdmin: true,
       adminVerified: identity.adminVerified,
-      role: identity.role
+      role: 'admin'
     };
   }
 

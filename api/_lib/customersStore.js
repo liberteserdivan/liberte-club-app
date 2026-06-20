@@ -382,3 +382,12 @@ export async function listAllCustomers(sql) {
   `;
   return rows.map(customerRowToRecord);
 }
+
+// Üyeyi normalize tablodan sil — CASCADE ile sadakat kayıtları da gider
+export async function deleteCustomerById(sql, customerId) {
+  const id = Number(customerId);
+  if (!sql || !id) return false;
+  await ensureCustomersTables(sql);
+  await sql`DELETE FROM customers WHERE id = ${id}`;
+  return true;
+}

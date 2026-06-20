@@ -16,7 +16,7 @@ export function loadAdminSnapshot() {
 
 // Başarılı admin sync sonrası tam state sakla
 export function saveAdminSnapshot(data) {
-  if (!data || !Array.isArray(data.customers) || data.customers.length < 2) return;
+  if (!data || !Array.isArray(data.customers) || data.customers.length < 1) return;
 
   try {
     const payload = {
@@ -45,7 +45,7 @@ export function isPartialAdminCustomerList(db, session) {
   const snap = loadAdminSnapshot();
   const snapCount = snap?.data?.customers?.length || 0;
   const currentCount = (db?.customers || []).length;
-  return snapCount >= 2 && currentCount < snapCount;
+  return snapCount >= 1 && currentCount < snapCount;
 }
 
 // Soğuk başlangıçta admin snapshot ile db birleştir

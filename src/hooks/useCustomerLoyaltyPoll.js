@@ -33,7 +33,7 @@ export function useCustomerLoyaltyPoll({
 
       const current = dbRef.current;
       const prev = current.loyalty?.[customerId];
-      if (prev && prev.lpBalance === loyalty.lpBalance && prev.lpLifetime === loyalty.lpLifetime) {
+      if (prev && JSON.stringify(prev) === JSON.stringify(loyalty)) {
         return;
       }
 

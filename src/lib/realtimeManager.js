@@ -1,4 +1,4 @@
-import { getSupabaseClient, resetSupabaseClient, refreshRealtimeAuth } from './supabaseClient.js';
+import { getSupabaseClient, resetSupabaseClient, refreshRealtimeAuth, refreshRealtimeSessionFromServer } from './supabaseClient.js';
 
 const channelRegistry = new Map();
 let messageCount = 0;
@@ -61,6 +61,7 @@ export async function openRealtimeChannel(key, builder) {
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
       reconnectCount += 1;
       console.warn('[realtime.channel]', key, status, err?.message || '');
+      refreshRealtimeSessionFromServer().catch(() => {});
     }
     if (status === 'SUBSCRIBED') {
       console.info('[realtime.channel]', key, 'subscribed');

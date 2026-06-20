@@ -16,6 +16,8 @@ import {
   requiresProductPickForLpCategory
 } from '../lib/menuLp.js';
 import { syncAdminMembersFromServer } from '../lib/adminMemberSync.js';
+import { deleteAdminMember } from '../lib/adminMemberClient.js';
+import { useLocalAuth } from '../lib/devAuth.js';
 
 const ADMIN_TABS=[
   {id:'overview',label:'Özet',Icon:LayoutDashboard},
@@ -1026,27 +1028,38 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
     setPendingDelete(c);
   }
 
-  function executeDeleteUser(){
+  async function executeDeleteUser(){
     if(!pendingDelete)return;
     const c=pendingDelete;
-    const loyalty={...(db.loyalty||{})};
-    delete loyalty[c.id];
-    const createdAt=new Date().toLocaleString('tr-TR');
+    setMessage('');
 
-    commit({
-      ...db,
-      customers:customers.filter(x=>x.id!==c.id),
-      loyalty,
-      pushSubscriptions:(db.pushSubscriptions||[]).filter(x=>x.customerId!==c.id),
-      history:[
-        {id:Date.now(),customerId:c.id,name:c.name,phone:c.phone,type:'customer_delete',count:0,source:'Admin kullanıcı silme',createdAt},
-        ...(db.history||[]).filter(x=>x.customerId!==c.id)
-      ]
-    });
+    try{
+      if(!useLocalAuth()){
+        await deleteAdminMember(c.id);
+      }
 
-    setEditing(null);
-    setPendingDelete(null);
-    setMessage('Kullanıcı silindi.');
+      const loyalty={...(db.loyalty||{})};
+      delete loyalty[c.id];
+      const createdAt=new Date().toLocaleString('tr-TR');
+
+      commit({
+        ...db,
+        customers:customers.filter(x=>x.id!==c.id),
+        loyalty,
+        pushSubscriptions:(db.pushSubscriptions||[]).filter(x=>x.customerId!==c.id),
+        history:[
+          {id:Date.now(),customerId:c.id,name:c.name,phone:c.phone,type:'customer_delete',count:0,source:'Admin kullanıcı silme',createdAt},
+          ...(db.history||[]).filter(x=>x.customerId!==c.id)
+        ]
+      }, { skipRemote: useLocalAuth() ? false : true });
+
+      setEditing(null);
+      setPendingDelete(null);
+      setMessage('Kullanıcı silindi.');
+    }catch(error){
+      setMessage(error?.message||'Kullanıcı silinemedi.');
+      setPendingDelete(null);
+    }
   }
 
   function addCategory(c,category,menuItem=null){

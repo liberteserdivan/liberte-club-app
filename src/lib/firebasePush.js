@@ -470,6 +470,11 @@ export async function refreshNativePushIfSubscribed(customer, db, commit) {
     if (!result.ok || !result.token || result.token === localToken) return;
     commit(upsertPushSubscription(db, customer, result.token), { skipRemote: true });
     markPushEnabledOnDevice(customer.id, result.token);
+    await syncPushDeviceRegistration(customer, {
+      token: result.token,
+      permissionStatus: 'granted',
+      platform: result.platform || detectPushPlatform()
+    });
   } catch {
     // Arka planda sessizce dene
   }

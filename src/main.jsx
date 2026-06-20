@@ -8,6 +8,9 @@ import { captureException } from './lib/errorHub.js';
 import { patchFirebaseReferrer } from './lib/firebaseReferrerPatch.js';
 import { getFirebaseReferrerOrigin } from './lib/firebasePush.js';
 import { initPwaInstallCapture } from './lib/pwaInstall.js';
+import { ensureNativePushNavigation } from './lib/nativePush.js';
+import { handlePushOpenPayload } from './lib/pushNavigation.js';
+import { isNativeApp } from './lib/platform.js';
 import { load } from './lib/db.js';
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import './style.css';
@@ -15,9 +18,20 @@ import './style.css';
 // Herkese acik yasal sayfalar — giris ve splash olmadan
 const legalRoute = resolveLegalRoute(window.location.pathname);
 patchFirebaseReferrer(getFirebaseReferrerOrigin());
+if (isNativeApp()) {
+  ensureNativePushNavigation();
+}
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) {
   initPwaInstallCapture();
+}
+// PWA bildirim tıklaması — açık sekmede route değiştir
+if (!legalRoute && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'liberte-push-open') {
+      handlePushOpenPayload(event.data.data || {});
+    }
+  });
 }
 // Yakalanmamış istemci hatalarını merkezi hub'a ilet
 if (!legalRoute) {

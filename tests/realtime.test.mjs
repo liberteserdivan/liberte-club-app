@@ -64,6 +64,11 @@ test('realtime API route ve config kayıtlı', () => {
   assert.match(vercel, /api\/realtime/);
 });
 
+test('admin member-delete endpoint kayıtlı', () => {
+  const admin = readFileSync(join(root, 'api', 'admin.js'), 'utf8');
+  assert.match(admin, /member-delete/);
+});
+
 test('admin-customers relational birleştirme kullanır', () => {
   const realtime = readFileSync(join(root, 'api/_lib/handlers/realtimeFetch.js'), 'utf8');
   assert.match(realtime, /composeStateFromRelational/);

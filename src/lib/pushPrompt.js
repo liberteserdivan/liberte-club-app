@@ -1,4 +1,7 @@
-import { isIos, isNativeApp, isStandalonePwa } from './platform.js';
+import { isIos, isNativeApp, isStandalonePwa, isAndroid } from './platform.js';
+import { apiJson } from './apiClient.js';
+import { useLocalAuth } from './devAuth.js';
+import { getDeviceId } from './deviceId.js';
 
 // Üye bazlı bildirim isteği anahtarları
 function dismissKey(customerId) {
@@ -7,6 +10,14 @@ function dismissKey(customerId) {
 
 function deviceKey(customerId) {
   return `libertePushDevice:${customerId}`;
+}
+
+function detectPushPlatform() {
+  if (isNativeApp() && isAndroid()) return 'android';
+  if (isNativeApp() && isIos()) return 'ios';
+  if (isAndroid()) return 'android-web';
+  if (isIos()) return 'ios-web';
+  return 'web';
 }
 
 // Bu cihazda bildirim kuruldu mu?
@@ -32,8 +43,27 @@ export function clearLocalPushDevice(customerId) {
   localStorage.removeItem(dismissKey(customerId));
 }
 
-// Çıkışta yalnızca bu cihazın tokenını pasifleştir
-export function deactivateDevicePushToken(customerId, db, commit) {
+// Sunucuda cihaz tokenını pasifleştir
+async function revokePushTokenOnServer(customerId) {
+  if (useLocalAuth() || !customerId) return;
+  try {
+    await apiJson('/api/push/register-device', {
+      method: 'POST',
+      body: JSON.stringify({
+        customerId: Number(customerId),
+        token: null,
+        permissionStatus: 'denied',
+        platform: detectPushPlatform(),
+        deviceId: getDeviceId()
+      })
+    });
+  } catch {
+    // Çıkış akışı devam etsin
+  }
+}
+
+// Çıkışta bu cihazın tokenını yerel ve sunucuda pasifleştir
+export async function deactivateDevicePushToken(customerId, db, commit) {
   if (!customerId || typeof commit !== 'function') return;
 
   const localToken = getLocalPushToken(customerId);
@@ -41,7 +71,7 @@ export function deactivateDevicePushToken(customerId, db, commit) {
 
   const now = new Date().toLocaleString('tr-TR');
   const pushSubscriptions = (db.pushSubscriptions || []).map((row) => {
-    if (row.customerId === customerId && row.token === localToken) {
+    if (Number(row.customerId) === Number(customerId) && row.token === localToken) {
       return { ...row, active: false, deactivatedAt: now };
     }
     return row;
@@ -49,6 +79,7 @@ export function deactivateDevicePushToken(customerId, db, commit) {
 
   clearLocalPushDevice(customerId);
   commit({ ...db, pushSubscriptions }, { skipRemote: true });
+  await revokePushTokenOnServer(customerId);
 }
 
 // Bu cihazda bildirim isteği gösterilmeli mi?
@@ -60,7 +91,7 @@ export function shouldShowPushPrompt(customer, db) {
   const hasLocalToken = Boolean(
     localToken
     && (db.pushSubscriptions || []).some(
-      (row) => row.customerId === customer.id && row.token === localToken
+      (row) => Number(row.customerId) === Number(customer.id) && row.token === localToken
     )
   );
 

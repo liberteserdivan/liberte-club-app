@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { apiFetch } from './apiClient.js';
-import { getRealtimeToken } from './session.js';
+import { bootstrapSession, getRealtimeToken, patchMemorySession } from './session.js';
 
 let cachedConfig = null;
 let cachedClient = null;
@@ -75,6 +75,21 @@ export async function getSupabaseClient() {
 
   await refreshRealtimeAuth();
   return cachedClient;
+}
+
+// Realtime JWT süresi dolduğunda oturumdan yeni token al
+export async function refreshRealtimeSessionFromServer() {
+  const result = await bootstrapSession();
+  if (!result?.session) return false;
+
+  patchMemorySession({
+    realtimeToken: result.session.realtimeToken || null,
+    adminVerified: Boolean(result.session.adminVerified),
+    isAdmin: Boolean(result.session.isAdmin),
+    role: result.session.role || 'user'
+  });
+  await refreshRealtimeAuth();
+  return Boolean(result.session.realtimeToken);
 }
 
 // Logout sonrası önbelleği temizle

@@ -1,9 +1,19 @@
 import { fetchAdminCustomers } from './realtimeFetch.js';
 import { loadAdminSnapshot, saveAdminSnapshot } from './adminFullSnapshot.js';
 
+// Slice üye sayısı mevcut/snapshot'tan azsa listeyi koru
+function shouldApplyCustomerSlice(db, slice) {
+  if (!Array.isArray(slice?.customers) || !slice.customers.length) return false;
+  const incoming = slice.customers.length;
+  const current = (db?.customers || []).length;
+  const snap = loadAdminSnapshot()?.data?.customers?.length || 0;
+  const best = Math.max(current, snap);
+  return incoming >= best;
+}
+
 // Hafif admin-customers yanıtını yerel state'e uygula
 export function applyAdminMemberSlice(db, slice) {
-  if (!Array.isArray(slice?.customers) || !slice.customers.length) return db;
+  if (!shouldApplyCustomerSlice(db, slice)) return db;
   return {
     ...db,
     customers: slice.customers,
@@ -36,7 +46,7 @@ export function mergeAdminRemoteIntoDb(currentDb, remoteData, session) {
 // Sunucudan tam üye listesini çek ve yerelde uygula
 export async function syncAdminMembersFromServer(db, commit) {
   const slice = await fetchAdminCustomers();
-  if (!Array.isArray(slice?.customers) || !slice.customers.length) return false;
+  if (!shouldApplyCustomerSlice(db, slice)) return false;
 
   const next = applyAdminMemberSlice(db, slice);
   commit(next, { skipRemote: true });

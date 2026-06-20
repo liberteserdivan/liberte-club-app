@@ -109,9 +109,10 @@ self.addEventListener('notificationclick', (event) => {
         return item.url.includes('app.liberte.cafe') || item.url.includes('localhost');
       });
       if (open) {
-        if (typeof open.navigate === 'function') {
-          open.navigate(targetUrl);
-        }
+        open.postMessage({
+          type: 'liberte-push-open',
+          data: event.notification?.data || {}
+        });
         return open.focus();
       }
       return clients.openWindow(targetUrl);

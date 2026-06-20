@@ -18,6 +18,16 @@ test('applyAdminMemberSlice tam üye listesini uygular', () => {
   assert.equal(next.loyalty[2].lpBalance, 5);
 });
 
+test('applyAdminMemberSlice kısmi listeyi tam listeyi ezmekten korur', () => {
+  const full = [
+    { id: 1, name: 'Admin', phone: '5058665406' },
+    { id: 2, name: 'Uye', phone: '5550100001' }
+  ];
+  const db = { customers: full, loyalty: {} };
+  const next = applyAdminMemberSlice(db, { customers: [full[0]], loyalty: {} });
+  assert.equal(next.customers.length, 2);
+});
+
 test('mergeAdminRemoteIntoDb kısmi state ile tam listeyi ezmez', () => {
   const current = {
     customers: fullCustomers,

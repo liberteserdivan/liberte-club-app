@@ -72,12 +72,15 @@ export default function App() {
 
   useEffect(() => {
     setUnauthorizedHandler((reason) => {
-      void logoutSession();
-      setMemorySession(null);
-      setSession(null);
-      setAuthNotice(reason === 'expired'
-        ? 'Oturumun sona erdi. Lütfen tekrar giriş yap.'
-        : '');
+      void (async () => {
+        await closeAllRealtimeChannels();
+        await logoutSession();
+        setMemorySession(null);
+        setSession(null);
+        setAuthNotice(reason === 'expired'
+          ? 'Oturumun sona erdi. Lütfen tekrar giriş yap.'
+          : '');
+      })();
     });
     return () => setUnauthorizedHandler(null);
   }, []);
@@ -149,7 +152,7 @@ export default function App() {
   async function handleSetSession(next) {
     if (!next) {
       if (customer?.id) {
-        deactivateDevicePushToken(customer.id, db, commit);
+        await deactivateDevicePushToken(customer.id, db, commit);
       }
       await closeAllRealtimeChannels();
       await logoutSession();

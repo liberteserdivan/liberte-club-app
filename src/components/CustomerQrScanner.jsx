@@ -64,21 +64,24 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const [scanBusy, setScanBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [productPickCategory, setProductPickCategory] = useState(null);
+  const dbRef = useRef(db);
+  dbRef.current = db;
 
   const busy = scanBusy || actionBusy;
 
-  // Tarama sonrası LP önbelleğini güncelle
+  // Tarama sonrası LP önbelleğini güncelle — güncel db ref kullan
   const syncScannedCustomer = useCallback((customer) => {
     if (!customer?.id || typeof commit !== 'function') return;
     setFound(customer);
+    const current = dbRef.current;
     commit({
-      ...db,
+      ...current,
       loyalty: {
-        ...(db.loyalty || {}),
-        [customer.id]: customer.loyalty || db.loyalty?.[customer.id] || loyaltyTemplate(customer.id)
+        ...(current.loyalty || {}),
+        [customer.id]: customer.loyalty || current.loyalty?.[customer.id] || loyaltyTemplate(customer.id)
       }
     }, { skipRemote: true });
-  }, [commit, db]);
+  }, [commit]);
 
   useEffect(() => {
     canUseNativeBarcodeScan().then(setNativeScanReady).catch(() => setNativeScanReady(false));
@@ -280,12 +283,13 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
         });
         if (result.customer) syncScannedCustomer(result.customer);
         else if (result.loyalty && found?.id) {
+          const current = dbRef.current;
           commit({
-            ...db,
-            loyalty: { ...(db.loyalty || {}), [found.id]: result.loyalty }
+            ...current,
+            loyalty: { ...(current.loyalty || {}), [found.id]: result.loyalty }
           }, { skipRemote: true });
         }
-        if (refreshRemote) void refreshRemote(false);
+        if (refreshRemote) void refreshRemote(true);
         return true;
       } catch (error) {
         setMsg(error?.message || 'İşlem yapılamadı');
@@ -295,23 +299,23 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       }
     }
 
-    let nextDb = db;
+    let nextDb = dbRef.current;
 
     if (action === 'stamp') {
-      nextDb = addCategoryStampToCustomer(db, found.id, category, 1, 'QR kamera', menuItem);
+      nextDb = addCategoryStampToCustomer(dbRef.current, found.id, category, 1, 'QR kamera', menuItem);
     } else if (action === 'remove') {
-      nextDb = addCategoryStampToCustomer(db, found.id, category, -1, 'QR düzeltme');
+      nextDb = addCategoryStampToCustomer(dbRef.current, found.id, category, -1, 'QR düzeltme');
     } else if (action === 'redeem') {
-      nextDb = redeemCategoryRewardForCustomer(db, found.id, category, 'QR kasiyer');
+      nextDb = redeemCategoryRewardForCustomer(dbRef.current, found.id, category, 'QR kasiyer');
     } else if (action === 'checkin') {
-      nextDb = checkInCustomer(db, found.id, 'Kasa QR check-in');
+      nextDb = checkInCustomer(dbRef.current, found.id, 'Kasa QR check-in');
     } else if (action === 'tier_discount') {
-      nextDb = applyTierDiscount(db, found.id, 'QR kasiyer');
+      nextDb = applyTierDiscount(dbRef.current, found.id, 'QR kasiyer');
     } else if (action === 'birthday_coffee') {
-      nextDb = applyBirthdayCoffee(db, found.id, 'QR kasiyer');
+      nextDb = applyBirthdayCoffee(dbRef.current, found.id, 'QR kasiyer');
     }
 
-    if (nextDb === db) return false;
+    if (nextDb === dbRef.current) return false;
 
     commit(nextDb);
     const updated = nextDb.customers?.find((c) => c.id === found.id);
