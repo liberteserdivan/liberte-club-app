@@ -2,6 +2,10 @@ import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
+import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
+import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
+import { useAdminRealtime } from './hooks/useAdminRealtime.js';
+import { useInAppNotifications } from './hooks/useInAppNotifications.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
@@ -140,6 +144,7 @@ export default function App() {
       if (customer?.id) {
         deactivateDevicePushToken(customer.id, db, commit);
       }
+      await closeAllRealtimeChannels();
       await logoutSession();
       setMemorySession(null);
       setSession(null);
@@ -159,6 +164,25 @@ export default function App() {
   const isAdmin = Boolean(session?.isAdmin);
   const adminVerified = Boolean(session?.adminVerified);
   const awaitingCustomer = Boolean(session?.customerId && !customer);
+  const realtimeEnabled = Boolean(session?.customerId && customer && !useLocalAuth());
+  const { showNotification } = useInAppNotifications({
+    customerId: customer?.id,
+    enabled: realtimeEnabled
+  });
+
+  useCustomerRealtime({
+    enabled: realtimeEnabled,
+    customerId: customer?.id,
+    db,
+    commit,
+    onInAppNotification: showNotification
+  });
+
+  useAdminRealtime({
+    enabled: Boolean(tab === 'admin' && isAdmin && adminVerified && !useLocalAuth()),
+    db,
+    commit
+  });
 
   // Oturum var ama müşteri henüz yüklenmediyse giriş ekranı gösterme
   useEffect(() => {

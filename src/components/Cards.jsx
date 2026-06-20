@@ -9,6 +9,7 @@ import{
 }from'../lib/pushPrompt.js';
 import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,customerBadges,redeemRewardForCustomer,getLpBalance,getRedeemableRewards}from'../lib/db.js';
 import{apiJson,ADMIN_REQUEST_OPTIONS}from'../lib/apiClient.js';
+import{formatClientApiError}from'../lib/apiErrors.js';
 import{historyTypeLabel,historyAmountLabel}from'../lib/loyaltyStamps.js';
 import{isNativeApp,isAndroid,isIos}from'../lib/platform.js';
 import{
@@ -429,7 +430,8 @@ export function ReviewApprovalAdmin({db,commit,refreshRemote}){
       if(refreshRemote) await refreshRemote(true);
       setActionMsg(action==='approve'?'+3 LP onaylandı.':'Talep reddedildi.');
     }catch(error){
-      setActionMsg(error?.message||'İşlem tamamlanamadı.');
+      const formatted=formatClientApiError({ error, fallback:'İşlem tamamlanamadı.' });
+      setActionMsg(formatted.message||'İşlem tamamlanamadı.');
     }finally{
       setBusyId(null);
     }

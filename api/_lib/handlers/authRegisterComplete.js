@@ -8,6 +8,7 @@ import { isValidPinFormat, normalizePin, saveCustomerPin } from '../pinAuth.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
 import { logServerError } from '../logServerError.js';
 import { createRequestTrace } from '../requestTrace.js';
+import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 import {
   normalizeEmail,
   upsertCustomerEmail
@@ -325,7 +326,7 @@ async function handleComplete(req, res, trace, body) {
   const timings = trace.successTimings();
   trace.log('complete_ok', { customerId: customer.id, ...timings });
 
-  return res.status(200).json({
+  return res.status(200).json(withRealtimeToken({
     ok: true,
     requestId: trace.requestId,
     customerId: customer.id,
@@ -337,7 +338,11 @@ async function handleComplete(req, res, trace, body) {
     customer: toCustomerSnapshot(customer),
     loyalty: loyaltyCard,
     timings
-  });
+  }, {
+    customerId: customer.id,
+    isAdmin: Boolean(customer.isAdmin),
+    adminVerified: false
+  }));
 }
 
 // Kayıt — kod gönder veya doğrulayıp tamamla

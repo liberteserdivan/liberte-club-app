@@ -2,7 +2,8 @@ import { readFirebaseWebConfig } from './_lib/firebaseConfig.js';
 import { isValidVapidPublicKey, normalizeVapidKey, readVapidKeyFromEnv } from './_lib/vapid.js';
 import { getServiceAccountStatus, parseServiceAccount, validateServiceAccount } from './_lib/serviceAccount.js';
 import { probeFcmCredentials } from './_lib/fcmProbe.js';
-import { resolveQrSigningSecret, createCustomerQrToken, formatQrPayload } from './_lib/qrToken.js';
+import { readSupabasePublicConfig } from './_lib/supabasePublicConfig.js';
+import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from './_lib/qrToken.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -150,6 +151,22 @@ async function handleDbStatus(res) {
   });
 }
 
+// Supabase Realtime public config — yalnızca anon key, secret sızdırmaz
+function handleSupabaseConfig(res) {
+  const config = readSupabasePublicConfig();
+  const hasSupabaseJwtSecret = Boolean(String(process.env.SUPABASE_JWT_SECRET || '').trim());
+  return res.status(200).json({
+    url: config.url || null,
+    anonKey: config.anonKey || null,
+    projectRef: config.projectRef,
+    enabled: config.enabled,
+    hasSupabaseJwtSecret,
+    hint: config.enabled
+      ? null
+      : 'SUPABASE_URL ve SUPABASE_ANON_KEY Vercel\'e ekleyin. Realtime opsiyonel kalır.'
+  });
+}
+
 // Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
 export default async function handler(req, res) {
   applyPublicCors(res);
@@ -163,6 +180,7 @@ export default async function handler(req, res) {
   if (resource === 'push-status') return handlePushStatus(res);
   if (resource === 'db-status') return handleDbStatus(res);
   if (resource === 'qr-status') return handleQrStatus(res);
+  if (resource === 'supabase') return handleSupabaseConfig(res);
 
-  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status veya qr-status' });
+  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status, qr-status veya supabase' });
 }

@@ -1,5 +1,25 @@
 import postgres from 'postgres';
-import { logDatabaseConnectionOnce } from './dbConnection.js';
+import { describeDatabaseUrl, logDatabaseConnectionOnce } from './dbConnection.js';
+
+// Production'da Neon bağlantısını reddet — yanlış env ile eski DB'ye yazımı engelle
+function assertProductionDatabaseAllowed(connectionString) {
+  const env = process.env.VERCEL_ENV || process.env.NODE_ENV || 'development';
+  if (env !== 'production') return true;
+
+  const info = describeDatabaseUrl(connectionString);
+  if (info.provider === 'neon') {
+    console.error('[db.connection] BLOCKED', JSON.stringify({
+      provider: info.provider,
+      hostMasked: info.hostMasked,
+      port: info.port,
+      env,
+      reason: 'neon_not_allowed_in_production'
+    }));
+    return false;
+  }
+
+  return true;
+}
 
 // Supabase transaction pooler (6543) prepared statement desteklemez
 function isTransactionPooler(connectionString) {
@@ -32,6 +52,7 @@ let cachedConnectionString = '';
 export function getSql() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return null;
+  if (!assertProductionDatabaseAllowed(connectionString)) return null;
 
   logDatabaseConnectionOnce(connectionString);
 

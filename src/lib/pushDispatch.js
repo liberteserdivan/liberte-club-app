@@ -1,11 +1,11 @@
 // Push bildirimi gönder — hedef kitle + FCM (sunucu tarafı)
 import { resolvePushAudience } from './pushAudience.js';
 import { pruneInvalidPushTokens } from './pushTokens.js';
-import { apiJson } from './apiClient.js';
+import { apiJson, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
 import { formatClientApiError } from './apiErrors.js';
 import { reportApiError } from './errorHub.js';
 
-const PUSH_SEND_TIMEOUT_MS = 60_000;
+const PUSH_SEND_TIMEOUT_MS = ADMIN_REQUEST_OPTIONS.timeoutMs;
 
 // Ref'li hata metni üret
 function formatPushErrorMessage(result = {}, error = null) {

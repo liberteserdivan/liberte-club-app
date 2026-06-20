@@ -10,6 +10,10 @@ import { useLocalAuth } from './devAuth.js';
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
 
+export function getRealtimeToken() {
+  return memorySession?.realtimeToken || null;
+}
+
 export function getMemorySession() {
   return memorySession;
 }
@@ -45,7 +49,8 @@ export async function bootstrapSession() {
       customerId: data.customerId,
       role: data.role,
       isAdmin: Boolean(data.isAdmin),
-      adminVerified: Boolean(data.adminVerified)
+      adminVerified: Boolean(data.adminVerified),
+      realtimeToken: data.realtimeToken || null
     };
 
     if (data.sessionToken) {
@@ -91,7 +96,8 @@ export function applyAuthResult(result) {
     customerId: result.customerId,
     role: result.role || 'user',
     isAdmin: Boolean(result.isAdmin),
-    adminVerified: Boolean(result.adminVerified)
+    adminVerified: Boolean(result.adminVerified),
+    realtimeToken: result.realtimeToken || null
   };
 
   if (result.sessionToken) {

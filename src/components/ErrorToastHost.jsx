@@ -4,6 +4,7 @@ import { dismissErrorToast, subscribeErrorHub } from '../lib/errorHub.js';
 
 // Kullanıcıya gösterilecek toast başlığı
 function toastTitle(item) {
+  if (item.source === 'realtime.in_app') return 'Bildirim';
   if (item.level === 'warn') return 'Uyarı';
   return 'Bir sorun oluştu';
 }

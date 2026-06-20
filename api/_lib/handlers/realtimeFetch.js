@@ -1,0 +1,123 @@
+import { applyCors } from '../http.js';
+import { requireSession, requireAdminSession } from '../auth.js';
+import { loadLoyaltyForCustomer, loadHistoryFromSql } from '../loyaltyStore.js';
+import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
+import { getSql } from '../sql.js';
+import { loadAppState } from '../appState.js';
+import { useRelationalState } from '../relationalConfig.js';
+
+// Kampanya/kupon dilimini state'ten oku
+function readPromoSlice(state) {
+  return {
+    campaigns: state?.campaigns || [],
+    coupons: (state?.coupons || []).filter((row) => row?.active !== false),
+    dailyCampaign: state?.dailyCampaign || null
+  };
+}
+
+// Relational modda promos — app_state global diliminden
+async function loadPromoSlice() {
+  if (useRelationalState()) {
+    const remote = await loadAppState();
+    return readPromoSlice(remote.data || {});
+  }
+  const remote = await loadAppState();
+  return readPromoSlice(remote.data || {});
+}
+
+// Müşteri loyalty + son işlemler — Realtime tetikleyici sonrası hafif fetch
+async function handleCustomerLoyalty(req, res, session) {
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
+
+  const loyalty = await loadLoyaltyForCustomer(session.customerId, sql);
+  return res.status(200).json({
+    ok: true,
+    customerId: session.customerId,
+    loyalty: loyalty || null
+  });
+}
+
+// Müşteri LP geçmişi — son N kayıt
+async function handleCustomerHistory(req, res, session) {
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
+
+  const limit = Math.min(Math.max(Number(req.query?.limit) || 20, 1), 50);
+  const allHistory = await loadHistoryFromSql(sql, session.customerId);
+  return res.status(200).json({
+    ok: true,
+    customerId: session.customerId,
+    history: allHistory.slice(0, limit)
+  });
+}
+
+// Uygulama içi bildirimler
+async function handleCustomerNotifications(req, res, session) {
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
+
+  const rows = await listInAppNotificationsForCustomer(sql, session.customerId, 30);
+  return res.status(200).json({ ok: true, notifications: rows });
+}
+
+// Kampanya/kupon yenileme dilimi
+async function handlePromos(req, res) {
+  const promos = await loadPromoSlice();
+  return res.status(200).json({ ok: true, ...promos });
+}
+
+// Admin özet feed — son işlemler + üye sayısı
+async function handleAdminFeed(req, res) {
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
+
+  const [events, customers, pushLog] = await Promise.all([
+    loadHistoryFromSql(sql, null),
+    sql`SELECT count(*)::int AS c FROM customers`,
+    sql`SELECT * FROM push_send_log ORDER BY id DESC LIMIT 5`.catch(() => [])
+  ]);
+
+  return res.status(200).json({
+    ok: true,
+    customerCount: Number(customers[0]?.c || 0),
+    recentEvents: (events || []).slice(0, 20),
+    recentPushLog: pushLog || []
+  });
+}
+
+// Realtime sonrası hafif veri fetch — kritik işlem burada yapılmaz
+export async function handleRealtimeFetch(req, res) {
+  applyCors(req, res, 'GET,OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  const resource = String(req.query?.resource || '').trim().toLowerCase();
+
+  try {
+    if (resource === 'promos') {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      return handlePromos(req, res);
+    }
+
+    if (resource === 'admin-feed') {
+      const admin = await requireAdminSession(req, res, { pinRequired: true });
+      if (!admin) return;
+      return handleAdminFeed(req, res);
+    }
+
+    const session = await requireSession(req, res);
+    if (!session) return;
+
+    if (resource === 'customer-loyalty') return handleCustomerLoyalty(req, res, session);
+    if (resource === 'customer-history') return handleCustomerHistory(req, res, session);
+    if (resource === 'customer-notifications') return handleCustomerNotifications(req, res, session);
+
+    return res.status(400).json({
+      error: 'resource gerekli: customer-loyalty, customer-history, customer-notifications, promos, admin-feed'
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error?.message || 'Realtime fetch başarısız' });
+  }
+}

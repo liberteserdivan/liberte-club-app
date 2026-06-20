@@ -1,6 +1,7 @@
 import { applyCors } from '../http.js';
 import { destroySession, getSessionForBootstrap, readAuthToken } from '../auth.js';
 import { createRequestTrace } from '../requestTrace.js';
+import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 
 // Oturum okuma ve çıkış
 export async function handleAuthSession(req, res) {
@@ -44,7 +45,7 @@ export async function handleAuthSession(req, res) {
 
     const sessionToken = readAuthToken(req) || undefined;
 
-    return res.status(200).json({
+    return res.status(200).json(withRealtimeToken({
       ok: true,
       requestId: trace.requestId,
       customerId: session.customerId,
@@ -54,7 +55,7 @@ export async function handleAuthSession(req, res) {
       customer: session.customer,
       loyalty: session.loyalty || null,
       sessionToken
-    });
+    }, session));
   } catch (e) {
     trace.log('catch_error', {
       step: 'catch_error',

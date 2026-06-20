@@ -14,6 +14,7 @@ import {
 } from '../auth.js';
 import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js';
 import { findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
+import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 
 // Oturumdaki müşteri girilen telefonla eşleşiyor mu?
 function sessionMatchesPhone(session, normalizedPhone) {
@@ -30,7 +31,7 @@ async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = nu
     loyalty = row ? loyaltyRowToCard(row, customer.id) : null;
   }
 
-  return {
+  return withRealtimeToken({
     ok: true,
     requestId: trace.requestId,
     customerId: customer.id,
@@ -42,7 +43,11 @@ async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = nu
     customer: toCustomerSnapshot(customer),
     loyalty,
     timings: trace.successTimings()
-  };
+  }, {
+    customerId: customer.id,
+    isAdmin: Boolean(customer.isAdmin),
+    adminVerified: Boolean(existing?.adminVerified)
+  });
 }
 
 // Giriş — telefon + PIN; normalize tablo üzerinden

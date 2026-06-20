@@ -245,6 +245,19 @@ export async function deactivatePushTokens(sql, tokens = []) {
   return rows.length;
 }
 
+// Tüm aktif push kayıtlarını pasifleştir
+export async function deactivateAllPushSubscriptions(sql) {
+  if (!sql) return 0;
+  await ensurePushTables(sql);
+  const rows = await sql`
+    UPDATE push_subscriptions
+    SET active = false, revoked_at = now(), updated_at = now()
+    WHERE active = true AND revoked_at IS NULL
+    RETURNING id
+  `;
+  return rows.length;
+}
+
 // Gönderim logu yaz
 export async function insertPushSendLog(sql, entry) {
   await sql`CREATE TABLE IF NOT EXISTS push_send_log (

@@ -7,12 +7,13 @@ import { loadAppState, saveAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
 import { composeStateFromRelational } from '../relationalState.js';
 import { loadPushSubscriptionsFromSql, deactivatePushTokens, insertPushSendLog } from '../pushStore.js';
+import { insertInAppNotificationsForAudience } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
 import { sanitizePushSubscriptions } from '../../../src/lib/pushSubscriptionSanitize.js';
 import { collectFailedPushTokens, pruneInvalidPushTokens } from '../../../src/lib/pushTokens.js';
-import { probeFcmCredentials, isValidPrivateKeyPem } from '../fcmProbe.js';
+import { isValidPrivateKeyPem } from '../fcmProbe.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -253,6 +254,27 @@ export async function handleAdminPushSend(req, res) {
 
     const clean = [...new Set(resolved.tokens.filter(Boolean))];
 
+    // Push başarısız olsa bile uygulama içi bildirim kaydı oluştur
+    if (useRelationalState()) {
+      const sqlNotify = getSql();
+      if (sqlNotify) {
+        const targetIds = resolved.targetCustomerIds?.length
+          ? resolved.targetCustomerIds
+          : (resolved.subscriptions || []).map((row) => Number(row.customerId)).filter((id) => id > 0);
+        try {
+          await insertInAppNotificationsForAudience(sqlNotify, {
+            customerIds: targetIds,
+            title: pushText.title,
+            body: pushText.body,
+            audience,
+            payload: { source: 'admin_push', requestId: trace.requestId }
+          });
+        } catch {
+          // Realtime bildirim yazımı push gönderimini durdurmasın
+        }
+      }
+    }
+
     if (!clean.length) {
       return res.status(200).json({
         ok: true,
@@ -297,27 +319,6 @@ export async function handleAdminPushSend(req, res) {
       });
     }
 
-    const authProbe = await probeFcmCredentials(serviceAccount);
-    if (!authProbe.ok) {
-      trace.log('provider_auth_failed', {
-        adminCustomerId: adminSession.customerId,
-        step: 'fcm_oauth',
-        code: authProbe.code,
-        durationMs: Date.now() - startedAt
-      });
-      return res.status(200).json({
-        ok: false,
-        savedInApp: true,
-        code: 'PUSH_PROVIDER_UNAVAILABLE',
-        message: 'Uygulama içi kaydedildi. Push sunucusuna ulaşılamadı.',
-        pushErrorStep: 'fcm_oauth',
-        requestId: trace.requestId,
-        sent: 0,
-        failed: clean.length,
-        note: `Firebase service account doğrulanamadı: ${authProbe.message}`
-      });
-    }
-
     const fb = getAdmin(serviceAccount);
     const iconUrl = `${SITE_ORIGIN}/icon-192.png?v=8`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
@@ -355,10 +356,11 @@ export async function handleAdminPushSend(req, res) {
     );
 
     if (removed > 0) {
-      await persistPushSubscriptions(preparedState, cleanedSubscriptions);
       if (useRelationalState()) {
         const sql = getSql();
         if (sql) await deactivatePushTokens(sql, invalidTokens);
+      } else {
+        await persistPushSubscriptions(preparedState, cleanedSubscriptions);
       }
     }
 
@@ -375,7 +377,9 @@ export async function handleAdminPushSend(req, res) {
 
     if (useRelationalState()) {
       const sql = getSql();
-      if (sql) await insertPushSendLog(sql, logEntry);
+      if (sql) {
+        void insertPushSendLog(sql, logEntry);
+      }
     }
 
     let note = `${result.successCount} cihaza iletildi`;

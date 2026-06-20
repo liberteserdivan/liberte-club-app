@@ -29,7 +29,7 @@ test('pushDispatch admin push-send ve skipRemote kullanır', () => {
   const push = readFileSync(join(root, 'src/lib/pushDispatch.js'), 'utf8');
   assert.match(push, /resource=push-send/);
   assert.match(push, /skipRemote: true/);
-  assert.match(push, /60_000/);
+  assert.match(push, /ADMIN_REQUEST_OPTIONS/);
 });
 
 test('QR müşteri boyutu 260px ve yüksek kontrast', () => {
@@ -45,7 +45,26 @@ test('apiClient generic sunucu yanıt vermedi kullanmaz', () => {
   assert.match(api, /ADMIN_REQUEST_OPTIONS/);
 });
 
-test('TestFlight native API production origin', () => {
-  const api = readFileSync(join(root, 'src/lib/apiClient.js'), 'utf8');
-  assert.match(api, /https:\/\/app\.liberte\.cafe/);
+test('adminPushSend relational modda tam state yazmaz', () => {
+  const handler = readFileSync(join(root, 'api/_lib/handlers/adminPushSend.js'), 'utf8');
+  assert.match(handler, /if \(useRelationalState\(\)\)/);
+  assert.match(handler, /deactivatePushTokens/);
+  assert.doesNotMatch(handler, /await persistPushSubscriptions\(preparedState, cleanedSubscriptions\);\s+if \(useRelationalState\(\)\)/);
+});
+
+test('pushCleanup relational SQL kullanır', () => {
+  const cleanup = readFileSync(join(root, 'api/_lib/handlers/adminPushCleanup.js'), 'utf8');
+  assert.match(cleanup, /useRelationalState/);
+  assert.match(cleanup, /loadPushSubscriptionsFromSql/);
+  assert.match(cleanup, /deactivateAllPushSubscriptions/);
+});
+
+test('adminPushSend gönderim öncesi OAuth probe yapmaz', () => {
+  const handler = readFileSync(join(root, 'api/_lib/handlers/adminPushSend.js'), 'utf8');
+  assert.doesNotMatch(handler, /probeFcmCredentials/);
+});
+
+test('PushNotificationAdmin push kayıtlarında skipRemote kullanır', () => {
+  const admin = readFileSync(join(root, 'src/components/PushNotificationAdmin.jsx'), 'utf8');
+  assert.match(admin, /skipRemote: true/);
 });

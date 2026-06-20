@@ -92,7 +92,7 @@ export function reportError({
     logFn(`[${source}]`, safeMessage, detail || '');
   }
 
-  if (showToast && level !== 'info') {
+  if (showToast && (level !== 'info' || String(source).startsWith('realtime.'))) {
     emitToast(entry);
   }
 

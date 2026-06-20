@@ -36,6 +36,11 @@ export function describeDatabaseUrl(connectionString) {
 
   const pooler = /pooler\.supabase\.com/i.test(hostLower) || port === 6543;
 
+  // Supabase pooler ve Neon her zaman TLS kullanır
+  if (provider === 'supabase' || provider === 'neon' || pooler) {
+    ssl = true;
+  }
+
   // Host'un ilk ve son segmentini göster — credential yok
   const hostMasked = host
     ? host.replace(/^([^.]+)\.(.+)$/, (_, a, rest) => `${a}.***.${rest.split('.').slice(-2).join('.')}`)

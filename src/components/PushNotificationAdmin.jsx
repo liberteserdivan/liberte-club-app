@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Smartphone, Trash2, Users } from 'lucide-react';
 import { dispatchPush } from '../lib/pushDispatch.js';
-import { apiFetch } from '../lib/apiClient.js';
+import { apiFetch, ADMIN_REQUEST_OPTIONS } from '../lib/apiClient.js';
 import { sanitizePushSubscriptions } from '../lib/pushSubscriptionSanitize.js';
 import {
   PUSH_AUDIENCE_OPTIONS,
@@ -53,12 +53,16 @@ export default function PushNotificationAdmin({ db, commit }) {
   const preview = useMemo(() => resolvePushAudience(db, audience), [db, audience]);
   const audienceState = getAudienceOptionState(db, audience);
 
-  // Eski/pasif/web kayıtları açılışta temizle
+  // Eski/pasif kayıtları arka planda temizle — gönderim isteğiyle yarışmasın
   useEffect(() => {
     if (cleanupStarted.current) return;
     cleanupStarted.current = true;
 
-    async function runCleanup() {
+    const timer = setTimeout(() => {
+      runPushCleanup();
+    }, 2500);
+
+    async function runPushCleanup() {
       try {
         const response = await apiFetch('/api/admin?resource=push-cleanup', {
           method: 'POST',
@@ -69,7 +73,7 @@ export default function PushNotificationAdmin({ db, commit }) {
         if (response.ok && payload?.ok) {
           if (payload.removed > 0) {
             const cleaned = sanitizePushSubscriptions(db.pushSubscriptions || []);
-            commit({ ...db, pushSubscriptions: cleaned.subscriptions });
+            commit({ ...db, pushSubscriptions: cleaned.subscriptions }, { skipRemote: true });
             setCleanupNote(`${payload.removed} eski cihaz kaydı temizlendi.`);
           }
           return;
@@ -84,11 +88,11 @@ export default function PushNotificationAdmin({ db, commit }) {
       commit({
         ...db,
         pushSubscriptions: cleaned.subscriptions
-      });
+      }, { skipRemote: true });
       setCleanupNote(`${cleaned.summary.removed} eski cihaz kaydı temizlendi.`);
     }
 
-    runCleanup();
+    return () => clearTimeout(timer);
   }, [db, commit]);
 
   function formatDeviceLabel(device) {
@@ -112,7 +116,7 @@ export default function PushNotificationAdmin({ db, commit }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (response.ok && payload?.ok) {
-        commit({ ...db, pushSubscriptions: [] });
+        commit({ ...db, pushSubscriptions: [] }, { skipRemote: true });
         setCleanupNote('Tüm cihaz kayıtları sıfırlandı. Telefonda bildirimleri yeniden aç.');
         return;
       }
@@ -120,7 +124,7 @@ export default function PushNotificationAdmin({ db, commit }) {
       // Yerel sıfırlama
     }
 
-    commit({ ...db, pushSubscriptions: [] });
+    commit({ ...db, pushSubscriptions: [] }, { skipRemote: true });
     setCleanupNote('Cihaz kayıtları temizlendi. Telefonda bildirimleri yeniden aç.');
   }
 
@@ -161,12 +165,25 @@ export default function PushNotificationAdmin({ db, commit }) {
     setSending(false);
   }
 
-  function removeDevice(id, token) {
+  async function removeDevice(id, token) {
     if (!confirm('Bu cihaz listeden kaldırılsın mı?')) return;
+
     commit({
       ...db,
       pushSubscriptions: devices.filter((row) => row.id !== id && row.token !== token)
-    });
+    }, { skipRemote: true });
+
+    if (!token) return;
+
+    try {
+      await apiFetch('/api/admin?resource=push-cleanup', {
+        method: 'POST',
+        body: JSON.stringify({ mode: 'remove', tokens: [token] }),
+        ...ADMIN_REQUEST_OPTIONS
+      });
+    } catch {
+      // Yerel listeden kaldırıldı; sunucu senkronu sonraki açılışta tamamlanır
+    }
   }
 
   return (
@@ -259,8 +276,14 @@ export default function PushNotificationAdmin({ db, commit }) {
           onClick={sendPush}
           disabled={sending || preview.disabled || preview.deviceCount === 0}
         >
-          <Send size={18} /> {sending ? 'Gönderiliyor...' : 'Bildirimi Gönder'}
+          <Send size={18} /> {sending ? 'Gönderiliyor…' : 'Bildirimi Gönder'}
         </button>
+
+        {sending && (
+          <p className="pushAudienceNote">
+            Sunucu bildirimi hazırlıyor; ilk denemede 10–30 sn sürebilir. Lütfen uygulamayı kapatma.
+          </p>
+        )}
 
         {preview.deviceCount === 0 && !preview.disabled && (
           <p className="pushAudienceNote">Seçilen hedef kitlede kayıtlı bildirim cihazı yok.</p>

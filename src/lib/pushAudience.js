@@ -211,6 +211,7 @@ export function resolvePushAudience(db, audienceId = 'all') {
       subscriptions: [],
       tokens: [],
       targetUserCount: 0,
+      targetCustomerIds: [],
       deviceCount: 0
     };
   }
@@ -242,6 +243,7 @@ export function resolvePushAudience(db, audienceId = 'all') {
     subscriptions,
     tokens,
     targetUserCount: targetIds.size,
+    targetCustomerIds: [...targetIds],
     deviceCount: tokens.length
   };
 }

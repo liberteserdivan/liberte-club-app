@@ -5,6 +5,7 @@ import {
   requireSession
 } from '../auth.js';
 import { verifyAdminPinAttempt } from '../adminPinAuth.js';
+import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 
 // Yönetici PIN doğrulama — brute force korumalı
 export async function handleAuthAdminPin(req, res) {
@@ -35,10 +36,10 @@ export async function handleAuthAdminPin(req, res) {
     await markAdminVerified(req);
     const fresh = await getSession(req);
 
-    return res.status(200).json({
+    return res.status(200).json(withRealtimeToken({
       ok: true,
       adminVerified: Boolean(fresh?.adminVerified)
-    });
+    }, fresh));
   } catch (e) {
     return res.status(500).json({ error: e.message || 'PIN doğrulanamadı' });
   }

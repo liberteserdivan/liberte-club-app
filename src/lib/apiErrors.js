@@ -40,7 +40,7 @@ export function formatClientApiError({ response = null, data = {}, error = null,
 
   if (httpStatus === 403) {
     return {
-      message: withRef(data?.message || 'Bu işlem için yetkin yok.', requestId),
+      message: withRef(data?.message || data?.error || 'Bu işlem için yetkin yok.', requestId),
       code: code || 'FORBIDDEN',
       requestId,
       abort: false
