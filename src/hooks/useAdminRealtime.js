@@ -12,7 +12,8 @@ export function useAdminRealtime({
   enabled = false,
   db,
   commit,
-  onFeedUpdate
+  onFeedUpdate,
+  onCustomersChanged
 }) {
   const dbRef = useRef(db);
   dbRef.current = db;
@@ -52,7 +53,16 @@ export function useAdminRealtime({
       if (!ready || cancelled) return;
 
       await openRealtimeChannel(channelKey, (channel, listen) => {
-        ['loyalty_events', 'customers', 'in_app_notifications', 'push_send_log'].forEach((table) => {
+        listen(channel, {
+          table: 'customers',
+          event: 'INSERT',
+          onChange: () => {
+            onCustomersChanged?.();
+            refreshFeed();
+          }
+        });
+
+        ['loyalty_events', 'in_app_notifications', 'push_send_log'].forEach((table) => {
           listen(channel, {
             table,
             event: 'INSERT',
@@ -70,5 +80,5 @@ export function useAdminRealtime({
       cancelled = true;
       closeRealtimeChannel(channelKey).catch(() => {});
     };
-  }, [enabled, commit, onFeedUpdate]);
+  }, [enabled, commit, onFeedUpdate, onCustomersChanged]);
 }

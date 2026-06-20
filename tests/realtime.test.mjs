@@ -57,6 +57,7 @@ test('App logout realtime cleanup çağırır', () => {
   assert.match(app, /closeAllRealtimeChannels/);
   assert.match(app, /useCustomerRealtime/);
   assert.match(app, /useAdminRealtime/);
+  assert.match(app, /onCustomersChanged/);
 });
 
 test('sql.js production Neon blok korunur', () => {

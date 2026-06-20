@@ -1,30 +1,60 @@
-// Sunucu tarafı kısa süreli app_state önbelleği — aynı invocation içinde tekrar SELECT azaltır
+// Sunucu tarafı kısa süreli app_state önbelleği — tam state ile üye dilimini ayır
 
 const CACHE_TTL_MS = 20_000;
 
-let cache = null;
+let fullCache = null;
+const customerCaches = new Map();
 
-// Önbellekten oku — süresi dolmuşsa null
-export function readAppStateCache() {
-  if (!cache) return null;
-  if (Date.now() - cache.fetchedAt > CACHE_TTL_MS) {
-    cache = null;
-    return null;
-  }
-  return cache;
+// Önbellek girdisinin süresi dolmuş mu
+function isExpired(entry) {
+  if (!entry) return true;
+  return Date.now() - entry.fetchedAt > CACHE_TTL_MS;
 }
 
-// Önbelleğe yaz
+// Tam state önbelleğini oku
+export function readAppStateCache() {
+  if (isExpired(fullCache)) {
+    fullCache = null;
+    return null;
+  }
+  return fullCache;
+}
+
+// Üye dilimi önbelleğini oku
+export function readAppStateCacheForCustomer(customerId) {
+  const id = Number(customerId);
+  if (!id) return null;
+  const entry = customerCaches.get(id);
+  if (isExpired(entry)) {
+    customerCaches.delete(id);
+    return null;
+  }
+  return entry;
+}
+
+// Tam state önbelleğine yaz
 export function writeAppStateCache(data, updatedAt) {
   if (!data) return;
-  cache = {
+  fullCache = {
     data,
     updatedAt: updatedAt ?? null,
     fetchedAt: Date.now()
   };
 }
 
-// Yazım sonrası önbelleği temizle
+// Üye dilimi önbelleğine yaz — admin tam listesini ezmesin
+export function writeAppStateCacheForCustomer(customerId, data, updatedAt) {
+  const id = Number(customerId);
+  if (!id || !data) return;
+  customerCaches.set(id, {
+    data,
+    updatedAt: updatedAt ?? null,
+    fetchedAt: Date.now()
+  });
+}
+
+// Yazım sonrası tüm önbelleği temizle
 export function invalidateAppStateCache() {
-  cache = null;
+  fullCache = null;
+  customerCaches.clear();
 }

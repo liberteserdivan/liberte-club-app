@@ -6,7 +6,9 @@ import { ensureSchemaReady } from './schemaReady.js';
 import {
   invalidateAppStateCache,
   readAppStateCache,
-  writeAppStateCache
+  readAppStateCacheForCustomer,
+  writeAppStateCache,
+  writeAppStateCacheForCustomer
 } from './appStateCache.js';
 import { logAppStatePerf, perfNow } from './appStatePerf.js';
 import { useRelationalState, composeStateFromRelational, composeStateForCustomer, persistStateToRelational } from './relationalState.js';
@@ -209,7 +211,7 @@ export async function loadAppStateForCustomer(customerId, options = {}) {
   }
 
   if (!skipCache) {
-    const cached = readAppStateCache();
+    const cached = readAppStateCacheForCustomer(customerId);
     if (cached?.data) {
       logAppStatePerf('loadAppStateForCustomer.cache_hit', t0);
       return { data: cached.data, updatedAt: cached.updatedAt };
@@ -218,7 +220,7 @@ export async function loadAppStateForCustomer(customerId, options = {}) {
 
   const composed = await composeStateForCustomer(customerId);
   if (composed.data) {
-    writeAppStateCache(composed.data, composed.updatedAt);
+    writeAppStateCacheForCustomer(customerId, composed.data, composed.updatedAt);
     logAppStatePerf('loadAppStateForCustomer', t0);
   }
   return composed;

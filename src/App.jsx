@@ -175,7 +175,8 @@ export default function App() {
   useAdminRealtime({
     enabled: Boolean(tab === 'admin' && isAdmin && adminVerified && !useLocalAuth()),
     db,
-    commit
+    commit,
+    onCustomersChanged: () => refreshRemote(true)
   });
 
   // Oturum var ama müşteri henüz yüklenmediyse giriş ekranı gösterme

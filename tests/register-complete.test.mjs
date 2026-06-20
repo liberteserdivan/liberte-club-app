@@ -46,6 +46,20 @@ test('auth müşteri araması önce normalize tablo kullanır', () => {
   assert.match(source, /customersStore\.js/);
 });
 
+test('relational kayıt sonrası state revizyonu güncellenir', () => {
+  const register = readFileSync(join(root, 'api/_lib/handlers/authRegisterComplete.js'), 'utf8');
+  assert.match(register, /bumpAppStateRevision/);
+  assert.match(register, /invalidateAppStateCache/);
+});
+
+test('app state önbelleği üye ve tam listeyi ayırır', () => {
+  const cache = readFileSync(join(root, 'api/_lib/appStateCache.js'), 'utf8');
+  assert.match(cache, /writeAppStateCacheForCustomer/);
+  assert.match(cache, /readAppStateCacheForCustomer/);
+  const appState = readFileSync(join(root, 'api/_lib/appState.js'), 'utf8');
+  assert.match(appState, /writeAppStateCacheForCustomer/);
+});
+
 test('LoginPage kayıt sonrası uzak kayıt atlar', () => {
   const source = readFileSync(join(root, 'src/pages/LoginPage.jsx'), 'utf8');
   assert.match(source, /skipRemote:\s*true/);

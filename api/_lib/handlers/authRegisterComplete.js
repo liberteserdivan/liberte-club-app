@@ -27,6 +27,8 @@ import {
 import { inspectRegistrationConflict } from '../customerPhoneRepair.js';
 import { queueRegisterAppStateSync } from '../registerAppStateSync.js';
 import { useRelationalState } from '../relationalConfig.js';
+import { bumpAppStateRevision } from '../relationalState.js';
+import { invalidateAppStateCache } from '../appStateCache.js';
 
 function validEmail(v = '') {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).toLowerCase());
@@ -321,6 +323,9 @@ async function handleComplete(req, res, trace, body) {
       { customer, loyalty: loyaltyCard, historyEntry, referrer },
       trace.requestId
     );
+  } else {
+    invalidateAppStateCache();
+    await bumpAppStateRevision(sql);
   }
 
   const timings = trace.successTimings();
