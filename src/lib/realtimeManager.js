@@ -13,14 +13,21 @@ export function getRealtimeMetrics() {
   };
 }
 
-// Debounce yardımcısı
+// Debounce yardımcısı — arka plan görevlerinde yakalanmamış promise reddini önle
 export function createDebouncedTask(delayMs = 450) {
   let timer = null;
   return (fn) => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      fn();
+      try {
+        const result = fn();
+        if (result && typeof result.then === 'function') {
+          result.catch(() => {});
+        }
+      } catch {
+        // Realtime yedek sync sessizce yoksayılır
+      }
     }, delayMs);
   };
 }

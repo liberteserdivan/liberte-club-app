@@ -31,6 +31,17 @@ test('readSupabasePublicConfig secret sızdırmaz', () => {
   process.env.SUPABASE_ANON_KEY = prevKey;
 });
 
+test('realtime fetch arka plan sync ağ hatasında sessiz kalır', () => {
+  const client = readFileSync(join(root, 'src/lib/realtimeFetch.js'), 'utf8');
+  assert.match(client, /safeRealtimeRequest/);
+  assert.match(client, /Arka plan sync — ağ hatasında toast tetikleme/);
+});
+
+test('realtimeManager debounce async hataları yutar', () => {
+  const manager = readFileSync(join(root, 'src/lib/realtimeManager.js'), 'utf8');
+  assert.match(manager, /result\.catch/);
+});
+
 test('realtimeManager debounce tek çağrı yapar', async () => {
   let count = 0;
   const debounced = createDebouncedTask(40);

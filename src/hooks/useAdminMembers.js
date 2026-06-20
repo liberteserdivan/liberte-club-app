@@ -13,7 +13,12 @@ export function useAdminMembers({ enabled = false, db, commit }) {
     let cancelled = false;
 
     async function pullMembers() {
-      const slice = await fetchAdminCustomers();
+      let slice;
+      try {
+        slice = await fetchAdminCustomers();
+      } catch {
+        return;
+      }
       if (cancelled || !slice?.customers) return;
 
       const current = dbRef.current;

@@ -30,6 +30,15 @@ if (!legalRoute) {
   });
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
+    // Arka plan sync / iptal — kullanıcıya toast gösterme
+    if (
+      reason?.name === 'AbortError'
+      || reason?.code === 'FETCH_TIMEOUT'
+      || reason?.code === 'NETWORK_ERROR'
+    ) {
+      event.preventDefault();
+      return;
+    }
     captureException(
       reason instanceof Error ? reason : new Error(String(reason)),
       'window.unhandledrejection',

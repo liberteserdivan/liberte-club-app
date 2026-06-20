@@ -23,7 +23,12 @@ export function useCustomerLoyaltyPoll({
     async function pollLoyalty() {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
 
-      const loyalty = await fetchCustomerLoyaltySnapshot();
+      let loyalty;
+      try {
+        loyalty = await fetchCustomerLoyaltySnapshot();
+      } catch {
+        return;
+      }
       if (cancelled || !loyalty) return;
 
       const current = dbRef.current;
