@@ -1,7 +1,9 @@
 import { getSql } from './sql.js';
+import { isProductionRuntime } from './schemaReady.js';
 
-// Menü tablolarını hazırla
+// Menü tablolarını hazırla — production'da DDL atlanır
 export async function ensureMenuTables(sql) {
+  if (isProductionRuntime()) return;
   await sql`CREATE TABLE IF NOT EXISTS menu_categories (
     id bigint PRIMARY KEY,
     name text NOT NULL,

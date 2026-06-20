@@ -3,9 +3,11 @@ import { normalizeEmail, findCustomerIdByPhone } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
 import { loyaltyTemplate } from './loyaltyOps.js';
 import { migrateLoyaltyCard, getCategoryLpGain, levelByLp } from './loyaltyPointsServer.js';
+import { isProductionRuntime } from './schemaReady.js';
 
-// Normalize müşteri tablolarını hazırla
+// Normalize müşteri tablolarını hazırla — production'da bootstrap SQL yeterli
 export async function ensureCustomersTables(sql) {
+  if (isProductionRuntime()) return;
   await sql`CREATE TABLE IF NOT EXISTS customers (
     id bigint PRIMARY KEY,
     phone text NOT NULL,

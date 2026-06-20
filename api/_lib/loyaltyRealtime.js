@@ -1,4 +1,5 @@
 import { getSql } from './sql.js';
+import { isProductionRuntime } from './schemaReady.js';
 
 // Realtime hazırlığı — varsayılan kapalı; production app_state akışını bozmaz
 function isLoyaltyEventLogEnabled() {
@@ -7,6 +8,7 @@ function isLoyaltyEventLogEnabled() {
 
 // loyalty_events tablosunun varlığını garanti et
 async function ensureLoyaltyEventTable(sql) {
+  if (isProductionRuntime()) return;
   await sql`CREATE TABLE IF NOT EXISTS loyalty_events (
     id bigserial PRIMARY KEY,
     customer_id bigint NOT NULL,
@@ -23,6 +25,7 @@ async function ensureLoyaltyEventTable(sql) {
 
 // customer_loyalty.revision artırımı için tablo hazırlığı
 async function ensureCustomerLoyaltyTable(sql) {
+  if (isProductionRuntime()) return;
   await sql`CREATE TABLE IF NOT EXISTS customer_loyalty (
     customer_id bigint PRIMARY KEY,
     total_stamps int NOT NULL DEFAULT 0,

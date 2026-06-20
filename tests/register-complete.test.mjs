@@ -38,6 +38,7 @@ test('customersStore admin yetkisi customers.is_admin ile tutulur', () => {
   const source = readFileSync(join(root, 'api/_lib/customersStore.js'), 'utf8');
   assert.match(source, /grantAdminByPhone/);
   assert.match(source, /is_admin/);
+  assert.match(source, /isProductionRuntime/);
 });
 
 test('auth müşteri araması önce normalize tablo kullanır', () => {
