@@ -3,6 +3,13 @@ import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
 import { clearErrorLogs, fetchErrorLogs } from '../lib/errorLogClient.js';
 import { captureException, reportError } from '../lib/errorHub.js';
 
+// Durum mesajı tonu
+function logStatusClass(message = '') {
+  const text = String(message || '').toLowerCase();
+  if (/başarısız|alınamadı|silinemedi|yapılamadı/.test(text)) return ' isError';
+  return ' isSuccess';
+}
+
 // Yönetici — sistem hata logları (son 7 gün)
 export default function ErrorLogsAdmin() {
   const [logs, setLogs] = useState([]);
@@ -92,7 +99,7 @@ export default function ErrorLogsAdmin() {
         </button>
       </div>
 
-      {status && <p className="adminBackupStatus">{status}</p>}
+      {status && <p className={`adminBackupStatus${logStatusClass(status)}`}>{status}</p>}
 
       {logs.length ? (
         <div className="errorLogList">

@@ -411,6 +411,7 @@ export function ReviewApprovalAdmin({db,commit,refreshRemote}){
   const rows=(db.googleReviewRequests||[]).filter(r=>r.status==='pending');
   const [busyId,setBusyId]=useState(null);
   const [actionMsg,setActionMsg]=useState('');
+  const [actionOk,setActionOk]=useState(true);
 
   async function runReviewAction(request,action){
     if(busyId) return;
@@ -424,13 +425,16 @@ export function ReviewApprovalAdmin({db,commit,refreshRemote}){
       });
       if(!response.ok||!data?.ok){
         const msg=data?.clientMessage||data?.message||data?.error||'İşlem tamamlanamadı.';
+        setActionOk(false);
         setActionMsg(msg);
         return;
       }
       if(refreshRemote) await refreshRemote(true);
+      setActionOk(true);
       setActionMsg(action==='approve'?'+3 LP onaylandı.':'Talep reddedildi.');
     }catch(error){
       const formatted=formatClientApiError({ error, fallback:'İşlem tamamlanamadı.' });
+      setActionOk(false);
       setActionMsg(formatted.message||'İşlem tamamlanamadı.');
     }finally{
       setBusyId(null);
@@ -445,7 +449,7 @@ export function ReviewApprovalAdmin({db,commit,refreshRemote}){
   }
   return <div className="list">
     <div className="card"><h3>Google Yorum Onayları</h3><p>Kullanıcı yorum sayfasına yönlendikten sonra talep buraya düşer. Onaylayınca +3 LP işlenir.</p></div>
-    {actionMsg&&<div className="card"><p className="scanMsg">{actionMsg}</p></div>}
+    {actionMsg&&<div className="card"><p className={`adminStatusNotice${actionOk?' isSuccess':' isError'}`}>{actionMsg}</p></div>}
     {rows.length?rows.map(r=><div className="card reviewRequest" key={r.id}>
       <div><b>{r.name}</b><p>{r.phone} · {r.email}</p><small>{r.createdAt}</small></div>
       <div className="userActions wide"><button className="goldBtn" onClick={()=>approve(r)} disabled={busyId===r.id}><Plus/> {busyId===r.id?'İşleniyor…':'+3 LP Onayla'}</button><button className="ghost" onClick={()=>reject(r)} disabled={busyId===r.id}>Reddet</button></div>

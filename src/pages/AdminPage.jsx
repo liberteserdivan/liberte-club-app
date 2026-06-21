@@ -184,6 +184,13 @@ function SettingsAdmin({db,commit}){
   </div>;
 }
 
+// Yedek durum mesajı — hata / başarı rengi
+function backupStatusClass(message = '') {
+  const text = String(message || '').toLowerCase();
+  if (/başarısız|alınamadı|indirilemedi|yapılamadı/.test(text)) return ' isError';
+  return ' isSuccess';
+}
+
 // Veri yedeği — sunucudan tam yedek indir / yedekten geri yükle (PIN doğrulamalı)
 function BackupAdmin({ db }){
   const[backups,setBackups]=useState([]);
@@ -285,7 +292,7 @@ function BackupAdmin({ db }){
       </label>
     </div>
 
-    {status&&<p className="adminBackupStatus">{status}</p>}
+    {status&&<p className={`adminBackupStatus${backupStatusClass(status)}`}>{status}</p>}
 
     {backups.length>0&&<div className="adminBackupList">
       <h4>Otomatik anlık yedekler</h4>
@@ -341,7 +348,13 @@ function OverviewAdmin({db,commit,adminMembers=[],adminMembersStatus='idle',onMa
       <div className="metricCard"><span>Bugün</span><b>{todayEvents}</b><small>İşlem</small></div>
     </div>
 
-    <UserManageOverview db={db} commit={commit} onManageUsers={onManageUsers}/>
+    <UserManageOverview
+      db={db}
+      commit={commit}
+      adminMembers={adminMembers}
+      adminMembersStatus={adminMembersStatus}
+      onManageUsers={onManageUsers}
+    />
 
     <div className="card topMembers adminSectionCard">
       <h3>En sadık üyeler</h3>
@@ -373,10 +386,10 @@ function OverviewAdmin({db,commit,adminMembers=[],adminMembersStatus='idle',onMa
 }
 
 // Özet ekranında hızlı kullanıcı yönetimi
-function UserManageOverview({db,commit,onManageUsers}){
-  const[query,setQuery]=useState('');
-  const customers=db.customers||[];
-  const loyalty=db.loyalty||{};
+function UserManageOverview({ db, commit, adminMembers = [], adminMembersStatus = 'idle', onManageUsers }) {
+  const [query, setQuery] = useState('');
+  const customers = pickAdminMemberList({ adminMembers, adminMembersStatus, db });
+  const loyalty = db.loyalty || {};
   const needle=query.trim().toLowerCase();
   const filtered=customers.filter(c=>{
     if(!needle)return true;
@@ -441,6 +454,11 @@ function ItemAdmin({db,commit}){
   const[editId,setEditId]=useState(null);
   const[editForm,setEditForm]=useState(null);
   const[pendingDelete,setPendingDelete]=useState(null);
+  const[formMessage,setFormMessage]=useState('');
+
+  function showFormMessage(text, isError = true) {
+    setFormMessage(text);
+  }
 
   function categoryName(categoryId){
     return db.categories.find(c=>c.id===categoryId)?.name||'—';
@@ -466,7 +484,11 @@ function ItemAdmin({db,commit}){
   }
 
   function saveItem(){
-    if(!f.name||!f.price)return alert('Ürün adı ve fiyat zorunlu.');
+    if(!f.name||!f.price){
+      showFormMessage('Ürün adı ve fiyat zorunlu.');
+      return;
+    }
+    setFormMessage('');
     commit({...db,items:[...db.items,{
       ...f,
       id:Date.now(),
@@ -495,7 +517,11 @@ function ItemAdmin({db,commit}){
   }
 
   function saveEdit(){
-    if(!editForm?.name||!editForm?.price)return alert('Ürün adı ve fiyat zorunlu.');
+    if(!editForm?.name||!editForm?.price){
+      showFormMessage('Ürün adı ve fiyat zorunlu.');
+      return;
+    }
+    setFormMessage('');
     commit({...db,items:db.items.map(i=>i.id===editId?{
       ...i,
       ...editForm,
@@ -525,6 +551,7 @@ function ItemAdmin({db,commit}){
         <div><span>MENÜ</span><h3>Ürün Ekle</h3></div>
       </div>
       <p className="adminHint">Yeni ürün ekle; kategori, fiyat ve görseli buradan yönet.</p>
+      {formMessage && <p className="adminStatusNotice isError">{formMessage}</p>}
 
       <div className="adminItemForm">
         <input placeholder="Ürün adı" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
@@ -752,9 +779,10 @@ function CategoryAdmin({db,commit}){
 
 // Silme onay modalı — admin panel genel kullanım
 function AdminConfirmModal({title,message,onCancel,onConfirm}){
-  return <div className="adminConfirmBackdrop" role="dialog" aria-modal="true">
+  const titleId = 'adminConfirmTitle';
+  return <div className="adminConfirmBackdrop" role="dialog" aria-modal="true" aria-labelledby={titleId}>
     <div className="adminConfirmCard">
-      <h4>{title}</h4>
+      <h4 id={titleId}>{title}</h4>
       <p>{message}</p>
       <div className="adminConfirmActions">
         <button type="button" className="ghost" onClick={onCancel}>İptal</button>
@@ -819,12 +847,20 @@ function CouponsAdmin({db,commit}){
   const[type,setType]=useState('stamp');
   const[query,setQuery]=useState('');
   const[pendingDelete,setPendingDelete]=useState(null);
+  const[formMessage,setFormMessage]=useState('');
   const coupons=db.coupons||[];
 
   function createCoupon(){
     const clean=String(code||'').trim().toUpperCase();
-    if(clean.length<3)return alert('Kupon kodu en az 3 karakter olmalı.');
-    if(coupons.some(c=>String(c.code||'').toUpperCase()===clean))return alert('Bu kupon kodu zaten var.');
+    if(clean.length<3){
+      setFormMessage('Kupon kodu en az 3 karakter olmalı.');
+      return;
+    }
+    if(coupons.some(c=>String(c.code||'').toUpperCase()===clean)){
+      setFormMessage('Bu kupon kodu zaten var.');
+      return;
+    }
+    setFormMessage('');
     commit({...db,coupons:[{id:Date.now(),code:clean,title,rewardType:type,rewardValue:Number(value||1),active:true,createdAt:new Date().toLocaleString('tr-TR')},...coupons]});
     setCode('');
   }
@@ -849,6 +885,7 @@ function CouponsAdmin({db,commit}){
   return <div className="card adminSectionCard adminCouponCard">
     <div className="adminSectionHead"><div><span>KUPON</span><h3>Promosyon kodları</h3></div></div>
     <p className="adminHint">Kupon kodları üyelere LP veya ikram tanımlar. Silmeden önce onay istenir.</p>
+    {formMessage && <p className="adminStatusNotice isError">{formMessage}</p>}
 
     <div className="adminCouponForm">
       <input placeholder="Örn: LIBERTE20" value={code} onChange={e=>setCode(e.target.value)}/>
@@ -906,6 +943,7 @@ function GameAdmin({db,commit}){
   const[campaigns,setCampaigns]=useState(db.campaigns||seed.campaigns);
   const[campaignNotify,setCampaignNotify]=useState(false);
   const[wheelUnlimited,setWheelUnlimited]=useState(db.settings?.wheel_unlimited===true);
+  const[pushNote,setPushNote]=useState('');
 
   async function saveCampaign(){
     const next={...db,dailyCampaign:{...c,...form,updatedAt:new Date().toLocaleString('tr-TR')}};
@@ -913,7 +951,9 @@ function GameAdmin({db,commit}){
     if(notifyOnSave&&form.active){
       const title=`${form.emoji||'🔥'} ${form.title||'Yeni kampanya'}`;
       const result=await dispatchPush(next,commit,{title,body:form.body||'Liberte Club fırsatını kaçırma.'});
-      alert(result.note);
+      setPushNote(result.note || 'Push gönderildi.');
+    } else {
+      setPushNote('');
     }
   }
 
@@ -933,11 +973,14 @@ function GameAdmin({db,commit}){
       const latest=active[active.length-1];
       const title=`${latest.emoji||'🎁'} ${latest.title||'Yeni kampanya'}`;
       const result=await dispatchPush(next,commit,{title,body:latest.body||'Liberte Club\'da yeni fırsat var.'});
-      alert(result.note);
+      setPushNote(result.note || 'Push gönderildi.');
+    } else {
+      setPushNote('');
     }
   }
 
   return <div className="gameAdmin adminStack">
+    {pushNote && <p className="adminStatusNotice isSuccess">{pushNote}</p>}
     <div className="card adminSectionCard">
       <div className="adminSectionHead"><div><span>KAMPANYA</span><h3>Günün kampanyası</h3></div></div>
       <label>Emoji</label>
@@ -1365,7 +1408,9 @@ function UsersAdmin({
       </div>;
     })}
 
-    {!filtered.length&&<div className="empty">Eşleşen üye yok.</div>}
+    {!filtered.length && needle && customers.length > 0 && (
+      <div className="empty">Eşleşen üye yok.</div>
+    )}
 
     {pendingDelete&&(
       <AdminConfirmModal

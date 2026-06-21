@@ -46,6 +46,7 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [cleanupNote, setCleanupNote] = useState('');
+  const [formError, setFormError] = useState('');
   const cleanupStarted = useRef(false);
 
   const devices = db.pushSubscriptions || [];
@@ -144,14 +145,16 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
 
   async function sendPush() {
     if (!body.trim()) {
-      alert('Mesaj zorunlu.');
+      setFormError('Mesaj zorunlu.');
       return;
     }
 
     if (preview.disabled) {
-      alert(preview.disabledReason || 'Seçilen hedef kitle kullanılamıyor.');
+      setFormError(preview.disabledReason || 'Seçilen hedef kitle kullanılamıyor.');
       return;
     }
+
+    setFormError('');
 
     const ok = confirm('Bu bildirim seçilen hedef kitleye gönderilecek. Devam etmek istiyor musunuz?');
     if (!ok) return;
@@ -211,6 +214,7 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
         </div>
 
         {cleanupNote && <p className="pushAudienceNote">{cleanupNote}</p>}
+        {formError && <p className="adminStatusNotice isError">{formError}</p>}
 
         <p className="pushHint">
           Kampanyalar, LP fırsatları ve ikram haklarından haberdar olmak için üyeler bildirim izni vermelidir.

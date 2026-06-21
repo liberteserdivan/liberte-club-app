@@ -444,11 +444,6 @@ export default function App() {
               adminDashboardStats={adminDashboardStats}
             />
           )}
-          {tab === 'admin' && isAdmin && !adminVerified && (
-            <section className="adminGatePlaceholder">
-              <p>Yönetim paneli için PIN doğrulaması gerekli.</p>
-            </section>
-          )}
         </div>
 
         {showOnboarding && (

@@ -3966,6 +3966,7 @@ body{
 /* —— Premium admin panel —— */
 .adminPage{
   padding-top:calc(12px + env(safe-area-inset-top));
+  padding-inline:var(--page-edge-x, 18px);
 }
 .adminPremiumHero{
   display:flex;
@@ -4098,7 +4099,7 @@ body{
   color:#5a6560!important;
   border:1px solid rgba(11,47,38,.08)!important;
   box-shadow:0 6px 18px rgba(11,47,38,.05)!important;
-  font-size:10px!important;
+  font-size:11px!important;
   font-weight:850!important;
 }
 .adminNavPills button.on{
@@ -4168,6 +4169,42 @@ body{
 }
 .adminSectionCard .adminBackupRow{
   border-bottom-color:rgba(11,47,38,.06);
+}
+.adminSectionCard .errorLogList{
+  border-top-color:rgba(11,47,38,.08);
+}
+.adminSectionCard .errorLogRow{
+  border-bottom-color:rgba(11,47,38,.06);
+}
+.adminSectionCard .errorLogRowHead time,
+.adminSectionCard .errorLogRow small{
+  color:#7b8580;
+}
+.adminSectionCard .errorLogRow strong{
+  color:var(--forest);
+}
+.adminSectionCard .errorLogRow p{
+  color:#3d5349;
+}
+.adminStatusNotice{
+  margin:10px 0 0;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.45;
+  color:#3d5349;
+}
+.adminStatusNotice.isError,
+.adminSectionCard .adminBackupStatus.isError{
+  color:#b42318;
+  font-weight:700;
+}
+.adminStatusNotice.isSuccess,
+.adminSectionCard .adminBackupStatus.isSuccess{
+  color:#1d6a55;
+  font-weight:700;
+}
+.adminSectionCard .adminBackupStatus{
+  color:#3d5349;
 }
 .adminOverviewHead{
   align-items:flex-end;
@@ -4258,10 +4295,19 @@ body{
 }
 .pushAudienceSelect{
   appearance:none;
+  width:100%;
+  margin-bottom:12px;
+  padding:12px 36px 12px 14px;
+  border-radius:16px;
+  border:1px solid rgba(11,47,38,.1);
+  background:#fff;
   background-image:linear-gradient(45deg,transparent 50%,#0B2F26 50%),linear-gradient(135deg,#0B2F26 50%,transparent 50%);
   background-position:calc(100% - 18px) calc(50% - 2px),calc(100% - 12px) calc(50% - 2px);
   background-size:6px 6px,6px 6px;
   background-repeat:no-repeat;
+  font-size:14px;
+  font-weight:700;
+  color:var(--forest);
 }
 .adminBackupActions{
   display:flex;
@@ -4282,7 +4328,7 @@ body{
   margin-top:12px;
   font-size:13px;
   font-weight:600;
-  color:var(--gold);
+  color:#3d5349;
 }
 .adminBackupList{
   margin-top:16px;
@@ -4395,18 +4441,6 @@ body{
   margin:0 0 6px;
   font-size:12px;
   font-weight:800;
-  color:var(--forest);
-}
-
-.pushAudienceSelect{
-  width:100%;
-  margin-bottom:12px;
-  padding:12px 14px;
-  border-radius:16px;
-  border:1px solid rgba(11,47,38,.1);
-  background:#fff;
-  font-size:14px;
-  font-weight:700;
   color:var(--forest);
 }
 
@@ -6130,12 +6164,12 @@ body.menuDetailOpen{
   height:52px!important;
   min-height:52px!important;
   border-radius:14px!important;
-  font-size:9px!important;
+  font-size:10px!important;
   gap:3px!important;
 }
 
 .liberteNav.has-admin button{
-  font-size:8px!important;
+  font-size:9px!important;
 }
 
 .liberteNav button svg{
@@ -6337,6 +6371,7 @@ body.menuDetailOpen{
 /* Admin sayfa — nav ile çakışmayı önle */
 .adminPage{
   padding-top:calc(8px + env(safe-area-inset-top, 0px))!important;
+  padding-inline:var(--page-edge-x, 18px)!important;
 }
 
 .adminContent{
