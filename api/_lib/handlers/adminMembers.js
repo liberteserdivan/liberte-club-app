@@ -11,7 +11,7 @@ export async function handleAdminMembers(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const admin = await requireAdminSession(req, res, { pinRequired: true });
+    const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
     if (!admin) return;
 
     const sql = getSql();

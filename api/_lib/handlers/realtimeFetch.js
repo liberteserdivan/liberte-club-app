@@ -4,8 +4,6 @@ import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapFromSql } fro
 import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
-import { loadAppState } from '../appState.js';
-import { useRelationalState } from '../relationalConfig.js';
 
 // Kampanya/kupon dilimini state'ten oku
 function readPromoSlice(state) {
@@ -18,10 +16,7 @@ function readPromoSlice(state) {
 
 // Relational modda promos — app_state global diliminden
 async function loadPromoSlice() {
-  if (useRelationalState()) {
-    const remote = await loadAppState();
-    return readPromoSlice(remote.data || {});
-  }
+  const { loadAppState } = await import('../appState.js');
   const remote = await loadAppState();
   return readPromoSlice(remote.data || {});
 }
@@ -92,17 +87,31 @@ async function handleAdminFeed(req, res) {
   if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
 
   const [events, customers, pushDevices, pushLog] = await Promise.all([
-    loadHistoryFromSql(sql, null),
-    sql`SELECT count(*)::int AS c FROM customers`,
-    sql`SELECT count(*)::int AS c FROM push_subscriptions WHERE active = true AND revoked_at IS NULL`,
-    sql`SELECT * FROM push_send_log ORDER BY id DESC LIMIT 5`.catch(() => [])
+    sql`
+      SELECT id, customer_id, event_type, category, delta, note, created_at
+      FROM loyalty_events
+      ORDER BY id DESC
+      LIMIT 20
+    `.catch(() => []),
+    sql`SELECT count(*)::int AS c FROM customers`.catch(() => [{ c: 0 }]),
+    sql`
+      SELECT count(*)::int AS c
+      FROM push_subscriptions
+      WHERE active = true AND revoked_at IS NULL
+    `.catch(() => [{ c: 0 }]),
+    sql`
+      SELECT id, title, sent, failed, created_at
+      FROM push_send_log
+      ORDER BY id DESC
+      LIMIT 5
+    `.catch(() => [])
   ]);
 
   return res.status(200).json({
     ok: true,
     customerCount: Number(customers[0]?.c || 0),
     pushDeviceCount: Number(pushDevices[0]?.c || 0),
-    recentEvents: (events || []).slice(0, 20),
+    recentEvents: events || [],
     recentPushLog: pushLog || []
   });
 }

@@ -121,7 +121,7 @@ test('pickAdminMemberList snapshot ile tek kayda düşmez', () => {
 test('admin members endpoint kayıtlı', () => {
   const admin = readFileSync(join(root, 'api', 'admin.js'), 'utf8');
   const vercel = readFileSync(join(root, 'vercel.json'), 'utf8');
-  assert.match(admin, /members: handleAdminMembers/);
+  assert.match(admin, /members:\s*\(\)\s*=>\s*import\('\.\/_lib\/handlers\/adminMembers\.js'\)/);
   assert.match(vercel, /\/api\/admin\/members/);
 });
 
