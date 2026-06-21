@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node scripts/generate-firebase-sw.mjs && vite",
     "test": "node --test tests/*.mjs",
+    "codemagic:check": "node scripts/check-codemagic-env.mjs",
     "codemagic:ios": "node scripts/trigger-codemagic.mjs ios-release main",
     "codemagic:android": "node scripts/trigger-codemagic.mjs android-release main",
     "neon:export": "node scripts/export-neon-backup.mjs",

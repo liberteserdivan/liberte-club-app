@@ -1,0 +1,80 @@
+# Codemagic build tetikleyici — webhook çalışmasa bile API ile başlatır.
+#
+# Gerekli GitHub Secrets (Settings → Secrets and variables → Actions):
+#   CODEMAGIC_API_TOKEN  — Codemagic → Integrations → Codemagic API
+#   CODEMAGIC_APP_ID     — (opsiyonel) varsayılan: 6a27103ffb57938b06e2c701
+#
+# Manuel: Actions → Codemagic Trigger → Run workflow
+
+name: Codemagic Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_id:
+        description: Codemagic workflow
+        required: true
+        default: ios-release
+        type: choice
+        options:
+          - ios-release
+          - android-release
+      branch:
+        description: Git branch
+        required: true
+        default: main
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'ios/**'
+      - 'android/**'
+      - 'public/**'
+      - 'api/**'
+      - 'capacitor.config.*'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'codemagic.yaml'
+      - 'scripts/materialize-firebase-native-config.mjs'
+      - 'scripts/fix-ios-spm-paths.mjs'
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Codemagic build tetikle
+        env:
+          CODEMAGIC_API_TOKEN: ${{ secrets.CODEMAGIC_API_TOKEN }}
+          CODEMAGIC_APP_ID: ${{ secrets.CODEMAGIC_APP_ID }}
+          WORKFLOW_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.workflow_id || 'ios-release' }}
+          BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CODEMAGIC_API_TOKEN:-}" ]; then
+            echo "::error::CODEMAGIC_API_TOKEN GitHub secret olarak tanimlanmali."
+            echo "Codemagic → Personal account → Integrations → Codemagic API"
+            exit 1
+          fi
+
+          APP_ID="${CODEMAGIC_APP_ID:-6a27103ffb57938b06e2c701}"
+
+          echo "Tetikleniyor: workflow=${WORKFLOW_ID} branch=${BRANCH} appId=${APP_ID}"
+
+          HTTP_CODE=$(curl -sS -o /tmp/codemagic-response.json -w "%{http_code}" \
+            -X POST "https://api.codemagic.io/builds" \
+            -H "Content-Type: application/json" \
+            -H "x-auth-token: ${CODEMAGIC_API_TOKEN}" \
+            -d "{\"appId\":\"${APP_ID}\",\"workflowId\":\"${WORKFLOW_ID}\",\"branch\":\"${BRANCH}\"}")
+
+          cat /tmp/codemagic-response.json
+          echo ""
+          echo "HTTP ${HTTP_CODE}"
+
+          if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
+            exit 1
+          fi
+
+          echo "Codemagic build kuyruga alindi."
