@@ -5,7 +5,8 @@ import { prepareLocalState } from '../lib/localStateCache.js';
 import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullSnapshot.js';
 import {
   applyAdminMemberSlice,
-  mergeAdminRemoteIntoDb
+  mergeAdminRemoteIntoDb,
+  restoreAdminMembersFromSnapshot
 } from '../lib/adminMemberSync.js';
 import { fetchAdminCustomers } from '../lib/realtimeFetch.js';
 import { reportError } from '../lib/errorHub.js';
@@ -183,9 +184,16 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       if (session?.isAdmin && session?.adminVerified) {
         fetchAdminCustomers()
           .then((slice) => {
-            if (!slice?.customers?.length) return;
             setDb((current) => {
-              const next = applyAdminMemberSlice(current, slice);
+              let next = current;
+
+              if (slice?.customers?.length) {
+                next = applyAdminMemberSlice(current, slice);
+              } else {
+                next = restoreAdminMembersFromSnapshot(current, session);
+              }
+
+              if (next === current) return current;
               persistLocal(next);
               saveAdminSnapshot(next);
               return next;

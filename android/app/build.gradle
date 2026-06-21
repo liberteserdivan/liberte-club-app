@@ -15,8 +15,8 @@ android {
         applicationId "cafe.liberte.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 35
-        versionName "1.1.9"
+        versionCode 36
+        versionName "1.1.10"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         aaptOptions {

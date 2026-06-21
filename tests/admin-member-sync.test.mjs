@@ -1,12 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyAdminMemberSlice, mergeAdminRemoteIntoDb } from '../src/lib/adminMemberSync.js';
+import {
+  applyAdminMemberSlice,
+  mergeAdminRemoteIntoDb,
+  mergeCustomerRecordsById,
+  resolveAdminCustomers
+} from '../src/lib/adminMemberSync.js';
 
 const fullCustomers = [
   { id: 1, name: 'Admin', phone: '5058665406', isAdmin: true },
   { id: 2, name: 'Uye A', phone: '5550100001', isAdmin: false },
   { id: 3, name: 'Uye B', phone: '5550100002', isAdmin: false }
 ];
+
+test('mergeCustomerRecordsById kayıtları id ile birleştirir', () => {
+  const merged = mergeCustomerRecordsById(
+    [{ id: 1, name: 'Eski' }],
+    [{ id: 1, name: 'Yeni' }, { id: 2, name: 'Uye' }]
+  );
+  assert.equal(merged.length, 2);
+  assert.equal(merged[0].name, 'Yeni');
+});
 
 test('applyAdminMemberSlice tam üye listesini uygular', () => {
   const db = { customers: [fullCustomers[0]], loyalty: { 1: { lpBalance: 1 } } };
@@ -26,6 +40,11 @@ test('applyAdminMemberSlice kısmi listeyi tam listeyi ezmekten korur', () => {
   const db = { customers: full, loyalty: {} };
   const next = applyAdminMemberSlice(db, { customers: [full[0]], loyalty: {} });
   assert.equal(next.customers.length, 2);
+});
+
+test('resolveAdminCustomers mevcut listeyi korur', () => {
+  const resolved = resolveAdminCustomers({ customers: fullCustomers }, [fullCustomers[0]]);
+  assert.equal(resolved.length, 3);
 });
 
 test('mergeAdminRemoteIntoDb kısmi state ile tam listeyi ezmez', () => {

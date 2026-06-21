@@ -1,5 +1,5 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
 import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
@@ -60,6 +60,14 @@ export default function App() {
   const splashStartRef = useRef(Date.now());
   const hydrateStartedRef = useRef(0);
   const adminHydratedRef = useRef(false);
+  const dbRef = useRef(db);
+  dbRef.current = db;
+
+  const pullAdminMembers = useCallback(() => {
+    const activeSession = sessionRef.current;
+    if (!activeSession?.isAdmin || !activeSession?.adminVerified || useLocalAuth()) return;
+    void syncAdminMembersFromServer(dbRef.current, commit, activeSession);
+  }, [commit]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -194,7 +202,8 @@ export default function App() {
   useAdminMembers({
     enabled: Boolean(isAdmin && adminVerified && !useLocalAuth()),
     db,
-    commit
+    commit,
+    session
   });
 
   useAdminRealtime({
@@ -206,7 +215,7 @@ export default function App() {
     ),
     db,
     commit,
-    onCustomersChanged: () => refreshRemote(true)
+    onCustomersChanged: pullAdminMembers
   });
 
   // Yönetici oturumunda snapshot ile listeyi doldur ve sunucudan doğrula
@@ -215,14 +224,15 @@ export default function App() {
     adminHydratedRef.current = true;
     const merged = mergeAdminSnapshotIntoDb(db, session);
     if (merged !== db) commit(merged, { skipRemote: true });
+    pullAdminMembers();
     refreshRemote(true);
-  }, [authReady, session?.isAdmin, session?.adminVerified, session?.customerId, db, commit, refreshRemote]);
+  }, [authReady, session?.isAdmin, session?.adminVerified, session?.customerId, db, commit, refreshRemote, pullAdminMembers]);
 
   // Yönetim sekmesi açılınca tam üye listesini yenile
   useEffect(() => {
     if (tab !== 'admin' || !isAdmin || !adminVerified) return;
-    refreshRemote(true);
-  }, [tab, isAdmin, adminVerified, refreshRemote]);
+    pullAdminMembers();
+  }, [tab, isAdmin, adminVerified, pullAdminMembers]);
 
   // Push bildirimi tıklamasında uygulama içi sekme aç
   useEffect(() => {
@@ -286,7 +296,7 @@ export default function App() {
     patchMemorySession({ adminVerified: true });
     setSession(getMemorySession());
     setAdminGateSkipped(false);
-    void syncAdminMembersFromServer(db, commit).finally(() => {
+    void syncAdminMembersFromServer(dbRef.current, commit, getMemorySession()).finally(() => {
       refreshRemote(true);
     });
   }
