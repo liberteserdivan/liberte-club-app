@@ -111,6 +111,11 @@ console.log(JSON.stringify({
     count: members.data?.count ?? members.data?.customers?.length ?? 0,
     ok: members.data?.ok === true
   },
+  adminMembersApi: await api('/api/admin/members', { token, timeoutMs: 45000 }).then(({ response, data }) => ({
+    status: response.status,
+    count: data?.count ?? data?.customers?.length ?? 0,
+    ok: data?.ok === true
+  })),
   fullState: {
     status: state.response.status,
     customerCount: state.data?.data?.customers?.length ?? 0,

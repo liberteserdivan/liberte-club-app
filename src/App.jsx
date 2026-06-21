@@ -200,7 +200,8 @@ export default function App() {
   } = useAdminMembers({
     enabled: Boolean(isAdmin && adminVerified && !useLocalAuth()),
     commit,
-    session
+    session,
+    db
   });
 
   const pullAdminMembers = useCallback(() => {

@@ -14,9 +14,13 @@ export function loadAdminSnapshot() {
   }
 }
 
-// Başarılı admin sync sonrası tam state sakla
+// Başarılı admin sync sonrası tam state sakla — kısmi liste eski snapshot'ı ezmesin
 export function saveAdminSnapshot(data) {
   if (!data || !Array.isArray(data.customers) || data.customers.length < 1) return;
+
+  const previous = loadAdminSnapshot();
+  const previousCount = previous?.data?.customers?.length || 0;
+  if (previousCount > 0 && data.customers.length < previousCount) return;
 
   try {
     const payload = {

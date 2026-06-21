@@ -8,6 +8,7 @@ import {
   mergeAdminRemoteIntoDb,
   restoreAdminMembersFromSnapshot
 } from '../lib/adminMemberSync.js';
+import { fetchAdminMembersList } from '../lib/adminMemberClient.js';
 import { fetchAdminCustomers } from '../lib/realtimeFetch.js';
 import { reportError } from '../lib/errorHub.js';
 import { useLocalAuth } from '../lib/devAuth.js';
@@ -182,7 +183,8 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       });
 
       if (session?.isAdmin && session?.adminVerified) {
-        fetchAdminCustomers()
+        fetchAdminMembersList()
+          .catch(() => fetchAdminCustomers())
           .then((slice) => {
             if (!slice?.customers?.length) {
               commit((current) => restoreAdminMembersFromSnapshot(current, session), { skipRemote: true });

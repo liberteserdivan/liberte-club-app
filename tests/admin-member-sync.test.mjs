@@ -1,11 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   applyAdminMemberSlice,
   mergeAdminRemoteIntoDb,
   mergeCustomerRecordsById,
+  pickAdminMemberList,
   resolveAdminCustomers
 } from '../src/lib/adminMemberSync.js';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const fullCustomers = [
   { id: 1, name: 'Admin', phone: '5058665406', isAdmin: true },
@@ -61,6 +67,22 @@ test('mergeAdminRemoteIntoDb kısmi state ile tam listeyi ezmez', () => {
   const merged = mergeAdminRemoteIntoDb(current, partialRemote, session);
   assert.equal(merged.customers.length, 3);
   assert.equal(merged.settings.cafe_name, 'Liberte');
+});
+
+test('pickAdminMemberList snapshot ile tek kayda düşmez', () => {
+  const picked = pickAdminMemberList({
+    adminMembers: [fullCustomers[0]],
+    adminMembersStatus: 'error',
+    db: { customers: [fullCustomers[0]] }
+  });
+  assert.equal(picked.length, 1);
+});
+
+test('admin members endpoint kayıtlı', () => {
+  const admin = readFileSync(join(root, 'api', 'admin.js'), 'utf8');
+  const vercel = readFileSync(join(root, 'vercel.json'), 'utf8');
+  assert.match(admin, /members: handleAdminMembers/);
+  assert.match(vercel, /\/api\/admin\/members/);
 });
 
 test('mergeAdminRemoteIntoDb müşteri oturumunda kısıtlama yapmaz', () => {

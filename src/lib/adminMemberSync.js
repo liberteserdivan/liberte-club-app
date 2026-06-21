@@ -1,4 +1,6 @@
 import { fetchAdminCustomers, fetchAdminCustomersStrict } from './realtimeFetch.js';
+import { fetchAdminMembersList } from './adminMemberClient.js';
+import { loadRemote } from './db.js';
 import { loadAdminSnapshot, mergeAdminSnapshotIntoDb, saveAdminSnapshot } from './adminFullSnapshot.js';
 
 // Üye kayıtlarını id ile birleştir — liste asla kısalmasın
@@ -64,8 +66,9 @@ export function mergeAdminRemoteIntoDb(currentDb, remoteData, session) {
 // commit fonksiyonu ile güncel db üzerinde üye sync uygula
 export function applyAdminMemberSync(commit, slice, session = null) {
   commit((currentDb) => {
-    if (slice?.customers?.length) {
-      const next = applyAdminMemberSlice(currentDb, slice);
+    const finalized = finalizeAdminMemberSlice(slice) || slice;
+    if (finalized?.customers?.length) {
+      const next = applyAdminMemberSlice(currentDb, finalized);
       saveAdminSnapshot(next);
       return next;
     }
@@ -76,9 +79,74 @@ export function applyAdminMemberSync(commit, slice, session = null) {
   }, { skipRemote: true });
 }
 
+// Yönetici panelinde gösterilecek üye listesini seç — snapshot ile tek kayda düşme
+export function pickAdminMemberList({ adminMembers = [], adminMembersStatus = 'idle', db = null } = {}) {
+  const snapshotCustomers = loadAdminSnapshot()?.data?.customers || [];
+  const merged = mergeCustomerRecordsById(snapshotCustomers, adminMembers, db?.customers || []);
+  if (merged.length > 0) return merged;
+  if (adminMembersStatus === 'ready') return [];
+  return db?.customers || [];
+}
+
+// Tam admin state yanıtından üye dilimini çıkar
+async function fetchMembersFromFullState() {
+  const remote = await loadRemote();
+  if (!remote?.adminVerified || !remote?.data?.customers?.length) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    customers: remote.data.customers,
+    loyalty: remote.data.loyalty || {},
+    count: remote.data.customers.length,
+    fromState: true
+  };
+}
+
+// Sunucu kaynaklarını sırayla dene — biri başarılı olunca birleştirilmiş listeyi döndür
+async function fetchAdminMembersSliceFromServer() {
+  const sources = [
+    () => fetchAdminMembersList(),
+    () => fetchAdminCustomersStrict(),
+    () => fetchMembersFromFullState()
+  ];
+
+  let lastError = null;
+  for (const source of sources) {
+    try {
+      const slice = await source();
+      if (slice?.customers?.length) return slice;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) throw lastError;
+  return null;
+}
+
+// Sunucu dilimi ile snapshot birleştir — liste asla kısalmaz
+function finalizeAdminMemberSlice(slice) {
+  const snapshotCustomers = loadAdminSnapshot()?.data?.customers || [];
+  const customers = mergeCustomerRecordsById(snapshotCustomers, slice?.customers || []);
+  if (!customers.length) return null;
+
+  return {
+    ...slice,
+    ok: true,
+    customers,
+    loyalty: {
+      ...(loadAdminSnapshot()?.data?.loyalty || {}),
+      ...(slice?.loyalty || {})
+    },
+    count: customers.length
+  };
+}
+
 // Sunucudan tam üye listesini çek ve yerelde uygula
 export async function syncAdminMembersFromServer(_db, commit, session = null) {
-  const slice = await fetchAdminCustomers();
+  const slice = await fetchAdminMembersSliceFromServer().catch(() => fetchAdminCustomers());
   if (!slice?.customers?.length) {
     let restored = false;
     commit((currentDb) => {
@@ -92,14 +160,16 @@ export async function syncAdminMembersFromServer(_db, commit, session = null) {
     return restored;
   }
 
-  applyAdminMemberSync(commit, slice, session);
+  applyAdminMemberSync(commit, finalizeAdminMemberSlice(slice) || slice, session);
   return true;
 }
 
 // Üye listesini doğrudan sunucudan çek — hook için
 export async function loadAdminMembersSlice(session = null) {
   try {
-    return await fetchAdminCustomersStrict();
+    const slice = await fetchAdminMembersSliceFromServer();
+    const finalized = finalizeAdminMemberSlice(slice);
+    if (finalized) return finalized;
   } catch (error) {
     const snap = loadAdminSnapshot()?.data;
     if (snap?.customers?.length) {
@@ -113,4 +183,17 @@ export async function loadAdminMembersSlice(session = null) {
     }
     throw error;
   }
+
+  const snap = loadAdminSnapshot()?.data;
+  if (snap?.customers?.length) {
+    return {
+      ok: true,
+      customers: snap.customers,
+      loyalty: snap.loyalty || {},
+      count: snap.customers.length,
+      fromSnapshot: true
+    };
+  }
+
+  throw new Error('Üye listesi alınamadı');
 }

@@ -16,6 +16,7 @@ import {
   requiresProductPickForLpCategory
 } from '../lib/menuLp.js';
 import { deleteAdminMember } from '../lib/adminMemberClient.js';
+import { pickAdminMemberList } from '../lib/adminMemberSync.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
 
@@ -44,7 +45,11 @@ export default function AdminPage({
   const[tab,setTab]=useState('overview');
   const[focusUserId,setFocusUserId]=useState(null);
   const deviceCount=(db.pushSubscriptions||[]).filter((row)=>row.active!==false).length;
-  const memberCount=adminMembers.length || (db.customers||[]).length;
+  const memberCount = pickAdminMemberList({
+    adminMembers,
+    adminMembersStatus,
+    db
+  }).length;
 
   function openUserManage(userId=null){
     if(userId)setFocusUserId(userId);
@@ -87,7 +92,15 @@ export default function AdminPage({
     </div>
 
     <div className="adminContent">
-      {tab==='overview'&&<OverviewAdmin db={db} commit={commit} onManageUsers={openUserManage}/>}
+      {tab==='overview'&&(
+        <OverviewAdmin
+          db={db}
+          commit={commit}
+          adminMembers={adminMembers}
+          adminMembersStatus={adminMembersStatus}
+          onManageUsers={openUserManage}
+        />
+      )}
       {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
       {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
       {tab==='uyeler'&&(
@@ -281,8 +294,8 @@ function BackupAdmin({ db }){
     </div>}
   </div>;
 }
-function OverviewAdmin({db,commit,onManageUsers}){
-  const customers=db.customers||[];
+function OverviewAdmin({db,commit,adminMembers=[],adminMembersStatus='idle',onManageUsers}){
+  const customers=pickAdminMemberList({ adminMembers, adminMembersStatus, db });
   const loyalty=db.loyalty||{};
   const history=db.history||[];
   const totalLp=Object.values(loyalty).reduce((a,l)=>a+(getLpBalance(l)||0),0);
@@ -989,11 +1002,11 @@ function UsersAdmin({
   const[pendingDelete,setPendingDelete]=useState(null);
   const[lpProductPick,setLpProductPick]=useState(null);
 
-  const customers = adminMembers.length > 0
-    ? adminMembers
-    : adminMembersStatus === 'ready'
-      ? []
-      : (db.customers || []);
+  const customers = pickAdminMemberList({
+    adminMembers,
+    adminMembersStatus,
+    db
+  });
   const needle=query.trim().toLowerCase();
   const filtered=customers.filter(c=>{
     if(!needle)return true;
