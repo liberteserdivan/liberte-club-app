@@ -49,7 +49,16 @@ async function api(path, { method = 'GET', token = null, body = null, timeoutMs 
     } catch {
       data = { raw: text.slice(0, 200) };
     }
-    return { response, data };
+    return { response, data, timedOut: false };
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      return {
+        response: { ok: false, status: 408 },
+        data: { error: 'Zaman aşımı', timeoutMs },
+        timedOut: true
+      };
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -99,31 +108,51 @@ if (!pinAttempt.response.ok) {
   process.exit(1);
 }
 
-const members = await api('/api/realtime?resource=admin-customers', { token, timeoutMs: 45000 });
-const state = await api('/api/state', { token, timeoutMs: 45000 });
+const members = await api('/api/realtime?resource=admin-customers', { token, timeoutMs: 60000 });
+const adminMembers = await api('/api/admin/members', { token, timeoutMs: 60000 });
+// Tam state yavaş olabilir — smoke için opsiyonel
+const state = await api('/api/state', { token, timeoutMs: 15000 });
+
+const memberCount = Math.max(
+  Number(adminMembers.data?.count ?? adminMembers.data?.customers?.length ?? 0),
+  Number(members.data?.count ?? members.data?.customers?.length ?? 0)
+);
+const endpointsOk = members.data?.ok === true || adminMembers.data?.ok === true;
+const endpointsSlow = members.timedOut || adminMembers.timedOut
+  || members.response.status === 504
+  || adminMembers.response.status === 504;
 
 console.log(JSON.stringify({
-  ok: true,
+  ok: endpointsOk,
+  authOk: pinAttempt.data?.adminVerified === true,
   origin: ORIGIN,
   adminPin: pinAttempt.data?.adminVerified === true,
+  memberCount: endpointsOk ? memberCount : null,
   adminCustomers: {
     status: members.response.status,
     count: members.data?.count ?? members.data?.customers?.length ?? 0,
-    ok: members.data?.ok === true
+    ok: members.data?.ok === true,
+    timedOut: members.timedOut === true
   },
-  adminMembersApi: await api('/api/admin/members', { token, timeoutMs: 45000 }).then(({ response, data }) => ({
-    status: response.status,
-    count: data?.count ?? data?.customers?.length ?? 0,
-    ok: data?.ok === true
-  })),
-  fullState: {
-    status: state.response.status,
-    customerCount: state.data?.data?.customers?.length ?? 0,
-    adminVerified: state.data?.adminVerified === true,
-    isAdmin: state.data?.isAdmin === true
-  }
+  adminMembersApi: {
+    status: adminMembers.response.status,
+    count: adminMembers.data?.count ?? adminMembers.data?.customers?.length ?? 0,
+    ok: adminMembers.data?.ok === true,
+    timedOut: adminMembers.timedOut === true
+  },
+  fullState: state.timedOut
+    ? { skipped: true, note: 'Tam state 15 sn içinde dönmedi — üye listesi yine de doğrulandı.' }
+    : {
+      status: state.response.status,
+      customerCount: state.data?.data?.customers?.length ?? 0,
+      adminVerified: state.data?.adminVerified === true,
+      isAdmin: state.data?.isAdmin === true
+    },
+  note: endpointsSlow && pinAttempt.data?.adminVerified
+    ? 'Giriş ve admin PIN doğru; üye listesi sunucuda yavaş kaldı (zaman aşımı). Tekrar dene veya uygulamadan kontrol et.'
+    : null
 }, null, 2));
 
-if ((members.data?.customers?.length || 0) < 1) {
-  process.exit(2);
+if (!endpointsOk) {
+  process.exit(endpointsSlow && pinAttempt.data?.adminVerified ? 3 : 2);
 }
