@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { patchMemorySession } from '../lib/session.js';
 import { refreshRealtimeAuth } from '../lib/supabaseClient.js';
-import { apiJson } from '../lib/apiClient.js';
+import { apiJson, AUTH_REQUEST_OPTIONS } from '../lib/apiClient.js';
+import { formatClientApiError } from '../lib/apiErrors.js';
 import { useLocalAuth, verifyDevAdminPin } from '../lib/devAuth.js';
 
 // Yönetici PIN doğrulama ekranı
@@ -30,11 +31,13 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
 
       const { response, data } = await apiJson('/api/auth/admin-pin', {
         method: 'POST',
-        body: JSON.stringify({ pin: pin.trim() })
+        body: JSON.stringify({ pin: pin.trim() }),
+        ...AUTH_REQUEST_OPTIONS
       });
 
       if (!response.ok) {
-        throw new Error(data.error || 'PIN doğrulanamadı');
+        const formatted = formatClientApiError({ response, data, fallback: 'PIN doğrulanamadı' });
+        throw new Error(formatted.message || 'PIN doğrulanamadı');
       }
 
       patchMemorySession({
@@ -44,7 +47,8 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
       await refreshRealtimeAuth();
       onVerified?.();
     } catch (e) {
-      setError(e.message || 'PIN doğrulanamadı');
+      const formatted = formatClientApiError({ error: e, fallback: 'PIN doğrulanamadı' });
+      setError(formatted.message || e.message || 'PIN doğrulanamadı');
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import { readAuthToken, verifyAdminPin } from './auth.js';
 import { getSql } from './appState.js';
+import { isProductionRuntime } from './schemaReady.js';
 import { createHash } from 'node:crypto';
 
 const MAX_ATTEMPTS = 5;
@@ -10,8 +11,9 @@ function hashToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 
-// Admin PIN deneme sütunlarını hazırla
+// Admin PIN deneme sütunlarını hazırla — prod'da ALTER yok (bootstrap/init-db ile gelir)
 async function ensureAdminPinColumns(sql) {
+  if (isProductionRuntime()) return;
   await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_failed int NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_locked_until timestamptz`;
 }

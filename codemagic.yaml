@@ -26,8 +26,8 @@ workflows:
         IOS_RELEASE: "true"
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
-        APP_VERSION: "1.1.8"
-        IOS_MIN_BUILD_NUMBER: "34"
+        APP_VERSION: "1.1.9"
+        IOS_MIN_BUILD_NUMBER: "35"
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
       node: 22
@@ -47,7 +47,7 @@ workflows:
           test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.8}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.9}.${BUILD_NUMBER:-0}"
           export VITE_BUILD_NUMBER="${BUILD_NUMBER:-0}"
           npm run build:release
       - name: Capacitor iOS sync
@@ -107,8 +107,8 @@ workflows:
         ANDROID_RELEASE: "true"
         PLAY_TRACK: internal
         PACKAGE_NAME: cafe.liberte.app
-        APP_VERSION: "1.1.8"
-        ANDROID_MIN_VERSION_CODE: "33"
+        APP_VERSION: "1.1.9"
+        ANDROID_MIN_VERSION_CODE: "35"
       node: 22
       java: 21
     scripts:
@@ -131,7 +131,7 @@ workflows:
           test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.2}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.9}.${BUILD_NUMBER:-0}"
           echo "[build] VITE_APP_VERSION=$VITE_APP_VERSION commit=$(git rev-parse --short HEAD)"
           npm run build:release
       - name: Capacitor Android sync
