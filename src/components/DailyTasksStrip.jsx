@@ -1,31 +1,56 @@
 import { useState } from 'react';
 import { Check, Coffee, Gift, Sparkles, Sun } from 'lucide-react';
 import { claimDailyLoginReward, getCustomerStreak, getDailyTasks, hasDailyClaim } from '../lib/db.js';
+import { claimDailyLoginRewardRemote } from '../lib/customerRewardsClient.js';
+import { useLocalAuth } from '../lib/devAuth.js';
 
 const ICONS = { sun: Sun, sparkles: Sparkles, coffee: Coffee, gift: Gift };
 
 // Ana sayfada günlük görev şeridi
 export default function DailyTasksStrip({ db, customer, commit, setTab }) {
   const [claimMessage, setClaimMessage] = useState('');
+  const [claimLoading, setClaimLoading] = useState(false);
   const tasks = getDailyTasks(db, customer.id);
   const streak = getCustomerStreak(db, customer.id);
   const doneCount = tasks.filter((task) => task.done).length;
   const dailyClaimed = hasDailyClaim(db, customer.id, 'daily_login');
 
-  function handleDailyClaim() {
+  async function handleDailyClaim() {
     if (dailyClaimed) {
       setClaimMessage('Günlük giriş ödülünü bugün zaten aldın.');
       return;
     }
 
-    const result = claimDailyLoginReward(db, customer.id);
-    if (!result.ok) {
-      setClaimMessage(result.message);
-      return;
-    }
+    setClaimLoading(true);
+    setClaimMessage('');
 
-    commit(result.db);
-    setClaimMessage(result.message);
+    try {
+      if (useLocalAuth()) {
+        const result = claimDailyLoginReward(db, customer.id);
+        if (!result.ok) {
+          setClaimMessage(result.message);
+          return;
+        }
+        commit(result.db);
+        setClaimMessage(result.message);
+        return;
+      }
+
+      const remote = await claimDailyLoginRewardRemote();
+      commit((current) => ({
+        ...current,
+        loyalty: {
+          ...(current.loyalty || {}),
+          [customer.id]: remote.loyalty
+        },
+        dailyClaims: remote.dailyClaims || current.dailyClaims || []
+      }), { skipRemote: true });
+      setClaimMessage(remote.message || '+1 LP günlük giriş ödülü hesabına eklendi.');
+    } catch (error) {
+      setClaimMessage(error?.message || 'Günlük ödül kaydedilemedi.');
+    } finally {
+      setClaimLoading(false);
+    }
   }
 
   return (
@@ -42,8 +67,13 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
       </div>
 
       {!dailyClaimed && (
-        <button type="button" className="dailyClaimBtn goldBtn" onClick={handleDailyClaim}>
-          Günlük giriş ödülünü al (+1 LP)
+        <button
+          type="button"
+          className="dailyClaimBtn goldBtn"
+          onClick={handleDailyClaim}
+          disabled={claimLoading}
+        >
+          {claimLoading ? 'Kaydediliyor…' : 'Günlük giriş ödülünü al (+1 LP)'}
         </button>
       )}
       {claimMessage && <p className="dailyClaimMessage">{claimMessage}</p>}

@@ -989,7 +989,11 @@ function UsersAdmin({
   const[pendingDelete,setPendingDelete]=useState(null);
   const[lpProductPick,setLpProductPick]=useState(null);
 
-  const customers=adminMembers.length ? adminMembers : (db.customers || []);
+  const customers = adminMembers.length > 0
+    ? adminMembers
+    : adminMembersStatus === 'ready'
+      ? []
+      : (db.customers || []);
   const needle=query.trim().toLowerCase();
   const filtered=customers.filter(c=>{
     if(!needle)return true;
@@ -1158,7 +1162,11 @@ function UsersAdmin({
   return <div className="adminMemberPanel">
     <div className="card adminSectionCard userAdminIntro">
       <div className="adminSectionHead"><div><span>ÜYELER</span><h3>Üye ayarları</h3></div></div>
-      <p className="adminHint">Telefon ve e-posta tekil tutulur. Arama yapıp üye detayına geçebilirsin.</p>
+      <p className="adminHint">
+        {adminMembersStatus === 'ready'
+          ? `${customers.length} üye listeleniyor.`
+          : 'Telefon ve e-posta tekil tutulur. Arama yapıp üye detayına geçebilirsin.'}
+      </p>
       {adminMembersStatus === 'loading' && <p className="adminHint">Üyeler yükleniyor…</p>}
       {adminMembersStatus === 'error' && adminMembersError && (
         <p className="adminPinError">

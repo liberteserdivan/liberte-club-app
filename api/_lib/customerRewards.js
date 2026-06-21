@@ -1,0 +1,147 @@
+import { getSql } from './appState.js';
+import { parseAppStateData, serializeAppStateJson } from './appState.js';
+import { invalidateAppStateCache } from './appStateCache.js';
+import { extractGlobalSlice, bumpAppStateRevision } from './relationalState.js';
+import { findCustomerById, loyaltyRowToCard, upsertLoyaltyRow } from './customersStore.js';
+import { loadLoyaltyForCustomer, insertLoyaltyEvent } from './loyaltyStore.js';
+import { applyCategoryStamp } from './loyaltyOps.js';
+
+const STATE_ID = 'liberte';
+
+// Yerel gün anahtarı — günlük ödül tekrarını engelle
+function localDayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Bugün bu ödül alınmış mı?
+function hasDailyClaim(dailyClaims, customerId, type) {
+  const day = localDayKey();
+  return (dailyClaims || []).some(
+    (row) => Number(row.customerId) === Number(customerId) && row.type === type && row.day === day
+  );
+}
+
+// Giriş serisi hesapla
+function getCustomerStreak(dailyClaims, customerId) {
+  const days = new Set(
+    (dailyClaims || [])
+      .filter((row) => Number(row.customerId) === Number(customerId) && row.type === 'daily_login')
+      .map((row) => row.day)
+  );
+  if (!days.size) return 0;
+
+  let streak = 0;
+  const cursor = new Date();
+  const today = localDayKey();
+  if (!days.has(today)) cursor.setDate(cursor.getDate() - 1);
+
+  while (true) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+    if (!days.has(key)) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+// Global app_state dilimini oku
+async function readGlobalBlob(sql) {
+  const rows = await sql`SELECT data FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
+  const raw = parseAppStateData(rows[0]?.data) || {};
+  return extractGlobalSlice(raw) || raw;
+}
+
+// Global app_state dilimini yaz
+async function writeGlobalBlob(sql, globalData) {
+  await sql`
+    UPDATE app_state
+    SET data = ${serializeAppStateJson(globalData)},
+        updated_at = now()
+    WHERE id = ${STATE_ID}
+  `;
+  invalidateAppStateCache();
+}
+
+// LP kartını kaydet ve son işlemi geçmişe yaz
+async function persistStampResult(sql, customerId, miniState) {
+  const id = Number(customerId);
+  const card = miniState.loyalty[id] || miniState.loyalty[String(id)];
+  await upsertLoyaltyRow(sql, id, card);
+  const entry = (miniState.history || [])[0];
+  if (entry) await insertLoyaltyEvent(sql, id, entry);
+}
+
+// Günlük giriş ödülü — sunucuda kalıcı
+export async function applyDailyLoginRewardRelational(customerId) {
+  const sql = getSql();
+  if (!sql) return { ok: false, error: 'Veritabanı yapılandırması eksik' };
+
+  const id = Number(customerId);
+  const customer = await findCustomerById(sql, id);
+  if (!customer) return { ok: false, error: 'Üye bulunamadı' };
+
+  const global = await readGlobalBlob(sql);
+  const dailyClaims = Array.isArray(global.dailyClaims) ? [...global.dailyClaims] : [];
+
+  if (hasDailyClaim(dailyClaims, id, 'daily_login')) {
+    return { ok: false, error: 'Günlük giriş ödülünü bugün zaten aldın.' };
+  }
+
+  const loyaltyCard = await loadLoyaltyForCustomer(id, sql);
+  const miniState = {
+    customers: [customer],
+    loyalty: { [id]: loyaltyCard },
+    history: [],
+    dailyClaims
+  };
+
+  const prevStreak = getCustomerStreak(dailyClaims, id);
+  const day = localDayKey();
+  const createdAt = new Date().toLocaleString('tr-TR');
+
+  let stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, 'Günlük giriş ödülü');
+  if (!stampResult.ok) return stampResult;
+  await persistStampResult(sql, id, miniState);
+
+  dailyClaims.unshift({
+    id: Date.now(),
+    customerId: id,
+    name: customer.name,
+    phone: customer.phone,
+    type: 'daily_login',
+    day,
+    createdAt
+  });
+  miniState.dailyClaims = dailyClaims;
+
+  const newStreak = prevStreak + 1;
+  let bonusNote = '';
+
+  if (newStreak === 3) {
+    stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, '3 gün seri bonusu');
+    if (!stampResult.ok) return stampResult;
+    await persistStampResult(sql, id, miniState);
+    bonusNote = ' 3 gün seri bonusu da eklendi!';
+  }
+
+  if (newStreak === 7) {
+    stampResult = applyCategoryStamp(miniState, id, 'coffee', 2, '7 gün seri bonusu');
+    if (!stampResult.ok) return stampResult;
+    await persistStampResult(sql, id, miniState);
+    bonusNote = ' 7 gün seri bonusu da eklendi!';
+  }
+
+  global.dailyClaims = dailyClaims;
+  await writeGlobalBlob(sql, global);
+  await bumpAppStateRevision(sql);
+
+  const nextCard = miniState.loyalty[id] || miniState.loyalty[String(id)];
+
+  return {
+    ok: true,
+    message: `+1 LP günlük giriş ödülü hesabına eklendi.${bonusNote}`,
+    loyalty: nextCard,
+    dailyClaims
+  };
+}

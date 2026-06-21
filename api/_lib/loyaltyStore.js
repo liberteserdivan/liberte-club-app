@@ -82,7 +82,7 @@ export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
 }
 
 // Sadakat olayını kaydet
-async function insertLoyaltyEvent(sql, customerId, historyEntry) {
+export async function insertLoyaltyEvent(sql, customerId, historyEntry) {
   const createdAt = historyEntry.createdAt
     ? new Date(String(historyEntry.createdAt).replace(
       /^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/,

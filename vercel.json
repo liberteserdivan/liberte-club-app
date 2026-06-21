@@ -16,6 +16,12 @@
     },
     "api/state.js": {
       "maxDuration": 60
+    },
+    "api/loyalty.js": {
+      "maxDuration": 30
+    },
+    "api/realtime.js": {
+      "maxDuration": 30
     }
   },
   "redirects": [
@@ -34,6 +40,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/loyalty/daily-claim", "destination": "/api/loyalty?action=daily-claim" },
     { "source": "/api/auth/login", "destination": "/api/auth?action=login" },
     { "source": "/api/auth/session", "destination": "/api/auth?action=session" },
     { "source": "/api/auth/register-complete", "destination": "/api/auth?action=register-complete" },
