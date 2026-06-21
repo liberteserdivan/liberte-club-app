@@ -121,8 +121,8 @@ test('pickAdminMemberList snapshot ile tek kayda düşmez', () => {
 test('admin members endpoint kayıtlı', () => {
   const admin = readFileSync(join(root, 'api', 'admin.js'), 'utf8');
   const vercel = readFileSync(join(root, 'vercel.json'), 'utf8');
-  assert.match(admin, /members:\s*\(\)\s*=>\s*import\('\.\/_lib\/handlers\/adminMembers\.js'\)/);
   assert.match(vercel, /\/api\/admin\/members/);
+  assert.match(vercel, /action=admin-members/);
 });
 
 test('mergeAdminRemoteIntoDb müşteri oturumunda kısıtlama yapmaz', () => {

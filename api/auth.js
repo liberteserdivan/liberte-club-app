@@ -1,25 +1,22 @@
-import { handleAuthLogin } from './_lib/handlers/authLogin.js';
-import { handleAuthSession } from './_lib/handlers/authSession.js';
-import { handleAuthRegisterComplete } from './_lib/handlers/authRegisterComplete.js';
-import { handleAuthForgotPin } from './_lib/handlers/authForgotPin.js';
-import { handleAuthAdminPin } from './_lib/handlers/authAdminPin.js';
-
 // Kimlik doğrulama yönlendirici — Vercel Hobby 12 function limiti
 const AUTH_ACTIONS = {
-  login: handleAuthLogin,
-  session: handleAuthSession,
-  'register-complete': handleAuthRegisterComplete,
-  'forgot-pin': handleAuthForgotPin,
-  'admin-pin': handleAuthAdminPin
+  login: () => import('./_lib/handlers/authLogin.js').then((m) => m.handleAuthLogin),
+  session: () => import('./_lib/handlers/authSession.js').then((m) => m.handleAuthSession),
+  'register-complete': () => import('./_lib/handlers/authRegisterComplete.js').then((m) => m.handleAuthRegisterComplete),
+  'forgot-pin': () => import('./_lib/handlers/authForgotPin.js').then((m) => m.handleAuthForgotPin),
+  'admin-pin': () => import('./_lib/handlers/authAdminPin.js').then((m) => m.handleAuthAdminPin),
+  // Üye listesi — auth isolate'ında DB bağlantısı güvenilir
+  'admin-members': () => import('./_lib/handlers/adminMembers.js').then((m) => m.handleAdminMembers)
 };
 
 export default async function handler(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
-  const route = AUTH_ACTIONS[action];
+  const loader = AUTH_ACTIONS[action];
 
-  if (!route) {
+  if (!loader) {
     return res.status(400).json({ error: 'Geçersiz auth action' });
   }
 
+  const route = await loader();
   return route(req, res);
 }

@@ -46,7 +46,7 @@
     { "source": "/api/auth/register-complete", "destination": "/api/auth?action=register-complete" },
     { "source": "/api/auth/forgot-pin", "destination": "/api/auth?action=forgot-pin" },
     { "source": "/api/auth/admin-pin", "destination": "/api/auth?action=admin-pin" },
-    { "source": "/api/admin/members", "destination": "/api/admin?resource=members" },
+    { "source": "/api/admin/members", "destination": "/api/auth?action=admin-members" },
     { "source": "/api/backup", "destination": "/api/admin?resource=backup" },
     { "source": "/api/push/send", "destination": "/api/admin?resource=push-send" },
     { "source": "/api/push/register-device", "destination": "/api/push?action=register-device" },
