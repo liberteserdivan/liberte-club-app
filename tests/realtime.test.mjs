@@ -69,9 +69,9 @@ test('admin member-delete endpoint kayıtlı', () => {
   assert.match(admin, /member-delete/);
 });
 
-test('admin-customers relational birleştirme kullanır', () => {
+test('admin-customers doğrudan customers tablosunu kullanır', () => {
   const realtime = readFileSync(join(root, 'api/_lib/handlers/realtimeFetch.js'), 'utf8');
-  assert.match(realtime, /composeStateFromRelational/);
+  assert.match(realtime, /listAllCustomers/);
   assert.match(realtime, /admin-customers/);
 });
 

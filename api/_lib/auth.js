@@ -298,7 +298,7 @@ export function verifyAdminPin(pin) {
   return timingSafeEqual(a, b);
 }
 
-// Oturumda admin PIN onayını işaretle
+// Oturumda admin PIN onayını işaretle — rol ve is_admin birlikte güncellenir
 export async function markAdminVerified(req) {
   const token = readAuthToken(req);
   if (!token) return false;
@@ -307,14 +307,18 @@ export async function markAdminVerified(req) {
   if (!sql) return false;
 
   await ensureSessionTable(sql);
-  await sql`
-    UPDATE auth_sessions
-    SET admin_verified = true
-    WHERE token_hash = ${hashToken(token)}
-      AND role = 'admin'
-      AND expires_at > now()
+  const rows = await sql`
+    UPDATE auth_sessions AS s
+    SET admin_verified = true,
+        role = 'admin'
+    FROM customers AS c
+    WHERE s.token_hash = ${hashToken(token)}
+      AND s.expires_at > now()
+      AND c.id = s.customer_id
+      AND c.is_admin = true
+    RETURNING s.customer_id
   `;
-  return true;
+  return Boolean(rows[0]);
 }
 
 // Müşteriyi telefon ile bul — normalize tablo + yarım kayıt onarımı

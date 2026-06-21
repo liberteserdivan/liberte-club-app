@@ -15,7 +15,6 @@ import {
   assertMenuItemCanEarnLp,
   requiresProductPickForLpCategory
 } from '../lib/menuLp.js';
-import { syncAdminMembersFromServer } from '../lib/adminMemberSync.js';
 import { deleteAdminMember } from '../lib/adminMemberClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
@@ -33,11 +32,19 @@ function displayMemberPhone(phone) {
   return formatPhoneInput(phone) || String(phone || '—');
 }
 
-export default function AdminPage({db,commit,refreshRemote}){
+export default function AdminPage({
+  db,
+  commit,
+  refreshRemote,
+  adminMembers = [],
+  adminMembersStatus = 'idle',
+  adminMembersError = '',
+  onRefreshMembers
+}){
   const[tab,setTab]=useState('overview');
   const[focusUserId,setFocusUserId]=useState(null);
   const deviceCount=(db.pushSubscriptions||[]).filter((row)=>row.active!==false).length;
-  const memberCount=(db.customers||[]).length;
+  const memberCount=adminMembers.length || (db.customers||[]).length;
 
   function openUserManage(userId=null){
     if(userId)setFocusUserId(userId);
@@ -83,7 +90,19 @@ export default function AdminPage({db,commit,refreshRemote}){
       {tab==='overview'&&<OverviewAdmin db={db} commit={commit} onManageUsers={openUserManage}/>}
       {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
       {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
-      {tab==='uyeler'&&<MembersAdmin db={db} commit={commit} refreshRemote={refreshRemote} focusUserId={focusUserId} onFocusHandled={()=>setFocusUserId(null)}/>}
+      {tab==='uyeler'&&(
+        <MembersAdmin
+          db={db}
+          commit={commit}
+          refreshRemote={refreshRemote}
+          adminMembers={adminMembers}
+          adminMembersStatus={adminMembersStatus}
+          adminMembersError={adminMembersError}
+          onRefreshMembers={onRefreshMembers}
+          focusUserId={focusUserId}
+          onFocusHandled={()=>setFocusUserId(null)}
+        />
+      )}
       {tab==='ayarlar'&&<SettingsAdmin db={db} commit={commit}/>}
     </div>
   </section>;
@@ -103,18 +122,34 @@ function KampanyaAdmin({db,commit}){
   </div>;
 }
 
-function MembersAdmin({db,commit,refreshRemote,focusUserId,onFocusHandled}){
-  const dbRef = useRef(db);
-  dbRef.current = db;
-
-  // Üyeler sekmesi açılınca tam listeyi sunucudan tazele
+function MembersAdmin({
+  db,
+  commit,
+  refreshRemote,
+  adminMembers,
+  adminMembersStatus,
+  adminMembersError,
+  onRefreshMembers,
+  focusUserId,
+  onFocusHandled
+}){
+  // Üyeler sekmesi açılınca listeyi yenile
   useEffect(() => {
-    void syncAdminMembersFromServer(dbRef.current, commit);
-  }, [commit]);
+    onRefreshMembers?.();
+  }, [onRefreshMembers]);
 
   return <div className="adminStack">
     <ReviewApprovalAdmin db={db} commit={commit} refreshRemote={refreshRemote}/>
-    <UsersAdmin db={db} commit={commit} focusUserId={focusUserId} onFocusHandled={onFocusHandled}/>
+    <UsersAdmin
+      db={db}
+      commit={commit}
+      adminMembers={adminMembers}
+      adminMembersStatus={adminMembersStatus}
+      adminMembersError={adminMembersError}
+      onRefreshMembers={onRefreshMembers}
+      focusUserId={focusUserId}
+      onFocusHandled={onFocusHandled}
+    />
   </div>;
 }
 
@@ -937,7 +972,16 @@ function GameAdmin({db,commit}){
 }
 
 
-function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
+function UsersAdmin({
+  db,
+  commit,
+  adminMembers = [],
+  adminMembersStatus = 'idle',
+  adminMembersError = '',
+  onRefreshMembers,
+  focusUserId,
+  onFocusHandled
+}){
   const[editing,setEditing]=useState(null);
   const[form,setForm]=useState({name:'',phone:'',email:'',birthDate:'',isAdmin:false,note:''});
   const[message,setMessage]=useState('');
@@ -945,7 +989,7 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
   const[pendingDelete,setPendingDelete]=useState(null);
   const[lpProductPick,setLpProductPick]=useState(null);
 
-  const customers=db.customers||[];
+  const customers=adminMembers.length ? adminMembers : (db.customers || []);
   const needle=query.trim().toLowerCase();
   const filtered=customers.filter(c=>{
     if(!needle)return true;
@@ -1115,6 +1159,14 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
     <div className="card adminSectionCard userAdminIntro">
       <div className="adminSectionHead"><div><span>ÜYELER</span><h3>Üye ayarları</h3></div></div>
       <p className="adminHint">Telefon ve e-posta tekil tutulur. Arama yapıp üye detayına geçebilirsin.</p>
+      {adminMembersStatus === 'loading' && <p className="adminHint">Üyeler yükleniyor…</p>}
+      {adminMembersStatus === 'error' && adminMembersError && (
+        <p className="adminPinError">
+          {adminMembersError}
+          {' '}
+          <button type="button" className="ghost adminPinSkip" onClick={() => onRefreshMembers?.()}>Tekrar dene</button>
+        </p>
+      )}
       {message&&<p className="info">{message}</p>}
       <input
         className="adminCategorySearch"
@@ -1123,6 +1175,10 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
         onChange={e=>setQuery(e.target.value)}
       />
     </div>
+
+    {!filtered.length && adminMembersStatus === 'ready' && (
+      <div className="empty">Kayıtlı üye bulunamadı.</div>
+    )}
 
     {filtered.map(c=>{
       const l=db.loyalty[c.id]||loyaltyTemplate(c.id);

@@ -1,4 +1,4 @@
-import { fetchAdminCustomers } from './realtimeFetch.js';
+import { fetchAdminCustomers, fetchAdminCustomersStrict } from './realtimeFetch.js';
 import { loadAdminSnapshot, mergeAdminSnapshotIntoDb, saveAdminSnapshot } from './adminFullSnapshot.js';
 
 // Üye kayıtlarını id ile birleştir — liste asla kısalmasın
@@ -61,22 +61,56 @@ export function mergeAdminRemoteIntoDb(currentDb, remoteData, session) {
   };
 }
 
+// commit fonksiyonu ile güncel db üzerinde üye sync uygula
+export function applyAdminMemberSync(commit, slice, session = null) {
+  commit((currentDb) => {
+    if (slice?.customers?.length) {
+      const next = applyAdminMemberSlice(currentDb, slice);
+      saveAdminSnapshot(next);
+      return next;
+    }
+    return restoreAdminMembersFromSnapshot(
+      currentDb,
+      session || { isAdmin: true, adminVerified: true }
+    );
+  }, { skipRemote: true });
+}
+
 // Sunucudan tam üye listesini çek ve yerelde uygula
-export async function syncAdminMembersFromServer(db, commit, session = null) {
+export async function syncAdminMembersFromServer(_db, commit, session = null) {
   const slice = await fetchAdminCustomers();
-
-  if (slice?.customers?.length) {
-    const next = applyAdminMemberSlice(db, slice);
-    commit(next, { skipRemote: true });
-    saveAdminSnapshot(next);
-    return true;
+  if (!slice?.customers?.length) {
+    let restored = false;
+    commit((currentDb) => {
+      const next = restoreAdminMembersFromSnapshot(
+        currentDb,
+        session || { isAdmin: true, adminVerified: true }
+      );
+      restored = next !== currentDb;
+      return next;
+    }, { skipRemote: true });
+    return restored;
   }
 
-  const restored = restoreAdminMembersFromSnapshot(db, session || { isAdmin: true, adminVerified: true });
-  if (restored !== db) {
-    commit(restored, { skipRemote: true });
-    return true;
-  }
+  applyAdminMemberSync(commit, slice, session);
+  return true;
+}
 
-  return false;
+// Üye listesini doğrudan sunucudan çek — hook için
+export async function loadAdminMembersSlice(session = null) {
+  try {
+    return await fetchAdminCustomersStrict();
+  } catch (error) {
+    const snap = loadAdminSnapshot()?.data;
+    if (snap?.customers?.length) {
+      return {
+        ok: true,
+        customers: snap.customers,
+        loyalty: snap.loyalty || {},
+        count: snap.customers.length,
+        fromSnapshot: true
+      };
+    }
+    throw error;
+  }
 }

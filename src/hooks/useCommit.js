@@ -184,20 +184,15 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       if (session?.isAdmin && session?.adminVerified) {
         fetchAdminCustomers()
           .then((slice) => {
-            setDb((current) => {
-              let next = current;
-
-              if (slice?.customers?.length) {
-                next = applyAdminMemberSlice(current, slice);
-              } else {
-                next = restoreAdminMembersFromSnapshot(current, session);
-              }
-
-              if (next === current) return current;
-              persistLocal(next);
+            if (!slice?.customers?.length) {
+              commit((current) => restoreAdminMembersFromSnapshot(current, session), { skipRemote: true });
+              return;
+            }
+            commit((current) => {
+              const next = applyAdminMemberSlice(current, slice);
               saveAdminSnapshot(next);
               return next;
-            });
+            }, { skipRemote: true });
           })
           .catch(() => {});
       }
@@ -309,15 +304,21 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     });
   }
 
-  const commit = useCallback((nextDb, options = {}) => {
+  const commit = useCallback((nextDbOrUpdater, options = {}) => {
     saveSeq.current += 1;
     const seq = saveSeq.current;
 
-    setDb(nextDb);
-    persistLocal(nextDb);
-    if (!options.skipRemote) {
-      queueSaveRemote(nextDb, seq);
-    }
+    setDb((currentDb) => {
+      const nextDb = typeof nextDbOrUpdater === 'function'
+        ? nextDbOrUpdater(currentDb)
+        : nextDbOrUpdater;
+
+      persistLocal(nextDb);
+      if (!options.skipRemote) {
+        queueSaveRemote(nextDb, seq);
+      }
+      return nextDb;
+    });
   }, []);
 
   // Senkron hatasından sonra tekrar dene

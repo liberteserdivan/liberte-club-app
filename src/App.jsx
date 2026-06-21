@@ -14,7 +14,6 @@ import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundList
 import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
 import { mergeAdminSnapshotIntoDb } from './lib/adminFullSnapshot.js';
-import { syncAdminMembersFromServer } from './lib/adminMemberSync.js';
 import { App as CapApp } from '@capacitor/app';
 import { getInitialSplashPhase } from './lib/appSplash.js';
 import { hideNativeSplash } from './lib/nativeSplash.js';
@@ -62,12 +61,6 @@ export default function App() {
   const adminHydratedRef = useRef(false);
   const dbRef = useRef(db);
   dbRef.current = db;
-
-  const pullAdminMembers = useCallback(() => {
-    const activeSession = sessionRef.current;
-    if (!activeSession?.isAdmin || !activeSession?.adminVerified || useLocalAuth()) return;
-    void syncAdminMembersFromServer(dbRef.current, commit, activeSession);
-  }, [commit]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -199,12 +192,20 @@ export default function App() {
     commit
   });
 
-  useAdminMembers({
+  const {
+    members: adminMembers,
+    status: adminMembersStatus,
+    error: adminMembersError,
+    refreshMembers: refreshAdminMembers
+  } = useAdminMembers({
     enabled: Boolean(isAdmin && adminVerified && !useLocalAuth()),
-    db,
     commit,
     session
   });
+
+  const pullAdminMembers = useCallback(() => {
+    void refreshAdminMembers();
+  }, [refreshAdminMembers]);
 
   useAdminRealtime({
     enabled: Boolean(
@@ -296,7 +297,7 @@ export default function App() {
     patchMemorySession({ adminVerified: true });
     setSession(getMemorySession());
     setAdminGateSkipped(false);
-    void syncAdminMembersFromServer(dbRef.current, commit, getMemorySession()).finally(() => {
+    void refreshAdminMembers().finally(() => {
       refreshRemote(true);
     });
   }
@@ -420,7 +421,17 @@ export default function App() {
               }}
             />
           )}
-          {tab === 'admin' && isAdmin && adminVerified && <AdminPage db={db} commit={commit} refreshRemote={refreshRemote} />}
+          {tab === 'admin' && isAdmin && adminVerified && (
+            <AdminPage
+              db={db}
+              commit={commit}
+              refreshRemote={refreshRemote}
+              adminMembers={adminMembers}
+              adminMembersStatus={adminMembersStatus}
+              adminMembersError={adminMembersError}
+              onRefreshMembers={refreshAdminMembers}
+            />
+          )}
           {tab === 'admin' && isAdmin && !adminVerified && (
             <section className="adminGatePlaceholder">
               <p>Yönetim paneli için PIN doğrulaması gerekli.</p>

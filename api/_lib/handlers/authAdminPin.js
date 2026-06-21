@@ -36,6 +36,10 @@ export async function handleAuthAdminPin(req, res) {
     await markAdminVerified(req);
     const fresh = await getSession(req);
 
+    if (!fresh?.adminVerified) {
+      return res.status(403).json({ error: 'Yönetici oturumu doğrulanamadı. Tekrar giriş yap.' });
+    }
+
     return res.status(200).json(withRealtimeToken({
       ok: true,
       adminVerified: Boolean(fresh?.adminVerified)

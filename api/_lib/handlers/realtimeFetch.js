@@ -1,11 +1,11 @@
 import { applyCors } from '../http.js';
 import { requireSession, requireAdminSession, getSessionForBootstrap } from '../auth.js';
-import { loadLoyaltyForCustomer, loadHistoryFromSql } from '../loyaltyStore.js';
+import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapFromSql } from '../loyaltyStore.js';
+import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
 import { loadAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
-import { composeStateFromRelational } from '../relationalState.js';
 
 // Kampanya/kupon dilimini state'ten oku
 function readPromoSlice(state) {
@@ -68,17 +68,15 @@ async function handlePromos(req, res) {
   return res.status(200).json({ ok: true, ...promos });
 }
 
-// Admin üye listesi — relational birleştirme + legacy yedek
+// Admin üye listesi — doğrudan customers tablosu (hızlı, güvenilir)
 async function handleAdminCustomers(req, res) {
   const sql = getSql();
   if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
 
-  const composed = useRelationalState()
-    ? await composeStateFromRelational(sql)
-    : await loadAppState();
-
-  const customers = composed?.data?.customers || [];
-  const loyalty = composed?.data?.loyalty || {};
+  const [customers, loyalty] = await Promise.all([
+    listAllCustomers(sql),
+    loadLoyaltyMapFromSql(sql)
+  ]);
 
   return res.status(200).json({
     ok: true,

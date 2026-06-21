@@ -48,11 +48,26 @@ export async function fetchAdminFeed() {
   return data;
 }
 
+// Admin üye listesi — yönetici sync için (hata fırlatır)
+export async function fetchAdminCustomersStrict() {
+  const { response, data } = await apiJson('/api/realtime?resource=admin-customers', {
+    timeoutMs: 45000
+  });
+  if (!response.ok || !data?.ok) {
+    const message = data?.error || data?.message || 'Üye listesi alınamadı';
+    const error = new Error(message);
+    error.httpStatus = response.status;
+    error.needsAdminPin = Boolean(data?.needsAdminPin);
+    throw error;
+  }
+  return data;
+}
+
 // Admin üye listesi — hafif endpoint
 export async function fetchAdminCustomers() {
-  const { response, data } = await safeRealtimeRequest('/api/realtime?resource=admin-customers', {
-    timeoutMs: 25000
-  });
-  if (!response.ok || !data?.ok) return null;
-  return data;
+  try {
+    return await fetchAdminCustomersStrict();
+  } catch {
+    return null;
+  }
 }
