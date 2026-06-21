@@ -27,24 +27,28 @@ export function useAdminRealtime({
 
     async function refreshFeed() {
       debouncedFeed.current(async () => {
-        const feed = await fetchAdminFeed();
-        if (!feed || cancelled) return;
-        const current = dbRef.current;
-        commit({
-          ...current,
-          history: feed.recentEvents || current.history || [],
-          pushLog: feed.recentPushLog?.length
-            ? feed.recentPushLog.map((row) => ({
-              id: row.id,
-              title: row.title,
-              body: row.body,
-              audience: row.audience,
-              sent: row.sent_count,
-              createdAt: row.created_at
-            }))
-            : (current.pushLog || [])
-        }, { skipRemote: true });
-        onFeedUpdate?.(feed);
+        try {
+          const feed = await fetchAdminFeed();
+          if (!feed || cancelled) return;
+          const current = dbRef.current;
+          commit({
+            ...current,
+            history: feed.recentEvents || current.history || [],
+            pushLog: feed.recentPushLog?.length
+              ? feed.recentPushLog.map((row) => ({
+                id: row.id,
+                title: row.title,
+                body: row.body,
+                audience: row.audience,
+                sent: row.sent_count,
+                createdAt: row.created_at
+              }))
+              : (current.pushLog || [])
+          }, { skipRemote: true });
+          onFeedUpdate?.(feed);
+        } catch {
+          // Arka plan feed — sessiz
+        }
       });
     }
 

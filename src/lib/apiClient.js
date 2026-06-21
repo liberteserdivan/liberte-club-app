@@ -146,7 +146,7 @@ export async function apiFetch(path, options = {}) {
     return response;
   } catch (error) {
     if (error?.name === 'AbortError' || error?.code === 'FETCH_TIMEOUT') throw error;
-    if (native && error?.message === 'Failed to fetch') {
+    if (native && (error?.message === 'Failed to fetch' || error?.message === 'Load failed')) {
       const netErr = new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.');
       netErr.code = 'NETWORK_ERROR';
       throw netErr;

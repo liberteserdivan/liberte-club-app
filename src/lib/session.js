@@ -29,6 +29,33 @@ export function patchMemorySession(patch) {
   return memorySession;
 }
 
+const ADMIN_PIN_FLAG_KEY = 'liberteAdminPinVerified';
+
+// Bu oturumda admin PIN doğrulandı mı — sunucu gecikmesinde ezilmesin
+export function markAdminPinVerifiedLocally() {
+  try {
+    sessionStorage.setItem(ADMIN_PIN_FLAG_KEY, String(Date.now()));
+  } catch {
+    // yoksay
+  }
+}
+
+export function clearAdminPinVerifiedLocally() {
+  try {
+    sessionStorage.removeItem(ADMIN_PIN_FLAG_KEY);
+  } catch {
+    // yoksay
+  }
+}
+
+export function hasAdminPinVerifiedLocally() {
+  try {
+    return Boolean(sessionStorage.getItem(ADMIN_PIN_FLAG_KEY));
+  } catch {
+    return false;
+  }
+}
+
 // Sunucudan oturumu doğrula
 export async function bootstrapSession() {
   if (useLocalAuth()) {
@@ -110,6 +137,7 @@ export function applyAuthResult(result) {
 // Oturumu kapat
 export async function logoutSession() {
   memorySession = null;
+  clearAdminPinVerifiedLocally();
   clearNativeAuthToken();
 
   if (useLocalAuth()) return;

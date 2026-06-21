@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { patchMemorySession } from '../lib/session.js';
+import { patchMemorySession, markAdminPinVerifiedLocally } from '../lib/session.js';
 import { refreshRealtimeAuth } from '../lib/supabaseClient.js';
 import { apiJson, AUTH_REQUEST_OPTIONS } from '../lib/apiClient.js';
 import { formatClientApiError } from '../lib/apiErrors.js';
@@ -44,6 +44,7 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
         adminVerified: Boolean(data.adminVerified),
         realtimeToken: data.realtimeToken || null
       });
+      markAdminPinVerifiedLocally();
       await refreshRealtimeAuth();
       onVerified?.();
     } catch (e) {

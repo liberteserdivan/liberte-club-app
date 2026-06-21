@@ -39,7 +39,7 @@ const PUSH_TEMPLATES = [
 ];
 
 // Admin — hedefli push bildirim gönderimi
-export default function PushNotificationAdmin({ db, commit }) {
+export default function PushNotificationAdmin({ db, commit, serverStats = null }) {
   const [title, setTitle] = useState("Liberte'den Haber Var");
   const [body, setBody] = useState('Bugün kahvenin yanına tatlı keyfi seni bekliyor.');
   const [audience, setAudience] = useState('all');
@@ -50,7 +50,21 @@ export default function PushNotificationAdmin({ db, commit }) {
 
   const devices = db.pushSubscriptions || [];
   const pushLog = db.pushLog || [];
-  const preview = useMemo(() => resolvePushAudience(db, audience), [db, audience]);
+  const preview = useMemo(() => {
+    const local = resolvePushAudience(db, audience);
+    const serverMembers = Number(serverStats?.customerCount || 0);
+    const serverDevices = Number(serverStats?.pushDeviceCount || 0);
+
+    if (audience === 'all' || audience === 'granted_devices') {
+      return {
+        ...local,
+        targetUserCount: serverMembers > 0 ? serverMembers : local.targetUserCount,
+        deviceCount: serverDevices > 0 ? serverDevices : local.deviceCount
+      };
+    }
+
+    return local;
+  }, [db, audience, serverStats]);
   const audienceState = getAudienceOptionState(db, audience);
 
   // Eski/pasif kayıtları arka planda temizle — gönderim isteğiyle yarışmasın

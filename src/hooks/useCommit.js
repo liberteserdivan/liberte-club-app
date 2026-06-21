@@ -12,7 +12,7 @@ import { fetchAdminMembersList } from '../lib/adminMemberClient.js';
 import { fetchAdminCustomers } from '../lib/realtimeFetch.js';
 import { reportError } from '../lib/errorHub.js';
 import { useLocalAuth } from '../lib/devAuth.js';
-import { patchMemorySession } from '../lib/session.js';
+import { patchMemorySession, hasAdminPinVerifiedLocally } from '../lib/session.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
 import { subscribeRemoteSyncRequest } from '../lib/syncBus.js';
 
@@ -204,10 +204,16 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
         && session
         && Boolean(session.adminVerified) !== Boolean(remote.adminVerified)
       ) {
-        patchMemorySession({
-          adminVerified: Boolean(remote.adminVerified),
-          isAdmin: Boolean(remote.isAdmin)
-        });
+        const downgradingPin = Boolean(session.adminVerified)
+          && !Boolean(remote.adminVerified)
+          && hasAdminPinVerifiedLocally();
+
+        if (!downgradingPin) {
+          patchMemorySession({
+            adminVerified: Boolean(remote.adminVerified),
+            isAdmin: Boolean(remote.isAdmin)
+          });
+        }
       }
 
       setMode('cloud');

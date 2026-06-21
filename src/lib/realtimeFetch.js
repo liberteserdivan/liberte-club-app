@@ -1,4 +1,4 @@
-import { apiJson } from './apiClient.js';
+import { apiJson, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
 
 // Arka plan sync — ağ hatasında toast tetikleme
 async function safeRealtimeRequest(path, options = {}) {
@@ -41,10 +41,14 @@ export async function fetchPromoSlice() {
   };
 }
 
-// Admin dashboard feed
+// Admin dashboard feed — hata fırlatır
 export async function fetchAdminFeed() {
-  const { response, data } = await safeRealtimeRequest('/api/realtime?resource=admin-feed');
-  if (!response.ok || !data?.ok) return null;
+  const { response, data } = await apiJson('/api/realtime?resource=admin-feed', {
+    ...ADMIN_REQUEST_OPTIONS
+  });
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || data?.message || 'Admin özeti alınamadı');
+  }
   return data;
 }
 

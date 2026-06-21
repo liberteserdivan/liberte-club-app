@@ -15,6 +15,33 @@ export async function fetchAdminMembersList() {
   return data;
 }
 
+// Yönetici — manuel LP / ikram işlemi
+export async function applyAdminMemberLoyalty({
+  customerId,
+  action = 'stamp',
+  category = 'coffee',
+  menuItemId = null,
+  note = 'Admin manuel'
+}) {
+  const { response, data } = await apiJson('/api/admin?resource=member-loyalty', {
+    method: 'POST',
+    body: JSON.stringify({
+      customerId: Number(customerId),
+      action,
+      category,
+      menuItemId,
+      note
+    }),
+    timeoutMs: 60000
+  });
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || data?.message || 'LP işlemi yapılamadı');
+  }
+
+  return data;
+}
+
 // Yönetici — üyeyi sunucudan sil
 export async function deleteAdminMember(customerId) {
   const { response, data } = await apiJson('/api/admin?resource=member-delete', {

@@ -91,15 +91,17 @@ async function handleAdminFeed(req, res) {
   const sql = getSql();
   if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
 
-  const [events, customers, pushLog] = await Promise.all([
+  const [events, customers, pushDevices, pushLog] = await Promise.all([
     loadHistoryFromSql(sql, null),
     sql`SELECT count(*)::int AS c FROM customers`,
+    sql`SELECT count(*)::int AS c FROM push_subscriptions WHERE active = true AND revoked_at IS NULL`,
     sql`SELECT * FROM push_send_log ORDER BY id DESC LIMIT 5`.catch(() => [])
   ]);
 
   return res.status(200).json({
     ok: true,
     customerCount: Number(customers[0]?.c || 0),
+    pushDeviceCount: Number(pushDevices[0]?.c || 0),
     recentEvents: (events || []).slice(0, 20),
     recentPushLog: pushLog || []
   });

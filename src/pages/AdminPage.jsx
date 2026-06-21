@@ -15,7 +15,7 @@ import {
   assertMenuItemCanEarnLp,
   requiresProductPickForLpCategory
 } from '../lib/menuLp.js';
-import { deleteAdminMember } from '../lib/adminMemberClient.js';
+import { deleteAdminMember, applyAdminMemberLoyalty } from '../lib/adminMemberClient.js';
 import { pickAdminMemberList } from '../lib/adminMemberSync.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
@@ -40,16 +40,19 @@ export default function AdminPage({
   adminMembers = [],
   adminMembersStatus = 'idle',
   adminMembersError = '',
-  onRefreshMembers
+  onRefreshMembers,
+  adminDashboardStats = { customerCount: 0, pushDeviceCount: 0 }
 }){
   const[tab,setTab]=useState('overview');
   const[focusUserId,setFocusUserId]=useState(null);
-  const deviceCount=(db.pushSubscriptions||[]).filter((row)=>row.active!==false).length;
-  const memberCount = pickAdminMemberList({
+  const listedMembers = pickAdminMemberList({
     adminMembers,
     adminMembersStatus,
     db
-  }).length;
+  });
+  const localDeviceCount = (db.pushSubscriptions || []).filter((row) => row.active !== false).length;
+  const memberCount = Math.max(listedMembers.length, Number(adminDashboardStats.customerCount || 0));
+  const deviceCount = Math.max(localDeviceCount, Number(adminDashboardStats.pushDeviceCount || 0));
 
   function openUserManage(userId=null){
     if(userId)setFocusUserId(userId);
@@ -102,7 +105,13 @@ export default function AdminPage({
         />
       )}
       {tab==='menu'&&<MenuAdmin db={db} commit={commit}/>}
-      {tab==='kampanya'&&<KampanyaAdmin db={db} commit={commit}/>}
+      {tab==='kampanya'&&(
+        <KampanyaAdmin
+          db={db}
+          commit={commit}
+          adminDashboardStats={adminDashboardStats}
+        />
+      )}
       {tab==='uyeler'&&(
         <MembersAdmin
           db={db}
@@ -128,9 +137,9 @@ function MenuAdmin({db,commit}){
   </div>;
 }
 
-function KampanyaAdmin({db,commit}){
+function KampanyaAdmin({ db, commit, adminDashboardStats }){
   return <div className="adminStack">
-    <PushNotificationAdmin db={db} commit={commit}/>
+    <PushNotificationAdmin db={db} commit={commit} serverStats={adminDashboardStats}/>
     <GameAdmin db={db} commit={commit}/>
   </div>;
 }
@@ -1130,14 +1139,28 @@ function UsersAdmin({
     }
   }
 
-  function addCategory(c,category,menuItem=null){
-    const next=addCategoryStampToCustomer(db,c.id,category,1,'Admin manuel',menuItem);
-    if(next===db){
-      setMessage('LP eklenemedi. Burger için ürün seç ve Patates Tabağı LP kazanmaz.');
-      return;
+  async function addCategory(c, category, menuItem = null) {
+    try {
+      if (!useLocalAuth()) {
+        await applyAdminMemberLoyalty({
+          customerId: c.id,
+          action: 'stamp',
+          category,
+          menuItemId: menuItem?.id || null
+        });
+      }
+
+      const next = addCategoryStampToCustomer(db, c.id, category, 1, 'Admin manuel', menuItem);
+      if (next === db) {
+        setMessage('LP eklenemedi. Burger için ürün seç ve Patates Tabağı LP kazanmaz.');
+        return;
+      }
+
+      commit(next, { skipRemote: !useLocalAuth() });
+      setMessage(menuItem?.name ? `${menuItem.name} için LP eklendi.` : 'LP eklendi.');
+    } catch (error) {
+      setMessage(error?.message || 'LP eklenemedi.');
     }
-    commit(next);
-    setMessage(menuItem?.name ? `${menuItem.name} için LP eklendi.` : 'LP eklendi.');
   }
 
   function requestAddCategory(c,category){
@@ -1160,16 +1183,39 @@ function UsersAdmin({
     setLpProductPick(null);
   }
 
-  function removeCategory(c,category){
-    commit(addCategoryStampToCustomer(db,c.id,category,-1,'Admin düzeltme'));
+  async function removeCategory(c, category) {
+    try {
+      if (!useLocalAuth()) {
+        await applyAdminMemberLoyalty({
+          customerId: c.id,
+          action: 'remove',
+          category
+        });
+      }
+      commit(addCategoryStampToCustomer(db, c.id, category, -1, 'Admin düzeltme'), { skipRemote: !useLocalAuth() });
+    } catch (error) {
+      setMessage(error?.message || 'LP düzeltilemedi.');
+    }
   }
 
-  function redeemCategory(c,category){
-    const cat=STAMP_CATEGORIES.find(x=>x.id===category);
-    const catLabel=cat?.label||category;
-    const ok=confirm(`${c.name} için ${cat?.rewardLabel || catLabel} ödülü (${cat?.rewardCost || 0} LP) kullanılsın mı?`);
-    if(!ok)return;
-    commit(redeemCategoryRewardForCustomer(db,c.id,category,'Admin manuel'));
+  async function redeemCategory(c, category) {
+    const cat = STAMP_CATEGORIES.find(x => x.id === category);
+    const catLabel = cat?.label || category;
+    const ok = confirm(`${c.name} için ${cat?.rewardLabel || catLabel} ödülü (${cat?.rewardCost || 0} LP) kullanılsın mı?`);
+    if (!ok) return;
+
+    try {
+      if (!useLocalAuth()) {
+        await applyAdminMemberLoyalty({
+          customerId: c.id,
+          action: 'redeem',
+          category
+        });
+      }
+      commit(redeemCategoryRewardForCustomer(db, c.id, category, 'Admin manuel'), { skipRemote: !useLocalAuth() });
+    } catch (error) {
+      setMessage(error?.message || 'Ödül kullanılamadı.');
+    }
   }
 
   return <div className="adminMemberPanel">

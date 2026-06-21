@@ -6,8 +6,9 @@ import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
 import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
 import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
+import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
-import { getMemorySession, patchMemorySession, logoutSession, setMemorySession } from './lib/session.js';
+import { getMemorySession, patchMemorySession, logoutSession, setMemorySession, markAdminPinVerifiedLocally } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
@@ -204,9 +205,17 @@ export default function App() {
     db
   });
 
+  const {
+    stats: adminDashboardStats,
+    refreshStats: refreshAdminDashboardStats
+  } = useAdminDashboardStats({
+    enabled: Boolean(isAdmin && adminVerified && !useLocalAuth())
+  });
+
   const pullAdminMembers = useCallback(() => {
     void refreshAdminMembers();
-  }, [refreshAdminMembers]);
+    void refreshAdminDashboardStats();
+  }, [refreshAdminMembers, refreshAdminDashboardStats]);
 
   useAdminRealtime({
     enabled: Boolean(
@@ -296,6 +305,7 @@ export default function App() {
 
   function handleAdminVerified() {
     patchMemorySession({ adminVerified: true });
+    markAdminPinVerifiedLocally();
     setSession(getMemorySession());
     setAdminGateSkipped(false);
     void refreshAdminMembers().finally(() => {
@@ -431,6 +441,7 @@ export default function App() {
               adminMembersStatus={adminMembersStatus}
               adminMembersError={adminMembersError}
               onRefreshMembers={refreshAdminMembers}
+              adminDashboardStats={adminDashboardStats}
             />
           )}
           {tab === 'admin' && isAdmin && !adminVerified && (

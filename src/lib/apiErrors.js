@@ -84,7 +84,11 @@ export function formatClientApiError({ response = null, data = {}, error = null,
   }
 
   const raw = String(error?.message || '');
-  if (raw.includes('Failed to fetch') || raw.includes('bağlan')) {
+  if (
+    raw.includes('Failed to fetch')
+    || raw.includes('Load failed')
+    || raw.includes('bağlan')
+  ) {
     return { message: withRef('Sunucuya ulaşılamadı.', requestId), code: 'NETWORK_ERROR', requestId, abort: false };
   }
 
