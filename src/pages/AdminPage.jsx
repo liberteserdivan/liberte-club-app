@@ -18,6 +18,7 @@ import {
 import { syncAdminMembersFromServer } from '../lib/adminMemberSync.js';
 import { deleteAdminMember } from '../lib/adminMemberClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
+import { formatPhoneInput } from '../lib/phoneMask.js';
 
 const ADMIN_TABS=[
   {id:'overview',label:'Özet',Icon:LayoutDashboard},
@@ -26,6 +27,11 @@ const ADMIN_TABS=[
   {id:'uyeler',label:'Üyeler',Icon:Users},
   {id:'ayarlar',label:'Ayarlar',Icon:Settings}
 ];
+
+// Üye telefonunu okunaklı göster
+function displayMemberPhone(phone) {
+  return formatPhoneInput(phone) || String(phone || '—');
+}
 
 export default function AdminPage({db,commit,refreshRemote}){
   const[tab,setTab]=useState('overview');
@@ -342,9 +348,10 @@ function UserManageOverview({db,commit,onManageUsers}){
       const lpBalance=getLpBalance(l);
       const rewards=getRedeemableRewards(l).length;
       return <div className="historyMini userManageRow" key={c.id}>
-        <div>
+        <div className="userManageRowMain">
           <b>{c.name}</b>
-          <p>{c.phone} · {c.email||'mail yok'} · {lpBalance} LP · {rewards} ödül</p>
+          <span className="userManageRowPhone">{displayMemberPhone(c.phone)}</span>
+          <p>{c.email||'mail yok'} · {lpBalance} LP · {rewards} ödül</p>
         </div>
         <div className="userManageRowActions">
           <button type="button" className="ghost" onClick={()=>addStamp(c)}><Plus size={14}/></button>
@@ -1131,9 +1138,12 @@ function UsersAdmin({db,commit,focusUserId,onFocusHandled}){
           <div className="adminMemberCardHead">
             <div className="adminPremiumRowMain">
               <span className="adminPremiumBadge" aria-hidden="true">{c.isAdmin?'🛡️':'👤'}</span>
-              <div className="adminPremiumRowMeta">
-                <strong>{c.name}</strong>
-                <small>{c.phone} · {c.email||'e-posta yok'} · {c.isAdmin?'Admin':'Müşteri'} · {pushLabel}</small>
+              <div className="adminPremiumRowMeta adminMemberIdentity">
+                <strong className="adminMemberName">{c.name || 'İsimsiz'}</strong>
+                <span className="adminMemberPhone">{displayMemberPhone(c.phone)}</span>
+                <small className="adminMemberMeta">
+                  {c.email || 'e-posta yok'} · {c.isAdmin ? 'Admin' : 'Müşteri'} · {pushLabel}
+                </small>
               </div>
             </div>
             <div className="adminCategoryActions">

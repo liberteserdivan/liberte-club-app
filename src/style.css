@@ -4203,10 +4203,11 @@ body{
 }
 .userManageRow b{
   color:#0B2F26!important;
-  font-size:14px!important;
+  font-size:16px!important;
+  font-weight:900!important;
 }
 .userManageRow p{
-  margin-top:4px!important;
+  margin-top:6px!important;
   font-size:12px!important;
   color:#69756f!important;
   line-height:1.45!important;
@@ -8508,6 +8509,50 @@ body.menuDetailOpen{
   align-items:flex-start;
   justify-content:space-between;
   gap:12px;
+}
+/* Üye kartı — açık zemin üzerinde koyu, okunaklı metin */
+.adminMemberCard .adminPremiumRowMeta strong,
+.adminMemberCard .adminMemberName{
+  color:var(--forest)!important;
+  font-size:18px;
+  font-weight:900;
+  line-height:1.25;
+  letter-spacing:-.01em;
+}
+.adminMemberCard .adminMemberPhone{
+  display:block;
+  margin-top:6px;
+  font-size:17px;
+  font-weight:800;
+  line-height:1.2;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.01em;
+}
+.adminMemberCard .adminPremiumRowMeta small,
+.adminMemberCard .adminMemberMeta{
+  display:block;
+  margin-top:6px;
+  color:var(--muted)!important;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.45;
+}
+.adminMemberCard .adminPremiumBadge{
+  background:rgba(11,47,38,.08);
+}
+.userManageRowMain{
+  min-width:0;
+  flex:1;
+}
+.userManageRowPhone{
+  display:block;
+  margin-top:4px;
+  font-size:16px;
+  font-weight:800;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.01em;
 }
 .adminMemberStats{
   display:grid;
