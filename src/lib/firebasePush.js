@@ -29,7 +29,7 @@ async function syncPushDeviceRegistration(customer, {
         platform,
         deviceId: getDeviceId(),
         permissionStatus,
-        appVersion: import.meta.env?.VITE_APP_VERSION || '1.1.17',
+        appVersion: import.meta.env?.VITE_APP_VERSION || '1.1.18',
         buildNumber: String(import.meta.env?.VITE_BUILD_NUMBER || '')
       })
     });
@@ -542,7 +542,7 @@ export function bindNativeTokenRefresh(customer, db, commit) {
   return onNativeTokenRefresh((token) => {
     if (!token) return;
     try {
-      commit(upsertPushSubscription(db, customer, token), { skipRemote: true });
+      commit((current) => upsertPushSubscription(current, customer, token), { skipRemote: true });
       markPushEnabledOnDevice(customer.id, token);
       void syncPushDeviceRegistration(customer, {
         token,
@@ -559,17 +559,29 @@ export function bindNativeTokenRefresh(customer, db, commit) {
 export async function ensureNativePushRegistered(customer, db, commit) {
   if (!isNativeApp() || !customer?.id || typeof commit !== 'function') return;
 
-  const localToken = getLocalPushToken(customer.id);
-  const hasNativeRow = (db.pushSubscriptions || []).some((row) => (
-    Number(row.customerId) === Number(customer.id)
-    && row.active !== false
-    && resolvePushChannel(row) === 'native'
-    && (!localToken || row.token === localToken)
-  ));
-
-  if (hasNativeRow && localToken) return;
-
   if (!(await hasNativePushPermission())) return;
+
+  const localToken = getLocalPushToken(customer.id);
+  const platform = detectPushPlatform();
+
+  // Yerel token varsa sunucu kaydını her açılışta yenile
+  if (localToken) {
+    const sync = await syncPushDeviceRegistration(customer, {
+      token: localToken,
+      permissionStatus: 'granted',
+      platform
+    });
+
+    if (sync.ok) {
+      const hasNativeRow = (db.pushSubscriptions || []).some((row) => (
+        Number(row.customerId) === Number(customer.id)
+        && row.active !== false
+        && resolvePushChannel(row) === 'native'
+        && row.token === localToken
+      ));
+      if (hasNativeRow) return;
+    }
+  }
 
   try {
     await enableNativePush(customer, db, commit);

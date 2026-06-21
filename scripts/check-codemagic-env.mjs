@@ -20,7 +20,7 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
   const eq = trimmed.indexOf('=');
   if (eq <= 0) continue;
   const key = trimmed.slice(0, eq).trim();
-  if (!found[key]) continue;
+    if (!(key in found)) continue;
   const value = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
   found[key] = Boolean(value);
 }

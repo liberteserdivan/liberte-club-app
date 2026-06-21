@@ -3,6 +3,8 @@ import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from './platform.js';
 import { detectPushTokenType, isFcmRegistrationToken } from './pushTokenFormat.js';
 import { handlePushOpenPayload } from './pushNavigation.js';
+import { showAndroidForegroundNotification } from './androidNotificationPermission.js';
+import { formatPushNotification } from './pushNotificationText.js';
 
 let listenersAttached = false;
 const tokenRefreshHandlers = new Set();
@@ -33,8 +35,14 @@ function attachNativePushListeners() {
   if (listenersAttached || !isNativeApp()) return;
   listenersAttached = true;
 
-  FirebaseMessaging.addListener('notificationReceived', () => {
-    // Foreground bildirim — platform gösterir
+  FirebaseMessaging.addListener('notificationReceived', (event) => {
+    if (Capacitor.getPlatform() !== 'android') return;
+
+    const formatted = formatPushNotification(
+      event?.notification?.title || event?.data?.title,
+      event?.notification?.body || event?.data?.body
+    );
+    void showAndroidForegroundNotification(formatted.title, formatted.body);
   });
 
   FirebaseMessaging.addListener('notificationActionPerformed', (action) => {

@@ -19,3 +19,18 @@ export async function ensureAndroidNotificationPermission() {
     };
   }
 }
+
+// Uygulama ön plandayken FCM mesajını sistem bildirimi olarak göster
+export async function showAndroidForegroundNotification(title, body) {
+  if (!isNativeApp() || !isAndroid()) return;
+
+  try {
+    await LiberteNotifications.showLocalNotification({
+      title: String(title || 'Liberte').trim() || 'Liberte',
+      body: String(body || '').trim(),
+      channelId: 'liberte_campaign'
+    });
+  } catch {
+    // Eski APK'da native metod yoksa sessizce geç
+  }
+}

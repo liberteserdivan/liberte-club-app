@@ -127,6 +127,18 @@ test('Android FCM bildirim kanalı MainActivity içinde tanımlı', () => {
   assert.match(main, /liberte_campaign/);
 });
 
+test('Android FCM bildirim ikonu ve manifest meta verisi tanımlı', () => {
+  const iconPath = join(root, 'android', 'app', 'src', 'main', 'res', 'drawable', 'notification_icon.xml');
+  assert.ok(existsSync(iconPath), 'notification_icon.xml eksik');
+
+  const manifest = readFileSync(
+    join(root, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'),
+    'utf8'
+  );
+  assert.match(manifest, /default_notification_icon/);
+  assert.match(manifest, /default_notification_channel_id/);
+});
+
 test('Push gönderimi yalnızca admin handler üzerinden', () => {
   const admin = readFileSync(join(root, 'api', 'admin.js'), 'utf8');
   assert.match(admin, /push-send/);

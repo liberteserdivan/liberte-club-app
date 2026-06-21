@@ -1,10 +1,16 @@
 package cafe.liberte.app;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -47,6 +53,48 @@ public class NotificationPermissionPlugin extends Plugin {
             return;
         }
         call.reject("Android bildirim izni reddedildi");
+    }
+
+    // Uygulama ön plandayken gelen push için yerel bildirim göster
+    @PluginMethod
+    public void showLocalNotification(PluginCall call) {
+        String title = call.getString("title", "Liberte");
+        String body = call.getString("body", "");
+        String channelId = call.getString("channelId", "liberte_campaign");
+
+        Context context = getContext();
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) {
+            call.reject("notification_manager_unavailable");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                channelId,
+                "Kampanyalar",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Kampanya ve LP bildirimleri");
+            manager.createNotificationChannel(channel);
+        }
+
+        int icon = context.getResources().getIdentifier("notification_icon", "drawable", context.getPackageName());
+        if (icon == 0) {
+            icon = context.getApplicationInfo().icon;
+        }
+
+        Notification notification = new NotificationCompat.Builder(context, channelId)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSmallIcon(icon)
+            .setColor(ContextCompat.getColor(context, R.color.notification_accent))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build();
+
+        manager.notify((int) System.currentTimeMillis(), notification);
+        call.resolve();
     }
 
     // Bildirim ayarları ekranını doğrudan aç
