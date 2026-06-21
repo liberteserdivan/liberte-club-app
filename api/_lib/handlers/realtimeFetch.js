@@ -68,10 +68,8 @@ async function handleAdminCustomers(req, res) {
   const sql = getSql();
   if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
 
-  const [customers, loyalty] = await Promise.all([
-    listAllCustomers(sql),
-    loadLoyaltyMapFromSql(sql)
-  ]);
+  const customers = await listAllCustomers(sql);
+  const loyalty = await loadLoyaltyMapFromSql(sql);
 
   return res.status(200).json({
     ok: true,
@@ -86,26 +84,24 @@ async function handleAdminFeed(req, res) {
   const sql = getSql();
   if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
 
-  const [events, customers, pushDevices, pushLog] = await Promise.all([
-    sql`
+  const events = await sql`
       SELECT id, customer_id, event_type, category, delta, note, created_at
       FROM loyalty_events
       ORDER BY id DESC
       LIMIT 20
-    `.catch(() => []),
-    sql`SELECT count(*)::int AS c FROM customers`.catch(() => [{ c: 0 }]),
-    sql`
+    `.catch(() => []);
+  const customers = await sql`SELECT count(*)::int AS c FROM customers`.catch(() => [{ c: 0 }]);
+  const pushDevices = await sql`
       SELECT count(*)::int AS c
       FROM push_subscriptions
       WHERE active = true AND revoked_at IS NULL
-    `.catch(() => [{ c: 0 }]),
-    sql`
+    `.catch(() => [{ c: 0 }]);
+  const pushLog = await sql`
       SELECT id, title, sent, failed, created_at
       FROM push_send_log
       ORDER BY id DESC
       LIMIT 5
-    `.catch(() => [])
-  ]);
+    `.catch(() => []);
 
   return res.status(200).json({
     ok: true,

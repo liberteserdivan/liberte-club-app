@@ -95,14 +95,13 @@ export async function composeStateFromRelational(externalSql = null) {
   const sql = externalSql || getSql();
   if (!sql) return { data: null, updatedAt: null };
 
-  const [{ global, updatedAt, legacyFull }, menu, customers, loyalty, history, pushSubscriptions] = await Promise.all([
-    loadGlobalSliceFromDb(sql),
-    loadMenuFromSql(sql),
-    listAllCustomersFromSql(sql),
-    loadLoyaltyMapFromSql(sql),
-    loadHistoryFromSql(sql),
-    loadPushSubscriptionsFromSql(sql)
-  ]);
+  // Transaction pooler — tek bağlantıda paralel sorgu kilitlenir
+  const { global, updatedAt, legacyFull } = await loadGlobalSliceFromDb(sql);
+  const menu = await loadMenuFromSql(sql);
+  const customers = await listAllCustomersFromSql(sql);
+  const loyalty = await loadLoyaltyMapFromSql(sql);
+  const history = await loadHistoryFromSql(sql);
+  const pushSubscriptions = await loadPushSubscriptionsFromSql(sql);
 
   const migratedLoyalty = migrateAllLoyalty(
     Object.keys(loyalty).length ? loyalty : (legacyFull?.loyalty || {})
@@ -129,21 +128,12 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
   const id = Number(customerId);
   if (!sql || !id) return { data: null, updatedAt: null };
 
-  const [
-    { global, updatedAt, legacyFull },
-    menu,
-    customer,
-    loyaltyRow,
-    history,
-    pushSubscriptions
-  ] = await Promise.all([
-    loadGlobalSliceFromDb(sql),
-    loadMenuFromSql(sql),
-    findCustomerById(sql, id),
-    findLoyaltyByCustomerId(sql, id),
-    loadHistoryFromSql(sql, id),
-    loadPushSubscriptionsForCustomer(sql, id)
-  ]);
+  const { global, updatedAt, legacyFull } = await loadGlobalSliceFromDb(sql);
+  const menu = await loadMenuFromSql(sql);
+  const customer = await findCustomerById(sql, id);
+  const loyaltyRow = await findLoyaltyByCustomerId(sql, id);
+  const history = await loadHistoryFromSql(sql, id);
+  const pushSubscriptions = await loadPushSubscriptionsForCustomer(sql, id);
 
   const data = {
     ...global,

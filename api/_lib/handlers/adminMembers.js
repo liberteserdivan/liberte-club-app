@@ -19,10 +19,9 @@ export async function handleAdminMembers(req, res) {
       return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
     }
 
-    const [customers, loyalty] = await Promise.all([
-      listAllCustomers(sql),
-      loadLoyaltyMapFromSql(sql)
-    ]);
+    // Transaction pooler — aynı bağlantıda paralel sorgu kilitlenir
+    const customers = await listAllCustomers(sql);
+    const loyalty = await loadLoyaltyMapFromSql(sql);
 
     return res.status(200).json({
       ok: true,
