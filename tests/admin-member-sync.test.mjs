@@ -5,6 +5,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   applyAdminMemberSlice,
+  dedupeCustomersByPhone,
+  finalizeAdminMemberCustomers,
+  isLocalSeedCustomer,
   mergeAdminRemoteIntoDb,
   mergeCustomerRecordsById,
   pickAdminMemberList,
@@ -67,6 +70,43 @@ test('mergeAdminRemoteIntoDb kısmi state ile tam listeyi ezmez', () => {
   const merged = mergeAdminRemoteIntoDb(current, partialRemote, session);
   assert.equal(merged.customers.length, 3);
   assert.equal(merged.settings.cafe_name, 'Liberte');
+});
+
+test('dedupeCustomersByPhone aynı telefondaki seed admin ile relational admini birleştirir', () => {
+  const deduped = dedupeCustomersByPhone([
+    { id: 1, name: 'Liberte Gastro', phone: '5058665406', isAdmin: true },
+    { id: 1781890013602, name: 'Liberte Cafe', phone: '5058665406', isAdmin: true }
+  ]);
+  assert.equal(deduped.length, 1);
+  assert.equal(String(deduped[0].id), '1781890013602');
+});
+
+test('finalizeAdminMemberCustomers demo seed kayıtlarını dışlar', () => {
+  const list = finalizeAdminMemberCustomers([
+    { id: 900001, name: 'Demo Müşteri', phone: '5550100001', email: 'demo.customer@liberte.cafe' },
+    { id: 900002, name: 'Demo Yönetici', phone: '5550100002', email: 'demo.admin@liberte.cafe', isAdmin: true },
+    { id: 1781950441001, name: 'Kadir Kartal', phone: '5388588154', email: 'kadir@test.com' }
+  ]);
+  assert.equal(list.length, 1);
+  assert.equal(String(list[0].id), '1781950441001');
+});
+
+test('pickAdminMemberList sunucu listesinde snapshot seed karışmaz', () => {
+  const picked = pickAdminMemberList({
+    adminMembers: [
+      { id: 1781890013602, name: 'Liberte Cafe', phone: '5058665406', isAdmin: true },
+      { id: 1781950441001, name: 'Kadir Kartal', phone: '5388588154', isAdmin: false }
+    ],
+    adminMembersStatus: 'ready',
+    db: {
+      customers: [
+        { id: 1, name: 'Liberte Gastro', phone: '5058665406', isAdmin: true },
+        { id: 900001, name: 'Demo Müşteri', phone: '5550100001', email: 'demo.customer@liberte.cafe' }
+      ]
+    }
+  });
+  assert.equal(picked.length, 2);
+  assert.ok(!picked.some((row) => isLocalSeedCustomer(row)));
 });
 
 test('pickAdminMemberList snapshot ile tek kayda düşmez', () => {
