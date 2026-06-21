@@ -1140,23 +1140,30 @@ function UsersAdmin({
   }
 
   async function addCategory(c, category, menuItem = null) {
+    const preview = addCategoryStampToCustomer(db, c.id, category, 1, 'Admin manuel', menuItem);
+    if (preview === db) {
+      setMessage('LP eklenemedi. Burger için ürün seç ve Patates Tabağı LP kazanmaz.');
+      return;
+    }
+
     try {
       if (!useLocalAuth()) {
-        await applyAdminMemberLoyalty({
+        const result = await applyAdminMemberLoyalty({
           customerId: c.id,
           action: 'stamp',
           category,
           menuItemId: menuItem?.id || null
         });
+        commit({
+          ...preview,
+          loyalty: {
+            ...(preview.loyalty || {}),
+            [c.id]: result.loyalty || preview.loyalty?.[c.id]
+          }
+        }, { skipRemote: true });
+      } else {
+        commit(preview);
       }
-
-      const next = addCategoryStampToCustomer(db, c.id, category, 1, 'Admin manuel', menuItem);
-      if (next === db) {
-        setMessage('LP eklenemedi. Burger için ürün seç ve Patates Tabağı LP kazanmaz.');
-        return;
-      }
-
-      commit(next, { skipRemote: !useLocalAuth() });
       setMessage(menuItem?.name ? `${menuItem.name} için LP eklendi.` : 'LP eklendi.');
     } catch (error) {
       setMessage(error?.message || 'LP eklenemedi.');
@@ -1184,15 +1191,29 @@ function UsersAdmin({
   }
 
   async function removeCategory(c, category) {
+    const preview = addCategoryStampToCustomer(db, c.id, category, -1, 'Admin düzeltme');
+    if (preview === db) {
+      setMessage('LP düzeltilemedi.');
+      return;
+    }
+
     try {
       if (!useLocalAuth()) {
-        await applyAdminMemberLoyalty({
+        const result = await applyAdminMemberLoyalty({
           customerId: c.id,
           action: 'remove',
           category
         });
+        commit({
+          ...preview,
+          loyalty: {
+            ...(preview.loyalty || {}),
+            [c.id]: result.loyalty || preview.loyalty?.[c.id]
+          }
+        }, { skipRemote: true });
+      } else {
+        commit(preview);
       }
-      commit(addCategoryStampToCustomer(db, c.id, category, -1, 'Admin düzeltme'), { skipRemote: !useLocalAuth() });
     } catch (error) {
       setMessage(error?.message || 'LP düzeltilemedi.');
     }
@@ -1204,15 +1225,30 @@ function UsersAdmin({
     const ok = confirm(`${c.name} için ${cat?.rewardLabel || catLabel} ödülü (${cat?.rewardCost || 0} LP) kullanılsın mı?`);
     if (!ok) return;
 
+    const preview = redeemCategoryRewardForCustomer(db, c.id, category, 'Admin manuel');
+    if (preview === db) {
+      setMessage('Ödül kullanılamadı. Yetersiz LP olabilir.');
+      return;
+    }
+
     try {
       if (!useLocalAuth()) {
-        await applyAdminMemberLoyalty({
+        const result = await applyAdminMemberLoyalty({
           customerId: c.id,
           action: 'redeem',
           category
         });
+        commit({
+          ...preview,
+          loyalty: {
+            ...(preview.loyalty || {}),
+            [c.id]: result.loyalty || preview.loyalty?.[c.id]
+          }
+        }, { skipRemote: true });
+      } else {
+        commit(preview);
       }
-      commit(redeemCategoryRewardForCustomer(db, c.id, category, 'Admin manuel'), { skipRemote: !useLocalAuth() });
+      setMessage('Ödül kullanıldı.');
     } catch (error) {
       setMessage(error?.message || 'Ödül kullanılamadı.');
     }
