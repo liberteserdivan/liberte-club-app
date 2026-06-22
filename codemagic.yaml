@@ -119,10 +119,10 @@ workflows:
         - liberte_android
       vars:
         ANDROID_RELEASE: "true"
-        PLAY_TRACK: production
+        PLAY_TRACK: alpha
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.21"
-        ANDROID_MIN_VERSION_CODE: "47"
+        ANDROID_MIN_VERSION_CODE: "48"
       node: 22
       java: 21
     scripts:
@@ -158,8 +158,7 @@ workflows:
         script: |
           echo "[verify] commit=$(git rev-parse --short HEAD)"
           grep -E 'versionCode|versionName' android/app/build.gradle
-          grep -R "Ayarları Aç" dist/assets/*.js >/dev/null || (echo "HATA: yeni bildirim UI dist icinde yok" && exit 1)
-          echo "[verify] yeni bildirim UI dist icinde bulundu"
+          node scripts/verify-android-dist.mjs
       - name: AAB derle
         script: |
           cd android
@@ -168,7 +167,15 @@ workflows:
       - name: Play Console yukle
         script: |
           cd android
-          ./gradlew publishReleaseBundle --track="$PLAY_TRACK"
+          echo "[play] track=$PLAY_TRACK version=$APP_VERSION"
+          if ./gradlew publishReleaseBundle --track="$PLAY_TRACK"; then
+            echo "[play] Yukleme tamamlandi: $PLAY_TRACK"
+          else
+            echo "[play] UYARI: Otomatik yukleme basarisiz."
+            echo "[play] AAB artifact indirilip Play Console'dan manuel yuklenebilir."
+            echo "[play] Kapali test (Alpha) -> Uretim'e promote edilebilir."
+            exit 1
+          fi
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
     publishing:
