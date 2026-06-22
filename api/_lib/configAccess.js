@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
-import { requireAdminSession } from './auth.js';
+import { getSessionForQr } from './auth.js';
+import { getSql } from './appState.js';
 import { isProductionRuntime } from './schemaReady.js';
 
 // Tanılama endpoint'leri için gizli anahtar oku (header veya query)
@@ -20,11 +21,24 @@ function matchesDiagSecret(provided) {
   return timingSafeEqual(a, b);
 }
 
+// Yönetici + PIN doğrulaması — yanıt yazmadan kontrol
+async function hasVerifiedAdminSession(req) {
+  const identity = await getSessionForQr(req);
+  if (!identity?.adminVerified) return false;
+
+  const sql = getSql();
+  if (sql) {
+    const { findCustomerById } = await import('./customersStore.js');
+    const live = await findCustomerById(sql, identity.customerId);
+    return Boolean(live?.isAdmin);
+  }
+
+  return Boolean(identity.isAdmin);
+}
+
 // Production'da db-status / push-status / qr-status erişim kontrolü
-export async function requireConfigDiagAccess(req, res) {
+export async function requireConfigDiagAccess(req) {
   if (!isProductionRuntime()) return true;
   if (matchesDiagSecret(readProvidedDiagSecret(req))) return true;
-
-  const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
-  return Boolean(admin);
+  return hasVerifiedAdminSession(req);
 }

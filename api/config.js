@@ -193,7 +193,7 @@ export default async function handler(req, res) {
 
   // Altyapı tanılama — production'da yönetici veya CONFIG_DIAG_SECRET gerekir
   if (resource === 'push-status' || resource === 'db-status' || resource === 'qr-status') {
-    const allowed = await requireConfigDiagAccess(req, res);
+    const allowed = await requireConfigDiagAccess(req);
     if (!allowed) {
       return res.status(403).json({ error: 'Tanılama erişimi reddedildi' });
     }
