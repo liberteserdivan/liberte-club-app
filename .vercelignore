@@ -9,5 +9,7 @@ backups/
 *adminsdk*.json
 service-account*.txt
 liberte-app-review-package.zip
+milkan-panel/
+milkan-app/
 .codemagic/
 .git/
