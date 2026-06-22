@@ -19,6 +19,7 @@ on:
         options:
           - ios-release
           - android-release
+          - both
       branch:
         description: Git branch
         required: true
@@ -43,20 +44,29 @@ on:
 jobs:
   trigger:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workflow:
+          - ios-release
+          - android-release
     steps:
-      - name: Codemagic build tetikle
+      - name: Codemagic build tetikle (${{ matrix.workflow }})
         env:
           CODEMAGIC_API_TOKEN: ${{ secrets.CODEMAGIC_API_TOKEN }}
           CODEMAGIC_APP_ID: ${{ secrets.CODEMAGIC_APP_ID }}
-          WORKFLOW_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.workflow_id || 'ios-release' }}
+          WORKFLOW_ID: ${{ github.event_name == 'workflow_dispatch' && (inputs.workflow_id == 'both' && matrix.workflow || inputs.workflow_id) || matrix.workflow }}
           BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}
         run: |
           set -euo pipefail
 
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.workflow_id }}" != "both" ] && [ "${{ inputs.workflow_id }}" != "${{ matrix.workflow }}" ]; then
+            echo "Tek workflow secildi, bu matris atlaniyor: ${{ matrix.workflow }}"
+            exit 0
+          fi
+
           if [ -z "${CODEMAGIC_API_TOKEN:-}" ]; then
-            echo "::error::CODEMAGIC_API_TOKEN GitHub secret olarak tanimlanmali."
-            echo "Codemagic → Personal account → Integrations → Codemagic API"
-            exit 1
+            echo "::warning::CODEMAGIC_API_TOKEN yok — Codemagic main push webhook'una guveniliyor."
+            exit 0
           fi
 
           APP_ID="${CODEMAGIC_APP_ID:-6a27103ffb57938b06e2c701}"
@@ -77,4 +87,4 @@ jobs:
             exit 1
           fi
 
-          echo "Codemagic build kuyruga alindi."
+          echo "Codemagic build kuyruga alindi: ${WORKFLOW_ID}"

@@ -29,7 +29,7 @@ async function syncPushDeviceRegistration(customer, {
         platform,
         deviceId: getDeviceId(),
         permissionStatus,
-        appVersion: import.meta.env?.VITE_APP_VERSION || '1.1.20',
+        appVersion: import.meta.env?.VITE_APP_VERSION || '1.1.21',
         buildNumber: String(import.meta.env?.VITE_BUILD_NUMBER || '')
       })
     });
