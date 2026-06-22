@@ -3,7 +3,10 @@
  * Kritik akış smoke testi — production stabilizasyon
  * Kullanım: node scripts/smoke-stabilization.mjs
  */
+import { diagFetchHeaders } from './_diagHeaders.mjs';
+
 const base = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
+const diagHeaders = diagFetchHeaders();
 
 async function probe(name, url, options = {}) {
   const started = Date.now();
@@ -36,8 +39,8 @@ async function probe(name, url, options = {}) {
 
 const rows = [];
 
-rows.push(await probe('db-status', `${base}/api/config?resource=db-status`));
-rows.push(await probe('qr-status', `${base}/api/config?resource=qr-status`));
+rows.push(await probe('db-status', `${base}/api/config?resource=db-status`, { headers: diagHeaders }));
+rows.push(await probe('qr-status', `${base}/api/config?resource=qr-status`, { headers: diagHeaders }));
 rows.push(await probe('qr-generate-unauth', `${base}/api/qr/generate`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },

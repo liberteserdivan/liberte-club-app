@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getSql } from './_lib/getSql.mjs';
+import { diagFetchInit } from './_diagHeaders.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
@@ -30,10 +31,10 @@ function loadEnv() {
 loadEnv();
 
 async function fetchJson(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${BASE}${path}`, diagFetchInit({
     ...options,
     signal: AbortSignal.timeout(options.timeoutMs || 45000)
-  });
+  }));
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }

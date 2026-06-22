@@ -2,12 +2,14 @@
 /**
  * Realtime deploy sonrası API smoke testleri
  */
+import { diagFetchInit } from './_diagHeaders.mjs';
+
 const BASE = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
 
 async function get(path) {
   const started = Date.now();
   try {
-    const res = await fetch(`${BASE}${path}`, { signal: AbortSignal.timeout(30000) });
+    const res = await fetch(`${BASE}${path}`, diagFetchInit({ signal: AbortSignal.timeout(30000) }));
     const text = await res.text();
     let data = {};
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text.slice(0, 120) }; }

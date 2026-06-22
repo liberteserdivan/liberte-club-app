@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describeDatabaseUrl } from '../api/_lib/dbConnection.js';
 import { getSql } from './_lib/getSql.mjs';
+import { diagFetchInit } from './_diagHeaders.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
@@ -35,10 +36,10 @@ function loadEnv() {
 
 async function fetchJson(path, options = {}) {
   const started = Date.now();
-  const response = await fetch(`${BASE}${path}`, {
+  const response = await fetch(`${BASE}${path}`, diagFetchInit({
     ...options,
     signal: AbortSignal.timeout(options.timeoutMs || 60000)
-  });
+  }));
   const text = await response.text();
   let data = {};
   try {

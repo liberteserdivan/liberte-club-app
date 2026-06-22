@@ -1,6 +1,7 @@
 import { readAuthToken, verifyAdminPin } from './auth.js';
 import { getSql } from './appState.js';
 import { isProductionRuntime } from './schemaReady.js';
+import { enforceAuthRateLimit } from './rateLimit.js';
 import { createHash } from 'node:crypto';
 
 const MAX_ATTEMPTS = 5;
@@ -31,6 +32,15 @@ export async function verifyAdminPinAttempt(req, pin) {
     return { ok: false, status: 401, error: 'Oturum gerekli' };
   }
 
+  // IP bazlı sınır — oturum yenileyerek deneme sınırı aşılamaz
+  if (await enforceAuthRateLimit(req, 'admin_pin_ip', { maxHits: 12 })) {
+    return {
+      ok: false,
+      status: 429,
+      error: 'Çok fazla PIN denemesi. Lütfen bir süre sonra tekrar dene.'
+    };
+  }
+
   const sql = getSql();
   if (!sql) {
     return { ok: false, status: 503, error: 'Veritabanı yapılandırılmadı' };
@@ -39,7 +49,7 @@ export async function verifyAdminPinAttempt(req, pin) {
   await ensureAdminPinColumns(sql);
   const tokenHash = hashToken(token);
   const rows = await sql`
-    SELECT admin_pin_failed, admin_pin_locked_until
+    SELECT customer_id, admin_pin_failed, admin_pin_locked_until
     FROM auth_sessions
     WHERE token_hash = ${tokenHash}
       AND expires_at > now()
@@ -49,6 +59,15 @@ export async function verifyAdminPinAttempt(req, pin) {
   const row = rows[0];
   if (!row) {
     return { ok: false, status: 401, error: 'Oturum geçersiz' };
+  }
+
+  // Hesap bazlı sınır — yeni oturum açarak atlatılamaz
+  if (await enforceAuthRateLimit(req, `admin_pin_customer:${row.customer_id}`, { maxHits: 15 })) {
+    return {
+      ok: false,
+      status: 429,
+      error: 'Bu hesap için çok fazla PIN denemesi. Lütfen daha sonra tekrar dene.'
+    };
   }
 
   if (row.admin_pin_locked_until && new Date(row.admin_pin_locked_until).getTime() > Date.now()) {

@@ -3,6 +3,7 @@ import { parseServiceAccount, validateServiceAccount } from '../serviceAccount.j
 import { formatPushNotification } from '../pushNotificationText.js';
 import { applyCors, readBodySafe } from '../http.js';
 import { requireAdminSession } from '../auth.js';
+import { enforceAuthRateLimit } from '../rateLimit.js';
 import { loadAppState, saveAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
 import { composeStateFromRelational } from '../relationalState.js';
@@ -201,6 +202,14 @@ export async function handleAdminPushSend(req, res) {
 
     const adminSession = await requireAdminSession(req, res, { pinRequired: true, light: true });
     if (!adminSession) return;
+
+    if (await enforceAuthRateLimit(req, 'admin_push_send', { maxHits: 20 })) {
+      return res.status(429).json(trace.failBody(
+        'rate_limit',
+        'RATE_LIMITED',
+        'Çok fazla bildirim gönderimi. Lütfen bir süre sonra tekrar dene.'
+      ));
+    }
 
     const body = readBodySafe(req);
     const audience = String(body.audience || body.targetType || 'all').trim();

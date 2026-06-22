@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveQrSigningSecret, createCustomerQrToken, formatQrPayload } from '../api/_lib/qrToken.js';
+import { diagFetchInit } from './_diagHeaders.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -51,6 +52,6 @@ console.log('httpStatus:', res.status);
 console.log('durationMs:', Date.now() - started);
 console.log('body:', body.slice(0, 500));
 
-const qrStatusRes = await fetch(`${base}/api/config?resource=qr-status`);
+const qrStatusRes = await fetch(`${base}/api/config?resource=qr-status`, diagFetchInit());
 const qrStatus = await qrStatusRes.json();
 console.log('\nqr-status:', JSON.stringify(qrStatus, null, 2));

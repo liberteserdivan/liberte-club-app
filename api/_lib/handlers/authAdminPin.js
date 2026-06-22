@@ -1,4 +1,4 @@
-import { applyCors, readBody } from '../http.js';
+import { applyCors, publicErrorMessage, readBody } from '../http.js';
 import {
   getSession,
   markAdminVerified,
@@ -45,6 +45,6 @@ export async function handleAuthAdminPin(req, res) {
       adminVerified: Boolean(fresh?.adminVerified)
     }, fresh));
   } catch (e) {
-    return res.status(500).json({ error: e.message || 'PIN doğrulanamadı' });
+    return res.status(500).json({ error: publicErrorMessage(e, 'PIN doğrulanamadı') });
   }
 }

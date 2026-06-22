@@ -4,11 +4,13 @@ import { getServiceAccountStatus, parseServiceAccount, validateServiceAccount } 
 import { probeFcmCredentials } from './_lib/fcmProbe.js';
 import { readSupabasePublicConfig } from './_lib/supabasePublicConfig.js';
 import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from './_lib/qrToken.js';
+import { requireConfigDiagAccess } from './_lib/configAccess.js';
+import { isProductionRuntime } from './_lib/schemaReady.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', methods);
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Config-Diag');
 }
 
 // Firebase web config
@@ -99,17 +101,23 @@ function handleQrStatus(res) {
     }
   }
 
-  return res.status(200).json({
+  const body = {
     ok: sampleOk,
-    signingSource: signing.source,
     signingReady: Boolean(signing.secret),
     sampleTokenCreated: sampleOk,
     samplePayloadLength,
-    qrEndpoint: '/api/qr/generate',
-    hint: signing.source === 'missing'
-      ? 'Vercel production: QR_SIGNING_SECRET veya ADMIN_PIN ekleyin.'
-      : null
-  });
+    qrEndpoint: '/api/qr/generate'
+  };
+
+  // İmza kaynağı saldırganlara ipucu vermez — yalnızca geliştirmede göster
+  if (!isProductionRuntime()) {
+    body.signingSource = signing.source;
+    if (signing.source === 'missing') {
+      body.hint = 'QR_SIGNING_SECRET veya ADMIN_PIN ekleyin.';
+    }
+  }
+
+  return res.status(200).json(body);
 }
 
 // Veritabanı bağlantı özeti — secret sızdırmaz, cutover doğrulama
@@ -154,17 +162,22 @@ async function handleDbStatus(res) {
 // Supabase Realtime public config — yalnızca anon key, secret sızdırmaz
 function handleSupabaseConfig(res) {
   const config = readSupabasePublicConfig();
-  const hasSupabaseJwtSecret = Boolean(String(process.env.SUPABASE_JWT_SECRET || '').trim());
-  return res.status(200).json({
+  const payload = {
     url: config.url || null,
     anonKey: config.anonKey || null,
     projectRef: config.projectRef,
     enabled: config.enabled,
-    hasSupabaseJwtSecret,
     hint: config.enabled
       ? null
       : 'SUPABASE_URL ve SUPABASE_ANON_KEY Vercel\'e ekleyin. Realtime opsiyonel kalır.'
-  });
+  };
+
+  // JWT secret yapılandırma durumu yalnızca tanılama ortamında
+  if (!isProductionRuntime()) {
+    payload.hasSupabaseJwtSecret = Boolean(String(process.env.SUPABASE_JWT_SECRET || '').trim());
+  }
+
+  return res.status(200).json(payload);
 }
 
 // Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
@@ -177,9 +190,18 @@ export default async function handler(req, res) {
 
   if (resource === 'firebase') return handleFirebase(res);
   if (resource === 'push') return handlePush(res);
-  if (resource === 'push-status') return handlePushStatus(res);
-  if (resource === 'db-status') return handleDbStatus(res);
-  if (resource === 'qr-status') return handleQrStatus(res);
+
+  // Altyapı tanılama — production'da yönetici veya CONFIG_DIAG_SECRET gerekir
+  if (resource === 'push-status' || resource === 'db-status' || resource === 'qr-status') {
+    const allowed = await requireConfigDiagAccess(req, res);
+    if (!allowed) {
+      return res.status(403).json({ error: 'Tanılama erişimi reddedildi' });
+    }
+    if (resource === 'push-status') return handlePushStatus(res);
+    if (resource === 'db-status') return handleDbStatus(res);
+    return handleQrStatus(res);
+  }
+
   if (resource === 'supabase') return handleSupabaseConfig(res);
 
   return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status, qr-status veya supabase' });
