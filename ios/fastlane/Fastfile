@@ -53,7 +53,7 @@ platform :ios do
     )
 
     build_app(
-      project: 'App/App.xcodeproj',
+      workspace: 'App/App.xcworkspace',
       scheme: 'App',
       export_method: 'app-store',
       output_directory: './build',

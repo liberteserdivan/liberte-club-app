@@ -39,7 +39,7 @@ on:
       - 'package-lock.json'
       - 'codemagic.yaml'
       - 'scripts/materialize-firebase-native-config.mjs'
-      - 'scripts/fix-ios-spm-paths.mjs'
+      - 'scripts/setup-ios-cocoapods.mjs'
 
 jobs:
   trigger:

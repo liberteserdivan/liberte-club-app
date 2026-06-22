@@ -2,6 +2,7 @@ import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning
 import { isNativeApp } from './platform.js';
 
 // Native cihazda ML Kit destekleniyor mu?
+// Not: iOS SPM projelerinde eklenti bağlanmaz; WebView tarayıcısına düşer.
 export async function canUseNativeBarcodeScan() {
   if (!isNativeApp()) return false;
 

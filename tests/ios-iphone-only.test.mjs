@@ -33,14 +33,11 @@ test('Vite base göreli — Capacitor WebView uyumlu', () => {
   assert.match(vite, /base:\s*['"]\.\/['"]/);
 });
 
-test('CapApp-SPM Package.swift Firebase Messaging bagimliligi', () => {
-  const pkg = readFileSync(join(root, 'ios', 'App', 'CapApp-SPM', 'Package.swift'), 'utf8');
-  assert.match(pkg, /CapacitorFirebaseMessaging/);
-  // cap sync SPM yolu: symlinks veya doğrudan node_modules
-  const hasMessagingPath = /@capacitor-firebase[\\/]messaging/.test(pkg)
-    || /symlinks[\\/]CapacitorFirebaseMessaging/.test(pkg);
-  assert.ok(hasMessagingPath, 'CapacitorFirebaseMessaging SPM yolu bulunamadı');
-  assert.doesNotMatch(pkg, /CapacitorPushNotifications/);
+test('Podfile native eklentileri CocoaPods ile baglar', () => {
+  const podfile = readFileSync(join(root, 'ios', 'App', 'Podfile'), 'utf8');
+  assert.match(podfile, /CapacitorFirebaseMessaging/);
+  assert.match(podfile, /CapacitorMlkitBarcodeScanning/);
+  assert.doesNotMatch(podfile, /CapacitorPushNotifications/);
 });
 
 test('Release imzasi Manual ve push entitlement baglantisi', () => {

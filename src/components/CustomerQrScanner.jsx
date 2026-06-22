@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { ScanLine } from 'lucide-react';
+import { Flashlight, ScanLine } from 'lucide-react';
 import PageShell from './PageShell.jsx';
 import PageSection from './PageSection.jsx';
 import StampCategoryPanel from './StampCategoryPanel.jsx';
@@ -24,8 +24,13 @@ import {
   postLoyaltyAction,
   verifyCustomerQr
 } from '../lib/qrClient.js';
-import { bootInlineQrScanner } from '../lib/qrCameraBootstrap.js';
+import {
+  bootInlineQrScanner,
+  inlineScannerSupportsTorch,
+  setInlineScannerTorch
+} from '../lib/qrCameraBootstrap.js';
 import { canUseNativeBarcodeScan, scanQrWithNativeCamera } from '../lib/nativeBarcodeScan.js';
+import { isIos, isNativeApp } from '../lib/platform.js';
 import {
   assertMenuItemCanEarnLp,
   requiresProductPickForLpCategory
@@ -64,6 +69,8 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const [scanBusy, setScanBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [productPickCategory, setProductPickCategory] = useState(null);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
   const dbRef = useRef(db);
   dbRef.current = db;
 
@@ -102,6 +109,8 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     }
 
     scannerRef.current = null;
+    setTorchOn(false);
+    setTorchAvailable(false);
     setActive(false);
   }, []);
 
@@ -229,7 +238,10 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
         }
 
         scannerRef.current = scanner;
-        setMsg('Müşteri kartını çerçeveye hizala.');
+        setTorchAvailable(inlineScannerSupportsTorch(scanner));
+        setMsg(isNativeApp() && isIos()
+          ? 'QR kodu çerçeveye hizala. Zorlanırsan flaşı aç veya telefonu 15–20 cm uzakta tut.'
+          : 'Müşteri kartını çerçeveye hizala.');
       } catch (error) {
         if (!cancelled) {
           setMsg(`Kamera açılamadı: ${error?.message || 'izin verilmedi'}`);
@@ -394,6 +406,15 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   const redeemableCount = loyalty ? getRedeemableRewards(loyalty).length : 0;
   const memberRef = found ? `LC-${String(found.id).slice(-6)}` : '';
   const showInlineCamera = !nativeScanReady && active;
+  const usesIosWebScanner = isNativeApp() && isIos() && !nativeScanReady;
+
+  async function toggleTorch() {
+    const scanner = scannerRef.current;
+    if (!scanner || !torchAvailable) return;
+    const next = !torchOn;
+    const ok = await setInlineScannerTorch(scanner, next);
+    if (ok) setTorchOn(next);
+  }
 
   return (
     <PageShell
@@ -405,7 +426,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           ? `${memberRef} · ${found.phone}`
           : nativeScanReady
             ? 'Kamerayı aç, müşteri QR kodunu okut.'
-            : 'Müşterinin kartındaki QR kodu okut, LP veya ödül işle.'
+            : usesIosWebScanner
+              ? 'iOS sürümünde kamera açılır; QR kodu çerçevenin içine getir.'
+              : 'Müşterinin kartındaki QR kodu okut, LP veya ödül işle.'
       }
       heroSlot={
         found ? (
@@ -441,16 +464,30 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
               <h3>{nativeScanReady ? 'Native Kamera' : 'Kamera'}</h3>
             </div>
             {showInlineCamera && (
-              <button type="button" className="ghost scanRescanBtn" onClick={rescan} disabled={busy}>
-                <ScanLine size={16} /> İptal
-              </button>
+              <div className="scanPanelActions">
+                {torchAvailable && (
+                  <button
+                    type="button"
+                    className={`ghost scanRescanBtn${torchOn ? ' isActive' : ''}`}
+                    onClick={toggleTorch}
+                    disabled={busy}
+                  >
+                    <Flashlight size={16} /> {torchOn ? 'Flaş açık' : 'Flaş'}
+                  </button>
+                )}
+                <button type="button" className="ghost scanRescanBtn" onClick={rescan} disabled={busy}>
+                  <ScanLine size={16} /> İptal
+                </button>
+              </div>
             )}
           </div>
 
           <p className={`scanMsg${success ? ' isSuccess' : ''}`}>
             {msg || (nativeScanReady
-              ? 'Play Store sürümünde native QR okuyucu kullanılır. Kamerayı aç ve müşteri kodunu okut.'
-              : 'Müşteri QR gösterir → okut → LP ekle veya ödül kullandır.')}
+              ? 'Mağaza sürümünde native QR okuyucu kullanılır. Kamerayı aç ve müşteri kodunu okut.'
+              : usesIosWebScanner
+                ? 'Kamerayı aç, QR kodu çerçeveye hizala. Loş ortamda flaş düğmesini kullan.'
+                : 'Müşteri QR gösterir → okut → LP ekle veya ödül kullandır.')}
           </p>
         </div>
       ) : (

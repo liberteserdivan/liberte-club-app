@@ -46,9 +46,7 @@ jobs:
           npm ci --legacy-peer-deps
           npm run build
           node scripts/materialize-firebase-native-config.mjs
-          node scripts/fix-ios-spm-paths.mjs
-          test -f ios/App/App/GoogleService-Info.plist
-          npx cap sync ios
+          node scripts/setup-ios-cocoapods.mjs
 
       - uses: ruby/setup-ruby@v1
         with:

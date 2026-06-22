@@ -5,17 +5,6 @@
   "server": {
     "iosScheme": "https"
   },
-  "experimental": {
-    "ios": {
-      "spm": {
-        "packageOptions": {
-          "@capacitor-firebase/messaging": {
-            "symlink": true
-          }
-        }
-      }
-    }
-  },
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": false,

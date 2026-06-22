@@ -81,9 +81,9 @@ test('Xcode Push Notifications capability aktif', () => {
   assert.match(pbx, /com\.apple\.Push/);
 });
 
-test('iOS minimum build number 47', () => {
+test('iOS minimum build number 49', () => {
   const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
-  assert.match(pbx, /CURRENT_PROJECT_VERSION = 47;/);
+  assert.match(pbx, /CURRENT_PROJECT_VERSION = 49;/);
 });
 
 test('Codemagic build number alt siniri tanimli', () => {
@@ -92,9 +92,18 @@ test('Codemagic build number alt siniri tanimli', () => {
   assert.match(yaml, /materialize-firebase-native-config/);
 });
 
-test('Firebase native config materialize scripti mevcut', () => {
-  assert.equal(existsSync(join(root, 'scripts', 'materialize-firebase-native-config.mjs')), true);
-  assert.equal(existsSync(join(root, 'scripts', 'fix-ios-spm-paths.mjs')), true);
+test('iOS CocoaPods kurulum scripti mevcut', () => {
+  assert.equal(existsSync(join(root, 'scripts', 'setup-ios-cocoapods.mjs')), true);
+  const podfile = readFileSync(join(root, 'ios', 'App', 'Podfile'), 'utf8');
+  assert.match(podfile, /CapacitorMlkitBarcodeScanning/);
+  assert.match(podfile, /CapacitorFirebaseMessaging/);
+});
+
+test('iOS SPM kaldirildi — CocoaPods kullanilir', () => {
+  assert.equal(existsSync(join(root, 'ios', 'App', 'CapApp-SPM')), false);
+  const pbx = readFileSync(join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
+  assert.doesNotMatch(pbx, /CapApp-SPM/);
+  assert.match(pbx, /Pods_App\.framework/);
 });
 
 test('Android google-services.json gitignore ile korunur', () => {
