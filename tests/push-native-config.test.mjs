@@ -139,6 +139,19 @@ test('Android FCM bildirim ikonu ve manifest meta verisi tanımlı', () => {
   assert.match(manifest, /default_notification_channel_id/);
 });
 
+test('Android bildirim izni sistem ayarlarini okur', () => {
+  const plugin = readFileSync(
+    join(root, 'android', 'app', 'src', 'main', 'java', 'cafe', 'liberte', 'app', 'NotificationPermissionPlugin.java'),
+    'utf8'
+  );
+  assert.match(plugin, /checkPermission/);
+  assert.match(plugin, /areNotificationsEnabled/);
+
+  const nativePush = readFileSync(join(root, 'src', 'lib', 'nativePush.js'), 'utf8');
+  assert.match(nativePush, /checkAndroidNotificationPermission/);
+  assert.match(nativePush, /platform === 'android'/);
+});
+
 test('Push gönderimi yalnızca admin handler üzerinden', () => {
   const admin = readFileSync(join(root, 'api', 'admin.js'), 'utf8');
   assert.match(admin, /push-send/);

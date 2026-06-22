@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from './platform.js';
 import { detectPushTokenType, isFcmRegistrationToken } from './pushTokenFormat.js';
 import { handlePushOpenPayload } from './pushNavigation.js';
-import { showAndroidForegroundNotification } from './androidNotificationPermission.js';
+import { showAndroidForegroundNotification, ensureAndroidNotificationPermission, checkAndroidNotificationPermission } from './androidNotificationPermission.js';
 import { formatPushNotification } from './pushNotificationText.js';
 
 let listenersAttached = false;
@@ -62,8 +62,40 @@ export async function registerNativePushToken() {
   }
 
   attachNativePushListeners();
+  const platform = Capacitor.getPlatform();
 
   try {
+    // Android: sistem iznini kontrol et, Firebase izin API'sini atla
+    if (platform === 'android') {
+      const androidPerm = await ensureAndroidNotificationPermission();
+      if (!androidPerm.ok) {
+        return { ok: false, reason: 'denied', permissionStatus: 'denied' };
+      }
+
+      const { token } = await FirebaseMessaging.getToken();
+      if (!token) {
+        return { ok: false, reason: 'empty_token' };
+      }
+
+      const tokenType = detectPushTokenType(token);
+      if (!isFcmRegistrationToken(token)) {
+        return {
+          ok: false,
+          reason: tokenType === 'apns'
+            ? 'apns_token_not_supported'
+            : 'invalid_fcm_token'
+        };
+      }
+
+      return {
+        ok: true,
+        token,
+        tokenType: 'fcm',
+        platform,
+        permissionStatus: 'granted'
+      };
+    }
+
     let perm = await FirebaseMessaging.checkPermissions();
     if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
       perm = await FirebaseMessaging.requestPermissions();
@@ -92,7 +124,7 @@ export async function registerNativePushToken() {
       ok: true,
       token,
       tokenType: 'fcm',
-      platform: Capacitor.getPlatform(),
+      platform,
       permissionStatus: 'granted'
     };
   } catch (error) {
@@ -103,6 +135,12 @@ export async function registerNativePushToken() {
 // Native bildirim izni verilmiş mi?
 export async function hasNativePushPermission() {
   if (!isNativeApp()) return false;
+
+  if (Capacitor.getPlatform() === 'android') {
+    const check = await checkAndroidNotificationPermission();
+    return check.granted;
+  }
+
   try {
     const perm = await FirebaseMessaging.checkPermissions();
     return perm.receive === 'granted';

@@ -6,11 +6,13 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -31,8 +33,36 @@ import com.getcapacitor.annotation.PermissionCallback;
 )
 public class NotificationPermissionPlugin extends Plugin {
 
+    // Sistem bildirim ayarı + Android 13 POST_NOTIFICATIONS birlikte kontrol edilir
+    private boolean areNotificationsEnabled() {
+        Context context = getContext();
+        if (context == null) return false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        return manager != null && manager.areNotificationsEnabled();
+    }
+
+    @PluginMethod
+    public void checkPermission(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", areNotificationsEnabled());
+        call.resolve(result);
+    }
+
     @PluginMethod
     public void requestPermission(PluginCall call) {
+        if (areNotificationsEnabled()) {
+            call.resolve();
+            return;
+        }
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             call.resolve();
             return;
@@ -48,7 +78,7 @@ public class NotificationPermissionPlugin extends Plugin {
 
     @PermissionCallback
     private void permissionCallback(PluginCall call) {
-        if (getPermissionState("notifications") == PermissionState.GRANTED) {
+        if (areNotificationsEnabled()) {
             call.resolve();
             return;
         }
