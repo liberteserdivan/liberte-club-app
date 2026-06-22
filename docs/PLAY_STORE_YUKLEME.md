@@ -84,7 +84,25 @@ Codemagic UI → Code signing → Android keystore reference: `liberte_club_rele
 
 Baslat: Codemagic → Start new build → workflow **android-release** → branch **main**
 
-## Sorun giderme
+## 7. Kapali test (manuel AAB yukleme)
+
+Play Console'da **bos surum** olusturursaniz su hatalar cikar:
+- *Bu surum hicbir uygulama paketi eklemiyor*
+- *Mevcut kullanicilar yeni paketlere gecemez*
+
+**Dogru akis:**
+
+1. Codemagic → `android-release` → basarili build → **Artifacts** → `app-release.aab` indir
+2. Play Console → **Test et** → **Kapali test**
+3. Varsa **taslak (draft) bos surumu sil** / iptal et
+4. **Surum olustur** veya **Yeni surum**
+5. **Uygulama paketleri yukle** → indirdiginiz `.aab` dosyasini secin
+6. Surum notlarini doldurun → **Incelemeye gonder**
+
+`versionCode` mevcut kapali test surumunden **buyuk** olmali (or. onceki 46 ise yeni 49).
+
+Otomatik yukleme basarisiz olsa bile Codemagic build yesil kalir; AAB artifact her zaman indirilebilir.
+
 
 | Hata | Cozum |
 |------|--------|

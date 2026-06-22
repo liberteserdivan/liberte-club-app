@@ -1,0 +1,1 @@
+Surum 1.1.22 — bildirim duzeltmeleri, sunucu baglantisi iyilestirmeleri ve guvenlik guncellemeleri.
