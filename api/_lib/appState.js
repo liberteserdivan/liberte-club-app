@@ -78,12 +78,15 @@ export function isSameAppStateRevision(serverAt, clientAt) {
 }
 
 // Üzerine yazmadan önce mevcut durumu yedekle — üye kaybı geri alınabilsin
-async function backupCurrentState(sql, nextData) {
+async function backupCurrentState(sql, nextData, currentSnapshot = null) {
   await ensureBackupTable(sql);
 
-  const rows = await sql`SELECT data FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
-  const current = parseAppStateData(rows[0]?.data);
-  if (!current) return; // İlk kayıt — yedeklenecek eski veri yok
+  let current = currentSnapshot;
+  if (!current) {
+    const rows = await sql`SELECT data FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
+    current = parseAppStateData(rows[0]?.data);
+  }
+  if (!current) return;
 
   const prevCount = customerCount(current);
   // Üye/kayıt azalması = olası veri kaybı; her zaman yedekle
@@ -236,6 +239,16 @@ export async function saveAppState(data, options = {}) {
   if (!sql) throw new Error('DATABASE_URL eksik');
 
   if (useRelationalState()) {
+    if (!skipBackup) {
+      try {
+        const composed = await composeStateFromRelational(sql);
+        if (composed.data) {
+          await backupCurrentState(sql, data, composed.data);
+        }
+      } catch (error) {
+        console.error('[appState.save.relational] backup failed', error?.message || error);
+      }
+    }
     const updatedAt = await persistStateToRelational(data, sql);
     logAppStatePerf('saveAppState.relational', t0);
     return updatedAt;
@@ -398,7 +411,12 @@ export async function saveAppStateIfUnchanged(data, expectedUpdatedAt) {
   }
 
   try {
-    if (!useRelationalState()) {
+    if (useRelationalState()) {
+      const composed = await composeStateFromRelational(sql);
+      if (composed.data) {
+        await backupCurrentState(sql, data, composed.data);
+      }
+    } else {
       await backupCurrentState(sql, data);
     }
   } catch {

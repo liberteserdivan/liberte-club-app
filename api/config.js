@@ -180,29 +180,67 @@ function handleSupabaseConfig(res) {
   return res.status(200).json(payload);
 }
 
+// RLS durumu — tanılama erişimi gerekir
+async function handleRlsStatus(res) {
+  const { getSql } = await import('./_lib/sql.js');
+  const { readRlsStatus } = await import('./_lib/rlsOps.js');
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırılmadı' });
+
+  try {
+    const status = await readRlsStatus(sql);
+    return res.status(200).json(status);
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error?.message || 'RLS durumu okunamadı' });
+  }
+}
+
+// RLS uygula — yalnızca CONFIG_DIAG_SECRET veya doğrulanmış admin
+async function handleRlsApply(res) {
+  const { getSql } = await import('./_lib/sql.js');
+  const { applyAllRls } = await import('./_lib/rlsOps.js');
+  const sql = getSql();
+  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırılmadı' });
+
+  try {
+    const status = await applyAllRls(sql);
+    return res.status(200).json({ ok: true, applied: true, ...status });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error?.message || 'RLS uygulanamadı' });
+  }
+}
+
 // Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
 export default async function handler(req, res) {
-  applyPublicCors(res);
+  applyPublicCors(res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const resource = String(req.query?.resource || '').trim().toLowerCase();
+
+  if (req.method === 'POST' && resource === 'rls-apply') {
+    const allowed = await requireConfigDiagAccess(req);
+    if (!allowed) return res.status(403).json({ error: 'Tanılama erişimi reddedildi' });
+    return handleRlsApply(res);
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   if (resource === 'firebase') return handleFirebase(res);
   if (resource === 'push') return handlePush(res);
 
   // Altyapı tanılama — production'da yönetici veya CONFIG_DIAG_SECRET gerekir
-  if (resource === 'push-status' || resource === 'db-status' || resource === 'qr-status') {
+  if (resource === 'push-status' || resource === 'db-status' || resource === 'qr-status' || resource === 'rls-status') {
     const allowed = await requireConfigDiagAccess(req);
     if (!allowed) {
       return res.status(403).json({ error: 'Tanılama erişimi reddedildi' });
     }
     if (resource === 'push-status') return handlePushStatus(res);
     if (resource === 'db-status') return handleDbStatus(res);
+    if (resource === 'rls-status') return handleRlsStatus(res);
     return handleQrStatus(res);
   }
 
   if (resource === 'supabase') return handleSupabaseConfig(res);
 
-  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status, qr-status veya supabase' });
+  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status, qr-status, rls-status veya supabase' });
 }

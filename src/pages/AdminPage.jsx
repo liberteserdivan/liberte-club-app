@@ -274,7 +274,7 @@ function BackupAdmin({ db }){
 
   return <div className="card adminSectionCard">
     <div className="adminSectionHead"><div><span>YEDEK</span><h3>Veri yedeği & geri yükleme</h3></div><Database size={18}/></div>
-    <p className="adminHint">Veriler her değişiklikte sunucuda otomatik yedeklenir. Buradan tam yedeği indirebilir veya bir yedekten geri yükleyebilirsin.</p>
+    <p className="adminHint">Sunucu en fazla 30 dakikada bir otomatik anlık yedek alır; üye silme gibi kritik işlemlerde anında yedeklenir. Buradan tam yedeği indirebilir veya bir yedekten geri yükleyebilirsin.</p>
 
     <div className="adminBackupActions">
       <button type="button" className="goldBtn" disabled={busy==='download'} onClick={handleDownload}>

@@ -20,7 +20,8 @@ const rollback = rollbackArg ? rollbackArg.split('=')[1] : null;
 const APPLY = {
   1: '003_rls_phase1_public_lowrisk.sql',
   2: '003_rls_phase2_customer_loyalty.sql',
-  3: '003_rls_phase3_backend_only.sql'
+  3: '003_rls_phase3_backend_only.sql',
+  all: '003_rls_apply_all.sql'
 };
 
 const ROLLBACK = {
@@ -30,9 +31,10 @@ const ROLLBACK = {
 };
 
 function loadEnv() {
-  const envPath = join(root, '.env');
-  if (!existsSync(envPath)) return;
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+  for (const name of ['.env', '.env.local']) {
+    const envPath = join(root, name);
+    if (!existsSync(envPath)) continue;
+    for (const line of readFileSync(envPath, 'utf8').split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eq = trimmed.indexOf('=');
@@ -42,11 +44,17 @@ function loadEnv() {
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
-    if (!process.env[key]) process.env[key] = value;
+    if (!process.env[key] && value) process.env[key] = value;
+    }
   }
 }
 
 loadEnv();
+
+// Boş .env.local placeholder'ları vercel env run değerlerini ezmesin
+if (process.env.VERCEL_ENV && !String(process.env.DATABASE_URL || '').trim()) {
+  delete process.env.DATABASE_URL;
+}
 
 const dbInfo = describeDatabaseUrl(process.env.DATABASE_URL || '');
 const sql = getSql();
@@ -104,7 +112,7 @@ try {
   }
 
   if (!phase) {
-    console.error('--phase=1|2|3 veya --rollback=1|2|3 gerekli');
+    console.error('--phase=1|2|3|all veya --rollback=1|2|3 gerekli');
     process.exit(1);
   }
 
