@@ -15,11 +15,30 @@ const NATIVE_APP_ORIGINS = new Set([
   'http://localhost:8080'
 ]);
 
+// iOS/Android Capacitor köken desenleri (hostname değişse bile)
+function isNativeCapacitorOrigin(origin) {
+  if (!origin) return false;
+  if (NATIVE_APP_ORIGINS.has(origin)) return true;
+
+  try {
+    const url = new URL(origin);
+    const protocol = url.protocol.replace(':', '');
+    const host = url.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') return false;
+    return protocol === 'https'
+      || protocol === 'http'
+      || protocol === 'capacitor'
+      || protocol === 'ionic';
+  } catch {
+    return false;
+  }
+}
+
 // İstek kaynağını doğrula
 export function resolveOrigin(req) {
   const origin = req.headers.origin || '';
   if (!origin) return '';
-  if (NATIVE_APP_ORIGINS.has(origin)) return origin;
+  if (isNativeCapacitorOrigin(origin)) return origin;
 
   // Production'da boş whitelist ile tüm origin'lere izin verme
   if (ALLOWED_ORIGINS.length === 0) {

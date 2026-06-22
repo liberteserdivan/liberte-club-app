@@ -26,6 +26,16 @@ test('FCM token Firebase Admin ile uyumlu formatta tanınır', () => {
   assert.equal(detectPushTokenType(sampleFcm), 'fcm');
 });
 
+test('Capacitor native HTTP ve iOS scheme yapılandırılmış', () => {
+  const config = JSON.parse(readFileSync(join(root, 'capacitor.config.json'), 'utf8'));
+  assert.equal(config.server?.iosScheme, 'https');
+  assert.equal(config.plugins?.CapacitorHttp?.enabled, true);
+
+  const apiClient = readFileSync(join(root, 'src', 'lib', 'apiClient.js'), 'utf8');
+  assert.match(apiClient, /NATIVE_FETCH_TIMEOUT_MS/);
+  assert.match(apiClient, /isNativeNetworkFailure/);
+});
+
 test('Native push FirebaseMessaging kullanır — eski PushNotifications değil', () => {
   const nativePush = readFileSync(join(root, 'src', 'lib', 'nativePush.js'), 'utf8');
   assert.match(nativePush, /@capacitor-firebase\/messaging/);

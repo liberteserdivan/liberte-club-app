@@ -2,6 +2,9 @@
   "appId": "cafe.liberte.app",
   "appName": "Liberte",
   "webDir": "dist",
+  "server": {
+    "iosScheme": "https"
+  },
   "experimental": {
     "ios": {
       "spm": {
@@ -22,6 +25,9 @@
     },
     "FirebaseMessaging": {
       "presentationOptions": ["alert", "badge", "sound"]
+    },
+    "CapacitorHttp": {
+      "enabled": true
     }
   }
 }

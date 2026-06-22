@@ -5,7 +5,7 @@ const nativeReq = (origin) => ({ headers: { origin } });
 
 assert.equal(resolveOrigin(nativeReq('https://localhost')), 'https://localhost');
 assert.equal(resolveOrigin(nativeReq('capacitor://localhost')), 'capacitor://localhost');
-assert.equal(resolveOrigin(nativeReq('https://app.liberte.cafe')), 'https://app.liberte.cafe');
+assert.equal(resolveOrigin(nativeReq('ionic://localhost')), 'ionic://localhost');
 
 process.env.ALLOWED_ORIGINS = 'https://app.liberte.cafe';
 // ALLOWED_ORIGINS modül yüklendikten sonra değişmez; native köken yine izinli olmalı
