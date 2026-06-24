@@ -8,6 +8,22 @@ export function isNativeApp() {
   }
 }
 
+// iOS / Android native — WKWebView visibilityState güvenilir değil
+export function shouldRunClientPoll() {
+  if (isNativeApp()) return true;
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
+// iOS Capacitor uygulaması
+export function isIosNative() {
+  if (!isNativeApp()) return false;
+  try {
+    return window.Capacitor?.getPlatform?.() === 'ios';
+  } catch {
+    return isIos();
+  }
+}
+
 // iOS tarayıcı / PWA tespiti
 export function isIos() {
   if (typeof navigator === 'undefined') return false;

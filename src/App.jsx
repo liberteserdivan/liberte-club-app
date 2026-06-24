@@ -2,7 +2,7 @@ import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
-import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
+import { requestLoyaltyRefresh } from './lib/loyaltySyncBus.js';
 import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
 import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
@@ -188,7 +188,6 @@ export default function App() {
   useCustomerLoyaltyPoll({
     enabled: realtimeEnabled,
     customerId: customer?.id,
-    tab,
     db,
     commit
   });
@@ -356,7 +355,10 @@ export default function App() {
 
     import('@capacitor/app').then(({ App }) => {
       App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) registerNativePush();
+        if (isActive) {
+          registerNativePush();
+          requestLoyaltyRefresh();
+        }
       }).then((listener) => {
         appListener = listener;
       });

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { apiFetch } from './apiClient.js';
+import { isNativeApp } from './platform.js';
 import { bootstrapSession, getRealtimeToken, patchMemorySession } from './session.js';
 
 let cachedConfig = null;
@@ -67,7 +68,8 @@ export async function getSupabaseClient() {
       },
       realtime: {
         params: {
-          eventsPerSecond: 4
+          // Native WebView'da kasa LP güncellemeleri daha sık gelebilsin
+          eventsPerSecond: isNativeApp() ? 10 : 4
         }
       }
     });

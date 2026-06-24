@@ -1,5 +1,7 @@
 import { apiJson, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
 
+const LOYALTY_FETCH_OPTIONS = { timeoutMs: 8_000 };
+
 // Arka plan sync — ağ hatasında toast tetikleme
 async function safeRealtimeRequest(path, options = {}) {
   try {
@@ -9,9 +11,20 @@ async function safeRealtimeRequest(path, options = {}) {
   }
 }
 
+// Geçici ağ/DB hatasında bir kez daha dene
+async function safeRealtimeRequestWithRetry(path, options = {}) {
+  const first = await safeRealtimeRequest(path, options);
+  if (first.response.ok && first.data?.ok) return first;
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  return safeRealtimeRequest(path, options);
+}
+
 // Realtime tetikleyici sonrası hafif loyalty snapshot
 export async function fetchCustomerLoyaltySnapshot() {
-  const { response, data } = await safeRealtimeRequest('/api/realtime?resource=customer-loyalty');
+  const { response, data } = await safeRealtimeRequestWithRetry(
+    '/api/realtime?resource=customer-loyalty',
+    LOYALTY_FETCH_OPTIONS
+  );
   if (!response.ok || !data?.ok) return null;
   return data.loyalty || null;
 }

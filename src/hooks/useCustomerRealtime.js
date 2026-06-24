@@ -9,7 +9,9 @@ import {
   fetchCustomerLoyaltySnapshot,
   fetchPromoSlice
 } from '../lib/realtimeFetch.js';
-import { isSupabaseRealtimeEnabled } from '../lib/supabaseClient.js';
+import { isSupabaseRealtimeEnabled, refreshRealtimeSessionFromServer } from '../lib/supabaseClient.js';
+import { isNativeApp } from '../lib/platform.js';
+import { subscribeLoyaltyRefresh } from '../lib/loyaltySyncBus.js';
 
 // Müşteri ekranı — filtreli postgres dinleyicileri
 export function useCustomerRealtime({
@@ -21,7 +23,7 @@ export function useCustomerRealtime({
   const dbRef = useRef(db);
   dbRef.current = db;
 
-  const debouncedLoyalty = useRef(createDebouncedTask(150));
+  const debouncedLoyalty = useRef(createDebouncedTask(80));
   const debouncedHistory = useRef(createDebouncedTask(200));
   const debouncedPromos = useRef(createDebouncedTask(700));
 
@@ -38,24 +40,28 @@ export function useCustomerRealtime({
       const filter = `customer_id=eq.${customerId}`;
 
       await openRealtimeChannel(channelKey, (channel, listen) => {
-        listen(channel, {
-          table: 'customer_loyalty',
-          event: 'UPDATE',
-          filter,
-          onChange: () => {
-            debouncedLoyalty.current(async () => {
-              const loyalty = await fetchCustomerLoyaltySnapshot();
-              if (!loyalty || cancelled) return;
-              const current = dbRef.current;
-              commit({
-                ...current,
-                loyalty: {
-                  ...(current.loyalty || {}),
-                  [customerId]: loyalty
-                }
-              }, { skipRemote: true });
-            });
-          }
+        function refreshLoyaltyFromServer() {
+          debouncedLoyalty.current(async () => {
+            const loyalty = await fetchCustomerLoyaltySnapshot();
+            if (!loyalty || cancelled) return;
+            const current = dbRef.current;
+            commit({
+              ...current,
+              loyalty: {
+                ...(current.loyalty || {}),
+                [customerId]: loyalty
+              }
+            }, { skipRemote: true });
+          });
+        }
+
+        ['INSERT', 'UPDATE'].forEach((event) => {
+          listen(channel, {
+            table: 'customer_loyalty',
+            event,
+            filter,
+            onChange: refreshLoyaltyFromServer
+          });
         });
 
         listen(channel, {
@@ -63,18 +69,7 @@ export function useCustomerRealtime({
           event: 'INSERT',
           filter,
           onChange: () => {
-            debouncedLoyalty.current(async () => {
-              const loyalty = await fetchCustomerLoyaltySnapshot();
-              if (!loyalty || cancelled) return;
-              const current = dbRef.current;
-              commit({
-                ...current,
-                loyalty: {
-                  ...(current.loyalty || {}),
-                  [customerId]: loyalty
-                }
-              }, { skipRemote: true });
-            });
+            refreshLoyaltyFromServer();
 
             debouncedHistory.current(async () => {
               const historyRows = await fetchCustomerHistory(20);
@@ -115,8 +110,40 @@ export function useCustomerRealtime({
       console.warn('[realtime.customer]', error?.message || error);
     });
 
+    const unsubscribeLoyaltyRefresh = subscribeLoyaltyRefresh(() => {
+      refreshRealtimeSessionFromServer()
+        .then(() => fetchCustomerLoyaltySnapshot())
+        .then((loyalty) => {
+          if (!loyalty || cancelled) return;
+          const current = dbRef.current;
+          commit({
+            ...current,
+            loyalty: {
+              ...(current.loyalty || {}),
+              [customerId]: loyalty
+            }
+          }, { skipRemote: true });
+        })
+        .catch(() => {});
+    });
+
+    let appListener = null;
+    if (isNativeApp()) {
+      import('@capacitor/app').then(({ App }) => {
+        if (cancelled) return;
+        App.addListener('appStateChange', ({ isActive }) => {
+          if (!isActive || cancelled) return;
+          refreshRealtimeSessionFromServer().catch(() => {});
+        }).then((listener) => {
+          appListener = listener;
+        });
+      }).catch(() => {});
+    }
+
     return () => {
       cancelled = true;
+      unsubscribeLoyaltyRefresh();
+      appListener?.remove?.();
       closeRealtimeChannel(channelKey).catch(() => {});
     };
   }, [enabled, customerId, commit]);

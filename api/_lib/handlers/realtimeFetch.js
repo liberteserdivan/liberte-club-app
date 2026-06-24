@@ -3,7 +3,8 @@ import { requireSession, requireAdminSession, getSessionForBootstrap } from '../
 import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapFromSql } from '../loyaltyStore.js';
 import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
-import { getSql } from '../sql.js';
+import { getSql, resetSqlClient } from '../sql.js';
+import { withSqlRetry } from '../dbTransient.js';
 
 // Kampanya/kupon dilimini state'ten oku
 function readPromoSlice(state) {
@@ -23,10 +24,12 @@ async function loadPromoSlice() {
 
 // Müşteri loyalty + son işlemler — Realtime tetikleyici sonrası hafif fetch
 async function handleCustomerLoyalty(req, res, session) {
-  const sql = getSql();
-  if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
+  const loyalty = await withSqlRetry(async () => {
+    const sql = getSql();
+    if (!sql) throw new Error('Veritabanı yapılandırması eksik');
+    return loadLoyaltyForCustomer(session.customerId, sql);
+  }, { resetClient: resetSqlClient });
 
-  const loyalty = await loadLoyaltyForCustomer(session.customerId, sql);
   return res.status(200).json({
     ok: true,
     customerId: session.customerId,
