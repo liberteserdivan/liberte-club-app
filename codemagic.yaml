@@ -121,7 +121,7 @@ workflows:
         PLAY_TRACK: alpha
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.22"
-        ANDROID_MIN_VERSION_CODE: "49"
+        ANDROID_MIN_VERSION_CODE: "50"
       node: 22
       java: 21
     scripts:
