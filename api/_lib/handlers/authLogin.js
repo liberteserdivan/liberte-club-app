@@ -15,6 +15,8 @@ import {
 import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js';
 import { findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
+import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
+import { resetSqlClient } from '../sql.js';
 
 // Oturumdaki müşteri girilen telefonla eşleşiyor mu?
 function sessionMatchesPhone(session, normalizedPhone) {
@@ -59,6 +61,22 @@ export async function handleAuthLogin(req, res) {
   const trace = createRequestTrace('auth.customer-login');
   const startedAt = Date.now();
 
+  try {
+    return await withSqlRetry(
+      () => handleAuthLoginCore(req, res, trace, startedAt),
+      { resetClient: resetSqlClient }
+    );
+  } catch (e) {
+    console.error('[auth.customer-login]', trace.requestId, e?.stack || e?.message || e);
+    return res.status(500).json(trace.failBody(
+      'unexpected',
+      publicDbErrorCode(e, 'LOGIN_FAILED'),
+      publicDbErrorMessage(e, 'Giriş yapılamadı. Lütfen tekrar dene.')
+    ));
+  }
+}
+
+async function handleAuthLoginCore(req, res, trace, startedAt) {
   try {
     const body = readBody(req);
     const rawPhone = String(body.phone || '').trim();
@@ -209,6 +227,10 @@ export async function handleAuthLogin(req, res) {
     return res.status(200).json(bodyOk);
   } catch (e) {
     console.error('[auth.customer-login]', trace.requestId, e?.stack || e?.message || e);
-    return res.status(500).json(trace.failBody('unexpected', 'LOGIN_FAILED', e.message || 'Giriş yapılamadı'));
+    return res.status(500).json(trace.failBody(
+      'unexpected',
+      publicDbErrorCode(e, 'LOGIN_FAILED'),
+      publicDbErrorMessage(e, 'Giriş yapılamadı. Lütfen tekrar dene.')
+    ));
   }
 }

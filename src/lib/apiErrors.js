@@ -66,6 +66,25 @@ export function formatClientApiError({ response = null, data = {}, error = null,
   }
 
   if (httpStatus >= 500) {
+    if (code === 'DATABASE_TRANSIENT') {
+      return {
+        message: withRef(data?.message || 'Sunucu geçici olarak yanıt veremedi. Birkaç saniye sonra tekrar deneyin.', requestId),
+        code: 'DATABASE_TRANSIENT',
+        requestId,
+        abort: false,
+        retryable: true
+      };
+    }
+    const raw = String(data?.message || data?.error || '');
+    if (/connection_closed|edbhandlerexited|pooler\.supabase/i.test(raw)) {
+      return {
+        message: withRef('Sunucu geçici olarak yanıt veremedi. Birkaç saniye sonra tekrar deneyin.', requestId),
+        code: 'DATABASE_TRANSIENT',
+        requestId,
+        abort: false,
+        retryable: true
+      };
+    }
     return {
       message: withRef(data?.message || data?.error || 'İşlem tamamlanamadı.', requestId),
       code: code || 'SERVER_ERROR',

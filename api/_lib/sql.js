@@ -29,15 +29,19 @@ function isTransactionPooler(connectionString) {
 
 // Vercel serverless için Postgres bağlantı seçenekleri
 function buildClientOptions(connectionString) {
+  const transactionPooler = isTransactionPooler(connectionString);
   const options = {
     ssl: 'require',
     max: 1,
-    idle_timeout: 20,
-    connect_timeout: 10
+    idle_timeout: 10,
+    connect_timeout: 15,
+    max_lifetime: 60 * 30
   };
 
-  if (isTransactionPooler(connectionString)) {
+  if (transactionPooler) {
+    // Supabase transaction pooler — serverless uyumu
     options.prepare = false;
+    options.fetch_types = false;
   }
 
   return options;
@@ -47,6 +51,18 @@ const GLOBAL_SQL_KEY = '__libertePostgresSql';
 
 let cachedSql = null;
 let cachedConnectionString = '';
+
+// Kopmuş pooler bağlantısını temizle
+export function resetSqlClient() {
+  const previous = cachedSql;
+  cachedSql = null;
+  cachedConnectionString = '';
+  delete globalThis[GLOBAL_SQL_KEY];
+
+  if (previous && typeof previous.end === 'function') {
+    previous.end({ timeout: 0 }).catch(() => {});
+  }
+}
 
 // Ortak SQL istemcisi — warm serverless instance içinde tek pool yeniden kullanılır
 export function getSql() {

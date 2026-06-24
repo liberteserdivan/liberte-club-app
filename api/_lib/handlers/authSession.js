@@ -2,6 +2,8 @@ import { applyCors } from '../http.js';
 import { destroySession, getSessionForBootstrap, readAuthToken } from '../auth.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
+import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
+import { resetSqlClient } from '../sql.js';
 
 // Oturum okuma ve çıkış
 export async function handleAuthSession(req, res) {
@@ -29,7 +31,10 @@ export async function handleAuthSession(req, res) {
     const hasSessionToken = Boolean(readAuthToken(req));
     trace.log('start', { step: 'start', hasSessionToken });
 
-    const session = await getSessionForBootstrap(req);
+    const session = await withSqlRetry(
+      () => getSessionForBootstrap(req),
+      { resetClient: resetSqlClient }
+    );
     trace.log('verify_session', {
       step: 'verify_session',
       hasSessionToken,
@@ -62,6 +67,10 @@ export async function handleAuthSession(req, res) {
       error: e?.message || String(e),
       durationMs: Date.now() - startedAt
     });
-    return res.status(500).json(trace.failBody('catch_error', 'SESSION_RESTORE_FAILED', e.message || 'Oturum okunamadı'));
+    return res.status(500).json(trace.failBody(
+      'catch_error',
+      publicDbErrorCode(e, 'SESSION_RESTORE_FAILED'),
+      publicDbErrorMessage(e, 'Oturum okunamadı. Lütfen tekrar giriş yap.')
+    ));
   }
 }

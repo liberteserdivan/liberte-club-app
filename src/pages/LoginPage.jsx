@@ -81,6 +81,9 @@ export default function Login({ db, commit, setSession }) {
     if (code === 'SESSION_CREATE_FAILED') {
       return `Oturum oluşturulamadı. Ref: ${data?.requestId || '—'}`;
     }
+    if (code === 'DATABASE_TRANSIENT') {
+      return 'Sunucu geçici olarak yanıt veremedi. Birkaç saniye sonra tekrar deneyin.';
+    }
     const base = data?.clientMessage || data?.message || data?.error || fallback;
     if (data?.requestId) {
       return `${base} (Ref: ${data.requestId})`;
@@ -197,16 +200,25 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
 
-      const { response, data } = await apiJson('/api/auth/login', {
-        ...AUTH_REQUEST_OPTIONS,
-        method: 'POST',
-        body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
-      });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const { response, data } = await apiJson('/api/auth/login', {
+          ...AUTH_REQUEST_OPTIONS,
+          method: 'POST',
+          body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
+        });
 
-      if (!response.ok || data?.ok === false) {
-        throw new Error(readApiError(data, 'Giriş yapılamadı'));
+        if (!response.ok || data?.ok === false) {
+          if (data?.code === 'DATABASE_TRANSIENT' && attempt === 0) {
+            setInfo('Bağlantı yeniden deneniyor...');
+            await new Promise((resolve) => { setTimeout(resolve, 1200); });
+            continue;
+          }
+          throw new Error(readApiError(data, 'Giriş yapılamadı'));
+        }
+
+        finishSession(data);
+        return;
       }
-      finishSession(data);
     } catch (e) {
       notify(e.message || 'Giriş yapılamadı');
     } finally {
