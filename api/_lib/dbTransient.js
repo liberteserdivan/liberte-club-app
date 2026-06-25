@@ -64,7 +64,7 @@ export async function withSqlRetry(task, { retries = 4, resetClient } = {}) {
         throw error;
       }
       if (typeof resetClient === 'function') {
-        resetClient();
+        await Promise.resolve(resetClient());
       }
       await sleep(60 * (attempt + 1));
     }

@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from 'postgres';
 import { describeDatabaseUrl, logDatabaseConnectionOnce } from './dbConnection.js';
+import { isTransientDbError } from './dbTransient.js';
 
 // Production'da Neon bağlantısını reddet
 function assertProductionDatabaseAllowed(connectionString) {
@@ -38,15 +39,16 @@ function buildClientOptions(connectionString) {
     ssl: 'require',
     max: 1,
     idle_timeout: 10,
-    connect_timeout: 12,
+    connect_timeout: 10,
     max_lifetime: 60
   };
 
   if (transactionPooler) {
     options.prepare = false;
     options.fetch_types = false;
-    options.idle_timeout = 2;
-    options.max_lifetime = 55;
+    // Pooler idle limitinden önce yenile — kopmayı önler
+    options.idle_timeout = 45;
+    options.max_lifetime = 50;
   }
 
   return options;
@@ -64,8 +66,12 @@ function createSqlClient(connectionString) {
   return postgres(connectionString, buildClientOptions(connectionString));
 }
 
-// İstek kapsamı — her HTTP çağrısında tek bağlantı
+// İstek kapsamı — handler içinde getSql aynı bağlantıyı döner
 const requestStorage = new AsyncLocalStorage();
+
+// Vercel instance önbelleği — istekler arası yeniden kullan
+let warmSql = null;
+let warmConnectionString = '';
 
 // Yerel geliştirme / script yedek önbelleği
 let devCachedSql = null;
@@ -81,24 +87,54 @@ async function endSqlClient(client) {
   }
 }
 
-// İstek içi veya dev önbellekteki bağlantıyı sıfırla
-export function resetSqlClient() {
+// Instance önbelleğini temizle
+async function closeWarmSql() {
+  if (!warmSql) return;
+  const previous = warmSql;
+  warmSql = null;
+  warmConnectionString = '';
+  await endSqlClient(previous);
+}
+
+// Canlı warm bağlantı — kopmuşsa yeniden aç
+async function ensureLiveWarmSql(connectionString) {
+  if (!warmSql || warmConnectionString !== connectionString) {
+    await closeWarmSql();
+    warmSql = createSqlClient(connectionString);
+    warmConnectionString = connectionString;
+    return warmSql;
+  }
+
+  const alive = await pingSql(warmSql);
+  if (!alive) {
+    await closeWarmSql();
+    warmSql = createSqlClient(connectionString);
+    warmConnectionString = connectionString;
+  }
+
+  return warmSql;
+}
+
+// Kopan bağlantıyı güvenli sıfırla — sızıntı olmadan
+export async function resetSqlClient() {
   const holder = requestStorage.getStore();
+  const connectionString = resolveConnectionString();
+
   if (holder) {
-    const previous = holder.sql;
     holder.sql = null;
-    void endSqlClient(previous);
-    const connectionString = resolveConnectionString();
+    await closeWarmSql();
     if (connectionString) {
-      holder.sql = createSqlClient(connectionString);
+      holder.sql = await ensureLiveWarmSql(connectionString);
     }
     return;
   }
 
+  await closeWarmSql();
+
   const previous = devCachedSql;
   devCachedSql = null;
   devCachedConnectionString = '';
-  void endSqlClient(previous);
+  await endSqlClient(previous);
 }
 
 // Aktif SQL istemcisi — önce istek kapsamı, sonra dev önbellek
@@ -109,7 +145,9 @@ export function getSql() {
   const holder = requestStorage.getStore();
   if (holder) {
     if (!holder.sql) {
-      holder.sql = createSqlClient(connectionString);
+      holder.sql = warmSql && warmConnectionString === connectionString
+        ? warmSql
+        : createSqlClient(connectionString);
     }
     return holder.sql;
   }
@@ -134,7 +172,7 @@ export async function pingSql(sql) {
   }
 }
 
-// API handler — istek başına bağlantı aç/kapat (stale pooler önlenir)
+// API handler — warm bağlantı + ping (istek başına aç/kapat yok)
 export async function runHandlerWithSql(handler) {
   const connectionString = resolveConnectionString();
 
@@ -142,17 +180,17 @@ export async function runHandlerWithSql(handler) {
     return handler();
   }
 
-  const holder = { sql: createSqlClient(connectionString) };
+  const client = await ensureLiveWarmSql(connectionString);
+  const holder = { sql: client };
 
   return requestStorage.run(holder, async () => {
     try {
-      const alive = await pingSql(holder.sql);
-      if (!alive) resetSqlClient();
       return await handler();
-    } finally {
-      const client = holder.sql;
-      holder.sql = null;
-      await endSqlClient(client);
+    } catch (error) {
+      if (isTransientDbError(error)) {
+        await resetSqlClient();
+      }
+      throw error;
     }
   });
 }
