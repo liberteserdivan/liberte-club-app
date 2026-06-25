@@ -1,4 +1,5 @@
 import { cleanPhone, phoneLookupVariants } from './phone.js';
+import { inList } from './sqlIn.js';
 import { normalizeEmail, findCustomerIdByPhone } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
 import { loyaltyTemplate } from './loyaltyOps.js';
@@ -92,7 +93,7 @@ async function resolveCustomerRowByPhone(sql, phone) {
     SELECT id, phone, name, email, birth_date, referral_code, is_admin, created_at, last_visit, normalized_phone
     FROM customers
     WHERE normalized_phone = ${normalized}
-       OR phone = ANY(${variants})
+       OR phone IN ${inList(sql, variants)}
     ORDER BY is_admin DESC, id ASC
     LIMIT 1
   `;

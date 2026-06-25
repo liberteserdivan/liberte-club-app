@@ -1,5 +1,6 @@
 import { getSql } from './appState.js';
 import { cleanPhone, phoneLookupVariants } from './phone.js';
+import { inList } from './sqlIn.js';
 import { ensureSchemaReady } from './schemaReady.js';
 
 // E-posta karşılaştırması için normalize et
@@ -63,7 +64,7 @@ export async function findCustomerIdByPhone(sql, phone) {
   const rows = await sql`
     SELECT customer_id, email, phone
     FROM customer_emails
-    WHERE phone = ANY(${variants})
+    WHERE phone IN ${inList(sql, variants)}
        OR phone = ${normalizedPhone}
     LIMIT 1
   `;
@@ -78,7 +79,7 @@ export async function hasCustomerPinAuth(sql, phone) {
 
   const variants = phoneLookupVariants(phone);
   const rows = await sql`
-    SELECT phone FROM customer_pin_auth WHERE phone = ANY(${variants}) LIMIT 1
+    SELECT phone FROM customer_pin_auth WHERE phone IN ${inList(sql, variants)} LIMIT 1
   `;
   return rows.length > 0;
 }

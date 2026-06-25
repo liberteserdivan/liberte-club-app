@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inList } from './sqlIn.js';
 
 const sqlDir = join(dirname(fileURLToPath(import.meta.url)), '../../scripts/sql');
 
@@ -21,7 +22,7 @@ export async function readRlsStatus(sql) {
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND c.relkind = 'r'
-      AND c.relname = ANY(${tables})
+      AND c.relname IN ${inList(sql, tables)}
     ORDER BY c.relname
   `;
 

@@ -1,5 +1,6 @@
 import { parseAppStateData } from './appState.js';
 import { cleanPhone, phoneLookupVariants } from './phone.js';
+import { inList } from './sqlIn.js';
 import { listCustomers, normalizeEmail, findCustomerIdByPhone, findCustomerIdByEmail, hasCustomerPinAuth } from './customerEmails.js';
 
 const STATE_ID = 'liberte';
@@ -34,7 +35,7 @@ async function fetchPinAuthCustomerId(sql, phone) {
   const rows = await sql`
     SELECT customer_id, phone
     FROM customer_pin_auth
-    WHERE phone = ANY(${variants})
+    WHERE phone IN ${inList(sql, variants)}
     LIMIT 1
   `;
   return rows[0] ? Number(rows[0].customer_id) : null;
@@ -125,7 +126,7 @@ export async function inspectRegistrationConflict(sql, phone, email) {
     SELECT id, phone, normalized_phone, email
     FROM customers
     WHERE normalized_phone = ${normalizedPhone}
-       OR phone = ANY(${variants})
+       OR phone IN ${inList(sql, variants)}
     LIMIT 1
   `;
   const emailRows = normalizedEmail

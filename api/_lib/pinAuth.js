@@ -1,5 +1,6 @@
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cleanPhone, phoneLookupVariants } from './phone.js';
+import { inList } from './sqlIn.js';
 import { ensureSchemaReady } from './schemaReady.js';
 
 const PIN_ITERATIONS = 120000;
@@ -89,7 +90,7 @@ async function resolvePinAuthRow(sql, phone) {
   const rows = await sql`
     SELECT pin_hash, pin_salt, failed_attempts, locked_until, phone, customer_id
     FROM customer_pin_auth
-    WHERE phone = ANY(${variants})
+    WHERE phone IN ${inList(sql, variants)}
     LIMIT 1
   `;
 

@@ -1,4 +1,5 @@
 import { getSql } from './sql.js';
+import { inList } from './sqlIn.js';
 import { isProductionRuntime } from './schemaReady.js';
 
 // push_subscriptions tablosunu hazırla — production'da bootstrap SQL yeterli
@@ -256,7 +257,7 @@ export async function deactivatePushTokens(sql, tokens = []) {
   const rows = await sql`
     UPDATE push_subscriptions
     SET active = false, revoked_at = now(), updated_at = now()
-    WHERE token = ANY(${tokens}) AND active = true
+    WHERE token IN ${inList(sql, tokens)} AND active = true
     RETURNING id
   `;
   return rows.length;
