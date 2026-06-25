@@ -172,6 +172,11 @@ export async function pingSql(sql) {
   }
 }
 
+// İstek kapsamında mıyız — iç içe retry gereksiz
+export function isSqlRequestActive() {
+  return Boolean(requestStorage.getStore());
+}
+
 // API handler — warm bağlantı + ping (istek başına aç/kapat yok)
 export async function runHandlerWithSql(handler) {
   const connectionString = resolveConnectionString();

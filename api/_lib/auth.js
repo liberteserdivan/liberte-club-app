@@ -135,27 +135,44 @@ export async function getSessionForQr(req) {
   });
 }
 
-// Oturum bootstrap — invalidate etmeden müşteri yükle
+// Oturum bootstrap — tek SQL turunda oturum + müşteri
 export async function getSessionForBootstrap(req) {
-  const identity = await getSessionForQr(req);
-  if (!identity) return null;
+  const token = readAuthToken(req);
+  if (!token) return null;
 
   return runSql(async () => {
     const sql = getSql();
-    let customer = null;
-    let loyalty = null;
+    if (!sql) return null;
 
-    if (sql) {
-      const {
-        findCustomerById,
-        findLoyaltyByCustomerId,
-        loyaltyRowToCard
-      } = await import('./customersStore.js');
-      customer = await findCustomerById(sql, identity.customerId);
-      if (customer) {
-        const row = await findLoyaltyByCustomerId(sql, identity.customerId);
-        loyalty = loyaltyRowToCard(row, identity.customerId);
-      }
+    await ensureSessionTable(sql);
+    const rows = await sql`
+      SELECT customer_id, role, admin_verified
+      FROM auth_sessions
+      WHERE token_hash = ${hashToken(token)}
+        AND expires_at > now()
+      LIMIT 1
+    `;
+
+    const row = rows[0];
+    if (!row) return null;
+
+    const identity = {
+      customerId: Number(row.customer_id),
+      role: row.role,
+      isAdmin: row.role === 'admin',
+      adminVerified: Boolean(row.admin_verified)
+    };
+
+    const {
+      findCustomerById,
+      findLoyaltyByCustomerId,
+      loyaltyRowToCard
+    } = await import('./customersStore.js');
+    const customer = await findCustomerById(sql, identity.customerId);
+    let loyalty = null;
+    if (customer) {
+      const loyaltyRow = await findLoyaltyByCustomerId(sql, identity.customerId);
+      loyalty = loyaltyRowToCard(loyaltyRow, identity.customerId);
     }
 
     return {

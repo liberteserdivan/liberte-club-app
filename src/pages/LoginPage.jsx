@@ -129,7 +129,7 @@ export default function Login({ db, commit, setSession }) {
     setPin('');
     setPinConfirm('');
     if (result.customer) {
-      commit(mergeAuthSnapshot(db, {
+      commit((current) => mergeAuthSnapshot(current, {
         customer: result.customer,
         loyalty: result.loyalty
       }), { skipRemote: true });

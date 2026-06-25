@@ -100,12 +100,16 @@ async function handleAuthLoginCore(req, res, trace, startedAt) {
     const existing = await getSession(req);
     trace.markStep('session_read');
 
+    const sql = getSql();
+
     let customer = sessionMatchesPhone(existing, phone) ? existing.customer : null;
-    if (!customer) {
+    if (!customer && sql) {
+      const { findCustomerByPhone: findByPhoneSql } = await import('../customersStore.js');
+      customer = await findByPhoneSql(sql, phone);
+    } else if (!customer) {
       customer = await findCustomerByPhone(phone);
     }
 
-    const sql = getSql();
     const hasPinAuth = sql ? await hasCustomerPinAuth(sql, phone) : false;
 
     trace.log('lookup', {
@@ -194,7 +198,7 @@ async function handleAuthLoginCore(req, res, trace, startedAt) {
       });
     }
 
-    await indexCustomerEmail(customer);
+    await indexCustomerEmail(customer).catch(() => {});
 
     let session;
     try {

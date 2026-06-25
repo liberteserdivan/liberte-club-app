@@ -154,7 +154,10 @@ export function parseQrExpiresAt(value, ttlSeconds = 90) {
 
 // Müşteri — sunucudan kısa ömürlü QR token al
 export async function fetchCustomerQrToken(options = {}) {
-  const { signal, timeoutMs = 10000, customerId = null } = options;
+  const { signal, timeoutMs, customerId = null } = options;
+  const resolvedTimeout = Number(timeoutMs) > 0
+    ? Number(timeoutMs)
+    : (isNativeApp() ? 18_000 : 10_000);
   const tokenMeta = getStoredAuthTokenMeta();
 
   qrDevLog('[qr.frontend] start', {
@@ -172,7 +175,7 @@ export async function fetchCustomerQrToken(options = {}) {
       method: 'POST',
       body: JSON.stringify({ customerId }),
       signal,
-      timeoutMs,
+      timeoutMs: resolvedTimeout,
       skipUnauthorized: true
     }));
 

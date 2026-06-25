@@ -94,7 +94,7 @@ export default function App() {
       if (result?.session) {
         setSession(result.session);
         if (result.customer) {
-          commit(mergeAuthSnapshot(db, {
+          commit((current) => mergeAuthSnapshot(current, {
             customer: result.customer,
             loyalty: result.loyalty
           }), { skipRemote: true });
@@ -277,7 +277,7 @@ export default function App() {
     };
   }, []);
 
-  // Oturum var ama müşteri henüz yüklenmediyse giriş ekranı gösterme
+  // Oturum var ama müşteri henüz yüklenmediyse — giriş yanıtındaki snapshot öncelikli
   useEffect(() => {
     if (!awaitingCustomer) {
       setHydratingCustomer(false);
@@ -286,9 +286,12 @@ export default function App() {
 
     setHydratingCustomer(true);
     hydrateStartedRef.current = Date.now();
-    refreshRemote(true);
 
-    const timer = setTimeout(async () => {
+    const hydrateTimer = setTimeout(() => {
+      refreshRemote(true);
+    }, 400);
+
+    const failTimer = setTimeout(async () => {
       setHydratingCustomer(false);
       await logoutSession();
       setMemorySession(null);
@@ -296,7 +299,10 @@ export default function App() {
       setAuthNotice('Hesap bilgilerin yüklenemedi. Lütfen tekrar giriş yap.');
     }, CUSTOMER_HYDRATE_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(hydrateTimer);
+      clearTimeout(failTimer);
+    };
   }, [awaitingCustomer, session?.customerId, refreshRemote]);
 
   useEffect(() => {

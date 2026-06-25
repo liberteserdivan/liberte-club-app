@@ -46,7 +46,7 @@ export async function loadHistoryFromSql(externalSql = null, customerId = null) 
         FROM loyalty_events
         WHERE customer_id = ${Number(customerId)}
         ORDER BY id DESC
-        LIMIT 500
+        LIMIT 80
       `
     : await sql`
         SELECT *

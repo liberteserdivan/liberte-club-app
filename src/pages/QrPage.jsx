@@ -19,8 +19,8 @@ import { hasStoredAuthToken } from '../lib/apiClient.js';
 import { isNativeApp } from '../lib/platform.js';
 import { hydrateSessionTokenFromServer } from '../lib/session.js';
 
-const QR_FETCH_MS = 6000;
-const QR_LOADING_CAP_MS = 7000;
+const QR_FETCH_MS = isNativeApp() ? 18_000 : 10_000;
+const QR_LOADING_CAP_MS = isNativeApp() ? 22_000 : 12_000;
 const QR_SIZE = 260;
 const DEFAULT_TTL_SECONDS = 90;
 

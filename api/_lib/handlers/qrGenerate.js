@@ -1,7 +1,5 @@
-import { getSql } from '../appState.js';
 import { applyCors, publicErrorMessage } from '../http.js';
 import { getSessionForQr, readAuthToken } from '../auth.js';
-import { findCustomerById } from '../customersStore.js';
 import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from '../qrToken.js';
 import { insertErrorLog } from '../errorLogs.js';
 import { createRequestTrace } from '../requestTrace.js';
@@ -101,23 +99,9 @@ export async function handleQrGenerate(req, res) {
     ));
   }
 
-  const sql = getSql();
-  let memberNo = `LC-${session.customerId}`;
+  const memberNo = `LC-${session.customerId}`;
 
   try {
-    if (sql) {
-      trace.log('load_customer', { step: 'load_customer', customerId: session.customerId });
-      const customer = await findCustomerById(sql, session.customerId);
-      if (!customer) {
-        return res.status(404).json(trace.failBody(
-          'load_customer',
-          'CUSTOMER_NOT_FOUND',
-          'Müşteri kaydı bulunamadı.'
-        ));
-      }
-      memberNo = `LC-${customer.id}`;
-    }
-
     trace.log('create_payload', { step: 'create_payload', customerId: session.customerId, memberNo });
     const issued = createCustomerQrToken(session.customerId);
 
