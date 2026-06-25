@@ -1,15 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { fetchCustomerLoyaltySnapshot } from '../lib/realtimeFetch.js';
 import { getLpBalance, getLpLifetime } from '../lib/loyaltyStamps.js';
-import { isNativeApp, isIosNative, shouldRunClientPoll } from '../lib/platform.js';
-import { subscribeLoyaltyRefresh } from '../lib/loyaltySyncBus.js';
+import { isIosNative, isNativeApp } from '../lib/platform.js';
+import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForeground.js';
 
-const LP_POLL_MS_NATIVE = 1_000;
-const LP_POLL_MS_WEB = 2_000;
-const LP_BURST_MS_NATIVE = 800;
-const LP_BURST_WINDOW_MS = 90_000;
+const LP_POLL_MS_NATIVE = 2_000;
+const LP_POLL_MS_WEB = 3_000;
+const LP_BURST_MS_NATIVE = 1_200;
+const LP_BURST_WINDOW_MS = 45_000;
 
-// LP kartı gerçekten değişti mi — tam JSON karşılaştırmasından hafif
+// LP kartı gerçekten değişti mi
 function loyaltySnapshotChanged(prev, next) {
   if (!prev || !next) return true;
   if (getLpBalance(prev) !== getLpBalance(next)) return true;
@@ -19,7 +19,12 @@ function loyaltySnapshotChanged(prev, next) {
   return false;
 }
 
-// Realtime yedek — kasada LP eklendiğinde müşteri ekranı hızlı güncellensin
+function canPollNow() {
+  if (isNativeApp()) return isNativeAppActive();
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
+}
+
+// Realtime yedek — kasada LP eklendiğinde müşteri ekranı güncellensin
 export function useCustomerLoyaltyPoll({
   enabled = false,
   customerId = null,
@@ -37,8 +42,7 @@ export function useCustomerLoyaltyPoll({
     const burstUntil = Date.now() + (isNativeApp() ? LP_BURST_WINDOW_MS : 0);
 
     async function pollLoyalty() {
-      if (cancelled || inFlight) return;
-      if (!shouldRunClientPoll()) return;
+      if (cancelled || inFlight || !canPollNow()) return;
 
       inFlight = true;
       let loyalty;
@@ -82,29 +86,16 @@ export function useCustomerLoyaltyPoll({
     scheduleNextPoll();
 
     function onVisible() {
-      if (shouldRunClientPoll()) pollLoyalty();
+      if (canPollNow()) pollLoyalty();
     }
     document.addEventListener('visibilitychange', onVisible);
-    const unsubscribeRefresh = subscribeLoyaltyRefresh(pollLoyalty);
+    const unsubscribeResume = subscribeForegroundResume(pollLoyalty);
 
-    // iOS WKWebView — arka plandan dönüşte visibility gecikebilir
     function onPageShow() {
       pollLoyalty();
     }
     if (isIosNative()) {
       window.addEventListener('pageshow', onPageShow);
-    }
-
-    let appListener = null;
-    if (isNativeApp()) {
-      import('@capacitor/app').then(({ App }) => {
-        if (cancelled) return;
-        App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) pollLoyalty();
-        }).then((listener) => {
-          appListener = listener;
-        });
-      }).catch(() => {});
     }
 
     return () => {
@@ -114,8 +105,7 @@ export function useCustomerLoyaltyPoll({
       if (isIosNative()) {
         window.removeEventListener('pageshow', onPageShow);
       }
-      unsubscribeRefresh();
-      appListener?.remove?.();
+      unsubscribeResume();
     };
   }, [enabled, customerId, commit]);
 }

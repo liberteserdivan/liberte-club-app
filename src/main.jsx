@@ -11,6 +11,7 @@ import { initPwaInstallCapture } from './lib/pwaInstall.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { handlePushOpenPayload } from './lib/pushNavigation.js';
 import { isNativeApp } from './lib/platform.js';
+import { initNativeForegroundBridge } from './lib/appForeground.js';
 import { load } from './lib/db.js';
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import './style.css';
@@ -20,6 +21,7 @@ const legalRoute = resolveLegalRoute(window.location.pathname);
 patchFirebaseReferrer(getFirebaseReferrerOrigin());
 if (isNativeApp()) {
   ensureNativePushNavigation();
+  initNativeForegroundBridge();
 }
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) {

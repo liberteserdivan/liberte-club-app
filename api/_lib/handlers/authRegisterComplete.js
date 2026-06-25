@@ -28,6 +28,8 @@ import { inspectRegistrationConflict } from '../customerPhoneRepair.js';
 import { queueRegisterAppStateSync } from '../registerAppStateSync.js';
 import { useRelationalState } from '../relationalConfig.js';
 import { bumpAppStateRevision } from '../relationalState.js';
+import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
+import { resetSqlClient } from '../sql.js';
 import { invalidateAppStateCache } from '../appStateCache.js';
 
 function validEmail(v = '') {
@@ -361,13 +363,18 @@ export async function handleAuthRegisterComplete(req, res) {
   const trace = createRequestTrace(action === 'send-code' ? 'auth.register-check' : 'auth.register-complete');
 
   try {
-    if (action === 'send-code') return await handleSendCode(req, res, trace, body);
-    if (action === 'complete') return await handleComplete(req, res, trace, body);
-
-    return res.status(400).json(trace.failBody('action', 'INVALID_ACTION', 'Geçersiz işlem'));
+    return await withSqlRetry(async () => {
+      if (action === 'send-code') return await handleSendCode(req, res, trace, body);
+      if (action === 'complete') return await handleComplete(req, res, trace, body);
+      return res.status(400).json(trace.failBody('action', 'INVALID_ACTION', 'Geçersiz işlem'));
+    }, { resetClient: resetSqlClient });
   } catch (e) {
     console.error('[auth.register-complete]', trace.requestId, e?.stack || e?.message || e);
     await logRegisterFailure(trace, 'unexpected', e);
-    return res.status(500).json(trace.failBody('unexpected', 'REGISTER_FINAL_FAILED', e.message || 'Kayıt tamamlanamadı'));
+    return res.status(500).json(trace.failBody(
+      'unexpected',
+      publicDbErrorCode(e, 'REGISTER_FINAL_FAILED'),
+      publicDbErrorMessage(e, 'Kayıt tamamlanamadı')
+    ));
   }
 }

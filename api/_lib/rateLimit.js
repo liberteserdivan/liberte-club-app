@@ -1,5 +1,6 @@
 import { getSql } from './appState.js';
 import { ensureSchemaReady } from './schemaReady.js';
+import { runSql } from './runSql.js';
 
 // Rate limit penceresi (15 dakika)
 const WINDOW_MS = 15 * 60 * 1000;
@@ -16,7 +17,7 @@ export function readClientIp(req) {
 }
 
 // Rate limit kontrolü — aşıldıysa true döner
-export async function isRateLimited(key, { maxHits = 10, windowMs = WINDOW_MS } = {}) {
+async function isRateLimitedCore(key, { maxHits = 10, windowMs = WINDOW_MS } = {}) {
   const sql = getSql();
   if (!sql || !key) return false;
 
@@ -62,6 +63,10 @@ export async function isRateLimited(key, { maxHits = 10, windowMs = WINDOW_MS } 
     WHERE rate_key = ${key}
   `;
   return false;
+}
+
+export async function isRateLimited(key, options = {}) {
+  return runSql(() => isRateLimitedCore(key, options));
 }
 
 // Auth uçları için IP + eylem anahtarı

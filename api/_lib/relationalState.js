@@ -79,6 +79,21 @@ async function loadGlobalSliceFromDb(sql) {
   return { global: extractGlobalSlice(raw), updatedAt, legacyFull: raw };
 }
 
+// Kampanya/kupon — tam state birleştirmeden hafif okuma
+export async function loadPromotionalGlobalSlice(externalSql = null) {
+  const sql = externalSql || getSql();
+  if (!sql) {
+    return { campaigns: [], coupons: [], dailyCampaign: null };
+  }
+
+  const { global } = await loadGlobalSliceFromDb(sql);
+  return {
+    campaigns: global.campaigns || [],
+    coupons: (global.coupons || []).filter((row) => row?.active !== false),
+    dailyCampaign: global.dailyCampaign || null
+  };
+}
+
 // Tüm müşterileri SQL'den listele
 async function listAllCustomersFromSql(sql) {
   await ensureCustomersTables(sql);

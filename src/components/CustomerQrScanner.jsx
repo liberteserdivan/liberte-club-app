@@ -260,6 +260,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
 
     return () => {
       cancelled = true;
+      void stopScanner();
     };
   }, [scanRequested, nativeScanReady, readerId, onScanSuccess, stopScanner]);
 

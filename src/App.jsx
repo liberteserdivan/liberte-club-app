@@ -2,8 +2,9 @@ import { bootstrapDevAuth } from './lib/devAuth.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
-import { requestLoyaltyRefresh } from './lib/loyaltySyncBus.js';
+import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
 import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
+import { refreshRealtimeSessionFromServer } from './lib/supabaseClient.js';
 import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
 import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
@@ -41,7 +42,7 @@ const SPLASH_MIN_MS = 1000;
 const SPLASH_FADE_MS = 880;
 const SPLASH_TOTAL_MS = 1280;
 const SPLASH_FORCE_MS = 4500;
-const CUSTOMER_HYDRATE_MS = 8000;
+const CUSTOMER_HYDRATE_MS = 28_000;
 
 export default function App() {
   const sessionRef = useRef(null);
@@ -336,6 +337,7 @@ export default function App() {
   useEffect(() => {
     if (!isNativeApp()) return;
     ensureNativePushNavigation();
+    initNativeForegroundBridge();
   }, []);
 
   useEffect(() => {
@@ -345,7 +347,6 @@ export default function App() {
 
     if (!isNativeApp()) return undefined;
 
-    let appListener = null;
     const unbindTokenRefresh = bindNativeTokenRefresh(customer, db, commit);
 
     function registerNativePush() {
@@ -354,19 +355,13 @@ export default function App() {
 
     registerNativePush();
 
-    import('@capacitor/app').then(({ App }) => {
-      App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          registerNativePush();
-          requestLoyaltyRefresh();
-        }
-      }).then((listener) => {
-        appListener = listener;
-      });
-    }).catch(() => {});
+    const unsubscribeResume = subscribeForegroundResume(() => {
+      registerNativePush();
+      refreshRealtimeSessionFromServer().catch(() => {});
+    });
 
     return () => {
-      appListener?.remove?.();
+      unsubscribeResume();
       unbindTokenRefresh();
     };
   }, [customer?.id, db, commit]);

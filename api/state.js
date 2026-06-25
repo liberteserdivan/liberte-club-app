@@ -110,7 +110,12 @@ export default async function handler(req, res) {
       if (!session) return;
 
       const clientBaseAt = String(body?.updated_at || body?.baseUpdatedAt || '').trim();
-      const remote = await runSql(() => loadAppState());
+      const remote = await runSql(async () => {
+        if (session.isAdmin && session.adminVerified) {
+          return loadAppState();
+        }
+        return loadAppStateForCustomer(session.customerId);
+      });
 
       if (clientBaseAt && remote.updatedAt && !isSameAppStateRevision(remote.updatedAt, clientBaseAt)) {
         return res.status(409).json({

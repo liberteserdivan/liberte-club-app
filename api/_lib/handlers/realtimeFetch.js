@@ -15,11 +15,10 @@ function readPromoSlice(state) {
   };
 }
 
-// Relational modda promos — app_state global diliminden
+// Relational modda promos — yalnızca global dilim
 async function loadPromoSlice() {
-  const { loadAppState } = await import('../appState.js');
-  const remote = await loadAppState();
-  return readPromoSlice(remote.data || {});
+  const { loadPromotionalGlobalSlice } = await import('../relationalState.js');
+  return runSql(() => loadPromotionalGlobalSlice());
 }
 
 // Müşteri loyalty + son işlemler — Realtime tetikleyici sonrası hafif fetch

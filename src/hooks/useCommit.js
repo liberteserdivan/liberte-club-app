@@ -239,7 +239,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
   pullRemoteRef.current = pullRemote;
 
-  // İlk açılış, sekme değişimi ve görünürlük — tam sync'i UI'dan sonra başlat
+  // Oturum veya müşteri değişince — ilk tam sync
   useEffect(() => {
     if (!canPullRemote(sessionRef)) return undefined;
 
@@ -248,12 +248,29 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       scheduleSyncTimer();
     }, 120);
 
+    return () => {
+      clearTimeout(deferTimer);
+      clearSyncTimer();
+    };
+  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef, sessionCustomerId]);
+
+  // Sekme değişiminde yalnızca aralığı güncelle — tam sync tetikleme
+  useEffect(() => {
+    if (!canPullRemote(sessionRef)) return undefined;
+    scheduleSyncTimer();
+    return () => clearSyncTimer();
+  }, [tab, scheduleSyncTimer, clearSyncTimer, sessionRef]);
+
+  // Sekme görünürlüğü — arka planda sync durdur
+  useEffect(() => {
+    if (!canPullRemote(sessionRef)) return undefined;
+
     function onVisibilityChange() {
       const visible = document.visibilityState === 'visible';
       pageVisibleRef.current = visible;
 
       if (visible) {
-        pullRemote(true);
+        pullRemote(false);
         scheduleSyncTimer();
         return;
       }
@@ -262,12 +279,8 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => {
-      clearTimeout(deferTimer);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      clearSyncTimer();
-    };
-  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef, tab, sessionCustomerId]);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef]);
 
   // Kasada LP sonrası manuel sync
   useEffect(() => {

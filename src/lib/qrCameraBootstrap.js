@@ -8,7 +8,7 @@ const QR_ONLY = [Html5QrcodeSupportedFormats.QR_CODE];
 function buildScanOptions() {
   const iosNative = isNativeApp() && isIos();
   return {
-    fps: iosNative ? 24 : 15,
+    fps: iosNative ? 12 : 15,
     aspectRatio: 1,
     disableFlip: iosNative,
     formatsToSupport: QR_ONLY,
@@ -59,8 +59,8 @@ async function tuneIosInlineScanner(scanner) {
 
   try {
     await scanner.applyVideoConstraints({
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
       advanced: [{ focusMode: 'continuous' }]
     });
   } catch {
