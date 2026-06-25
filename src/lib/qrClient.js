@@ -272,6 +272,10 @@ export async function verifyCustomerQr(token) {
       throw new Error(formatted.message || 'QR doğrulanamadı');
     }
 
+    if (!data?.customer?.id) {
+      throw new Error('Müşteri bilgisi alınamadı. Tekrar deneyin.');
+    }
+
     return data.customer;
   } catch (error) {
     if (error?.name === 'AbortError') throw error;

@@ -134,19 +134,20 @@ export function applyAuthResult(result) {
   return memorySession;
 }
 
-// Oturumu kapat
+// Oturumu kapat — native'de token POST sonrası silinir
 export async function logoutSession() {
   memorySession = null;
   clearAdminPinVerifiedLocally();
-  clearNativeAuthToken();
 
-  if (useLocalAuth()) return;
-
-  try {
-    await apiJson('/api/auth/session', { method: 'POST' });
-  } catch {
-    // Sessizce geç
+  if (!useLocalAuth()) {
+    try {
+      await apiJson('/api/auth/session', { method: 'POST', ...AUTH_REQUEST_OPTIONS });
+    } catch {
+      // Yerel temizlik yine de yapılır
+    }
   }
+
+  clearNativeAuthToken();
 }
 
 // Geriye uyumluluk — localStorage okumaz

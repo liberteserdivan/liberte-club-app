@@ -142,6 +142,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     try {
       setScanBusy(true);
       const { customer, token } = await resolveCustomerFromScan(txt);
+      if (!customer?.id) {
+        throw new Error('Müşteri bilgisi alınamadı. Tekrar deneyin.');
+      }
       syncScannedCustomer(customer);
       setScannedToken(token);
       setSuccess(true);

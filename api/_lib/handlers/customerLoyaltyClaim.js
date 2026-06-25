@@ -2,6 +2,8 @@ import { applyCors, readBodySafe } from '../http.js';
 import { requireSession } from '../auth.js';
 import { applyDailyLoginRewardRelational } from '../customerRewards.js';
 import { logServerError } from '../logServerError.js';
+import { runSql } from '../runSql.js';
+import { publicDbErrorCode, publicDbErrorMessage } from '../dbTransient.js';
 
 // Günlük giriş LP ödülü — sunucuda kalıcı
 export async function handleDailyLoginClaim(req, res) {
@@ -14,7 +16,7 @@ export async function handleDailyLoginClaim(req, res) {
 
   try {
     readBodySafe(req);
-    const result = await applyDailyLoginRewardRelational(session.customerId);
+    const result = await runSql(() => applyDailyLoginRewardRelational(session.customerId));
 
     if (!result.ok) {
       return res.status(400).json({ ok: false, error: result.error || 'Ödül alınamadı' });
@@ -32,6 +34,10 @@ export async function handleDailyLoginClaim(req, res) {
       error,
       customerId: session.customerId
     });
-    return res.status(500).json({ ok: false, error: 'Günlük ödül kaydedilemedi' });
+    return res.status(500).json({
+      ok: false,
+      error: publicDbErrorMessage(error, 'Günlük ödül kaydedilemedi'),
+      code: publicDbErrorCode(error, 'DAILY_CLAIM_FAILED')
+    });
   }
 }

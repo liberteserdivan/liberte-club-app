@@ -3,6 +3,7 @@ import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
 import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
+import { runSql } from './runSql.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -75,31 +76,33 @@ export async function getSession(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  const sql = getSql();
-  if (!sql) return null;
+  return runSql(async () => {
+    const sql = getSql();
+    if (!sql) return null;
 
-  await ensureSessionTable(sql);
-  const tokenHash = hashToken(token);
-  const rows = await sql`
-    SELECT customer_id, role, admin_verified, expires_at
-    FROM auth_sessions
-    WHERE token_hash = ${tokenHash}
-      AND expires_at > now()
-    LIMIT 1
-  `;
+    await ensureSessionTable(sql);
+    const tokenHash = hashToken(token);
+    const rows = await sql`
+      SELECT customer_id, role, admin_verified, expires_at
+      FROM auth_sessions
+      WHERE token_hash = ${tokenHash}
+        AND expires_at > now()
+      LIMIT 1
+    `;
 
-  const row = rows[0];
-  if (!row) return null;
+    const row = rows[0];
+    if (!row) return null;
 
-  const session = {
-    customerId: Number(row.customer_id),
-    role: row.role,
-    isAdmin: row.role === 'admin',
-    adminVerified: Boolean(row.admin_verified),
-    expiresAt: row.expires_at
-  };
+    const session = {
+      customerId: Number(row.customer_id),
+      role: row.role,
+      isAdmin: row.role === 'admin',
+      adminVerified: Boolean(row.admin_verified),
+      expiresAt: row.expires_at
+    };
 
-  return syncSessionWithCustomer(req, session);
+    return syncSessionWithCustomer(req, session);
+  });
 }
 
 // QR üretimi için hafif oturum — müşteri sync ve invalidate yok
@@ -107,27 +110,29 @@ export async function getSessionForQr(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  const sql = getSql();
-  if (!sql) return null;
+  return runSql(async () => {
+    const sql = getSql();
+    if (!sql) return null;
 
-  await ensureSessionTable(sql);
-  const rows = await sql`
-    SELECT customer_id, role, admin_verified
-    FROM auth_sessions
-    WHERE token_hash = ${hashToken(token)}
-      AND expires_at > now()
-    LIMIT 1
-  `;
+    await ensureSessionTable(sql);
+    const rows = await sql`
+      SELECT customer_id, role, admin_verified
+      FROM auth_sessions
+      WHERE token_hash = ${hashToken(token)}
+        AND expires_at > now()
+      LIMIT 1
+    `;
 
-  const row = rows[0];
-  if (!row) return null;
+    const row = rows[0];
+    if (!row) return null;
 
-  return {
-    customerId: Number(row.customer_id),
-    role: row.role,
-    isAdmin: row.role === 'admin',
-    adminVerified: Boolean(row.admin_verified)
-  };
+    return {
+      customerId: Number(row.customer_id),
+      role: row.role,
+      isAdmin: row.role === 'admin',
+      adminVerified: Boolean(row.admin_verified)
+    };
+  });
 }
 
 // Oturum bootstrap — invalidate etmeden müşteri yükle
@@ -135,28 +140,30 @@ export async function getSessionForBootstrap(req) {
   const identity = await getSessionForQr(req);
   if (!identity) return null;
 
-  const sql = getSql();
-  let customer = null;
-  let loyalty = null;
+  return runSql(async () => {
+    const sql = getSql();
+    let customer = null;
+    let loyalty = null;
 
-  if (sql) {
-    const {
-      findCustomerById,
-      findLoyaltyByCustomerId,
-      loyaltyRowToCard
-    } = await import('./customersStore.js');
-    customer = await findCustomerById(sql, identity.customerId);
-    if (customer) {
-      const row = await findLoyaltyByCustomerId(sql, identity.customerId);
-      loyalty = loyaltyRowToCard(row, identity.customerId);
+    if (sql) {
+      const {
+        findCustomerById,
+        findLoyaltyByCustomerId,
+        loyaltyRowToCard
+      } = await import('./customersStore.js');
+      customer = await findCustomerById(sql, identity.customerId);
+      if (customer) {
+        const row = await findLoyaltyByCustomerId(sql, identity.customerId);
+        loyalty = loyaltyRowToCard(row, identity.customerId);
+      }
     }
-  }
 
-  return {
-    ...identity,
-    customer: customer ? toCustomerSnapshot(customer) : null,
-    loyalty
-  };
+    return {
+      ...identity,
+      customer: customer ? toCustomerSnapshot(customer) : null,
+      loyalty
+    };
+  });
 }
 
 // Oturumu veritabanından sil — yanıt gövdesi yazmadan
@@ -164,11 +171,13 @@ export async function invalidateCurrentSession(req) {
   const token = readAuthToken(req);
   if (!token) return;
 
-  const sql = getSql();
-  if (!sql) return;
+  await runSql(async () => {
+    const sql = getSql();
+    if (!sql) return;
 
-  await ensureSessionTable(sql);
-  await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
+    await ensureSessionTable(sql);
+    await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
+  });
 }
 
 // Oturum satırını veritabanında güncelle
@@ -251,38 +260,42 @@ export async function syncSessionWithCustomer(req, session) {
 
 // Yeni oturum oluştur
 export async function createSession(res, { customerId, role = 'user', deviceId = '', sql: externalSql = null }) {
-  const sql = externalSql || getSql();
-  if (!sql) throw new Error('DATABASE_URL eksik');
+  return runSql(async () => {
+    const sql = externalSql || getSql();
+    if (!sql) throw new Error('DATABASE_URL eksik');
 
-  await ensureSessionTable(sql);
-  const token = randomBytes(32).toString('base64url');
-  const tokenHash = hashToken(token);
-  const safeRole = role === 'admin' ? 'admin' : 'user';
+    await ensureSessionTable(sql);
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = hashToken(token);
+    const safeRole = role === 'admin' ? 'admin' : 'user';
 
-  await sql`
-    INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at)
-    VALUES (
-      ${tokenHash},
-      ${customerId},
-      ${safeRole},
-      ${deviceId || null},
-      now() + interval '30 days'
-    )
-  `;
+    await sql`
+      INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at)
+      VALUES (
+        ${tokenHash},
+        ${customerId},
+        ${safeRole},
+        ${deviceId || null},
+        now() + interval '30 days'
+      )
+    `;
 
-  setSessionCookie(res, token);
-  return { token, customerId, role: safeRole, isAdmin: safeRole === 'admin' };
+    setSessionCookie(res, token);
+    return { token, customerId, role: safeRole, isAdmin: safeRole === 'admin' };
+  });
 }
 
 // Oturumu sonlandır
 export async function destroySession(req, res) {
   const token = readAuthToken(req);
   if (token) {
-    const sql = getSql();
-    if (sql) {
+    await runSql(async () => {
+      const sql = getSql();
+      if (!sql) return;
+
       await ensureSessionTable(sql);
       await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
-    }
+    });
   }
   clearSessionCookie(res);
 }
@@ -303,22 +316,24 @@ export async function markAdminVerified(req) {
   const token = readAuthToken(req);
   if (!token) return false;
 
-  const sql = getSql();
-  if (!sql) return false;
+  return runSql(async () => {
+    const sql = getSql();
+    if (!sql) return false;
 
-  await ensureSessionTable(sql);
-  const rows = await sql`
-    UPDATE auth_sessions AS s
-    SET admin_verified = true,
-        role = 'admin'
-    FROM customers AS c
-    WHERE s.token_hash = ${hashToken(token)}
-      AND s.expires_at > now()
-      AND c.id = s.customer_id
-      AND c.is_admin = true
-    RETURNING s.customer_id
-  `;
-  return Boolean(rows[0]);
+    await ensureSessionTable(sql);
+    const rows = await sql`
+      UPDATE auth_sessions AS s
+      SET admin_verified = true,
+          role = 'admin'
+      FROM customers AS c
+      WHERE s.token_hash = ${hashToken(token)}
+        AND s.expires_at > now()
+        AND c.id = s.customer_id
+        AND c.is_admin = true
+      RETURNING s.customer_id
+    `;
+    return Boolean(rows[0]);
+  });
 }
 
 // Müşteriyi telefon ile bul — normalize tablo + yarım kayıt onarımı
@@ -327,13 +342,15 @@ export async function findCustomerByPhone(phone) {
   const sql = getSql();
 
   if (sql) {
-    const { findCustomerByPhone: findByPhoneSql } = await import('./customersStore.js');
-    const fromSql = await findByPhoneSql(sql, phone);
-    if (fromSql) return fromSql;
+    const fromSql = await runSql(async () => {
+      const { findCustomerByPhone: findByPhoneSql } = await import('./customersStore.js');
+      const found = await findByPhoneSql(sql, phone);
+      if (found) return found;
 
-    const { repairIncompleteCustomer } = await import('./customerPhoneRepair.js');
-    const repaired = await repairIncompleteCustomer(sql, phone);
-    if (repaired) return repaired;
+      const { repairIncompleteCustomer } = await import('./customerPhoneRepair.js');
+      return repairIncompleteCustomer(sql, phone);
+    });
+    if (fromSql) return fromSql;
   }
 
   if (useRelationalState()) return null;

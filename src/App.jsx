@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
 import { requestLoyaltyRefresh } from './lib/loyaltySyncBus.js';
+import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
 import { useCustomerRealtime } from './hooks/useCustomerRealtime.js';
 import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';

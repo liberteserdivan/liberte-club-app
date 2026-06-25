@@ -42,6 +42,8 @@ function buildClientOptions(connectionString) {
     // Supabase transaction pooler — serverless uyumu
     options.prepare = false;
     options.fetch_types = false;
+    options.idle_timeout = 5;
+    options.max_lifetime = 120;
   }
 
   return options;

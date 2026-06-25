@@ -11,8 +11,6 @@ import { TIER_TONE } from '../lib/membershipTier.js';
 import { apiJson } from '../lib/apiClient.js';
 import { useLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
-import { logoutSession } from '../lib/session.js';
-import { deactivateDevicePushToken } from '../lib/pushPrompt.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
 import { supportEmail, supportUrl, CLUB_APP_NAME } from '../lib/constants.js';
 
@@ -32,9 +30,7 @@ export default function ProfilePage({
   const tierTone = TIER_TONE[level] || 'bronze';
 
   async function logout() {
-    deactivateDevicePushToken(customer.id, db, commit);
-    await logoutSession();
-    setSession(null);
+    await setSession(null);
   }
 
   async function removeAccount() {

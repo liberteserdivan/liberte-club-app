@@ -3,6 +3,8 @@ import { loadAppState, loadAppStateRevision, loadAppStateForCustomer, saveAppSta
 import { getSession, getSessionForBootstrap, requireAdminSession, requireSession } from './_lib/auth.js';
 import { handleQrGenerate } from './_lib/handlers/qrGenerate.js';
 import { logServerError } from './_lib/logServerError.js';
+import { runSql } from './_lib/runSql.js';
+import { publicDbErrorCode, publicDbErrorMessage } from './_lib/dbTransient.js';
 import {
   clearAllErrorLogs,
   insertErrorLog,
@@ -47,7 +49,7 @@ export default async function handler(req, res) {
 
       const since = String(req.query?.since || '').trim();
       if (since) {
-        const revision = await loadAppStateRevision();
+        const revision = await runSql(() => loadAppStateRevision());
         if (isSameAppStateRevision(revision.updatedAt, since)) {
           return res.status(200).json({
             unchanged: true,
@@ -61,9 +63,11 @@ export default async function handler(req, res) {
       }
 
       const isFullAdmin = session.isAdmin && session.adminVerified;
-      const remote = isFullAdmin
-        ? await loadAppState()
-        : await loadAppStateForCustomer(session.customerId);
+      const remote = await runSql(() => (
+        isFullAdmin
+          ? loadAppState()
+          : loadAppStateForCustomer(session.customerId)
+      ));
       if (!remote.data) {
         return res.status(200).json({ data: null, updated_at: null, mode: 'cloud' });
       }
@@ -106,7 +110,7 @@ export default async function handler(req, res) {
       if (!session) return;
 
       const clientBaseAt = String(body?.updated_at || body?.baseUpdatedAt || '').trim();
-      const remote = await loadAppState();
+      const remote = await runSql(() => loadAppState());
 
       if (clientBaseAt && remote.updatedAt && !isSameAppStateRevision(remote.updatedAt, clientBaseAt)) {
         return res.status(409).json({
@@ -122,8 +126,8 @@ export default async function handler(req, res) {
       if (session.isAdmin) {
         const adminSession = await requireAdminSession(req, res, { pinRequired: true });
         if (!adminSession) return;
-        await saveAppState(mergeAdminState(canonical, data));
-        const saved = await loadAppStateRevision();
+        await runSql(() => saveAppState(mergeAdminState(canonical, data)));
+        const saved = await runSql(() => loadAppStateRevision());
         return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
       }
 
@@ -142,8 +146,8 @@ export default async function handler(req, res) {
 
       // Müşteri yalnızca güvenli profil alanlarını günceller
       const merged = mergeUserState(canonical, data, session.customerId);
-      await saveAppState(merged);
-      const saved = await loadAppStateRevision();
+      await runSql(() => saveAppState(merged));
+      const saved = await runSql(() => loadAppStateRevision());
       return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
     }
 
@@ -154,7 +158,10 @@ export default async function handler(req, res) {
       error: err,
       customerId: null
     });
-    return res.status(500).json({ error: publicErrorMessage(err, 'Veritabanı hatası') });
+    return res.status(500).json({
+      error: publicDbErrorMessage(err, publicErrorMessage(err, 'Veritabanı hatası')),
+      code: publicDbErrorCode(err, 'SERVER_ERROR')
+    });
   }
 }
 

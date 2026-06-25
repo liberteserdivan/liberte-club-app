@@ -18,7 +18,11 @@ export async function handleAuthSession(req, res) {
       return res.status(200).json({ ok: true, requestId: trace.requestId });
     } catch (e) {
       trace.log('logout_error', { step: 'logout', error: e?.message || String(e) });
-      return res.status(500).json(trace.failBody('logout', 'LOGOUT_FAILED', e.message || 'Çıkış yapılamadı'));
+      return res.status(500).json(trace.failBody(
+        'logout',
+        publicDbErrorCode(e, 'LOGOUT_FAILED'),
+        publicDbErrorMessage(e, 'Çıkış yapılamadı. Lütfen tekrar deneyin.')
+      ));
     }
   }
 

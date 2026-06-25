@@ -17,6 +17,7 @@ import {
   redeemCategoryReward
 } from '../loyaltyOps.js';
 import { menuItems } from '../../../src/lib/menuSeed.js';
+import { runSql } from '../runSql.js';
 
 // QR token doğrula — kasiyer müşteri kartını açar
 export async function handleAdminQrVerify(req, res) {
@@ -35,12 +36,12 @@ export async function handleAdminQrVerify(req, res) {
     }
 
     if (useRelationalState()) {
-      const customer = await loadCustomerSummaryRelational(verified.customerId);
+      const customer = await runSql(() => loadCustomerSummaryRelational(verified.customerId));
       if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
       return res.status(200).json({ ok: true, customer });
     }
 
-    const remote = await loadAppState();
+    const remote = await runSql(() => loadAppState());
     if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
 
     const customer = customerSummary(remote.data, verified.customerId);
@@ -81,12 +82,12 @@ export async function handleAdminLoyaltyAction(req, res) {
       : null;
 
     if (useRelationalState()) {
-      const result = await applyLoyaltyActionRelational({
+      const result = await runSql(() => applyLoyaltyActionRelational({
         customerId: verified.customerId,
         action,
         category,
         menuItem
-      });
+      }));
 
       if (!result.ok) {
         return res.status(400).json({ error: result.error || 'İşlem yapılamadı' });
@@ -100,7 +101,7 @@ export async function handleAdminLoyaltyAction(req, res) {
       });
     }
 
-    const remote = await loadAppState();
+    const remote = await runSql(() => loadAppState());
     if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
 
     const baseUpdatedAt = remote.updatedAt;
