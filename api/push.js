@@ -1,12 +1,13 @@
 import { handlePushRegisterDevice } from './_lib/handlers/pushRegisterDevice.js';
 import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
+import { withSqlRequest } from './_lib/sqlRequest.js';
 
 const PUSH_ACTIONS = {
   'register-device': handlePushRegisterDevice,
   send: handleAdminPushSend
 };
 
-export default async function handler(req, res) {
+export default withSqlRequest(async function handler(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
 
   if (action === 'send') {
@@ -19,4 +20,4 @@ export default async function handler(req, res) {
   }
 
   return route(req, res);
-}
+});

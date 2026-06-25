@@ -65,7 +65,13 @@ test('LoginPage kayıt sonrası uzak kayıt atlar', () => {
   assert.match(source, /skipRemote:\s*true/);
 });
 
-test('sql pool globalThis önbelleği kullanır', () => {
+test('sql istek kapsamı — serverless taze bağlantı', () => {
   const source = readFileSync(join(root, 'api/_lib/sql.js'), 'utf8');
-  assert.match(source, /globalThis\[GLOBAL_SQL_KEY\]/);
+  assert.match(source, /AsyncLocalStorage/);
+  assert.match(source, /runHandlerWithSql/);
+});
+
+test('API entrypoint withSqlRequest kullanır', () => {
+  const auth = readFileSync(join(root, 'api/auth.js'), 'utf8');
+  assert.match(auth, /withSqlRequest/);
 });

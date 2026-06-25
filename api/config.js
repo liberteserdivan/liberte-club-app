@@ -6,6 +6,7 @@ import { readSupabasePublicConfig } from './_lib/supabasePublicConfig.js';
 import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from './_lib/qrToken.js';
 import { requireConfigDiagAccess } from './_lib/configAccess.js';
 import { isProductionRuntime } from './_lib/schemaReady.js';
+import { withSqlRequest } from './_lib/sqlRequest.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -211,7 +212,7 @@ async function handleRlsApply(res) {
 }
 
 // Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
-export default async function handler(req, res) {
+export default withSqlRequest(async function handler(req, res) {
   applyPublicCors(res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -243,4 +244,4 @@ export default async function handler(req, res) {
   if (resource === 'supabase') return handleSupabaseConfig(res);
 
   return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status, qr-status, rls-status veya supabase' });
-}
+});

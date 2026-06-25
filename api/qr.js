@@ -1,6 +1,7 @@
 import { handleQrGenerate } from './_lib/handlers/qrGenerate.js';
+import { withSqlRequest } from './_lib/sqlRequest.js';
 
-export default async function handler(req, res) {
+export default withSqlRequest(async function handler(req, res) {
   const action = String(req.query?.action || 'generate').trim().toLowerCase();
 
   if (action === 'generate') {
@@ -12,4 +13,4 @@ export default async function handler(req, res) {
     code: 'NOT_FOUND',
     message: 'QR servisi bulunamadı.'
   });
-}
+});

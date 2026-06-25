@@ -1,4 +1,5 @@
 // Yönetici yönlendirici — handler'lar ihtiyaç anında yüklenir (Firebase ağır modülleri atlanır)
+import { withSqlRequest } from './_lib/sqlRequest.js';
 
 const ADMIN_RESOURCE_LOADERS = {
   backup: () => import('./_lib/handlers/adminBackup.js').then((m) => m.handleAdminBackup),
@@ -13,7 +14,7 @@ const ADMIN_RESOURCE_LOADERS = {
   'review-action': () => import('./_lib/handlers/adminReview.js').then((m) => m.handleAdminReviewAction)
 };
 
-export default async function handler(req, res) {
+export default withSqlRequest(async function handler(req, res) {
   const resource = String(req.query?.resource || '').trim().toLowerCase();
   const loader = ADMIN_RESOURCE_LOADERS[resource];
 
@@ -23,4 +24,4 @@ export default async function handler(req, res) {
 
   const route = await loader();
   return route(req, res);
-}
+});

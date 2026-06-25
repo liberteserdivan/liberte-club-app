@@ -5,13 +5,18 @@ const TRANSIENT_PATTERNS = [
   'edbhandlerexited',
   'connection to database closed',
   'connection terminated',
+  'connection terminated unexpectedly',
   'econnreset',
   'socket hang up',
+  'broken pipe',
+  'client_idle_timeout',
   'canceling statement due to statement timeout',
   'too many connections',
   '57p01',
   '08006',
-  '08003'
+  '08003',
+  '08001',
+  'nodename nor servname'
 ];
 
 // Pooler veya ağ kaynaklı geçici hata mı?
@@ -47,7 +52,7 @@ function sleep(ms) {
 }
 
 // Kopan bağlantıda isteği kısa gecikmeyle yeniden dene
-export async function withSqlRetry(task, { retries = 2, resetClient } = {}) {
+export async function withSqlRetry(task, { retries = 4, resetClient } = {}) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -61,7 +66,7 @@ export async function withSqlRetry(task, { retries = 2, resetClient } = {}) {
       if (typeof resetClient === 'function') {
         resetClient();
       }
-      await sleep(80 * (attempt + 1));
+      await sleep(60 * (attempt + 1));
     }
   }
 

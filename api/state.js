@@ -21,8 +21,9 @@ import {
 import { applyBirthdayReward } from './_lib/loyaltyOps.js';
 import { enforceAuthRateLimit } from './_lib/rateLimit.js';
 import { useRelationalState } from './_lib/relationalConfig.js';
+import { withSqlRequest } from './_lib/sqlRequest.js';
 
-export default async function handler(req, res) {
+export default withSqlRequest(async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -168,7 +169,7 @@ export default async function handler(req, res) {
       code: publicDbErrorCode(err, 'SERVER_ERROR')
     });
   }
-}
+});
 
 // Yönetici — hata log listesi
 async function handleErrorLogList(req, res) {

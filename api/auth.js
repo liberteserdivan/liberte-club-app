@@ -1,4 +1,6 @@
 // Kimlik doğrulama yönlendirici — Vercel Hobby 12 function limiti
+import { withSqlRequest } from './_lib/sqlRequest.js';
+
 const AUTH_ACTIONS = {
   login: () => import('./_lib/handlers/authLogin.js').then((m) => m.handleAuthLogin),
   session: () => import('./_lib/handlers/authSession.js').then((m) => m.handleAuthSession),
@@ -9,7 +11,7 @@ const AUTH_ACTIONS = {
   'admin-members': () => import('./_lib/handlers/adminMembers.js').then((m) => m.handleAdminMembers)
 };
 
-export default async function handler(req, res) {
+export default withSqlRequest(async function handler(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
   const loader = AUTH_ACTIONS[action];
 
@@ -19,4 +21,4 @@ export default async function handler(req, res) {
 
   const route = await loader();
   return route(req, res);
-}
+});
