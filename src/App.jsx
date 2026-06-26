@@ -76,15 +76,14 @@ export default function App() {
 
   useEffect(() => {
     setUnauthorizedHandler((reason) => {
-      void (async () => {
-        await closeAllRealtimeChannels();
-        await logoutSession();
-        setMemorySession(null);
-        setSession(null);
-        setAuthNotice(reason === 'expired'
-          ? 'Oturumun sona erdi. Lütfen tekrar giriş yap.'
-          : '');
-      })();
+      // Oturumu anında kapat — yerel temizlik senkron, realtime arka planda
+      logoutSession();
+      setMemorySession(null);
+      setSession(null);
+      setAuthNotice(reason === 'expired'
+        ? 'Oturumun sona erdi. Lütfen tekrar giriş yap.'
+        : '');
+      void closeAllRealtimeChannels().catch(() => {});
     });
     return () => setUnauthorizedHandler(null);
   }, []);
@@ -153,16 +152,31 @@ export default function App() {
     startPushForegroundListener().catch(() => {});
   }, []);
 
-  async function handleSetSession(next) {
+  function handleSetSession(next) {
     if (!next) {
-      if (customer?.id) {
-        await deactivateDevicePushToken(customer.id, db, commit);
-      }
-      await closeAllRealtimeChannels();
-      await logoutSession();
+      const prevCustomerId = customer?.id || null;
+
+      // 1) UI'yi ANINDA giriş ekranına al — kullanıcı beklemesin
+      logoutSession();
       setMemorySession(null);
       setSession(null);
       setAdminGateSkipped(false);
+
+      // 2) Temizlik işlemleri arka planda (UI'yı bloklamaz)
+      void (async () => {
+        try {
+          if (prevCustomerId) {
+            await deactivateDevicePushToken(prevCustomerId, dbRef.current, commit);
+          }
+        } catch {
+          // Çıkış akışı yine de tamamlandı
+        }
+        try {
+          await closeAllRealtimeChannels();
+        } catch {
+          // Realtime kapatma hatası yoksayılır
+        }
+      })();
       return;
     }
     setMemorySession(next);
@@ -291,9 +305,9 @@ export default function App() {
       refreshRemote(true);
     }, 400);
 
-    const failTimer = setTimeout(async () => {
+    const failTimer = setTimeout(() => {
       setHydratingCustomer(false);
-      await logoutSession();
+      logoutSession();
       setMemorySession(null);
       setSession(null);
       setAuthNotice('Hesap bilgilerin yüklenemedi. Lütfen tekrar giriş yap.');

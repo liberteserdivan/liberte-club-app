@@ -49,6 +49,8 @@ async function revokePushTokenOnServer(customerId) {
   try {
     await apiJson('/api/push/register-device', {
       method: 'POST',
+      timeoutMs: 8000,
+      skipUnauthorized: true,
       body: JSON.stringify({
         customerId: Number(customerId),
         token: null,

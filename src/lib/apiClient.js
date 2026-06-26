@@ -70,6 +70,11 @@ function readStoredAuthToken() {
   }
 }
 
+// Saklanan ham oturum tokenı — çıkışta sunucuya açık header ile göndermek için
+export function getStoredAuthToken() {
+  return readStoredAuthToken();
+}
+
 const FETCH_TIMEOUT_MS = 12000;
 const NATIVE_FETCH_TIMEOUT_MS = 25000;
 const AUTH_FETCH_TIMEOUT_MS = 25000;

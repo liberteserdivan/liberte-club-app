@@ -2,6 +2,7 @@ import {
   apiJson,
   AUTH_REQUEST_OPTIONS,
   clearNativeAuthToken,
+  getStoredAuthToken,
   hasStoredAuthToken,
   saveNativeAuthToken
 } from './apiClient.js';
@@ -134,20 +135,29 @@ export function applyAuthResult(result) {
   return memorySession;
 }
 
-// Oturumu kapat — native'de token POST sonrası silinir
-export async function logoutSession() {
+// Oturumu kapat — yerel temizlik ANINDA, sunucu iptali arka planda.
+// Token önce yakalanıp hemen silinir; böylece UI beklemez ve sonraki giriş
+// tazelenen tokenı ezmez.
+export function logoutSession() {
+  const token = getStoredAuthToken();
+
+  // 1) Yerel oturumu anında temizle
   memorySession = null;
   clearAdminPinVerifiedLocally();
-
-  if (!useLocalAuth()) {
-    try {
-      await apiJson('/api/auth/session', { method: 'POST', ...AUTH_REQUEST_OPTIONS });
-    } catch {
-      // Yerel temizlik yine de yapılır
-    }
-  }
-
   clearNativeAuthToken();
+
+  // 2) Sunucudaki oturumu arka planda iptal et — kısa timeout, bloklamaz.
+  // Token storage'dan silindiği için Authorization header açıkça verilir.
+  if (!useLocalAuth() && token) {
+    apiJson('/api/auth/session', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      timeoutMs: 8000,
+      skipUnauthorized: true
+    }).catch(() => {
+      // Sunucu iptali başarısız olsa da yerel çıkış tamamlandı
+    });
+  }
 }
 
 // Geriye uyumluluk — localStorage okumaz
