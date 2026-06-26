@@ -36,8 +36,10 @@ export function useAdminMembers({ enabled = false, commit, session = null, db = 
       return undefined;
     }
 
+    // Üye listesi büyük olabilir; sık çekmek egress'i şişirir.
+    // Realtime değişiklikleri zaten tetikler, bu yüzden 60 sn yeterli.
     pullMembers();
-    const timer = setInterval(pullMembers, 15_000);
+    const timer = setInterval(pullMembers, 60_000);
     return () => clearInterval(timer);
   }, [enabled, commit, pullMembers, session?.adminVerified, session?.customerId]);
 

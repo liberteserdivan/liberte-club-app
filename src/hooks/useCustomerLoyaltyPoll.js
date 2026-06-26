@@ -4,10 +4,14 @@ import { getLpBalance, getLpLifetime } from '../lib/loyaltyStamps.js';
 import { isIosNative, isNativeApp } from '../lib/platform.js';
 import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForeground.js';
 
-const LP_POLL_MS_NATIVE = 2_000;
-const LP_POLL_MS_WEB = 3_000;
-const LP_BURST_MS_NATIVE = 1_200;
-const LP_BURST_WINDOW_MS = 45_000;
+// Anlık güncelleme realtime (websocket) ile gelir; bu yoklama yalnızca yedektir.
+// Bu yüzden seyrek tutulur — boşa giden egress (giden trafik) ~%90 azalır.
+// Ekran ilk açıldığında kısa bir "hızlı kontrol" penceresi bırakılır ki
+// kasada yapılan işlem realtime gecikirse bile birkaç saniyede yansısın.
+const LP_POLL_MS_NATIVE = 20_000;
+const LP_POLL_MS_WEB = 30_000;
+const LP_BURST_MS_NATIVE = 5_000;
+const LP_BURST_WINDOW_MS = 20_000;
 
 // LP kartı gerçekten değişti mi
 function loyaltySnapshotChanged(prev, next) {

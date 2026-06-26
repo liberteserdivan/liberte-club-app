@@ -38,8 +38,9 @@ export function useAdminDashboardStats({ enabled = false }) {
       return undefined;
     }
 
+    // Özet sayaçları kritik-anlık değil; 60 sn aralık egress'i azaltır.
     refreshStats();
-    const timer = setInterval(refreshStats, 20_000);
+    const timer = setInterval(refreshStats, 60_000);
     return () => clearInterval(timer);
   }, [enabled, refreshStats]);
 
