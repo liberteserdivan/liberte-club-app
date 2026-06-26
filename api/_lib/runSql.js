@@ -1,10 +1,10 @@
 import { withSqlRetry } from './dbTransient.js';
 import { isSqlRequestActive, resetSqlClient } from './sql.js';
 
-// Kritik SQL — API isteği içindeyken tek retry katmanı yeterli
+// Kritik SQL — kopan bağlantıda sorguyu yeniden dener.
+// İstek kapsamında daha az deneme (iç içe retry storm önlenir);
+// kapsam dışında (script/dev) daha fazla deneme.
 export function runSql(task) {
-  if (isSqlRequestActive()) {
-    return task();
-  }
-  return withSqlRetry(task, { retries: 4, resetClient: resetSqlClient });
+  const retries = isSqlRequestActive() ? 2 : 4;
+  return withSqlRetry(task, { retries, resetClient: resetSqlClient });
 }
