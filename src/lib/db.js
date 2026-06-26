@@ -435,8 +435,13 @@ export function daysSince(dateText){
 
 
 export function localDayKey(){
-  const d=new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  // Gün anahtarı — Türkiye saatine sabit (sunucu ile uyumlu, en-CA: YYYY-MM-DD)
+  try{
+    return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  }catch{
+    const d=new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
 }
 
 // Admin veya ayar açıksa çark sınırı yok

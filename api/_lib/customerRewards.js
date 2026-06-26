@@ -8,10 +8,16 @@ import { applyCategoryStamp } from './loyaltyOps.js';
 
 const STATE_ID = 'liberte';
 
-// Yerel gün anahtarı — günlük ödül tekrarını engelle
+// Gün anahtarı — Türkiye saatine sabit (istemci cihaz saatiyle uyumlu).
+// Sunucu UTC çalıştığı için sabit TZ olmadan gece saatlerinde gün kayardı.
 function localDayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // en-CA biçimi YYYY-MM-DD üretir
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
 }
 
 // Bugün bu ödül alınmış mı?

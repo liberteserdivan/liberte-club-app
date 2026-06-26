@@ -33,8 +33,8 @@ workflows:
         IOS_RELEASE: "true"
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
-        APP_VERSION: "1.1.22"
-        IOS_MIN_BUILD_NUMBER: "49"
+        APP_VERSION: "1.1.23"
+        IOS_MIN_BUILD_NUMBER: "52"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
       node: 22
@@ -120,8 +120,8 @@ workflows:
         ANDROID_RELEASE: "true"
         PLAY_TRACK: alpha
         PACKAGE_NAME: cafe.liberte.app
-        APP_VERSION: "1.1.22"
-        ANDROID_MIN_VERSION_CODE: "50"
+        APP_VERSION: "1.1.23"
+        ANDROID_MIN_VERSION_CODE: "52"
       node: 22
       java: 21
     scripts:
