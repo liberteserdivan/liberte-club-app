@@ -46,6 +46,7 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
 
 .appShell{width:100%;min-height:100vh;transition:opacity .35s ease}
 .appShell--booting{opacity:0;pointer-events:none}
+.appShell__lazyFallback{display:flex;align-items:center;justify-content:center;min-height:50vh;color:#9fb4ad;font-size:.95rem}
 .appSplash{
   position:fixed;
   inset:0;

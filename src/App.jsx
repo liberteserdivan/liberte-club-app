@@ -1,5 +1,5 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
 import { useLocalAuth } from './lib/devAuth.js';
 import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
@@ -35,7 +35,8 @@ import MenuPage from './pages/MenuPage.jsx';
 import QrPage from './pages/QrPage.jsx';
 import CampaignPage from './pages/CampaignPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
-import AdminPage from './pages/AdminPage.jsx';
+// Admin paneli büyük; sadece yönetici açınca yüklensin (müşteri açılışını hızlandırır)
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 import OnboardingOverlay, { shouldShowOnboarding } from './components/OnboardingOverlay.jsx';
 
 const SPLASH_MIN_MS = 1000;
@@ -451,16 +452,18 @@ export default function App() {
             />
           )}
           {tab === 'admin' && isAdmin && adminVerified && (
-            <AdminPage
-              db={db}
-              commit={commit}
-              refreshRemote={refreshRemote}
-              adminMembers={adminMembers}
-              adminMembersStatus={adminMembersStatus}
-              adminMembersError={adminMembersError}
-              onRefreshMembers={refreshAdminMembers}
-              adminDashboardStats={adminDashboardStats}
-            />
+            <Suspense fallback={<div className="appShell__lazyFallback">Panel yükleniyor…</div>}>
+              <AdminPage
+                db={db}
+                commit={commit}
+                refreshRemote={refreshRemote}
+                adminMembers={adminMembers}
+                adminMembersStatus={adminMembersStatus}
+                adminMembersError={adminMembersError}
+                onRefreshMembers={refreshAdminMembers}
+                adminDashboardStats={adminDashboardStats}
+              />
+            </Suspense>
           )}
         </div>
 

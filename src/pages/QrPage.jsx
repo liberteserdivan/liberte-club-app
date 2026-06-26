@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Crown, RefreshCw, ShieldCheck } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PageShell from '../components/PageShell.jsx';
-import CustomerQrScanner from '../components/CustomerQrScanner.jsx';
+// Kamera tarayıcı (html5-qrcode) ağır ve yalnızca kasiyer kullanır;
+// müşteri açılışını yavaşlatmamak için tembel yüklenir.
+const CustomerQrScanner = lazy(() => import('../components/CustomerQrScanner.jsx'));
 import MembershipTierCard from '../components/MembershipTierCard.jsx';
 import {
   STAMP_CATEGORIES,
@@ -44,7 +46,11 @@ export default function QrPage({
   adminVerified = false
 }) {
   if (isAdmin && adminVerified) {
-    return <CustomerQrScanner db={db} commit={commit} refreshRemote={refreshRemote} />;
+    return (
+      <Suspense fallback={<div className="appShell__lazyFallback">Kamera yükleniyor…</div>}>
+        <CustomerQrScanner db={db} commit={commit} refreshRemote={refreshRemote} />
+      </Suspense>
+    );
   }
 
   return (
