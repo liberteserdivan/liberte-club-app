@@ -62,6 +62,10 @@ export async function handleAuthLogin(req, res) {
   const startedAt = Date.now();
 
   try {
+    // NOT: attemptTimeoutMs BİLEREK kullanılmaz — bu görev res'e doğrudan yazar
+    // (createSession/res.json). Zaman aşımında terk edilen deneme geç tamamlanıp
+    // res'e ikinci kez yazarsa "headers already sent" olur. postgres.js bayat
+    // bağlantıyı hata olarak yakalar ve withSqlRetry taze bağlantıyla yeniden dener.
     return await withSqlRetry(
       () => handleAuthLoginCore(req, res, trace, startedAt),
       { resetClient: resetSqlClient }

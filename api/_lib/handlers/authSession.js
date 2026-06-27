@@ -36,10 +36,11 @@ export async function handleAuthSession(req, res) {
     trace.log('start', { step: 'start', hasSessionToken });
 
     // Bootstrap salt-okunur ve hafif; bayat bağlantıda 6sn'de vazgeçip taze
-    // bağlantıyla yeniden dener (uygulama açılışı/çıkış sonrası takılmayı önler)
+    // bağlantıyla yeniden dener (uygulama açılışı/çıkış sonrası takılmayı önler).
+    // retries=2: en kötü ~12.5sn ile sınırlı, istemci zaman aşımının (25sn) altında.
     const session = await withSqlRetry(
       () => getSessionForBootstrap(req),
-      { resetClient: resetSqlClient, attemptTimeoutMs: 6000 }
+      { resetClient: resetSqlClient, attemptTimeoutMs: 6000, retries: 2 }
     );
     trace.log('verify_session', {
       step: 'verify_session',

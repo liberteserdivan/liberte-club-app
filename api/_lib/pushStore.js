@@ -88,6 +88,17 @@ export async function loadPushSubscriptionsForCustomer(sql, customerId) {
   return rows.map(rowToSubscription).filter(Boolean);
 }
 
+// Aynı token'a sahip BAŞKA satırları kaldır — bir FCM token tek cihaza aittir.
+// token üzerindeki UNIQUE index (ux_push_subscriptions_token) ihlalini önler:
+// deviceId değişip aynı token başka satırda kaldıysa INSERT patlamasın.
+async function removeConflictingTokenRows(sql, token, keepId) {
+  if (!token) return;
+  await sql`
+    DELETE FROM push_subscriptions
+    WHERE token = ${token} AND id <> ${Number(keepId)}
+  `;
+}
+
 // Cihaz token kaydı — oturum doğrulaması handler'da yapılır
 export async function upsertPushDevice(sql, {
   customerId,
@@ -131,6 +142,9 @@ export async function upsertPushDevice(sql, {
       LIMIT 1
     `;
     const targetId = existing[0]?.id ? Number(existing[0].id) : recordId;
+
+    // Aynı token başka satırdaysa kaldır (token UNIQUE ihlali koruması)
+    await removeConflictingTokenRows(sql, token, targetId);
 
     await sql`
       INSERT INTO push_subscriptions (
@@ -191,6 +205,9 @@ export async function upsertPushDevice(sql, {
       SELECT id FROM push_subscriptions WHERE token = ${token} LIMIT 1
     `;
     const targetId = existing[0]?.id ? Number(existing[0].id) : recordId;
+
+    // Aynı token başka satırlarda da varsa (legacy tekrar) kaldır
+    await removeConflictingTokenRows(sql, token, targetId);
 
     await sql`
       INSERT INTO push_subscriptions (

@@ -48,3 +48,37 @@ test('firebasePush sunucu kayıt API çağırır', () => {
   assert.match(source, /\/api\/push\/register-device/);
   assert.match(source, /skipRemote:\s*true/);
 });
+
+// Durum tutan basit SQL mock — sorgu metinlerini kaydeder
+function makeMockSql() {
+  const queries = [];
+  function sql(strings, ...values) {
+    const text = Array.isArray(strings) ? strings.join(' ? ') : String(strings);
+    queries.push({ text, values });
+    return Promise.resolve([]);
+  }
+  sql.queries = queries;
+  return sql;
+}
+
+test('upsertPushDevice: token UNIQUE ihlaline karşı INSERT öncesi çakışan satırı temizler', async () => {
+  const { upsertPushDevice } = await import('../api/_lib/pushStore.js');
+  const sql = makeMockSql();
+
+  await upsertPushDevice(sql, {
+    customerId: 42,
+    token: 'fcm-token-xyz',
+    channel: 'native',
+    platform: 'android',
+    deviceId: 'device-abc',
+    permissionStatus: 'granted'
+  });
+
+  const texts = sql.queries.map((q) => q.text);
+  const deleteIdx = texts.findIndex((t) => /DELETE FROM\s+push_subscriptions/.test(t) && /token =/.test(t));
+  const insertIdx = texts.findIndex((t) => /INSERT INTO push_subscriptions/.test(t));
+
+  assert.ok(deleteIdx >= 0, 'çakışan token satırı için DELETE çalışmalı');
+  assert.ok(insertIdx >= 0, 'INSERT çalışmalı');
+  assert.ok(deleteIdx < insertIdx, 'DELETE, INSERT öncesinde olmalı');
+});
