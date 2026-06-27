@@ -180,17 +180,23 @@ async function warmOtherFunctions(req) {
   }));
 }
 
+// Isıtma için DB ping'i en fazla bu kadar bekler; bayat bağlantı tespiti
+// uzun sürse bile warm endpoint'i bloklamaz (UptimeRobot zaman aşımına uğramaz).
+const WARM_DB_PING_TIMEOUT_MS = 3000;
+
 async function handleWarm(req, res, headOnly = false) {
-  const { getSql, resetSqlClient } = await import('./_lib/sql.js');
-  const { withSqlRetry } = await import('./_lib/dbTransient.js');
+  const { getSql } = await import('./_lib/sql.js');
   const sql = getSql();
   let dbOk = false;
   if (sql) {
     try {
-      // Bayat (pooler tarafından kapatılmış) bağlantıyı tespit edip tazele;
-      // ısıtma ping'i sayesinde gerçek istek bu instance'a düşmeden bağlantı sağlam olur
-      await withSqlRetry(() => sql`SELECT 1 AS ok`, { resetClient: resetSqlClient });
-      dbOk = true;
+      // SELECT 1'i kısa zaman sınırıyla yarıştır. Bağlantı bayatsa sorgu
+      // arka planda yeniden bağlanmayı tetikler; biz beklemeden devam ederiz.
+      // Böylece sonraki gerçek istek bu instance'a düştüğünde bağlantı tazelenmiş olur.
+      // .catch ile geç gelen reddi yut — timeout sonrası unhandled rejection olmasın
+      const ping = sql`SELECT 1 AS ok`.then(() => true).catch(() => false);
+      const timeout = new Promise((resolve) => setTimeout(() => resolve(false), WARM_DB_PING_TIMEOUT_MS));
+      dbOk = await Promise.race([ping, timeout]);
     } catch {
       dbOk = false;
     }
