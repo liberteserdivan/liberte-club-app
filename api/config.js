@@ -169,7 +169,16 @@ async function handleDbStatus(res) {
 async function warmOtherFunctions(req) {
   const host = req?.headers?.host || 'app.liberte.cafe';
   const origin = `https://${host}`;
-  const targets = ['/api/auth/session', '/api/realtime?resource=promos'];
+  // Kullanıcının ilk dakikada dokunduğu TÜM lambda'ları ısıt: auth (giriş/oturum),
+  // realtime, qr (kart QR'ı) ve push (bildirim cihaz kaydı). Her api/*.js ayrı
+  // lambda olduğundan, biri ısınmazsa o akış (ör. QR) soğuk başlatma yüzünden
+  // takılıyordu. GET ile 401/405 dönse bile lambda uyanır — amaç budur.
+  const targets = [
+    '/api/auth/session',
+    '/api/realtime?resource=promos',
+    '/api/qr/generate',
+    '/api/push/register-device'
+  ];
 
   await Promise.allSettled(targets.map((path) => {
     const controller = new AbortController();

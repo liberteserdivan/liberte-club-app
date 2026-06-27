@@ -11,7 +11,8 @@ import { initPwaInstallCapture } from './lib/pwaInstall.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { handlePushOpenPayload } from './lib/pushNavigation.js';
 import { isNativeApp } from './lib/platform.js';
-import { initNativeForegroundBridge } from './lib/appForeground.js';
+import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
+import { warmServer } from './lib/serverWarmup.js';
 import { load } from './lib/db.js';
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import './style.css';
@@ -22,6 +23,14 @@ patchFirebaseReferrer(getFirebaseReferrerOrigin());
 if (isNativeApp()) {
   ensureNativePushNavigation();
   initNativeForegroundBridge();
+}
+// Sunucuyu olabildiğince erken ısıt — soğuk başlatma gecikmesini gizle.
+// Yasal sayfalar API kullanmaz; orada ısınmaya gerek yok.
+if (!legalRoute) {
+  warmServer({ force: true });
+  // Uygulama uzun süre arka planda kalıp ön plana dönünce lambda'lar yeniden
+  // soğumuş olabilir; dönüşte tekrar ısıt (debounce kendi içinde korur).
+  subscribeForegroundResume(() => warmServer());
 }
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) {
