@@ -192,21 +192,25 @@ function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   return webFetchWithTimeout(url, rest, userSignal, timeoutMs);
 }
 
-// Kimlik bilgili API isteği
-export async function apiFetch(path, options = {}) {
-  const { timeoutMs, skipUnauthorized = false, ...fetchOptions } = options;
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(fetchOptions.headers || {})
-  };
+// HTTP metodu idempotent mi — yalnızca güvenli metotlar otomatik tekrar denenir
+function isIdempotentMethod(method) {
+  const verb = String(method || 'GET').toUpperCase();
+  return verb === 'GET' || verb === 'HEAD';
+}
 
-  const token = readStoredAuthToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+// Hata, bayat bağlantı/soğuk başlatma kaynaklı geçici bir hata mı?
+// (Vercel donmuş instance'ında ilk istek pooler bağlantısı bayatsa zaman aşımına uğrar.)
+function isRetryableTransport(error) {
+  return error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR';
+}
 
-  const native = isNativeApp();
-  const url = resolveApiUrl(path);
-  const requestTimeout = resolveFetchTimeout(timeoutMs);
+// Geçici hata sonrası kısa gecikme — yeniden bağlanan instance'a düşme şansını artırır
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+// Tek bir ağ isteğini gerçekleştir — token, header ve zaman aşımı uygular
+async function performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized) {
   try {
     const response = await fetchWithTimeout(url, {
       ...fetchOptions,
@@ -228,6 +232,42 @@ export async function apiFetch(path, options = {}) {
     }
     throw error;
   }
+}
+
+// Kimlik bilgili API isteği — idempotent isteklerde geçici hatada bir kez tekrar dener
+export async function apiFetch(path, options = {}) {
+  const { timeoutMs, skipUnauthorized = false, retryTransient, ...fetchOptions } = options;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(fetchOptions.headers || {})
+  };
+
+  const token = readStoredAuthToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const native = isNativeApp();
+  const url = resolveApiUrl(path);
+  const requestTimeout = resolveFetchTimeout(timeoutMs);
+
+  // Yalnızca güvenli (idempotent) isteklerde otomatik tekrar — çift POST riski yok.
+  // retryTransient açıkça false ise devre dışı kalır.
+  const canRetry = retryTransient !== false && isIdempotentMethod(fetchOptions.method);
+  const maxAttempts = canRetry ? 2 : 1;
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized);
+    } catch (error) {
+      lastError = error;
+      // Son deneme veya tekrar denenemeyen hata ise yükselt
+      if (attempt >= maxAttempts || !isRetryableTransport(error)) throw error;
+      // Kısa bekleme: bayat bağlantı tespit edilip yeniden bağlanması için fırsat ver
+      await sleep(400);
+    }
+  }
+
+  throw lastError;
 }
 
 // JSON API isteği — sunucu HTML hata dönerse güvenli parse

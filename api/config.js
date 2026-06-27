@@ -181,12 +181,15 @@ async function warmOtherFunctions(req) {
 }
 
 async function handleWarm(req, res, headOnly = false) {
-  const { getSql } = await import('./_lib/sql.js');
+  const { getSql, resetSqlClient } = await import('./_lib/sql.js');
+  const { withSqlRetry } = await import('./_lib/dbTransient.js');
   const sql = getSql();
   let dbOk = false;
   if (sql) {
     try {
-      await sql`SELECT 1 AS ok`;
+      // Bayat (pooler tarafından kapatılmış) bağlantıyı tespit edip tazele;
+      // ısıtma ping'i sayesinde gerçek istek bu instance'a düşmeden bağlantı sağlam olur
+      await withSqlRetry(() => sql`SELECT 1 AS ok`, { resetClient: resetSqlClient });
       dbOk = true;
     } catch {
       dbOk = false;
