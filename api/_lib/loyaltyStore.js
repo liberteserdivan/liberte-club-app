@@ -16,6 +16,7 @@ import {
   redeemCategoryReward
 } from './loyaltyOps.js';
 import { bumpAppStateRevision } from './relationalState.js';
+import { claimQrNonce } from './qrNonceStore.js';
 
 // loyalty_events satırını history formatına çevir
 function eventRowToHistory(row) {
@@ -147,7 +148,8 @@ export async function applyLoyaltyActionRelational({
   action,
   category = 'coffee',
   menuItem = null,
-  note = 'QR kamera'
+  note = 'QR kamera',
+  nonce = null
 }) {
   const sql = getSql();
   if (!sql) throw new Error('DATABASE_URL eksik');
@@ -164,6 +166,17 @@ export async function applyLoyaltyActionRelational({
     `;
     if (!lockedRows[0]) {
       return { ok: false, error: 'Müşteri bulunamadı' };
+    }
+
+    // REPLAY KORUMASI transaction İÇİNDE: nonce claim ile loyalty mutasyonu atomik.
+    // İşlem sonradan hata atarsa (transient DB) nonce kaydı da geri alınır (rollback),
+    // böylece runSql retry temiz şekilde yeniden deneyebilir. Gerçek tekrar ise
+    // (eşzamanlı/replay) FOR UPDATE kilidi + unique (nonce,action) ile engellenir.
+    if (nonce) {
+      const claim = await claimQrNonce(tx, { nonce, action, customerId: id });
+      if (!claim.firstUse) {
+        return { ok: false, replay: true, error: 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.' };
+      }
     }
 
     const customer = customerRowToRecord(lockedRows[0]);

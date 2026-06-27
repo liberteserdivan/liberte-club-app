@@ -79,32 +79,29 @@ export async function handleAdminLoyaltyAction(req, res) {
     const action = String(body.action || '').trim();
     const category = String(body.category || 'coffee').trim();
     const menuItemId = body.menuItemId != null ? Number(body.menuItemId) : null;
-
-    // REPLAY KORUMASI: aynı QR token (nonce) + action tek kullanımlıktır.
-    // 90sn'lik token penceresinde aynı işlem tekrar denenirse 409 döner.
-    const claim = await runSql(() => claimQrNonce(getSql(), {
-      nonce: verified.nonce,
-      action,
-      customerId: verified.customerId
-    }));
-    if (!claim.firstUse) {
-      return res.status(409).json({
-        error: 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.',
-        code: 'QR_REPLAY',
-        replay: true
-      });
-    }
     const menuItem = menuItemId
       ? menuItems.find((item) => Number(item.id) === menuItemId) || null
       : null;
 
     if (useRelationalState()) {
+      // REPLAY KORUMASI nonce claim'i transaction İÇİNDE yapılır (atomik):
+      // işlem başarısız olursa nonce de geri alınır, böylece yanlışlıkla
+      // "zaten kullanıldı" hatası verip damgayı kaybetmeyiz.
       const result = await runSql(() => applyLoyaltyActionRelational({
         customerId: verified.customerId,
         action,
         category,
-        menuItem
+        menuItem,
+        nonce: verified.nonce
       }));
+
+      if (result.replay) {
+        return res.status(409).json({
+          error: result.error || 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.',
+          code: 'QR_REPLAY',
+          replay: true
+        });
+      }
 
       if (!result.ok) {
         return res.status(400).json({ error: result.error || 'İşlem yapılamadı' });
@@ -115,6 +112,21 @@ export async function handleAdminLoyaltyAction(req, res) {
         customer: result.customer,
         loyalty: result.loyalty,
         updated_at: new Date().toISOString()
+      });
+    }
+
+    // Legacy (app_state JSON) yol — replay korumasını burada uygula.
+    // 90sn'lik token penceresinde aynı (nonce, action) tekrar denenirse 409 döner.
+    const claim = await runSql(() => claimQrNonce(getSql(), {
+      nonce: verified.nonce,
+      action,
+      customerId: verified.customerId
+    }));
+    if (!claim.firstUse) {
+      return res.status(409).json({
+        error: 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.',
+        code: 'QR_REPLAY',
+        replay: true
       });
     }
 

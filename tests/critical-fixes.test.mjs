@@ -209,6 +209,17 @@ test('handleAdminLoyaltyAction replay\'de 409 döner', () => {
   assert.match(src, /QR_REPLAY/);
 });
 
+test('nonce claim loyalty transaction İÇİNDE yapılır (atomik) - hata olursa geri alınır', () => {
+  const src = read('api/_lib/loyaltyStore.js');
+  // claimQrNonce transaction (tx) üzerinde çağrılmalı ki rollback nonce'u da geri alsın
+  assert.match(src, /claimQrNonce\(tx/, 'nonce claim transaction içinde (tx) yapılmalı');
+  assert.match(src, /replay:\s*true/, 'replay durumu dönmeli');
+  // Relational handler ön-claim yapmamalı; nonce'u fonksiyona geçirmeli
+  const handler = read('api/_lib/handlers/adminLoyalty.js');
+  assert.match(handler, /nonce:\s*verified\.nonce/, 'handler nonce\'u relational fonksiyona geçirmeli');
+  assert.match(handler, /result\.replay/, 'handler replay sonucunu kontrol etmeli');
+});
+
 // --------------------------------------------------------------------------
 // 9) DB constraints — migration dosyası benzersizlik indekslerini içerir
 // --------------------------------------------------------------------------

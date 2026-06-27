@@ -51,24 +51,6 @@ function getCustomerStreak(dailyClaims, customerId) {
   return streak;
 }
 
-// Global app_state dilimini oku
-async function readGlobalBlob(sql) {
-  const rows = await sql`SELECT data FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
-  const raw = parseAppStateData(rows[0]?.data) || {};
-  return extractGlobalSlice(raw) || raw;
-}
-
-// Global app_state dilimini yaz
-async function writeGlobalBlob(sql, globalData) {
-  await sql`
-    UPDATE app_state
-    SET data = ${serializeAppStateJson(globalData)},
-        updated_at = now()
-    WHERE id = ${STATE_ID}
-  `;
-  invalidateAppStateCache();
-}
-
 // LP kartını kaydet ve son işlemi geçmişe yaz
 async function persistStampResult(sql, customerId, miniState) {
   const id = Number(customerId);
@@ -78,76 +60,99 @@ async function persistStampResult(sql, customerId, miniState) {
   if (entry) await insertLoyaltyEvent(sql, id, entry);
 }
 
-// Günlük giriş ödülü — sunucuda kalıcı
+// Günlük giriş ödülü — sunucuda kalıcı.
+// YARIŞ KOŞULU KORUMASI: tüm akış tek transaction içinde ve app_state satırı
+// "FOR UPDATE" ile kilitlenir. dailyClaims global bir JSON blob olduğundan,
+// kilit olmadan iki eşzamanlı talep (aynı veya farklı kullanıcı) blob'u
+// birbirinin üzerine yazıp çifte ödül / kayıp kayıt üretebiliyordu.
 export async function applyDailyLoginRewardRelational(customerId) {
   const sql = getSql();
   if (!sql) return { ok: false, error: 'Veritabanı yapılandırması eksik' };
 
   const id = Number(customerId);
-  const customer = await findCustomerById(sql, id);
-  if (!customer) return { ok: false, error: 'Üye bulunamadı' };
 
-  const global = await readGlobalBlob(sql);
-  const dailyClaims = Array.isArray(global.dailyClaims) ? [...global.dailyClaims] : [];
+  const outcome = await sql.begin(async (tx) => {
+    // app_state satırını kilitle — global dailyClaims blob'una yazımları serileştirir
+    const lockRows = await tx`SELECT data FROM app_state WHERE id = ${STATE_ID} FOR UPDATE`;
 
-  if (hasDailyClaim(dailyClaims, id, 'daily_login')) {
-    return { ok: false, error: 'Günlük giriş ödülünü bugün zaten aldın.' };
-  }
+    const customer = await findCustomerById(tx, id);
+    if (!customer) return { ok: false, error: 'Üye bulunamadı' };
 
-  const loyaltyCard = await loadLoyaltyForCustomer(id, sql);
-  const miniState = {
-    customers: [customer],
-    loyalty: { [id]: loyaltyCard },
-    history: [],
-    dailyClaims
-  };
+    const raw = parseAppStateData(lockRows[0]?.data) || {};
+    const global = extractGlobalSlice(raw) || raw;
+    const dailyClaims = Array.isArray(global.dailyClaims) ? [...global.dailyClaims] : [];
 
-  const prevStreak = getCustomerStreak(dailyClaims, id);
-  const day = localDayKey();
-  const createdAt = new Date().toLocaleString('tr-TR');
+    if (hasDailyClaim(dailyClaims, id, 'daily_login')) {
+      return { ok: false, error: 'Günlük giriş ödülünü bugün zaten aldın.' };
+    }
 
-  let stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, 'Günlük giriş ödülü');
-  if (!stampResult.ok) return stampResult;
-  await persistStampResult(sql, id, miniState);
+    const loyaltyCard = await loadLoyaltyForCustomer(id, tx);
+    const miniState = {
+      customers: [customer],
+      loyalty: { [id]: loyaltyCard },
+      history: [],
+      dailyClaims
+    };
 
-  dailyClaims.unshift({
-    id: Date.now(),
-    customerId: id,
-    name: customer.name,
-    phone: customer.phone,
-    type: 'daily_login',
-    day,
-    createdAt
+    const prevStreak = getCustomerStreak(dailyClaims, id);
+    const day = localDayKey();
+    const createdAt = new Date().toLocaleString('tr-TR');
+
+    let stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, 'Günlük giriş ödülü');
+    if (!stampResult.ok) return stampResult;
+    await persistStampResult(tx, id, miniState);
+
+    dailyClaims.unshift({
+      id: Date.now(),
+      customerId: id,
+      name: customer.name,
+      phone: customer.phone,
+      type: 'daily_login',
+      day,
+      createdAt
+    });
+    miniState.dailyClaims = dailyClaims;
+
+    const newStreak = prevStreak + 1;
+    let bonusNote = '';
+
+    if (newStreak === 3) {
+      stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, '3 gün seri bonusu');
+      if (!stampResult.ok) return stampResult;
+      await persistStampResult(tx, id, miniState);
+      bonusNote = ' 3 gün seri bonusu da eklendi!';
+    }
+
+    if (newStreak === 7) {
+      stampResult = applyCategoryStamp(miniState, id, 'coffee', 2, '7 gün seri bonusu');
+      if (!stampResult.ok) return stampResult;
+      await persistStampResult(tx, id, miniState);
+      bonusNote = ' 7 gün seri bonusu da eklendi!';
+    }
+
+    global.dailyClaims = dailyClaims;
+    // Kilitli satırı transaction içinde güncelle (writeGlobalBlob kendi sql'ini kullanır,
+    // burada kilidi korumak için doğrudan tx ile yazıyoruz)
+    await tx`
+      UPDATE app_state
+      SET data = ${serializeAppStateJson(global)},
+          updated_at = now()
+      WHERE id = ${STATE_ID}
+    `;
+    await bumpAppStateRevision(tx);
+
+    const nextCard = miniState.loyalty[id] || miniState.loyalty[String(id)];
+
+    return {
+      ok: true,
+      message: `+1 LP günlük giriş ödülü hesabına eklendi.${bonusNote}`,
+      loyalty: nextCard,
+      dailyClaims
+    };
   });
-  miniState.dailyClaims = dailyClaims;
 
-  const newStreak = prevStreak + 1;
-  let bonusNote = '';
+  // Önbelleği commit SONRASI temizle — transaction ortasında değil
+  if (outcome.ok) invalidateAppStateCache();
 
-  if (newStreak === 3) {
-    stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, '3 gün seri bonusu');
-    if (!stampResult.ok) return stampResult;
-    await persistStampResult(sql, id, miniState);
-    bonusNote = ' 3 gün seri bonusu da eklendi!';
-  }
-
-  if (newStreak === 7) {
-    stampResult = applyCategoryStamp(miniState, id, 'coffee', 2, '7 gün seri bonusu');
-    if (!stampResult.ok) return stampResult;
-    await persistStampResult(sql, id, miniState);
-    bonusNote = ' 7 gün seri bonusu da eklendi!';
-  }
-
-  global.dailyClaims = dailyClaims;
-  await writeGlobalBlob(sql, global);
-  await bumpAppStateRevision(sql);
-
-  const nextCard = miniState.loyalty[id] || miniState.loyalty[String(id)];
-
-  return {
-    ok: true,
-    message: `+1 LP günlük giriş ödülü hesabına eklendi.${bonusNote}`,
-    loyalty: nextCard,
-    dailyClaims
-  };
+  return outcome;
 }

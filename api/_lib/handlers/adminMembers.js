@@ -1,4 +1,4 @@
-import { applyCors } from '../http.js';
+import { applyCors, publicErrorMessage } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { listAllCustomers } from '../customersStore.js';
 import { loadLoyaltyMapFromSql } from '../loyaltyStore.js';
@@ -30,6 +30,7 @@ export async function handleAdminMembers(req, res) {
       count: customers.length
     });
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error?.message || 'Üye listesi alınamadı' });
+    // DB iç detayını sızdırma — genel mesaj dön
+    return res.status(500).json({ ok: false, error: publicErrorMessage(error, 'Üye listesi alınamadı') });
   }
 }
