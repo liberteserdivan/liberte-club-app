@@ -160,6 +160,24 @@ async function handleDbStatus(res) {
   });
 }
 
+// Isınma — Vercel soğuk başlatmasını azaltır. Harici pinger (~5 dk) çağırır;
+// fonksiyon ve DB bağlantısı uyanık kalır, ilk gerçek istek hızlı yanıtlanır.
+// Veri sızdırmaz: yalnızca ok/dbOk bayrağı ve zaman damgası döner.
+async function handleWarm(res) {
+  const { getSql } = await import('./_lib/sql.js');
+  const sql = getSql();
+  let dbOk = false;
+  if (sql) {
+    try {
+      await sql`SELECT 1 AS ok`;
+      dbOk = true;
+    } catch {
+      dbOk = false;
+    }
+  }
+  return res.status(200).json({ ok: true, dbOk, ts: Date.now() });
+}
+
 // Supabase Realtime public config — yalnızca anon key, secret sızdırmaz
 function handleSupabaseConfig(res) {
   const config = readSupabasePublicConfig();
@@ -226,6 +244,7 @@ export default withSqlRequest(async function handler(req, res) {
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (resource === 'warm') return handleWarm(res);
   if (resource === 'firebase') return handleFirebase(res);
   if (resource === 'push') return handlePush(res);
 
@@ -243,5 +262,5 @@ export default withSqlRequest(async function handler(req, res) {
 
   if (resource === 'supabase') return handleSupabaseConfig(res);
 
-  return res.status(400).json({ error: 'resource parametresi gerekli: firebase, push, push-status, db-status, qr-status, rls-status veya supabase' });
+  return res.status(400).json({ error: 'resource parametresi gerekli: warm, firebase, push, push-status, db-status, qr-status, rls-status veya supabase' });
 });

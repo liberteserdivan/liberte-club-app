@@ -41,6 +41,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/health", "destination": "/api/config?resource=warm" },
     { "source": "/api/loyalty/daily-claim", "destination": "/api/loyalty?action=daily-claim" },
     { "source": "/api/auth/login", "destination": "/api/auth?action=login" },
     { "source": "/api/auth/session", "destination": "/api/auth?action=session" },
