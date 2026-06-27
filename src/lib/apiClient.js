@@ -1,5 +1,5 @@
 import { formatClientApiError } from './apiErrors.js';
-import { isNativeApp, isIos } from './platform.js';
+import { isNativeApp, isIos, isAndroid } from './platform.js';
 
 const TOKEN_KEY = 'liberteAuthToken';
 const NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
@@ -109,8 +109,31 @@ function withRequestMeta(path, startedAt, data = {}) {
   };
 }
 
-// Fetch isteğine üst zaman sınırı ekle
-function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+// Zaman aşımı hatası üret
+function makeTimeoutError() {
+  const timeoutErr = new Error('Sunucuya ulaşılamadı.');
+  timeoutErr.code = 'FETCH_TIMEOUT';
+  return timeoutErr;
+}
+
+// Android (Capacitor) fetch — patched fetch + AbortController sinyali POST
+// isteğinde promise'i hiç settle etmeyebiliyor (sonsuz bekleme/spinner).
+// Bu yüzden sinyal GEÇMEYİZ; zaman aşımını Promise.race ile garanti ederiz.
+// Böylece istek ya başarılı döner ya net bir hatayla biter, asla asılı kalmaz.
+// iOS sorunsuz çalıştığı için AbortController yolunda bırakılır.
+function nativeFetchWithTimeout(url, rest, timeoutMs) {
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(makeTimeoutError()), timeoutMs);
+  });
+  const fetchPromise = fetch(url, rest);
+  return Promise.race([fetchPromise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+// Web fetch — AbortController ile gerçek iptal
+function webFetchWithTimeout(url, rest, userSignal, timeoutMs) {
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -118,7 +141,6 @@ function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
     controller.abort();
   }, timeoutMs);
 
-  const { signal: userSignal, ...rest } = options;
   if (userSignal) {
     if (userSignal.aborted) {
       controller.abort();
@@ -131,15 +153,21 @@ function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
     .finally(() => clearTimeout(timer))
     .catch((error) => {
       if (error?.name !== 'AbortError') throw error;
-      if (timedOut) {
-        const timeoutErr = new Error('Sunucuya ulaşılamadı.');
-        timeoutErr.code = 'FETCH_TIMEOUT';
-        throw timeoutErr;
-      }
+      if (timedOut) throw makeTimeoutError();
       const abortErr = new Error('İstek iptal edildi.');
       abortErr.name = 'AbortError';
       throw abortErr;
     });
+}
+
+// Fetch isteğine üst zaman sınırı ekle — platforma göre güvenli strateji
+function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const { signal: userSignal, ...rest } = options;
+  // Sorun yalnızca Android'de görüldü; iOS/web çalışan AbortController yolunda kalır
+  if (isNativeApp() && isAndroid()) {
+    return nativeFetchWithTimeout(url, rest, timeoutMs);
+  }
+  return webFetchWithTimeout(url, rest, userSignal, timeoutMs);
 }
 
 // Kimlik bilgili API isteği
