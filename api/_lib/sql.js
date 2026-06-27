@@ -83,14 +83,20 @@ function getOrCreateSharedSql(connectionString) {
   return sharedSql;
 }
 
-// Bağlantıyı sıfırla — paylaşılan istemciyi KAPATMAZ.
-// postgres.js bozuk bağlantıyı zaten atar; retry sorguyu yeni bağlantıda çalıştırır.
-// Eşzamanlı isteklerin bağlantısını koparmamak için kasıtlı no-op.
+// Bağlantıyı sıfırla — bayat (pooler tarafından kapatılmış) istemciyi bırakır.
+// Eski istemciyi ZORLA kapatmaz: eşzamanlı isteklerin in-flight sorgularını
+// koparmamak için referansı düşürür; eski bağlantı kendi idle_timeout/max_lifetime
+// ile kapanır. Bir sonraki getSql taze bir istemci (yeni bağlantı) oluşturur.
 export function resetSqlClient() {
-  // Bilerek boş: kendi kendini iyileştiren istemci, elle müdahale gerektirmez.
+  sharedSql = null;
+  sharedConnectionString = '';
+  // Aktif istek kapsamındaki bağlamayı da temizle ki retry taze istemci alsın
+  const holder = requestStorage.getStore();
+  if (holder) holder.sql = null;
 }
 
-// Aktif SQL istemcisi — istek kapsamı ile paylaşılan istemci aynıdır
+// Aktif SQL istemcisi — istek kapsamı ile paylaşılan istemci aynıdır.
+// Kapsam bağlaması temizlenmişse (reset sonrası) yeniden taze istemciye bağlanır.
 export function getSql() {
   const connectionString = resolveConnectionString();
   if (!connectionString) return null;
@@ -98,7 +104,9 @@ export function getSql() {
   const holder = requestStorage.getStore();
   if (holder?.sql) return holder.sql;
 
-  return getOrCreateSharedSql(connectionString);
+  const sql = getOrCreateSharedSql(connectionString);
+  if (holder) holder.sql = sql;
+  return sql;
 }
 
 // Bağlantı canlı mı — sağlık kontrolü için

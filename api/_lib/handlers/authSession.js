@@ -35,9 +35,11 @@ export async function handleAuthSession(req, res) {
     const hasSessionToken = Boolean(readAuthToken(req));
     trace.log('start', { step: 'start', hasSessionToken });
 
+    // Bootstrap salt-okunur ve hafif; bayat bağlantıda 6sn'de vazgeçip taze
+    // bağlantıyla yeniden dener (uygulama açılışı/çıkış sonrası takılmayı önler)
     const session = await withSqlRetry(
       () => getSessionForBootstrap(req),
-      { resetClient: resetSqlClient }
+      { resetClient: resetSqlClient, attemptTimeoutMs: 6000 }
     );
     trace.log('verify_session', {
       step: 'verify_session',

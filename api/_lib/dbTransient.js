@@ -57,13 +57,50 @@ function sleep(ms) {
   });
 }
 
-// Kopan bağlantıda isteği kısa gecikmeyle yeniden dene
-export async function withSqlRetry(task, { retries = 4, resetClient } = {}) {
+// Görevi zaman sınırıyla yarıştır — bayat bağlantıda postgres.js'in TCP
+// zaman aşımını (~15sn) beklemek yerine erken vazgeçip yeniden bağlanmayı sağlar.
+// timeoutMs <= 0 ise sınır uygulanmaz (varsayılan davranış korunur).
+function runWithAttemptTimeout(task, timeoutMs) {
+  if (!timeoutMs || timeoutMs <= 0) return Promise.resolve().then(task);
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      // Mesaj 'etimedout' içerir ki isTransientDbError geçici sayıp retry tetiklesin
+      const err = new Error('ETIMEDOUT: sql attempt timeout');
+      err.code = 'ETIMEDOUT';
+      reject(err);
+    }, timeoutMs);
+
+    Promise.resolve()
+      .then(task)
+      .then(
+        (value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+  });
+}
+
+// Kopan/bayat bağlantıda isteği kısa gecikmeyle yeniden dene.
+// attemptTimeoutMs verilirse her deneme bu süreyle sınırlanır (stall koruması).
+export async function withSqlRetry(task, { retries = 4, resetClient, attemptTimeoutMs = 0 } = {}) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      return await task();
+      return await runWithAttemptTimeout(task, attemptTimeoutMs);
     } catch (error) {
       lastError = error;
       if (!isTransientDbError(error) || attempt >= retries) {
