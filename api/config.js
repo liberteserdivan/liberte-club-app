@@ -163,7 +163,7 @@ async function handleDbStatus(res) {
 // Isınma — Vercel soğuk başlatmasını azaltır. Harici pinger (~5 dk) çağırır;
 // fonksiyon ve DB bağlantısı uyanık kalır, ilk gerçek istek hızlı yanıtlanır.
 // Veri sızdırmaz: yalnızca ok/dbOk bayrağı ve zaman damgası döner.
-async function handleWarm(res) {
+async function handleWarm(res, headOnly = false) {
   const { getSql } = await import('./_lib/sql.js');
   const sql = getSql();
   let dbOk = false;
@@ -175,6 +175,8 @@ async function handleWarm(res) {
       dbOk = false;
     }
   }
+  // HEAD (izleyiciler) için gövdesiz 200 — sadece durum kodu yeterli
+  if (headOnly) return res.status(200).end();
   return res.status(200).json({ ok: true, dbOk, ts: Date.now() });
 }
 
@@ -231,7 +233,7 @@ async function handleRlsApply(res) {
 
 // Runtime config — tek endpoint (Vercel Hobby: toplam 4 API function)
 export default withSqlRequest(async function handler(req, res) {
-  applyPublicCors(res, 'GET,POST,OPTIONS');
+  applyPublicCors(res, 'GET,HEAD,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const resource = String(req.query?.resource || '').trim().toLowerCase();
@@ -241,6 +243,9 @@ export default withSqlRequest(async function handler(req, res) {
     if (!allowed) return res.status(403).json({ error: 'Tanılama erişimi reddedildi' });
     return handleRlsApply(res);
   }
+
+  // HEAD — UptimeRobot vb. izleyiciler ısınma için HEAD kullanır; gövdesiz 200 dön
+  if (req.method === 'HEAD') return handleWarm(res, true);
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
