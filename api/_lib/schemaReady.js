@@ -26,6 +26,13 @@ async function runSchemaEnsure(sql) {
     hit_count int NOT NULL DEFAULT 0,
     window_start timestamptz NOT NULL DEFAULT now()
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS qr_used_tokens (
+    nonce text NOT NULL,
+    action text NOT NULL,
+    customer_id bigint,
+    used_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (nonce, action)
+  )`;
   await sql`CREATE TABLE IF NOT EXISTS email_codes (
     id bigserial PRIMARY KEY,
     email text NOT NULL,

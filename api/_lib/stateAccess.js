@@ -86,8 +86,11 @@ export function filterStateForAdmin(state) {
   return next;
 }
 
-// Müşterinin yalnızca güncelleyebileceği güvenli profil alanları — birthDate admin only
-const SAFE_PROFILE_FIELDS = ['name', 'email', 'notificationPreferences'];
+// Müşterinin yalnızca güncelleyebileceği güvenli profil alanları.
+// E-POSTA BURADA YOK: e-posta değişimi yalnızca doğrulama kodlu ayrı akışla yapılır;
+// /api/state üzerinden e-posta güncellenemez (hesap ele geçirme/doğrulanmamış e-posta riski).
+// birthDate yalnızca admin tarafından değiştirilir.
+const SAFE_PROFILE_FIELDS = ['name', 'notificationPreferences'];
 
 // Müşteri oturumunun asla yazamayacağı hassas, müşteriye özel satır alanları
 const SENSITIVE_ROW_FIELDS = [
@@ -106,9 +109,7 @@ function applySafeProfile(current, patch) {
   if (typeof patch.name === 'string' && patch.name.trim()) {
     next.name = patch.name.trim();
   }
-  if (typeof patch.email === 'string' && patch.email.trim()) {
-    next.email = patch.email.trim().toLowerCase();
-  }
+  // E-posta KASITLI olarak uygulanmaz — yalnızca doğrulamalı e-posta değişim akışı yazabilir
   if ('notificationPreferences' in patch) {
     next.notificationPreferences = patch.notificationPreferences;
   }
@@ -165,6 +166,15 @@ export function findCustomerWriteViolations(canonical, clientState, customerId) 
   const canonCustomer = (canon.customers || []).find((c) => Number(c.id) === id);
   if (clientCustomer && canonCustomer && clientCustomer.birthDate !== canonCustomer.birthDate) {
     violations.push('birthDate');
+  }
+
+  // E-posta — yalnızca doğrulama kodlu ayrı akışla değişebilir; /api/state ile değişemez
+  if (clientCustomer && canonCustomer) {
+    const clientEmail = String(clientCustomer.email || '').trim().toLowerCase();
+    const canonEmail = String(canonCustomer.email || '').trim().toLowerCase();
+    if (clientEmail !== canonEmail) {
+      violations.push('email');
+    }
   }
 
   // Hassas müşteriye özel satırları değiştirme denemesi

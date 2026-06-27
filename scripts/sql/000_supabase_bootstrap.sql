@@ -86,6 +86,17 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
   window_start timestamptz NOT NULL DEFAULT now()
 );
 
+-- QR token tek kullanımlık nonce kaydı — replay (tekrar oynatma) koruması
+CREATE TABLE IF NOT EXISTS qr_used_tokens (
+  nonce text NOT NULL,
+  action text NOT NULL,
+  customer_id bigint,
+  used_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (nonce, action)
+);
+
+CREATE INDEX IF NOT EXISTS idx_qr_used_tokens_used_at ON qr_used_tokens (used_at);
+
 -- ---------------------------------------------------------------------------
 -- Realtime / normalize hazırlık (henüz production yazım yolu değil)
 -- ---------------------------------------------------------------------------

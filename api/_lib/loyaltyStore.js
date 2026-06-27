@@ -1,6 +1,7 @@
 import { getSql } from './sql.js';
 import {
   ensureCustomersTables,
+  customerRowToRecord,
   findCustomerById,
   findLoyaltyByCustomerId,
   loyaltyRowToCard,
@@ -108,29 +109,8 @@ export async function insertLoyaltyEvent(sql, customerId, historyEntry) {
   `;
 }
 
-// Kasa QR sadakat işlemi — normalize tablolara yaz
-export async function applyLoyaltyActionRelational({
-  customerId,
-  action,
-  category = 'coffee',
-  menuItem = null,
-  note = 'QR kamera'
-}) {
-  const sql = getSql();
-  if (!sql) throw new Error('DATABASE_URL eksik');
-
-  const customer = await findCustomerById(sql, customerId);
-  if (!customer) {
-    return { ok: false, error: 'Müşteri bulunamadı' };
-  }
-
-  const loyaltyCard = await loadLoyaltyForCustomer(customerId, sql);
-  const miniState = {
-    customers: [customer],
-    loyalty: { [customerId]: loyaltyCard },
-    history: []
-  };
-
+// Tek işlem için sadakat değişimini hesapla — saf alan (transaction içinde çağrılır)
+function computeLoyaltyMutation(miniState, { customerId, action, category, menuItem, note }) {
   let result;
   if (action === 'stamp') {
     result = applyCategoryStamp(miniState, customerId, category, 1, note, { menuItem });
@@ -154,31 +134,76 @@ export async function applyLoyaltyActionRelational({
     return { ok: false, error: 'Geçersiz işlem' };
   }
 
-  if (!result.ok) {
-    return result;
-  }
+  return result;
+}
 
-  const nextCard = miniState.loyalty[customerId] || miniState.loyalty[String(customerId)];
-  await upsertLoyaltyRow(sql, customerId, nextCard);
+// Kasa QR sadakat işlemi — normalize tablolara yaz.
+// YARIŞ KOŞULU KORUMASI: read-modify-write tek transaction içinde yapılır ve
+// müşteri satırı "SELECT ... FOR UPDATE" ile kilitlenir. Böylece aynı müşteriye
+// eşzamanlı iki işlem geldiğinde ikincisi birincinin commit'ini bekler; iki
+// LP/damga da kaybolmadan üst üste işlenir (lost update engellenir).
+export async function applyLoyaltyActionRelational({
+  customerId,
+  action,
+  category = 'coffee',
+  menuItem = null,
+  note = 'QR kamera'
+}) {
+  const sql = getSql();
+  if (!sql) throw new Error('DATABASE_URL eksik');
 
-  const lastHistory = (miniState.history || [])[0];
-  if (lastHistory) {
-    await insertLoyaltyEvent(sql, customerId, lastHistory);
-  }
+  const id = Number(customerId);
 
-  await bumpAppStateRevision(sql);
+  return sql.begin(async (tx) => {
+    // Müşteri satırını kilitle — eşzamanlı işlemleri bu müşteri için serileştirir
+    const lockedRows = await tx`
+      SELECT id, phone, name, email, birth_date, referral_code, is_admin, created_at, last_visit
+      FROM customers
+      WHERE id = ${id}
+      FOR UPDATE
+    `;
+    if (!lockedRows[0]) {
+      return { ok: false, error: 'Müşteri bulunamadı' };
+    }
 
-  const summaryState = {
-    customers: miniState.customers,
-    loyalty: miniState.loyalty,
-    history: miniState.history
-  };
+    const customer = customerRowToRecord(lockedRows[0]);
+    // Kilit altındaki güncel sadakat kartını oku (transaction'da)
+    const loyaltyRow = await findLoyaltyByCustomerId(tx, id);
+    const loyaltyCard = loyaltyRowToCard(loyaltyRow, id);
 
-  return {
-    ok: true,
-    customer: customerSummary(summaryState, customerId),
-    loyalty: nextCard
-  };
+    const miniState = {
+      customers: [customer],
+      loyalty: { [id]: loyaltyCard },
+      history: []
+    };
+
+    const result = computeLoyaltyMutation(miniState, { customerId: id, action, category, menuItem, note });
+    if (!result.ok) {
+      return result;
+    }
+
+    const nextCard = miniState.loyalty[id] || miniState.loyalty[String(id)];
+    await upsertLoyaltyRow(tx, id, nextCard);
+
+    const lastHistory = (miniState.history || [])[0];
+    if (lastHistory) {
+      await insertLoyaltyEvent(tx, id, lastHistory);
+    }
+
+    await bumpAppStateRevision(tx);
+
+    const summaryState = {
+      customers: miniState.customers,
+      loyalty: miniState.loyalty,
+      history: miniState.history
+    };
+
+    return {
+      ok: true,
+      customer: customerSummary(summaryState, id),
+      loyalty: nextCard
+    };
+  });
 }
 
 // QR doğrulama — müşteri özeti normalize tablodan

@@ -4,6 +4,12 @@ import { requireSession, toCustomerSnapshot } from '../auth.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { upsertPushDevice } from '../pushStore.js';
 import { bumpAppStateRevision } from '../relationalState.js';
+import { clampString, oneOfOrDefault, isBodyTooLarge } from '../validateInput.js';
+
+// Cihaz/platform için izinli enum değerleri
+const PUSH_PLATFORMS = ['web', 'ios', 'android'];
+// FCM/web push tokenları en fazla birkaç yüz karakter — üst sınır koruması
+const MAX_PUSH_TOKEN_LEN = 4096;
 
 // İzin durumu normalize et
 function normalizePermissionStatus(value) {
@@ -27,6 +33,12 @@ export async function handlePushRegisterDevice(req, res) {
     if (!session) return;
 
     const body = readBodySafe(req);
+
+    // Gövde boyutu sınırı — şişirilmiş payload reddedilir
+    if (isBodyTooLarge(body)) {
+      return res.status(413).json(trace.failBody('too_large', 'PAYLOAD_TOO_LARGE', 'İstek gövdesi çok büyük'));
+    }
+
     const requestedCustomerId = Number(body.customerId || body.customer_id || 0);
     const sessionCustomerId = Number(session.customerId);
 
@@ -38,13 +50,15 @@ export async function handlePushRegisterDevice(req, res) {
       ));
     }
 
+    // String uzunluğu + enum doğrulaması
     const permissionStatus = normalizePermissionStatus(body.permissionStatus || body.permission_status);
-    const token = String(body.token || '').trim() || null;
-    const platform = String(body.platform || 'web').trim();
+    const rawToken = clampString(body.token, MAX_PUSH_TOKEN_LEN).trim();
+    const token = rawToken || null;
+    const platform = oneOfOrDefault(body.platform, PUSH_PLATFORMS, 'web');
     const channel = platform === 'web' ? 'web' : 'native';
-    const deviceId = String(body.deviceId || body.device_id || '').trim() || null;
-    const appVersion = String(body.appVersion || body.app_version || '').trim() || null;
-    const buildNumber = String(body.buildNumber || body.build_number || '').trim() || null;
+    const deviceId = clampString(body.deviceId || body.device_id, 200).trim() || null;
+    const appVersion = clampString(body.appVersion || body.app_version, 40).trim() || null;
+    const buildNumber = clampString(body.buildNumber || body.build_number, 40).trim() || null;
 
     trace.log('register', {
       customerId: sessionCustomerId,

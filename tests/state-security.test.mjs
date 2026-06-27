@@ -82,14 +82,32 @@ check('history değiştirme 403 tetikler', () => {
   assert.ok(violations.includes('history'), 'history ihlali bekleniyordu');
 });
 
-// 5) Sadece profil güncelleme ihlal üretmemeli
-check('güvenli profil güncelleme ihlal üretmez', () => {
+// 5) Sadece güvenli profil (isim) güncelleme ihlal üretmemeli
+check('güvenli profil (isim) güncelleme ihlal üretmez', () => {
   const canonical = baseState();
   const client = clientView(canonical);
   client.customers[0].name = 'Yeni Ad';
-  client.customers[0].email = 'yeni@liberte.cafe';
   const violations = findCustomerWriteViolations(canonical, client, CUSTOMER_ID);
   assert.equal(violations.length, 0, `ihlal beklenmiyordu: ${violations}`);
+});
+
+// 5b) E-posta değişimi /api/state ile YASAK — ihlal tetiklemeli
+check('e-posta değişimi 403 tetikler', () => {
+  const canonical = baseState();
+  const client = clientView(canonical);
+  client.customers[0].email = 'yeni@liberte.cafe';
+  const violations = findCustomerWriteViolations(canonical, client, CUSTOMER_ID);
+  assert.ok(violations.includes('email'), 'email ihlali bekleniyordu');
+});
+
+// 5c) mergeUserState e-postayı ASLA yazmaz (doğrulamasız değişim engellenir)
+check('mergeUserState e-postayı yazmaz', () => {
+  const canonical = baseState();
+  const client = clientView(canonical);
+  client.customers[0].email = 'saldirgan@evil.com';
+  const merged = mergeUserState(canonical, client, CUSTOMER_ID);
+  const me = merged.customers.find((c) => c.id === CUSTOMER_ID);
+  assert.equal(me.email, 'demo@liberte.cafe', 'e-posta değişmemeliydi');
 });
 
 // 6) mergeUserState loyalty'yi ASLA yazmaz, profil alanlarını uygular
@@ -162,4 +180,4 @@ check('filterStateForUser başka üye verisi sızdırmaz', () => {
   assert.equal(client.settings.cashier_pin, undefined, 'cashier_pin sızdırılmamalı');
 });
 
-console.log(`\nTüm güvenlik testleri geçti (${passed}/12).`);
+console.log(`\nTüm güvenlik testleri geçti (${passed}).`);

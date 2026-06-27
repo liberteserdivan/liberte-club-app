@@ -22,6 +22,11 @@ import { applyBirthdayReward } from './_lib/loyaltyOps.js';
 import { enforceAuthRateLimit } from './_lib/rateLimit.js';
 import { useRelationalState } from './_lib/relationalConfig.js';
 import { withSqlRequest } from './_lib/sqlRequest.js';
+import { clampString, oneOfOrDefault, isBodyTooLarge } from './_lib/validateInput.js';
+
+// Hata kaydı için izinli enum değerleri
+const ERROR_LOG_LEVELS = ['error', 'warn', 'info', 'debug'];
+const ERROR_LOG_PLATFORMS = ['web', 'ios', 'android', 'unknown'];
 
 export default withSqlRequest(async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
@@ -192,19 +197,35 @@ async function handleErrorLogCreate(req, res, payload) {
     return res.status(400).json({ error: 'message zorunlu' });
   }
 
+  // Gövde boyutu sınırı — şişirilmiş log payload'ı reddet
+  if (isBodyTooLarge(payload)) {
+    return res.status(413).json({ error: 'Hata kaydı çok büyük' });
+  }
+
   if (await enforceAuthRateLimit(req, 'error_log', { maxHits: 30 })) {
     return res.status(429).json({ error: 'Çok fazla hata kaydı' });
   }
 
+  // String uzunluğu ve enum doğrulaması — sınırların dışındaki veriyi kırp/normalize et
+  const message = clampString(payload.userMessage || payload.message, 2000);
+  if (!message.trim()) {
+    return res.status(400).json({ error: 'message zorunlu' });
+  }
+
+  const detailRaw = payload.detail;
+  const detail = typeof detailRaw === 'string'
+    ? clampString(detailRaw, 4000)
+    : detailRaw;
+
   const session = await getSession(req);
   const row = await insertErrorLog({
-    level: payload.level,
-    source: payload.source,
-    message: payload.userMessage || payload.message,
-    code: payload.code,
-    detail: payload.detail,
+    level: oneOfOrDefault(payload.level, ERROR_LOG_LEVELS, 'error'),
+    source: clampString(payload.source, 120),
+    message,
+    code: clampString(payload.code, 80),
+    detail,
     customerId: session?.customerId || null,
-    platform: payload.platform
+    platform: oneOfOrDefault(payload.platform, ERROR_LOG_PLATFORMS, 'unknown')
   });
 
   return res.status(200).json({ ok: true, id: row?.id || null });

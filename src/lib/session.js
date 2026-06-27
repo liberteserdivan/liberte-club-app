@@ -7,6 +7,7 @@ import {
   saveNativeAuthToken
 } from './apiClient.js';
 import { useLocalAuth } from './devAuth.js';
+import { clearAdminSnapshot } from './adminFullSnapshot.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
@@ -145,6 +146,8 @@ export function logoutSession() {
   memorySession = null;
   clearAdminPinVerifiedLocally();
   clearNativeAuthToken();
+  // Yönetici PII snapshot'ını da temizle — çıkışta cihazda iz kalmasın
+  clearAdminSnapshot();
 
   // 2) Sunucudaki oturumu arka planda iptal et — kısa timeout, bloklamaz.
   // Token storage'dan silindiği için Authorization header açıkça verilir.

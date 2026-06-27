@@ -1,8 +1,20 @@
+import { randomInt } from 'node:crypto';
 import { getSql } from './appState.js';
 import { ensureEmailCodesTable } from './emailCodesSchema.js';
 
+// Kriptografik olarak güçlü 6 haneli kod — Math.random tahmin edilebilir, kullanılmaz
 function makeCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(randomInt(100000, 1000000));
+}
+
+// E-posta HTML'ine giren kullanıcı içeriğini kaçışla (HTML injection önlenir)
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function maskEmail(value = '') {
@@ -33,11 +45,14 @@ async function storeVerificationCode(sql, { email, phone, purpose }) {
 async function dispatchVerificationEmail({ email, subject, greeting, code }) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL || 'Liberte <noreply@liberte.cafe>';
+  // greeting kullanıcı adı içerebilir → escape; code zaten yalnızca rakam
+  const safeGreeting = escapeHtml(greeting);
+  const safeCode = escapeHtml(code);
   const html = `<div style="font-family:Arial,sans-serif;background:#06110d;color:#fff;padding:28px;border-radius:18px">
     <h2 style="color:#b9f5d0">Liberte</h2>
-    <p>${greeting}</p>
+    <p>${safeGreeting}</p>
     <p>Doğrulama kodun:</p>
-    <div style="font-size:34px;letter-spacing:8px;font-weight:800;color:#b9f5d0;margin:18px 0">${code}</div>
+    <div style="font-size:34px;letter-spacing:8px;font-weight:800;color:#b9f5d0;margin:18px 0">${safeCode}</div>
     <p>Bu kod 10 dakika geçerlidir.</p>
   </div>`;
 

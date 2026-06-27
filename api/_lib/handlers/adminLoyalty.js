@@ -18,6 +18,8 @@ import {
 } from '../loyaltyOps.js';
 import { menuItems } from '../../../src/lib/menuSeed.js';
 import { runSql } from '../runSql.js';
+import { getSql } from '../sql.js';
+import { claimQrNonce } from '../qrNonceStore.js';
 
 // QR token doğrula — kasiyer müşteri kartını açar
 export async function handleAdminQrVerify(req, res) {
@@ -77,6 +79,21 @@ export async function handleAdminLoyaltyAction(req, res) {
     const action = String(body.action || '').trim();
     const category = String(body.category || 'coffee').trim();
     const menuItemId = body.menuItemId != null ? Number(body.menuItemId) : null;
+
+    // REPLAY KORUMASI: aynı QR token (nonce) + action tek kullanımlıktır.
+    // 90sn'lik token penceresinde aynı işlem tekrar denenirse 409 döner.
+    const claim = await runSql(() => claimQrNonce(getSql(), {
+      nonce: verified.nonce,
+      action,
+      customerId: verified.customerId
+    }));
+    if (!claim.firstUse) {
+      return res.status(409).json({
+        error: 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.',
+        code: 'QR_REPLAY',
+        replay: true
+      });
+    }
     const menuItem = menuItemId
       ? menuItems.find((item) => Number(item.id) === menuItemId) || null
       : null;

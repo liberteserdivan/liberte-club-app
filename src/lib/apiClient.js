@@ -2,7 +2,13 @@ import { formatClientApiError } from './apiErrors.js';
 import { isNativeApp, isIos, isAndroid } from './platform.js';
 
 const TOKEN_KEY = 'liberteAuthToken';
+// Temizlenmesi gereken eski/legacy token anahtarları — çıkışta hepsi silinir
+const LEGACY_TOKEN_KEYS = [TOKEN_KEY, 'liberteNativeAuthToken', 'liberteSessionToken'];
 const NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+
+// Web'de token kalıcı depoya YAZILMAZ; yalnızca bellekte tutulur (httpOnly cookie
+// kalıcılığı sağlar). Bu, XSS ile token çalınması yüzeyini küçültür.
+let memoryAuthToken = '';
 
 let onUnauthorized = null;
 
@@ -20,9 +26,17 @@ function resolveApiUrl(path) {
   return path;
 }
 
-// Oturum tokenını sakla — web + native (Capacitor cross-origin için Bearer şart)
+// Oturum tokenını sakla.
+// - Native (Capacitor): cross-origin istekte cookie gitmediği için Bearer şart →
+//   kalıcı depoya yazılır.
+// - Web: yalnızca bellekte tutulur; httpOnly cookie kalıcılığı sağlar, token
+//   localStorage/sessionStorage'a YAZILMAZ (XSS hırsızlık yüzeyini küçültür).
 export function saveAuthToken(token) {
   if (!token) return;
+  memoryAuthToken = token;
+
+  if (!isNativeApp()) return;
+
   try {
     sessionStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(TOKEN_KEY, token);
@@ -37,9 +51,13 @@ export function saveNativeAuthToken(token) {
 }
 
 export function clearNativeAuthToken() {
+  memoryAuthToken = '';
   try {
-    sessionStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(TOKEN_KEY);
+    // Tüm eski/legacy token anahtarlarını her iki depodan da temizle
+    for (const key of LEGACY_TOKEN_KEYS) {
+      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
+    }
   } catch {
     // Sessizce geç
   }
@@ -61,6 +79,10 @@ export function getStoredAuthTokenMeta() {
 }
 
 function readStoredAuthToken() {
+  // Önce bellek (web + native her ikisinde de geçerli)
+  if (memoryAuthToken) return memoryAuthToken;
+  // Web'de kalıcı depo OKUNMAZ — cookie tabanlı oturum kullanılır
+  if (!isNativeApp()) return '';
   try {
     return sessionStorage.getItem(TOKEN_KEY)
       || localStorage.getItem(TOKEN_KEY)

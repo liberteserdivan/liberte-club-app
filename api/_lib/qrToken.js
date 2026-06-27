@@ -97,7 +97,9 @@ export function verifyCustomerQrToken(token) {
 
     return {
       ok: true,
-      customerId: Number(payload.customerId)
+      customerId: Number(payload.customerId),
+      nonce: String(payload.nonce || ''),
+      expiresAt: Number(payload.exp)
     };
   } catch {
     return { ok: false, error: 'QR okunamadı' };
