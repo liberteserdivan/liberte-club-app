@@ -163,7 +163,24 @@ async function handleDbStatus(res) {
 // Isınma — Vercel soğuk başlatmasını azaltır. Harici pinger (~5 dk) çağırır;
 // fonksiyon ve DB bağlantısı uyanık kalır, ilk gerçek istek hızlı yanıtlanır.
 // Veri sızdırmaz: yalnızca ok/dbOk bayrağı ve zaman damgası döner.
-async function handleWarm(res, headOnly = false) {
+// Kullanıcının kullandığı diğer Vercel fonksiyonlarını da ısıt.
+// Her api/*.js ayrı lambda olduğu için tek ping config.js'i ısıtır;
+// burada auth ve realtime fonksiyonlarına hafif GET atıp onları da uyanık tutarız.
+async function warmOtherFunctions(req) {
+  const host = req?.headers?.host || 'app.liberte.cafe';
+  const origin = `https://${host}`;
+  const targets = ['/api/auth/session', '/api/realtime?resource=promos'];
+
+  await Promise.allSettled(targets.map((path) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    return fetch(`${origin}${path}`, { method: 'GET', signal: controller.signal })
+      .catch(() => {})
+      .finally(() => clearTimeout(timer));
+  }));
+}
+
+async function handleWarm(req, res, headOnly = false) {
   const { getSql } = await import('./_lib/sql.js');
   const sql = getSql();
   let dbOk = false;
@@ -175,6 +192,10 @@ async function handleWarm(res, headOnly = false) {
       dbOk = false;
     }
   }
+
+  // Diğer kritik fonksiyonları da ısıt (auth + realtime)
+  await warmOtherFunctions(req);
+
   // HEAD (izleyiciler) için gövdesiz 200 — sadece durum kodu yeterli
   if (headOnly) return res.status(200).end();
   return res.status(200).json({ ok: true, dbOk, ts: Date.now() });
@@ -245,11 +266,11 @@ export default withSqlRequest(async function handler(req, res) {
   }
 
   // HEAD — UptimeRobot vb. izleyiciler ısınma için HEAD kullanır; gövdesiz 200 dön
-  if (req.method === 'HEAD') return handleWarm(res, true);
+  if (req.method === 'HEAD') return handleWarm(req, res, true);
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (resource === 'warm') return handleWarm(res);
+  if (resource === 'warm') return handleWarm(req, res);
   if (resource === 'firebase') return handleFirebase(res);
   if (resource === 'push') return handlePush(res);
 
