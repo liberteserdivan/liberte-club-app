@@ -31,6 +31,14 @@ export function isTransientDbError(error) {
   return TRANSIENT_PATTERNS.some((part) => text.includes(part));
 }
 
+// Tablo/ilişki mevcut değil mi? (Postgres 42P01 — migration uygulanmamış olabilir.)
+// Geçici değildir; retry ile düzelmez, açık bir migration uyarısı gerektirir.
+export function isUndefinedTableError(error) {
+  if (String(error?.code || '') === '42P01') return true;
+  const text = String(error?.message || error || '').toLowerCase();
+  return text.includes('does not exist') && text.includes('relation');
+}
+
 // İstemciye ham DB metni sızdırma
 export function publicDbErrorMessage(error, fallback = 'İşlem tamamlanamadı. Lütfen tekrar dene.') {
   if (isTransientDbError(error)) {

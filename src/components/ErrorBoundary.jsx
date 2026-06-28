@@ -6,7 +6,7 @@ import { reportError } from '../lib/errorHub.js';
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, traceId: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -15,7 +15,9 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     hideNativeSplash();
-    reportError({
+    // reportError izlenebilir bir kayıt id'si döndürür; kullanıcıya kısa traceId
+    // olarak gösterilir (destek/log eşleştirme için). PII içermez.
+    const entry = reportError({
       source: 'react.errorBoundary',
       message: error?.message || 'Render error',
       userMessage: 'Uygulama beklenmedik bir hatayla karşılaştı.',
@@ -26,14 +28,16 @@ export default class ErrorBoundary extends React.Component {
       showToast: false,
       persist: true
     });
+    this.setState({ traceId: entry?.id || null });
   }
 
   render() {
     if (this.state.error) {
       return (
         <main className="errorFallback">
-          <h1>Bir şeyler ters gitti</h1>
-          <p>{this.state.error.message || 'Bilinmeyen hata'}</p>
+          <h1>Uygulama beklenmeyen bir hata aldı</h1>
+          <p>Lütfen yeniden deneyin. Sorun sürerse uygulamayı kapatıp tekrar açın.</p>
+          {this.state.traceId && <p className="errorTraceId">Hata kodu: {this.state.traceId}</p>}
           <button type="button" onClick={() => window.location.reload()}>Yeniden dene</button>
         </main>
       );

@@ -36,7 +36,24 @@ export function markRemoteFetchFailure() {
   blockedUntil = Date.now() + computeBackoffMs();
 }
 
-// Tekilleştirilmiş apiJson — aynı path için paylaşılan promise
+// Oturum geçişlerinde (logout/login) modül seviyesindeki ağ durumunu sıfırla.
+// Aksi halde önceki oturumdan kalan backoff (blockedUntil) yeni girişte /api/state
+// isteğini gereksizce reddeder ve eski in-flight GET yeni oturumun verisini ezebilir.
+export function resetRemoteFetchState() {
+  inflightStateRequest = null;
+  failStreak = 0;
+  blockedUntil = 0;
+}
+
+// Yalnızca okuma (GET) /api/state istekleri tekilleştirilir. POST (kaydet) isteğini
+// aynı path'teki in-flight GET'e bağlamak kaydı yutardı; bu yüzden GET'e sınırlıdır.
+function isDedupableStateRead(path, options) {
+  if (!path.startsWith('/api/state')) return false;
+  const method = String(options.method || 'GET').toUpperCase();
+  return method === 'GET';
+}
+
+// Tekilleştirilmiş apiJson — aynı GET /api/state için paylaşılan promise
 export function dedupedApiJson(path, options = {}) {
   if (isRemoteFetchBlocked()) {
     const seconds = remoteFetchBlockedSeconds();
@@ -45,7 +62,8 @@ export function dedupedApiJson(path, options = {}) {
     return Promise.reject(err);
   }
 
-  if (path.startsWith('/api/state') && inflightStateRequest) {
+  const dedupable = isDedupableStateRead(path, options);
+  if (dedupable && inflightStateRequest) {
     return inflightStateRequest;
   }
 
@@ -60,9 +78,9 @@ export function dedupedApiJson(path, options = {}) {
       throw error;
     })
     .finally(() => {
-      if (path.startsWith('/api/state')) inflightStateRequest = null;
+      if (dedupable) inflightStateRequest = null;
     });
 
-  if (path.startsWith('/api/state')) inflightStateRequest = request;
+  if (dedupable) inflightStateRequest = request;
   return request;
 }

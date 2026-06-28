@@ -9,6 +9,8 @@ import {
 import { isLocalAuth } from './devAuth.js';
 import { clearAdminSnapshot } from './adminFullSnapshot.js';
 import { clearLocalDb } from './db.js';
+import { resetRemoteFetchState } from './remoteFetch.js';
+import { clearSafeModeState } from './safeMode.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
@@ -134,6 +136,10 @@ export function applyAuthResult(result) {
     saveNativeAuthToken(result.sessionToken);
   }
 
+  // Yeni oturum temiz ağ durumuyla başlasın — önceki oturumdan kalan backoff
+  // veya in-flight /api/state yeni girişi engellemesin/ezmesin.
+  resetRemoteFetchState();
+
   return memorySession;
 }
 
@@ -152,6 +158,10 @@ export function logoutSession() {
   // Yerel veri önbelleğini (liberteDB) temizle — müşteri/loyalty/history PII'si
   // çıkıştan sonra cihazda kalmasın. Son telefon/e-posta/deviceId korunur.
   clearLocalDb();
+  // Modül seviyesindeki ağ ve Safe Mode durumunu sıfırla — eski backoff/in-flight
+  // istek veya bayat Safe Mode durumu sonraki girişi engellemesin/yavaşlatmasın.
+  resetRemoteFetchState();
+  clearSafeModeState();
 
   // 2) Sunucudaki oturumu arka planda iptal et — kısa timeout, bloklamaz.
   // Token storage'dan silindiği için Authorization header açıkça verilir.
@@ -159,7 +169,7 @@ export function logoutSession() {
     apiJson('/api/auth/session', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-      timeoutMs: 8000,
+      timeoutMs: 4000,
       skipUnauthorized: true
     }).catch(() => {
       // Sunucu iptali başarısız olsa da yerel çıkış tamamlandı

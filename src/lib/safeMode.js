@@ -105,7 +105,17 @@ function notify() {
   }
 }
 
-// Test/temizlik
+// Logout/oturum geçişinde istemci Safe Mode durumunu sıfırla. Dinleyiciler
+// KORUNUR (hook'lar abone kalır); yalnızca durum normale döner ve bildirilir.
+// Böylece önceki oturumdan kalan "on" durumu yeni oturumun polling/fullStatePull
+// davranışını yanlışlıkla kısmaz.
+export function clearSafeModeState() {
+  if (!state.enabled) return;
+  state = { enabled: false, level: 'healthy', features: {} };
+  notify();
+}
+
+// Test/temizlik — dinleyiciler dahil her şeyi sıfırlar
 export function resetSafeModeClient() {
   state = { enabled: false, level: 'healthy', features: {} };
   listeners.clear();
