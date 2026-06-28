@@ -34,7 +34,7 @@ workflows:
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
         APP_VERSION: "1.1.29"
-        IOS_MIN_BUILD_NUMBER: "60"
+        IOS_MIN_BUILD_NUMBER: "61"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
       node: 22
@@ -62,15 +62,39 @@ workflows:
           node scripts/setup-ios-cocoapods.mjs
       - name: iOS surum ve build numarasi
         script: |
+          set -eo pipefail
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
-          MIN_BUILD="${IOS_MIN_BUILD_NUMBER:-25}"
-          if [ "${BUILD_NUMBER:-0}" -lt "$MIN_BUILD" ]; then
-            IOS_BUILD="$MIN_BUILD"
-          else
-            IOS_BUILD="$BUILD_NUMBER"
+
+          # Sayisal Apple ID'yi bundle id uzerinden coz — manuel deger gerekmez.
+          # Kimlik bilgileri app_store_connect grubundan otomatik okunur.
+          APPLE_ID="$(app-store-connect apps list \
+            --bundle-id-identifier "$BUNDLE_ID" \
+            --strict-match-identifier \
+            --json 2>/dev/null \
+            | python3 -c "import sys,json; a=json.load(sys.stdin); print(a[0]['id'] if a else '')" \
+            || echo '')"
+
+          # TestFlight'taki en yuksek build numarasini al, +1 yap — cakismayi kesin onler.
+          IOS_BUILD=""
+          if [ -n "$APPLE_ID" ]; then
+            LATEST="$(app-store-connect get-latest-testflight-build-number "$APPLE_ID" 2>/dev/null || echo '')"
+            if [ -n "$LATEST" ]; then
+              IOS_BUILD="$((LATEST + 1))"
+            fi
           fi
-          echo "iOS build number: $IOS_BUILD (Codemagic BUILD_NUMBER=$BUILD_NUMBER, min=$MIN_BUILD)"
+
+          # Guvenli geri donus: App Store sorgusu basarisizsa taban (>60) + Codemagic sayaci.
+          if [ -z "$IOS_BUILD" ]; then
+            MIN_BUILD="${IOS_MIN_BUILD_NUMBER:-61}"
+            if [ "${BUILD_NUMBER:-0}" -lt "$MIN_BUILD" ]; then
+              IOS_BUILD="$MIN_BUILD"
+            else
+              IOS_BUILD="$BUILD_NUMBER"
+            fi
+          fi
+
+          echo "iOS build number: $IOS_BUILD (AppleID=$APPLE_ID, TestFlight latest=$LATEST)"
           agvtool new-version -all "$IOS_BUILD"
       - name: Manuel imza dosyalarini Xcode projesine uygula
         script: xcode-project use-profiles
