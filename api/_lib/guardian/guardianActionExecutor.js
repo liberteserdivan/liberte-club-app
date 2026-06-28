@@ -57,21 +57,25 @@ function performAction(action, params = {}) {
     case 'disable_safe_mode':
       return { safeMode: disableSafeMode() };
     case 'reduce_polling':
+      // Level 1 — hafif: yalnızca polling azalır, diğer akışlar (fullStatePull/dailyClaim) normal kalır
       return {
         safeMode: enableSafeMode({
           reason: params.reason || 'reduce_polling',
           level: STATUS.DEGRADED,
           ttlMinutes,
-          features: { polling: 'reduced' }
+          features: { polling: 'reduced' },
+          light: true
         })
       };
     case 'degrade_realtime':
+      // Level 1 — hafif: yalnızca realtime degraded olur
       return {
         safeMode: enableSafeMode({
           reason: params.reason || 'degrade_realtime',
           level: STATUS.DEGRADED,
           ttlMinutes,
-          features: { realtime: 'degraded' }
+          features: { realtime: 'degraded' },
+          light: true
         })
       };
     case 'show_maintenance_message':

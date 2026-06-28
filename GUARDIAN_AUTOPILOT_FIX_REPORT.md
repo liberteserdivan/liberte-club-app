@@ -29,9 +29,12 @@ DB migration, production verisine müdahale veya büyük refactor yapılmadı.
 
 ## Risk seviyeleri
 - **Level 0** (gri) — incident/alert/rapor: otomatik.
-- **Level 1** (mavi) — `reduce_polling`, `degrade_realtime`: TTL'li, geri alınabilir, **otomatik**.
-- **Level 2** (turuncu) — `enable_safe_mode`, `disable_safe_mode`, `show_maintenance_message`: **admin + PIN onayı** olmadan çalışmaz.
+- **Level 1** (mavi) — `reduce_polling`, `degrade_realtime`: **HAFİF** koruma (yalnızca polling/realtime; fullStatePull/dailyClaim normal kalır), TTL'li, geri alınabilir, **anında + otomatik** uygulanır. Sorun algılandığında admin yokken bile devreye girer (gece koruması) ve TTL her tetiklemede tazelenir.
+- **Level 2** (turuncu) — `enable_safe_mode` (tam Safe Mode: fullStatePull/dailyClaim dahil), `disable_safe_mode`, `show_maintenance_message`: **admin + PIN onayı** olmadan çalışmaz. Kurallar bunu onay önerisi olarak bırakır.
 - **Level 3** (kırmızı) — `generate_cursor_fix_prompt` ve tüm blocked aksiyonlar: **asla otomatik uygulanmaz**, yalnızca öneri/rapor.
+
+### Kural davranışı (gece koruması)
+Bir sorun algılandığında bot otomatik olarak: incident kaydeder + (gerekiyorsa) admin'e alert üretir + **Level 1 hafif korumayı anında uygular** (polling/realtime azaltılır, TTL'li). Ek olarak **tam Safe Mode'u (Level 2)** admin onayı için öneri olarak bırakır. Böylece admin uyurken bile temel koruma devreye girer, ama fullStatePull/dailyClaim gibi daha etkili kısıtlar yalnızca onayla uygulanır.
 
 ## Yasaklı aksiyonlar (asla çalışmaz)
 `run_migration`, `deploy_production`, `delete_customer`, `modify_loyalty_balance`,

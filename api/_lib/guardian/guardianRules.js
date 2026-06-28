@@ -1,18 +1,20 @@
 import { STATUS, SERVICE, THRESHOLDS } from './guardianConstants.js';
 import { summarizeService, recentDurations } from './guardianMetrics.js';
-import { readSafeModeSync } from './guardianSafeMode.js';
+import { readSafeModeSync, enableSafeMode } from './guardianSafeMode.js';
 import { recordIncident } from './guardianIncidents.js';
 import { raiseAlert } from './guardianAlerts.js';
 import { proposeAction } from './guardianApprovals.js';
+import { createProposal, PROPOSAL_STATUS } from './guardianActionProposals.js';
 
 // Liberte Guardian — otomatik güvenli müdahale kuralları (bölüm 7 + Approval Autopilot)
 // Tek sorumluluk: metrikleri değerlendirip GÜVENLİ aksiyonları tetiklemek.
 // Asla: veri silme, LP düzeltme, migration, deploy, yetki/secret değişimi.
 //
-// ÖNEMLİ (Approval Autopilot): Safe Mode (Level 2) ARTIK OTOMATİK AÇILMAZ.
-// Bot yalnızca otomatik olarak: incident kaydeder + alert üretir +
-// admin onayı için "Safe Mode aç" ÖNERİSİ oluşturur. Etkili müdahale
-// ancak admin + PIN onayından sonra uygulanır.
+// Approval Autopilot davranışı:
+//  - Level 1 (polling azalt / realtime degraded): HAFİF koruma, ANINDA + otomatik uygulanır
+//    (gece koruması — admin yokken bile devreye girer, TTL'li, geri alınabilir).
+//  - Level 2 (tam Safe Mode: fullStatePull/dailyClaim dahil): otomatik açılmaz,
+//    admin + PIN onayı için ÖNERİ olarak bırakılır.
 
 // Son N ölçümün tamamı eşik üstünde mi? (üst üste yavaşlık)
 function consecutiveSlow(service, thresholdMs, count) {
@@ -21,7 +23,27 @@ function consecutiveSlow(service, thresholdMs, count) {
   return list.every((x) => Number.isFinite(x.durationMs) && x.durationMs >= thresholdMs);
 }
 
-// Tek bir kuralı uygula: incident kaydet + alert üret + Safe Mode ÖNERİSİ oluştur (onaysız uygulanmaz)
+// Onay merkezinde görünürlük için otomatik (Level 1) aksiyon kaydı oluştur (dedup'lı, display).
+function recordAutoL1(action, incident, reason) {
+  return createProposal({
+    incidentId: incident.id,
+    title: action === 'reduce_polling' ? 'Polling otomatik azaltıldı (Level 1)' : 'Realtime otomatik degraded (Level 1)',
+    description: `${reason} nedeniyle ${action} otomatik (Level 1, hafif) uygulandı.`,
+    riskLevel: 1,
+    status: PROPOSAL_STATUS.AUTO_EXECUTED,
+    affectedArea: incident.affectedArea,
+    proposedAction: action,
+    parameters: { ttlMinutes: 60 },
+    requiresApproval: false,
+    requiresHuman: false,
+    rollback: { type: 'safe_mode_disable', description: 'Normal davranışa dönmek için Safe Mode kapatılır.' }
+  });
+}
+
+// Tek bir kuralı uygula:
+//  1) incident kaydet + (gerekiyorsa) alert (Level 0, otomatik)
+//  2) Level 1 hafif korumayı ANINDA uygula (polling/realtime) — TTL her tetiklemede tazelenir
+//  3) Level 2 tam Safe Mode için onay ÖNERİSİ bırak (onaysız uygulanmaz)
 async function applyIntervention({
   reason, level, features, incident,
   expectedEffect = [
@@ -32,15 +54,26 @@ async function applyIntervention({
   risks = ['Bazı arka plan güncellemeleri daha geç gelebilir']
 }) {
   const created = recordIncident(incident);
-  // requiresHuman ise admin'e bildir (spam guard içerir)
   if (created.requiresHuman) {
     await raiseAlert(created).catch(() => {});
   }
-  // Level 2 → doğrudan açma yok; admin onayı için öneri üret (dedup'lı)
+
+  // 2) Level 1 hafif koruma (yalnızca polling/realtime). fullStatePull/dailyClaim normal kalır.
+  const lightFeatures = {};
+  if (features.polling === 'reduced') lightFeatures.polling = 'reduced';
+  if (features.realtime === 'degraded') lightFeatures.realtime = 'degraded';
+  const autoActions = [];
+  if (Object.keys(lightFeatures).length > 0) {
+    enableSafeMode({ reason: `auto_l1:${reason}`, level: STATUS.DEGRADED, ttlMinutes: 60, features: lightFeatures, light: true });
+    if (lightFeatures.polling) { recordAutoL1('reduce_polling', created, reason); autoActions.push('reduce_polling'); }
+    if (lightFeatures.realtime) { recordAutoL1('degrade_realtime', created, reason); autoActions.push('degrade_realtime'); }
+  }
+
+  // 3) Level 2 tam Safe Mode → onay önerisi (dedup'lı)
   const proposal = await proposeAction({
     incidentId: created.id,
-    title: `${incident.affectedArea} için Safe Mode önerisi`,
-    description: `${reason} nedeniyle Safe Mode (azaltılmış mod) öneriliyor.`,
+    title: `${incident.affectedArea} için tam Safe Mode önerisi`,
+    description: `${reason} nedeniyle tam Safe Mode (fullStatePull/dailyClaim dahil) öneriliyor. Hafif koruma zaten otomatik uygulandı.`,
     affectedArea: incident.affectedArea,
     proposedAction: 'enable_safe_mode',
     parameters: { level, ttlMinutes: 60, features },
@@ -51,7 +84,8 @@ async function applyIntervention({
       description: 'Safe Mode kapatılırsa normal polling/realtime davranışı geri döner.'
     }
   }).catch(() => null);
-  return { incidentId: created.id, proposalId: proposal?.id || null, safeActionsTaken: created.safeActionsTaken };
+
+  return { incidentId: created.id, autoActions, proposalId: proposal?.id || null, safeActionsTaken: created.safeActionsTaken };
 }
 
 // 7.1 — DB latency yüksek

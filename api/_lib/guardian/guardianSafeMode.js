@@ -93,15 +93,24 @@ export function safeModeHeaderValue() {
 }
 
 // Safe Mode aç — TTL'li
-export function enableSafeMode({ reason = 'unspecified', level = STATUS.DEGRADED, ttlMinutes = DEFAULT_TTL_MINUTES, features = {} } = {}) {
+// light=false (varsayılan): tam azaltılmış mod (tüm degraded feature'lar).
+// light=true: HAFİF mod — yalnızca verilen feature'lar değişir, gerisi normal kalır.
+//   (Level 1 otomatik koruma: yalnızca polling/realtime azalt, fullStatePull/dailyClaim normal kalsın.)
+export function enableSafeMode({ reason = 'unspecified', level = STATUS.DEGRADED, ttlMinutes = DEFAULT_TTL_MINUTES, features = {}, light = false } = {}) {
   const now = Date.now();
+  // Light modda mevcut aktif azaltmaları koru (birden çok kural çakışmasın), aksi halde normal taban.
+  let lightBase = null;
+  if (light) {
+    const current = readSafeModeSync();
+    lightBase = current.enabled ? current.features : normalFeatures();
+  }
   const config = {
     enabled: true,
     reason: String(reason).slice(0, 200),
     level,
     startedAt: new Date(now).toISOString(),
     expiresAt: new Date(now + Math.max(1, ttlMinutes) * 60 * 1000).toISOString(),
-    features: degradedFeatures(features)
+    features: light ? { ...lightBase, ...features } : degradedFeatures(features)
   };
   globalThis.__liberteGuardianSafeMode = config;
   return config;

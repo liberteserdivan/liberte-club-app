@@ -139,6 +139,25 @@ test('Level 1 (reduce_polling) otomatik uygulanır', async () => {
   assert.equal(readSafeModeSync().features.polling, 'reduced');
 });
 
+test('Level 1 hafif mod fullStatePull/dailyClaim normal bırakır', async () => {
+  freshState();
+  await proposeAction({ proposedAction: 'reduce_polling', title: 'p', parameters: { ttlMinutes: 30 } });
+  const sm = readSafeModeSync();
+  // Hafif koruma: customer full state pull ve daily claim normal kalır (sadece polling azalır)
+  assert.equal(sm.features.polling, 'reduced');
+  assert.equal(sm.features.fullStatePull, 'enabled');
+  assert.equal(sm.features.dailyClaim, 'enabled');
+});
+
+test('Hafif mod art arda uygulamada önceki azaltmaları korur', async () => {
+  freshState();
+  await proposeAction({ proposedAction: 'reduce_polling', title: 'p', parameters: { ttlMinutes: 30 } });
+  await proposeAction({ proposedAction: 'degrade_realtime', title: 'r', parameters: { ttlMinutes: 30 } });
+  const sm = readSafeModeSync();
+  assert.equal(sm.features.polling, 'reduced');
+  assert.equal(sm.features.realtime, 'degraded');
+});
+
 // ---- TTL zorunluluğu ----
 
 test('TTL gereken aksiyon TTL olmadan çalışmaz', async () => {
