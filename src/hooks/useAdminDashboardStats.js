@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchAdminFeed } from '../lib/realtimeFetch.js';
+import { usePageActive } from './usePageActive.js';
 
 // Yönetici özet — sunucudan üye ve push cihaz sayısı
 export function useAdminDashboardStats({ enabled = false }) {
+  const active = usePageActive();
   const [stats, setStats] = useState({ customerCount: 0, pushDeviceCount: 0 });
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -38,11 +40,14 @@ export function useAdminDashboardStats({ enabled = false }) {
       return undefined;
     }
 
+    // Arka planda/gizliyken polling yapma; ön plana dönünce tekrar başlar.
+    if (!active) return undefined;
+
     // Özet sayaçları kritik-anlık değil; 60 sn aralık egress'i azaltır.
     refreshStats();
     const timer = setInterval(refreshStats, 60_000);
     return () => clearInterval(timer);
-  }, [enabled, refreshStats]);
+  }, [enabled, active, refreshStats]);
 
   return { stats, status, error, refreshStats };
 }

@@ -62,9 +62,9 @@ export default function StampCategoryPanel({
                 </div>
               ) : (
                 <div className="stampCategoryBtns">
-                  <button type="button" onClick={() => onAdd?.(cat.id)} title="LP ekle"><Plus size={14} /></button>
-                  <button type="button" className="ghost" onClick={() => onRemove?.(cat.id)} disabled={!canUndo} title="LP geri al"><Minus size={14} /></button>
-                  <button type="button" className="goldBtn" onClick={() => onRedeem?.(cat.id)} disabled={!canRedeem} title="Ödül kullan"><Gift size={14} /></button>
+                  <button type="button" onClick={() => onAdd?.(cat.id)} disabled={busy} title="LP ekle"><Plus size={14} /></button>
+                  <button type="button" className="ghost" onClick={() => onRemove?.(cat.id)} disabled={busy || !canUndo} title="LP geri al"><Minus size={14} /></button>
+                  <button type="button" className="goldBtn" onClick={() => onRedeem?.(cat.id)} disabled={busy || !canRedeem} title="Ödül kullan"><Gift size={14} /></button>
                 </div>
               )}
             </div>

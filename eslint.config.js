@@ -4,6 +4,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
+import reactPlugin from 'eslint-plugin-react';
 
 export default [
   {
@@ -31,9 +32,13 @@ export default [
         ...globals.serviceworker
       }
     },
-    plugins: { 'react-hooks': reactHooks },
+    plugins: { 'react-hooks': reactHooks, react: reactPlugin },
     rules: {
       ...js.configs.recommended.rules,
+      // JSX'te kullanılan bileşen/değişkenleri "kullanılıyor" say — aksi halde
+      // no-unused-vars JSX içinde geçen importları yanlışlıkla unused gösteriyordu.
+      'react/jsx-uses-vars': 'warn',
+      'react/jsx-uses-react': 'warn',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-empty': ['warn', { allowEmptyCatch: true }],
       'no-undef': 'warn',

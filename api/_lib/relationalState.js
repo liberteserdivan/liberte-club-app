@@ -5,6 +5,7 @@ import { GLOBAL_STATE_KEYS, RELATIONAL_STATE_KEYS, useRelationalState } from './
 import { loadMenuFromSql, upsertMenuToSql } from './menuStore.js';
 import { loadHistoryFromSql, loadLoyaltyMapFromSql } from './loyaltyStore.js';
 import { loadPushSubscriptionsFromSql, loadPushSubscriptionsForCustomer } from './pushStore.js';
+import { loadAllDailyClaims, loadDailyClaimsForCustomer } from './dailyClaimsStore.js';
 import {
   ensureCustomersTables,
   customerRowToRecord,
@@ -117,6 +118,8 @@ export async function composeStateFromRelational(externalSql = null) {
   const loyalty = await loadLoyaltyMapFromSql(sql);
   const history = await loadHistoryFromSql(sql);
   const pushSubscriptions = await loadPushSubscriptionsFromSql(sql);
+  // dailyClaims artık normalize tablodan okunur (global JSON kilidi kaldırıldı)
+  const dailyClaims = await loadAllDailyClaims(sql);
 
   const migratedLoyalty = migrateAllLoyalty(
     Object.keys(loyalty).length ? loyalty : (legacyFull?.loyalty || {})
@@ -129,6 +132,7 @@ export async function composeStateFromRelational(externalSql = null) {
     categories: menu.categories.length ? menu.categories : (legacyFull?.categories || []),
     items: menu.items.length ? menu.items : (legacyFull?.items || []),
     history: history.length ? history : (legacyFull?.history || []),
+    dailyClaims: dailyClaims.length ? dailyClaims : (global.dailyClaims || []),
     pushSubscriptions: pushSubscriptions.length
       ? pushSubscriptions
       : (global.pushSubscriptions || legacyFull?.pushSubscriptions || [])
@@ -149,6 +153,8 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
   const loyaltyRow = await findLoyaltyByCustomerId(sql, id);
   const history = await loadHistoryFromSql(sql, id);
   const pushSubscriptions = await loadPushSubscriptionsForCustomer(sql, id);
+  // Yalnızca bu müşterinin günlük claim'leri — tabloda satır bazlı
+  const dailyClaims = await loadDailyClaimsForCustomer(sql, id);
 
   const data = {
     ...global,
@@ -157,6 +163,7 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
     categories: menu.categories.length ? menu.categories : (legacyFull?.categories || []),
     items: menu.items.length ? menu.items : (legacyFull?.items || []),
     history: history.length ? history : rowsForCustomer(legacyFull?.history, id),
+    dailyClaims: dailyClaims.length ? dailyClaims : rowsForCustomer(global.dailyClaims, id),
     pushSubscriptions,
     notifications: []
   };

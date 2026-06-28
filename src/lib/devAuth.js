@@ -30,7 +30,7 @@ async function hashDevPin(pin) {
 
 // localStorage'dan dev PIN'leri yükle
 function loadDevPinsFromStorage() {
-  if (!useLocalAuth()) return;
+  if (!isLocalAuth()) return;
 
   try {
     const stored = JSON.parse(localStorage.getItem(DEV_PIN_KEY) || '{}');
@@ -46,7 +46,7 @@ function loadDevPinsFromStorage() {
 
 // Dev PIN hash'ini kalıcı kaydet
 function saveDevPinToStorage(phone, hash) {
-  if (!useLocalAuth()) return;
+  if (!isLocalAuth()) return;
 
   try {
     const stored = JSON.parse(localStorage.getItem(DEV_PIN_KEY) || '{}');
@@ -101,7 +101,7 @@ export async function verifyDevPin(phone, pin) {
 
 // Seed hesapları için varsayılan PIN — yalnızca dev
 export async function bootstrapDevAuth(customers = []) {
-  if (!useLocalAuth()) return;
+  if (!isLocalAuth()) return;
 
   loadDevPinsFromStorage();
 
@@ -149,7 +149,10 @@ export function verifyDevAuthCode(phone, email, code) {
   return true;
 }
 
-export const useLocalAuth = () => import.meta.env?.DEV === true;
+// NOT: Bu bir React hook değildir; yalnızca dev ortamı bayrağını döndüren saf
+// bir yardımcıdır. Bu yüzden adı "use" ile başlamaz (eslint rules-of-hooks
+// yanlış-pozitiflerini önler).
+export const isLocalAuth = () => import.meta.env?.DEV === true;
 
 // Yönetici PIN — müşteri PIN sisteminden ayrı (yalnızca dev)
 export function verifyDevAdminPin(pin) {

@@ -1,7 +1,7 @@
 // Merkezi hata yönetimi — toast, sunucu logu, geliştirici konsolu
 
 import { isAndroid, isIos, isNativeApp } from './platform.js';
-import { useLocalAuth } from './devAuth.js';
+import { isLocalAuth } from './devAuth.js';
 import { submitErrorLog } from './errorLogClient.js';
 
 const listeners = new Set();
@@ -96,7 +96,7 @@ export function reportError({
     emitToast(entry);
   }
 
-  if (persist && !useLocalAuth()) {
+  if (persist && !isLocalAuth()) {
     submitErrorLog({
       level,
       source,

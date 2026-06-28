@@ -3,24 +3,26 @@ import { formatClientApiError } from '../lib/apiErrors.js';
 import { loadRemote, save, saveRemote } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
 import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullSnapshot.js';
-import {
-  applyAdminMemberSlice,
-  mergeAdminRemoteIntoDb,
-  restoreAdminMembersFromSnapshot
-} from '../lib/adminMemberSync.js';
-import { fetchAdminMembersList } from '../lib/adminMemberClient.js';
-import { fetchAdminCustomers } from '../lib/realtimeFetch.js';
+import { mergeAdminRemoteIntoDb } from '../lib/adminMemberSync.js';
 import { reportError } from '../lib/errorHub.js';
-import { useLocalAuth } from '../lib/devAuth.js';
+import { isLocalAuth } from '../lib/devAuth.js';
 import { patchMemorySession, hasAdminPinVerifiedLocally } from '../lib/session.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
+import { shouldReduceFullStatePull, shouldReducePolling, subscribeSafeMode } from '../lib/safeMode.js';
 import { subscribeRemoteSyncRequest } from '../lib/syncBus.js';
+import { isNativeAppActive, subscribeActiveChange } from '../lib/appForeground.js';
 
 // Oturum yokken uzak sync yapılmaz (401 israfını önle)
 function canPullRemote(sessionRef) {
-  if (useLocalAuth()) return true;
+  if (isLocalAuth()) return true;
   return Boolean(sessionRef?.current?.customerId);
 }
+
+// Login yanıtı zaten customer/loyalty/session döndürüyor; ilk ekran bununla
+// açılır. Bu yüzden zorunlu ilk tam /api/state pull'u ertelenir (login akışını
+// soğuk başlangıçta kilitlememek için). Foreground/visibility ya da periyodik
+// timer daha erken senkron tetikleyebilir.
+const INITIAL_REMOTE_SYNC_DELAY_MS = 6_000;
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
 export function useCommit(initial, sessionRef, syncContext = {}) {
@@ -105,9 +107,15 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
   const scheduleSyncTimer = useCallback(() => {
     clearSyncTimer();
     if (!pageVisibleRef.current) return;
+    // Native arka plandayken interval kurma (pil + egress tasarrufu)
+    if (!isNativeAppActive()) return;
     if (!canPullRemote(sessionRef)) return;
 
-    const intervalMs = resolveSyncIntervalMs(syncContextRef.current);
+    // Safe Mode "reduced" ise polling aralığı genişler (sunucu yükü azaltma)
+    const intervalMs = resolveSyncIntervalMs({
+      ...syncContextRef.current,
+      safeModeReduced: shouldReducePolling()
+    });
     timerRef.current = setInterval(() => {
       pullRemoteRef.current(false);
     }, intervalMs);
@@ -182,22 +190,9 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
         return next;
       });
 
-      if (session?.isAdmin && session?.adminVerified) {
-        fetchAdminMembersList()
-          .catch(() => fetchAdminCustomers())
-          .then((slice) => {
-            if (!slice?.customers?.length) {
-              commit((current) => restoreAdminMembersFromSnapshot(current, session), { skipRemote: true });
-              return;
-            }
-            commit((current) => {
-              const next = applyAdminMemberSlice(current, slice);
-              saveAdminSnapshot(next);
-              return next;
-            }, { skipRemote: true });
-          })
-          .catch(() => {});
-      }
+      // NOT: Admin üye listesi fan-out'u buradan kaldırıldı. Üyeler artık tek
+      // kanaldan (useAdminMembers hook'u) çekiliyor; tam state pull'u sonrası
+      // ayrıca members çağırmak duplicate fetch yaratıyordu.
 
       if (
         remote.adminVerified != null
@@ -243,10 +238,17 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
   useEffect(() => {
     if (!canPullRemote(sessionRef)) return undefined;
 
+    // Periyodik artımlı sync hemen kurulur (since-tabanlı, hafif).
+    scheduleSyncTimer();
+
+    // İlk zorunlu tam pull ertelenir; login response ile açılan ekranın
+    // üstüne gereksiz ağır /api/state çağrısı binmesin.
     const deferTimer = setTimeout(() => {
+      // Safe Mode müşteri için tam state pull'u kısar; periyodik artımlı sync
+      // güncel veriyi getirmeye devam eder, ağır /api/state çağrısı atlanır.
+      if (shouldReduceFullStatePull()) return;
       pullRemote(true);
-      scheduleSyncTimer();
-    }, 120);
+    }, INITIAL_REMOTE_SYNC_DELAY_MS);
 
     return () => {
       clearTimeout(deferTimer);
@@ -281,6 +283,27 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef]);
+
+  // Native ön plan/arka plan — arka planda interval durdurulur, dönüşte yenilenir
+  useEffect(() => {
+    if (!canPullRemote(sessionRef)) return undefined;
+
+    return subscribeActiveChange((isActive) => {
+      if (isActive) {
+        pullRemote(false);
+        scheduleSyncTimer();
+        return;
+      }
+      clearSyncTimer();
+    });
+  }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef]);
+
+  // Safe Mode değişince polling aralığını hemen yeniden hesapla. Böylece Safe
+  // Mode açıldığında müşteri istemcisinde de polling aralığı anında genişler.
+  useEffect(() => {
+    if (!canPullRemote(sessionRef)) return undefined;
+    return subscribeSafeMode(() => { scheduleSyncTimer(); });
+  }, [scheduleSyncTimer, clearSyncTimer, sessionRef]);
 
   // Kasada LP sonrası manuel sync
   useEffect(() => {

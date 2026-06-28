@@ -157,6 +157,10 @@ export async function applyLoyaltyActionRelational({
   const id = Number(customerId);
 
   return sql.begin(async (tx) => {
+    // Yazma stall'ını DB tarafında sınırla — bayat bağlantıda işlem 8sn içinde
+    // iptal edilir ve transaction rollback olur (çift yazma OLMAZ). Client tarafı
+    // körlemesine Promise.race timeout kullanmadığımız için idempotent retry güvenli.
+    await tx`SET LOCAL statement_timeout = '8000ms'`;
     // Müşteri satırını kilitle — eşzamanlı işlemleri bu müşteri için serileştirir
     const lockedRows = await tx`
       SELECT id, phone, name, email, birth_date, referral_code, is_admin, created_at, last_visit

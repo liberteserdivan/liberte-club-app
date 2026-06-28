@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Flashlight, ScanLine } from 'lucide-react';
+import { Flashlight, Loader2, ScanLine } from 'lucide-react';
 import PageShell from './PageShell.jsx';
 import PageSection from './PageSection.jsx';
 import StampCategoryPanel from './StampCategoryPanel.jsx';
@@ -297,6 +297,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           category,
           menuItemId: menuItem?.id ?? null
         });
+        // Sunucu işlemi onayladı ve güncel customer/loyalty döndürdü; sonucu
+        // doğrudan local state'e işliyoruz. Bu yüzden tam /api/state pull'una
+        // gerek yok (gereksiz ağ yükü + admin'de members fan-out önlenir).
         if (result.customer) syncScannedCustomer(result.customer);
         else if (result.loyalty && found?.id) {
           const current = dbRef.current;
@@ -305,7 +308,6 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
             loyalty: { ...(current.loyalty || {}), [found.id]: result.loyalty }
           }, { skipRemote: true });
         }
-        if (refreshRemote) void refreshRemote(true);
         return true;
       } catch (error) {
         setMsg(error?.message || 'İşlem yapılamadı');
@@ -496,6 +498,15 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
         </div>
       ) : (
         <div className={`scanResultCard${success ? ' scanFoundPop' : ''}`}>
+          {/* LP işlemi sırasında açık ilerleme göstergesi — sadece butonları
+              disable etmek kullanıcıya "uygulama dondu" hissi veriyordu. */}
+          {actionBusy && (
+            <div className="scanProcessing" role="status" aria-live="polite">
+              <Loader2 size={16} className="scanProcessingSpinner" />
+              <span>LP işleniyor… Bağlantı yavaşsa tekrar deneme, sonuç bekleniyor.</span>
+            </div>
+          )}
+
           {msg && <p className="scanResultToast">{msg}</p>}
 
           {found.email && (

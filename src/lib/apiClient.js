@@ -1,5 +1,7 @@
 import { formatClientApiError } from './apiErrors.js';
 import { isNativeApp, isIos, isAndroid } from './platform.js';
+import { recordRequest } from './guardianTelemetry.js';
+import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
 
 const TOKEN_KEY = 'liberteAuthToken';
 // Temizlenmesi gereken eski/legacy token anahtarları — çıkışta hepsi silinir
@@ -273,7 +275,25 @@ export async function apiFetch(path, options = {}) {
 // JSON API isteği — sunucu HTML hata dönerse güvenli parse
 export async function apiJson(path, options = {}) {
   const startedAt = Date.now();
-  const response = await apiFetch(path, options);
+  const method = options.method || 'GET';
+
+  let response;
+  try {
+    response = await apiFetch(path, options);
+  } catch (error) {
+    // Hata/timeout/network telemetriye düşer; hata semantiği değişmez (yeniden fırlatılır)
+    recordRequest({
+      endpoint: path,
+      method,
+      durationMs: Date.now() - startedAt,
+      status: 0,
+      timeout: error?.code === 'FETCH_TIMEOUT',
+      networkError: error?.code === 'NETWORK_ERROR',
+      safeMode: isSafeModeEnabled()
+    });
+    throw error;
+  }
+
   const text = await response.text();
   let data = {};
 
@@ -303,6 +323,22 @@ export async function apiJson(path, options = {}) {
     data.clientCode = formatted.code;
   }
 
+  // Guardian telemetrisi + Safe Mode header senkronu (best-effort)
+  try {
+    const safeHeader = response.headers?.get?.('x-safe-mode');
+    if (safeHeader != null) applySafeModeHeader(safeHeader);
+    recordRequest({
+      endpoint: path,
+      method,
+      durationMs: Date.now() - startedAt,
+      status: response.status,
+      requestId: response.headers?.get?.('x-request-id') || data?.requestId || null,
+      safeMode: isSafeModeEnabled()
+    });
+  } catch {
+    // Telemetri hatası API yanıtını etkilemez
+  }
+
   return { response, data };
 }
 
@@ -313,3 +349,7 @@ export const AUTH_REQUEST_OPTIONS = {
 export const REGISTER_REQUEST_OPTIONS = { timeoutMs: 90_000 };
 export const SYNC_REQUEST_OPTIONS = { timeoutMs: 25000 };
 export const ADMIN_REQUEST_OPTIONS = { timeoutMs: 60_000 };
+// Kasiyer LP işlemi — kullanıcı işlemin başında bekler; 60sn'lik genel admin
+// zaman aşımı paneli çok uzun süre kilitli/donmuş gösterir. Bu yüzden LP
+// aksiyonu daha kısa (15sn) tutulur; timeout sonrası kullanıcı tekrar dener.
+export const LOYALTY_ACTION_REQUEST_OPTIONS = { timeoutMs: 15_000 };

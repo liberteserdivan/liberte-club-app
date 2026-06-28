@@ -1,6 +1,6 @@
 import { isIos, isNativeApp, isStandalonePwa, isAndroid } from './platform.js';
 import { apiJson } from './apiClient.js';
-import { useLocalAuth } from './devAuth.js';
+import { isLocalAuth } from './devAuth.js';
 import { getDeviceId } from './deviceId.js';
 
 // Üye bazlı bildirim isteği anahtarları
@@ -45,7 +45,7 @@ export function clearLocalPushDevice(customerId) {
 
 // Sunucuda cihaz tokenını pasifleştir
 async function revokePushTokenOnServer(customerId) {
-  if (useLocalAuth() || !customerId) return;
+  if (isLocalAuth() || !customerId) return;
   try {
     await apiJson('/api/push/register-device', {
       method: 'POST',

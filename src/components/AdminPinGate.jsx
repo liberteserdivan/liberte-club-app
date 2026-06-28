@@ -4,7 +4,7 @@ import { patchMemorySession, markAdminPinVerifiedLocally } from '../lib/session.
 import { refreshRealtimeAuth } from '../lib/supabaseClient.js';
 import { apiJson, AUTH_REQUEST_OPTIONS } from '../lib/apiClient.js';
 import { formatClientApiError } from '../lib/apiErrors.js';
-import { useLocalAuth, verifyDevAdminPin } from '../lib/devAuth.js';
+import { isLocalAuth, verifyDevAdminPin } from '../lib/devAuth.js';
 
 // Yönetici PIN doğrulama ekranı
 export default function AdminPinGate({ onVerified, onSkip, fullscreen = false }) {
@@ -23,7 +23,7 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
     setError('');
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         verifyDevAdminPin(pin.trim());
         onVerified?.();
         return;

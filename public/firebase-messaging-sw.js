@@ -109,12 +109,9 @@ self.addEventListener('notificationclick', (event) => {
         return item.url.includes('app.liberte.cafe') || item.url.includes('localhost');
       });
       if (open) {
-        // Açık sekmeye payload'u ilet — uygulama içi yönlendirme (setTab) bunu dinler.
-        // Sayfayı YENİDEN YÜKLEMEDEN doğru ekrana gider; React sekme state'i korunur.
-        open.postMessage({
-          type: 'liberte-push-open',
-          data: event.notification?.data || {}
-        });
+        if (typeof open.navigate === 'function') {
+          open.navigate(targetUrl);
+        }
         return open.focus();
       }
       return clients.openWindow(targetUrl);

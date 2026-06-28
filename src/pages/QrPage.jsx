@@ -151,14 +151,18 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
       force
     });
 
-    if (!hasStoredAuthToken()) {
+    // Bearer token yalnızca native'de zorunlu; web'de kimlik httpOnly cookie
+    // ile (credentials: 'include') gider. Bu yüzden web'de token yoksa session
+    // hidrasyonu beklemeden doğrudan /api/qr/generate çağrılır (gereksiz ek
+    // serverless çağrısı ve cold-start gecikmesi önlenir).
+    const needsStoredBearerToken = isNativeApp();
+
+    if (needsStoredBearerToken && !hasStoredAuthToken()) {
       await hydrateSessionTokenFromServer();
     }
 
-    if (!hasStoredAuthToken()) {
-      const msg = isNativeApp()
-        ? 'Oturum tokenı bulunamadı. Çıkış yapıp tekrar giriş yapın.'
-        : 'Oturum doğrulanamadı. Çıkış yapıp tekrar giriş yapın.';
+    if (needsStoredBearerToken && !hasStoredAuthToken()) {
+      const msg = 'Oturum tokenı bulunamadı. Çıkış yapıp tekrar giriş yapın.';
       setQrError(msg);
       setQrStatus('error');
       refreshBusyRef.current = false;

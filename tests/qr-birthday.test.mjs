@@ -54,6 +54,21 @@ test('QR generate endpoint qrPayload döndürür', () => {
   assert.match(vercel, /\/api\/qr\/generate/);
 });
 
+test('vercel.json api/qr.js için maxDuration tanımlar', () => {
+  const vercel = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8'));
+  assert.ok(vercel.functions['api/qr.js'], 'api/qr.js functions bloğunda yok');
+  assert.equal(vercel.functions['api/qr.js'].maxDuration, 30);
+});
+
+test('QrPage web için zorunlu Bearer token beklemez (yalnızca native hidrasyon)', () => {
+  const source = readFileSync(join(root, 'src/pages/QrPage.jsx'), 'utf8');
+  // Web'de cookie ile çalıştığı için token zorunluluğu yalnızca native'de olmalı
+  assert.match(source, /needsStoredBearerToken\s*=\s*isNativeApp\(\)/);
+  // Hidrasyon ve token-yok hatası needsStoredBearerToken ile koşullanmalı
+  assert.match(source, /if\s*\(needsStoredBearerToken && !hasStoredAuthToken\(\)\)\s*\{\s*await hydrateSessionTokenFromServer\(\)/);
+  assert.match(source, /if\s*\(needsStoredBearerToken && !hasStoredAuthToken\(\)\)\s*\{[\s\S]*setQrStatus\('error'\)/);
+});
+
 test('qrClient Bearer token ve POST generate endpoint kullanır', () => {
   const source = readFileSync(join(root, 'src/lib/qrClient.js'), 'utf8');
   assert.match(source, /hasBearerToken/);

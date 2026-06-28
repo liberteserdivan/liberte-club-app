@@ -35,7 +35,7 @@ import {
 import { apiJson, SYNC_REQUEST_OPTIONS } from './apiClient.js';
 import { dedupedApiJson } from './remoteFetch.js';
 import { formatClientApiError } from './apiErrors.js';
-import { useLocalAuth } from './devAuth.js';
+import { isLocalAuth } from './devAuth.js';
 import { MENU_REVISION, menuCategories, menuItems } from './menuSeed.js';
 import { legacyReferralCode, generateUniqueReferralCode } from './referralCode.js';
 import {
@@ -189,7 +189,7 @@ export function mergeDb(x){
   let customers = x?.customers || seed.customers;
 
   // Dev — seed yönetici/demo hesapları silinmişse geri ekle
-  if (useLocalAuth() && Array.isArray(customers)) {
+  if (isLocalAuth() && Array.isArray(customers)) {
     customers = [...customers];
     seed.customers.forEach((seedCustomer) => {
       const exists = customers.some((c) => norm(c.phone) === norm(seedCustomer.phone));
@@ -254,19 +254,31 @@ function parseLocalCache(value) {
   return value;
 }
 
+// Yerel veri önbelleği anahtarı
+const LOCAL_DB_KEY = 'liberteDB';
+// Açılışta çok büyük bir önbelleği senkron JSON.parse etmek ilk render'ı bloklar.
+// Bu sınırı aşan (bozuk/şişmiş) cache açılışta atılır; uygulama seed ile açılıp
+// güncel veriyi uzaktan çeker.
+const LOCAL_DB_MAX_CHARS = 2_000_000; // ~2MB
+
 export function load(){
   try{
-    const raw = localStorage.getItem('liberteDB');
+    const raw = localStorage.getItem(LOCAL_DB_KEY);
     if (!raw) return seed;
+    if (raw.length > LOCAL_DB_MAX_CHARS) {
+      // Şişmiş/bozuk önbellek ilk render'ı kilitlemesin
+      localStorage.removeItem(LOCAL_DB_KEY);
+      return seed;
+    }
     const parsed = parseLocalCache(JSON.parse(raw));
     if (!parsed) {
-      localStorage.removeItem('liberteDB');
+      localStorage.removeItem(LOCAL_DB_KEY);
       return seed;
     }
     return mergeDb(parsed);
   }catch{
     try {
-      localStorage.removeItem('liberteDB');
+      localStorage.removeItem(LOCAL_DB_KEY);
     } catch {
       // private mode
     }
@@ -276,14 +288,24 @@ export function load(){
 
 export function save(db){
   try {
-    localStorage.setItem('liberteDB', JSON.stringify(db));
+    localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(db));
   } catch {
     // kota veya gizli mod — uygulama çalışmaya devam etsin
   }
 }
 
+// Yerel veri önbelleğini sil — çıkışta müşteri/loyalty/history PII cihazda kalmasın.
+// liberteLastPhone / liberteLastEmail / liberteDeviceId ayrı anahtarlardır, korunur.
+export function clearLocalDb(){
+  try {
+    localStorage.removeItem(LOCAL_DB_KEY);
+  } catch {
+    // gizli mod / kota — yoksay
+  }
+}
+
 export async function loadRemote(options = {}){
-  if(useLocalAuth())return null;
+  if(isLocalAuth())return null;
   const since = String(options.since || '').trim();
   const path = since ? `/api/state?since=${encodeURIComponent(since)}` : '/api/state';
 
@@ -323,7 +345,7 @@ export async function loadRemote(options = {}){
 
 // Buluta kaydet — sonuç döndürür (sessiz hata yok)
 export async function saveRemote(db, options = {}){
-  if(useLocalAuth())return { ok:true, skipped:true };
+  if(isLocalAuth())return { ok:true, skipped:true };
 
   const payload = { data: db };
   const baseUpdatedAt = String(options.baseUpdatedAt || '').trim();

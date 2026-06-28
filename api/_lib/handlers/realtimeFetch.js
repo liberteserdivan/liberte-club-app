@@ -4,7 +4,7 @@ import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapFromSql } fro
 import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
-import { runSql } from '../runSql.js';
+import { runSqlRead } from '../runSql.js';
 
 // Kampanya/kupon dilimini state'ten oku
 function readPromoSlice(state) {
@@ -18,12 +18,12 @@ function readPromoSlice(state) {
 // Relational modda promos — yalnızca global dilim
 async function loadPromoSlice() {
   const { loadPromotionalGlobalSlice } = await import('../relationalState.js');
-  return runSql(() => loadPromotionalGlobalSlice());
+  return runSqlRead(() => loadPromotionalGlobalSlice());
 }
 
 // Müşteri loyalty + son işlemler — Realtime tetikleyici sonrası hafif fetch
 async function handleCustomerLoyalty(req, res, session) {
-  const loyalty = await runSql(async () => {
+  const loyalty = await runSqlRead(async () => {
     const sql = getSql();
     if (!sql) throw new Error('Veritabanı yapılandırması eksik');
     return loadLoyaltyForCustomer(session.customerId, sql);

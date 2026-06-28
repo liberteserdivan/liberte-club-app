@@ -9,7 +9,7 @@ import { PushWelcomeBanner } from '../components/Cards.jsx';
 import { getLpCardView } from '../lib/db.js';
 import { TIER_TONE } from '../lib/membershipTier.js';
 import { apiJson } from '../lib/apiClient.js';
-import { useLocalAuth } from '../lib/devAuth.js';
+import { isLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
 import { supportEmail, supportUrl, CLUB_APP_NAME } from '../lib/constants.js';
@@ -40,7 +40,7 @@ export default function ProfilePage({
     if (!ok) return;
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         const next = deleteCustomerAccount(db, customer.id);
         commit(next);
         clearLocalCustomerSession(customer.id);

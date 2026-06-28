@@ -6,8 +6,9 @@ import {
   hasStoredAuthToken,
   saveNativeAuthToken
 } from './apiClient.js';
-import { useLocalAuth } from './devAuth.js';
+import { isLocalAuth } from './devAuth.js';
 import { clearAdminSnapshot } from './adminFullSnapshot.js';
+import { clearLocalDb } from './db.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
@@ -60,7 +61,7 @@ export function hasAdminPinVerifiedLocally() {
 
 // Sunucudan oturumu doğrula
 export async function bootstrapSession() {
-  if (useLocalAuth()) {
+  if (isLocalAuth()) {
     return memorySession ? { session: memorySession } : null;
   }
 
@@ -99,7 +100,7 @@ export async function bootstrapSession() {
 
 // Cookie oturumu varsa Bearer tokenı storage'a yaz — QR/native için
 export async function hydrateSessionTokenFromServer() {
-  if (useLocalAuth() || hasStoredAuthToken()) {
+  if (isLocalAuth() || hasStoredAuthToken()) {
     return hasStoredAuthToken();
   }
 
@@ -148,10 +149,13 @@ export function logoutSession() {
   clearNativeAuthToken();
   // Yönetici PII snapshot'ını da temizle — çıkışta cihazda iz kalmasın
   clearAdminSnapshot();
+  // Yerel veri önbelleğini (liberteDB) temizle — müşteri/loyalty/history PII'si
+  // çıkıştan sonra cihazda kalmasın. Son telefon/e-posta/deviceId korunur.
+  clearLocalDb();
 
   // 2) Sunucudaki oturumu arka planda iptal et — kısa timeout, bloklamaz.
   // Token storage'dan silindiği için Authorization header açıkça verilir.
-  if (!useLocalAuth() && token) {
+  if (!isLocalAuth() && token) {
     apiJson('/api/auth/session', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },

@@ -1,7 +1,7 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
-import { useLocalAuth } from './lib/devAuth.js';
+import { isLocalAuth } from './lib/devAuth.js';
 import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
 import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
 import { refreshRealtimeSessionFromServer } from './lib/supabaseClient.js';
@@ -13,6 +13,7 @@ import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
 import { getMemorySession, patchMemorySession, logoutSession, setMemorySession, markAdminPinVerifiedLocally } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
+import { setGuardianRole } from './lib/guardianTelemetry.js';
 import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
@@ -162,6 +163,8 @@ export default function App() {
       setMemorySession(null);
       setSession(null);
       setAdminGateSkipped(false);
+      // Yeni oturumda admin hidrasyonu tekrar çalışabilsin
+      adminHydratedRef.current = false;
 
       // 2) Temizlik işlemleri arka planda (UI'yı bloklamaz)
       void (async () => {
@@ -192,8 +195,16 @@ export default function App() {
 
   const isAdmin = Boolean(session?.isAdmin);
   const adminVerified = Boolean(session?.adminVerified);
+
+  // Guardian telemetrisi için aktif kullanıcı rolünü bildir (anonymous/customer/admin)
+  useEffect(() => {
+    if (isAdmin) setGuardianRole('admin');
+    else if (session?.customerId) setGuardianRole('customer');
+    else setGuardianRole('anonymous');
+  }, [isAdmin, session?.customerId]);
+
   const awaitingCustomer = Boolean(session?.customerId && !customer);
-  const realtimeEnabled = Boolean(session?.customerId && customer && !useLocalAuth());
+  const realtimeEnabled = Boolean(session?.customerId && customer && !isLocalAuth());
 
   useCustomerRealtime({
     enabled: realtimeEnabled,
@@ -215,7 +226,7 @@ export default function App() {
     error: adminMembersError,
     refreshMembers: refreshAdminMembers
   } = useAdminMembers({
-    enabled: Boolean(isAdmin && adminVerified && !useLocalAuth()),
+    enabled: Boolean(isAdmin && adminVerified && !isLocalAuth()),
     commit,
     session,
     db
@@ -225,7 +236,7 @@ export default function App() {
     stats: adminDashboardStats,
     refreshStats: refreshAdminDashboardStats
   } = useAdminDashboardStats({
-    enabled: Boolean(isAdmin && adminVerified && !useLocalAuth())
+    enabled: Boolean(isAdmin && adminVerified && !isLocalAuth())
   });
 
   const pullAdminMembers = useCallback(() => {
@@ -237,7 +248,7 @@ export default function App() {
     enabled: Boolean(
       isAdmin
       && adminVerified
-      && !useLocalAuth()
+      && !isLocalAuth()
       && (tab === 'admin' || tab === 'qr')
     ),
     db,
@@ -326,13 +337,14 @@ export default function App() {
   }, [awaitingCustomer, customer]);
 
   function handleAdminVerified() {
+    // PIN doğrulandı. Üye listesi + tam state çekimi tek kanaldan, yani
+    // adminHydrated effect'i üzerinden yapılır. Burada ayrıca refreshAdminMembers
+    // + refreshRemote çağırmıyoruz; aksi halde aynı anda iki kez members + full
+    // state fan-out olurdu.
     patchMemorySession({ adminVerified: true });
     markAdminPinVerifiedLocally();
     setSession(getMemorySession());
     setAdminGateSkipped(false);
-    void refreshAdminMembers().finally(() => {
-      refreshRemote(true);
-    });
   }
 
   function handleAdminSkip() {

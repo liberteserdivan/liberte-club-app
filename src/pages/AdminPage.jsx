@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState}from'react';
-import{Database,Download,Edit2,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
+import{Activity,Database,Download,Edit2,Gift,Image as ImageIcon,LayoutDashboard,Megaphone,Minus,Plus,RotateCcw,Send,Settings,ShieldCheck,Smartphone,Sparkles,Trash2,UploadCloud,Users,UtensilsCrossed}from'lucide-react';
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
 import PushNotificationAdmin from '../components/PushNotificationAdmin.jsx';
@@ -9,6 +9,7 @@ import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
 import{downloadBackup,downloadLocalBackup,downloadAdminSnapshotBackup,fetchBackupList,restoreBackupFile,restoreBackupSnapshot}from'../lib/backupClient.js';
 import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
+import SystemHealthPanel from '../components/SystemHealthPanel.jsx';
 import{ReviewApprovalAdmin}from'../components/Cards.jsx';
 import CashierProductPickModal from '../components/CashierProductPickModal.jsx';
 import {
@@ -17,7 +18,7 @@ import {
 } from '../lib/menuLp.js';
 import { deleteAdminMember, applyAdminMemberLoyalty } from '../lib/adminMemberClient.js';
 import { pickAdminMemberList } from '../lib/adminMemberSync.js';
-import { useLocalAuth } from '../lib/devAuth.js';
+import { isLocalAuth } from '../lib/devAuth.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
 
 const ADMIN_TABS=[
@@ -25,6 +26,7 @@ const ADMIN_TABS=[
   {id:'menu',label:'Menü',Icon:UtensilsCrossed},
   {id:'kampanya',label:'Kampanya',Icon:Megaphone},
   {id:'uyeler',label:'Üyeler',Icon:Users},
+  {id:'saglik',label:'Sistem Sağlığı',Icon:Activity},
   {id:'ayarlar',label:'Ayarlar',Icon:Settings}
 ];
 
@@ -125,6 +127,7 @@ export default function AdminPage({
           onFocusHandled={()=>setFocusUserId(null)}
         />
       )}
+      {tab==='saglik'&&<SystemHealthPanel/>}
       {tab==='ayarlar'&&<SettingsAdmin db={db} commit={commit}/>}
     </div>
   </section>;
@@ -1054,6 +1057,43 @@ function UsersAdmin({
   const[pendingDelete,setPendingDelete]=useState(null);
   const[lpProductPick,setLpProductPick]=useState(null);
 
+  // LP çift tık koruması — (müşteri|action|kategori) bazlı uçuş hâli.
+  // Senkron kontrol için ref (hızlı çift tıkta bile ikinci istek atılmaz),
+  // UI'da disabled/loading göstermek için state aynası tutulur.
+  const pendingLpRef = useRef(new Set());
+  const[pendingLp,setPendingLp]=useState(new Set());
+
+  function lpActionKey(customerId, action, category){
+    return `${customerId}|${action}|${category}`;
+  }
+
+  function syncPendingLp(){
+    setPendingLp(new Set(pendingLpRef.current));
+  }
+
+  // Bir müşteri için herhangi bir LP işlemi uçuşta mı?
+  function isLpPending(customerId){
+    const prefix = `${customerId}|`;
+    for (const key of pendingLp) {
+      if (key.startsWith(prefix)) return true;
+    }
+    return false;
+  }
+
+  // LP işlemini çift tık korumalı çalıştır — tek iş: guard + uçuş hâli yönetimi
+  async function runGuardedLp(customerId, action, category, task){
+    const key = lpActionKey(customerId, action, category);
+    if (pendingLpRef.current.has(key)) return; // ikinci istek engellenir
+    pendingLpRef.current.add(key);
+    syncPendingLp();
+    try {
+      await task();
+    } finally {
+      pendingLpRef.current.delete(key);
+      syncPendingLp();
+    }
+  }
+
   const customers = pickAdminMemberList({
     adminMembers,
     adminMembersStatus,
@@ -1154,7 +1194,7 @@ function UsersAdmin({
     setMessage('');
 
     try{
-      if(!useLocalAuth()){
+      if(!isLocalAuth()){
         await deleteAdminMember(c.id);
       }
 
@@ -1171,7 +1211,7 @@ function UsersAdmin({
           {id:Date.now(),customerId:c.id,name:c.name,phone:c.phone,type:'customer_delete',count:0,source:'Admin kullanıcı silme',createdAt},
           ...(db.history||[]).filter(x=>x.customerId!==c.id)
         ]
-      }, { skipRemote: useLocalAuth() ? false : true });
+      }, { skipRemote: isLocalAuth() ? false : true });
 
       setEditing(null);
       setPendingDelete(null);
@@ -1189,28 +1229,30 @@ function UsersAdmin({
       return;
     }
 
-    try {
-      if (!useLocalAuth()) {
-        const result = await applyAdminMemberLoyalty({
-          customerId: c.id,
-          action: 'stamp',
-          category,
-          menuItemId: menuItem?.id || null
-        });
-        commit({
-          ...preview,
-          loyalty: {
-            ...(preview.loyalty || {}),
-            [c.id]: result.loyalty || preview.loyalty?.[c.id]
-          }
-        }, { skipRemote: true });
-      } else {
-        commit(preview);
+    await runGuardedLp(c.id, 'stamp', category, async () => {
+      try {
+        if (!isLocalAuth()) {
+          const result = await applyAdminMemberLoyalty({
+            customerId: c.id,
+            action: 'stamp',
+            category,
+            menuItemId: menuItem?.id || null
+          });
+          commit({
+            ...preview,
+            loyalty: {
+              ...(preview.loyalty || {}),
+              [c.id]: result.loyalty || preview.loyalty?.[c.id]
+            }
+          }, { skipRemote: true });
+        } else {
+          commit(preview);
+        }
+        setMessage(menuItem?.name ? `${menuItem.name} için LP eklendi.` : 'LP eklendi.');
+      } catch (error) {
+        setMessage(error?.message || 'LP eklenemedi.');
       }
-      setMessage(menuItem?.name ? `${menuItem.name} için LP eklendi.` : 'LP eklendi.');
-    } catch (error) {
-      setMessage(error?.message || 'LP eklenemedi.');
-    }
+    });
   }
 
   function requestAddCategory(c,category){
@@ -1240,26 +1282,28 @@ function UsersAdmin({
       return;
     }
 
-    try {
-      if (!useLocalAuth()) {
-        const result = await applyAdminMemberLoyalty({
-          customerId: c.id,
-          action: 'remove',
-          category
-        });
-        commit({
-          ...preview,
-          loyalty: {
-            ...(preview.loyalty || {}),
-            [c.id]: result.loyalty || preview.loyalty?.[c.id]
-          }
-        }, { skipRemote: true });
-      } else {
-        commit(preview);
+    await runGuardedLp(c.id, 'remove', category, async () => {
+      try {
+        if (!isLocalAuth()) {
+          const result = await applyAdminMemberLoyalty({
+            customerId: c.id,
+            action: 'remove',
+            category
+          });
+          commit({
+            ...preview,
+            loyalty: {
+              ...(preview.loyalty || {}),
+              [c.id]: result.loyalty || preview.loyalty?.[c.id]
+            }
+          }, { skipRemote: true });
+        } else {
+          commit(preview);
+        }
+      } catch (error) {
+        setMessage(error?.message || 'LP düzeltilemedi.');
       }
-    } catch (error) {
-      setMessage(error?.message || 'LP düzeltilemedi.');
-    }
+    });
   }
 
   async function redeemCategory(c, category) {
@@ -1274,27 +1318,29 @@ function UsersAdmin({
       return;
     }
 
-    try {
-      if (!useLocalAuth()) {
-        const result = await applyAdminMemberLoyalty({
-          customerId: c.id,
-          action: 'redeem',
-          category
-        });
-        commit({
-          ...preview,
-          loyalty: {
-            ...(preview.loyalty || {}),
-            [c.id]: result.loyalty || preview.loyalty?.[c.id]
-          }
-        }, { skipRemote: true });
-      } else {
-        commit(preview);
+    await runGuardedLp(c.id, 'redeem', category, async () => {
+      try {
+        if (!isLocalAuth()) {
+          const result = await applyAdminMemberLoyalty({
+            customerId: c.id,
+            action: 'redeem',
+            category
+          });
+          commit({
+            ...preview,
+            loyalty: {
+              ...(preview.loyalty || {}),
+              [c.id]: result.loyalty || preview.loyalty?.[c.id]
+            }
+          }, { skipRemote: true });
+        } else {
+          commit(preview);
+        }
+        setMessage('Ödül kullanıldı.');
+      } catch (error) {
+        setMessage(error?.message || 'Ödül kullanılamadı.');
       }
-      setMessage('Ödül kullanıldı.');
-    } catch (error) {
-      setMessage(error?.message || 'Ödül kullanılamadı.');
-    }
+    });
   }
 
   return <div className="adminMemberPanel">
@@ -1367,6 +1413,7 @@ function UsersAdmin({
           <StampCategoryPanel
             mode="admin"
             lpBalance={lpBalance}
+            busy={isLpPending(c.id)}
             onAdd={(category)=>requestAddCategory(c,category)}
             onRemove={(category)=>removeCategory(c,category)}
             onRedeem={(category)=>redeemCategory(c,category)}

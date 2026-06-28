@@ -1,12 +1,14 @@
 import { getSql } from './appState.js';
-import { parseAppStateData, serializeAppStateJson } from './appState.js';
 import { invalidateAppStateCache } from './appStateCache.js';
-import { extractGlobalSlice, bumpAppStateRevision } from './relationalState.js';
-import { findCustomerById, loyaltyRowToCard, upsertLoyaltyRow } from './customersStore.js';
+import { bumpAppStateRevision } from './relationalState.js';
+import { findCustomerById, upsertLoyaltyRow } from './customersStore.js';
 import { loadLoyaltyForCustomer, insertLoyaltyEvent } from './loyaltyStore.js';
 import { applyCategoryStamp } from './loyaltyOps.js';
-
-const STATE_ID = 'liberte';
+import {
+  ensureDailyClaimsSchema,
+  loadDailyClaimsForCustomer,
+  insertDailyClaim
+} from './dailyClaimsStore.js';
 
 // Gün anahtarı — Türkiye saatine sabit (istemci cihaz saatiyle uyumlu).
 // Sunucu UTC çalıştığı için sabit TZ olmadan gece saatlerinde gün kayardı.
@@ -18,14 +20,6 @@ function localDayKey() {
     month: '2-digit',
     day: '2-digit'
   }).format(new Date());
-}
-
-// Bugün bu ödül alınmış mı?
-function hasDailyClaim(dailyClaims, customerId, type) {
-  const day = localDayKey();
-  return (dailyClaims || []).some(
-    (row) => Number(row.customerId) === Number(customerId) && row.type === type && row.day === day
-  );
 }
 
 // Giriş serisi hesapla
@@ -61,28 +55,46 @@ async function persistStampResult(sql, customerId, miniState) {
 }
 
 // Günlük giriş ödülü — sunucuda kalıcı.
-// YARIŞ KOŞULU KORUMASI: tüm akış tek transaction içinde ve app_state satırı
-// "FOR UPDATE" ile kilitlenir. dailyClaims global bir JSON blob olduğundan,
-// kilit olmadan iki eşzamanlı talep (aynı veya farklı kullanıcı) blob'u
-// birbirinin üzerine yazıp çifte ödül / kayıp kayıt üretebiliyordu.
+// YARIŞ KOŞULU KORUMASI: global app_state satırını kilitlemek yerine yalnızca
+// ilgili müşterinin satırı "FOR UPDATE" ile kilitlenir; çift claim ise
+// daily_claims tablosundaki (customer_id, type, day) tekilliğiyle engellenir.
+// Böylece farklı müşteriler eşzamanlı claim yapabilir (global darboğaz yok).
 export async function applyDailyLoginRewardRelational(customerId) {
   const sql = getSql();
   if (!sql) return { ok: false, error: 'Veritabanı yapılandırması eksik' };
 
   const id = Number(customerId);
+  await ensureDailyClaimsSchema(sql);
+
+  const day = localDayKey();
+  const createdAt = new Date().toLocaleString('tr-TR');
 
   const outcome = await sql.begin(async (tx) => {
-    // app_state satırını kilitle — global dailyClaims blob'una yazımları serileştirir
-    const lockRows = await tx`SELECT data FROM app_state WHERE id = ${STATE_ID} FOR UPDATE`;
+    // Yazma stall'ını DB tarafında sınırla (8sn) — bayat bağlantıda işlem iptal
+    // edilip rollback olur; daily_claims unique constraint sayesinde retry güvenli.
+    await tx`SET LOCAL statement_timeout = '8000ms'`;
+    // Yalnızca bu müşterinin satırını kilitle — global blob kilidi yok
+    const lockRows = await tx`SELECT id FROM customers WHERE id = ${id} FOR UPDATE`;
+    if (!lockRows.length) return { ok: false, error: 'Üye bulunamadı' };
 
     const customer = await findCustomerById(tx, id);
     if (!customer) return { ok: false, error: 'Üye bulunamadı' };
 
-    const raw = parseAppStateData(lockRows[0]?.data) || {};
-    const global = extractGlobalSlice(raw) || raw;
-    const dailyClaims = Array.isArray(global.dailyClaims) ? [...global.dailyClaims] : [];
+    // Seri hesabı için bugünü içermeyen önceki claim'ler
+    const priorClaims = await loadDailyClaimsForCustomer(tx, id, 'daily_login');
+    const prevStreak = getCustomerStreak(priorClaims, id);
 
-    if (hasDailyClaim(dailyClaims, id, 'daily_login')) {
+    // Bugünkü claim'i idempotent ekle; çakışırsa bugün zaten alınmış
+    const inserted = await insertDailyClaim(tx, {
+      id: Date.now(),
+      customerId: id,
+      type: 'daily_login',
+      day,
+      name: customer.name,
+      phone: customer.phone,
+      createdAt
+    });
+    if (!inserted) {
       return { ok: false, error: 'Günlük giriş ödülünü bugün zaten aldın.' };
     }
 
@@ -90,28 +102,12 @@ export async function applyDailyLoginRewardRelational(customerId) {
     const miniState = {
       customers: [customer],
       loyalty: { [id]: loyaltyCard },
-      history: [],
-      dailyClaims
+      history: []
     };
-
-    const prevStreak = getCustomerStreak(dailyClaims, id);
-    const day = localDayKey();
-    const createdAt = new Date().toLocaleString('tr-TR');
 
     let stampResult = applyCategoryStamp(miniState, id, 'coffee', 1, 'Günlük giriş ödülü');
     if (!stampResult.ok) return stampResult;
     await persistStampResult(tx, id, miniState);
-
-    dailyClaims.unshift({
-      id: Date.now(),
-      customerId: id,
-      name: customer.name,
-      phone: customer.phone,
-      type: 'daily_login',
-      day,
-      createdAt
-    });
-    miniState.dailyClaims = dailyClaims;
 
     const newStreak = prevStreak + 1;
     let bonusNote = '';
@@ -130,18 +126,11 @@ export async function applyDailyLoginRewardRelational(customerId) {
       bonusNote = ' 7 gün seri bonusu da eklendi!';
     }
 
-    global.dailyClaims = dailyClaims;
-    // Kilitli satırı transaction içinde güncelle (writeGlobalBlob kendi sql'ini kullanır,
-    // burada kilidi korumak için doğrudan tx ile yazıyoruz)
-    await tx`
-      UPDATE app_state
-      SET data = ${serializeAppStateJson(global)},
-          updated_at = now()
-      WHERE id = ${STATE_ID}
-    `;
-    await bumpAppStateRevision(tx);
-
     const nextCard = miniState.loyalty[id] || miniState.loyalty[String(id)];
+    const dailyClaims = [
+      { id: Date.now(), customerId: id, name: customer.name, phone: customer.phone, type: 'daily_login', day, createdAt },
+      ...priorClaims
+    ];
 
     return {
       ok: true,
@@ -151,8 +140,12 @@ export async function applyDailyLoginRewardRelational(customerId) {
     };
   });
 
-  // Önbelleği commit SONRASI temizle — transaction ortasında değil
-  if (outcome.ok) invalidateAppStateCache();
+  // Commit SONRASI: istemci sync'i için revizyonu bump et + önbelleği temizle.
+  // Bu hızlı tek satır UPDATE'tir; eski global FOR UPDATE kilidinden farklı.
+  if (outcome.ok) {
+    await bumpAppStateRevision(sql);
+    invalidateAppStateCache();
+  }
 
   return outcome;
 }

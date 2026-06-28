@@ -3,7 +3,7 @@ import { loadAppState, loadAppStateRevision, loadAppStateForCustomer, saveAppSta
 import { getSession, getSessionForBootstrap, requireAdminSession, requireSession } from './_lib/auth.js';
 import { handleQrGenerate } from './_lib/handlers/qrGenerate.js';
 import { logServerError } from './_lib/logServerError.js';
-import { runSql } from './_lib/runSql.js';
+import { runSql, runSqlRead } from './_lib/runSql.js';
 import { publicDbErrorCode, publicDbErrorMessage } from './_lib/dbTransient.js';
 import {
   clearAllErrorLogs,
@@ -55,7 +55,7 @@ export default withSqlRequest(async function handler(req, res) {
 
       const since = String(req.query?.since || '').trim();
       if (since) {
-        const revision = await runSql(() => loadAppStateRevision());
+        const revision = await runSqlRead(() => loadAppStateRevision());
         if (isSameAppStateRevision(revision.updatedAt, since)) {
           return res.status(200).json({
             unchanged: true,
@@ -69,7 +69,7 @@ export default withSqlRequest(async function handler(req, res) {
       }
 
       const isFullAdmin = session.isAdmin && session.adminVerified;
-      const remote = await runSql(() => (
+      const remote = await runSqlRead(() => (
         isFullAdmin
           ? loadAppState()
           : loadAppStateForCustomer(session.customerId)
@@ -116,7 +116,7 @@ export default withSqlRequest(async function handler(req, res) {
       if (!session) return;
 
       const clientBaseAt = String(body?.updated_at || body?.baseUpdatedAt || '').trim();
-      const remote = await runSql(async () => {
+      const remote = await runSqlRead(async () => {
         if (session.isAdmin && session.adminVerified) {
           return loadAppState();
         }
@@ -138,7 +138,7 @@ export default withSqlRequest(async function handler(req, res) {
         const adminSession = await requireAdminSession(req, res, { pinRequired: true });
         if (!adminSession) return;
         await runSql(() => saveAppState(mergeAdminState(canonical, data)));
-        const saved = await runSql(() => loadAppStateRevision());
+        const saved = await runSqlRead(() => loadAppStateRevision());
         return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
       }
 
@@ -158,7 +158,7 @@ export default withSqlRequest(async function handler(req, res) {
       // Müşteri yalnızca güvenli profil alanlarını günceller
       const merged = mergeUserState(canonical, data, session.customerId);
       await runSql(() => saveAppState(merged));
-      const saved = await runSql(() => loadAppStateRevision());
+      const saved = await runSqlRead(() => loadAppStateRevision());
       return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
     }
 

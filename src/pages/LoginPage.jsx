@@ -10,7 +10,7 @@ import {
   makeDevAuthCode,
   registerDevPin,
   saveDevAuthCode,
-  useLocalAuth,
+  isLocalAuth,
   verifyDevAuthCode,
   verifyDevPin
 } from '../lib/devAuth.js';
@@ -184,7 +184,7 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         const customer = findByPhone(ph);
         if (!customer) {
           notify('Bu telefon ile kayıt bulunamadı. Önce kayıt ol.', 'info');
@@ -260,7 +260,7 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         const devCode = makeDevAuthCode();
         saveDevAuthCode(fields.ph, fields.em, devCode);
         setRegisterStep('verify');
@@ -317,7 +317,7 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         verifyDevAuthCode(fields.ph, fields.em, code);
         await createCustomerLocal(fields, pinValue);
         return;
@@ -391,7 +391,7 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         const customer = findCustomerByIdentifier(identifier);
         if (!customer?.email) {
           notify('Bu bilgi ile kayıt bulunamadı veya hesapta e-posta yok.', 'info');
@@ -441,7 +441,7 @@ export default function Login({ db, commit, setSession }) {
     setLoading(true);
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         const customer = findCustomerByIdentifier(identifier);
         if (!customer?.email) throw new Error('Hesap bulunamadı');
         const deliveryEmail = String(customer.email).toLowerCase();

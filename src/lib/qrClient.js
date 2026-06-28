@@ -1,5 +1,5 @@
-import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
-import { useLocalAuth } from './devAuth.js';
+import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken, ADMIN_REQUEST_OPTIONS, LOYALTY_ACTION_REQUEST_OPTIONS } from './apiClient.js';
+import { isLocalAuth } from './devAuth.js';
 import { isNativeApp } from './platform.js';
 
 const QR_PREFIX = 'liberte-qr:';
@@ -138,7 +138,7 @@ export function parseQrScanText(rawText) {
 
 // Canlı ortamda imzalı QR zorunlu mu?
 export function isSignedQrRequired() {
-  return !useLocalAuth();
+  return !isLocalAuth();
 }
 
 // expiresAt değerini ms timestamp'e çevir
@@ -293,7 +293,7 @@ export async function postLoyaltyAction({ token, action, category, menuItemId = 
     const { response, data } = await apiJson('/api/admin?resource=loyalty-action', {
       method: 'POST',
       body: JSON.stringify({ token, action, category, menuItemId }),
-      ...ADMIN_REQUEST_OPTIONS
+      ...LOYALTY_ACTION_REQUEST_OPTIONS
     });
 
     if (!response.ok) {

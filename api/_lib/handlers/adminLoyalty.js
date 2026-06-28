@@ -17,7 +17,7 @@ import {
   redeemCategoryReward
 } from '../loyaltyOps.js';
 import { menuItems } from '../../../src/lib/menuSeed.js';
-import { runSql } from '../runSql.js';
+import { runSql, runSqlRead } from '../runSql.js';
 import { getSql } from '../sql.js';
 import { claimQrNonce } from '../qrNonceStore.js';
 
@@ -38,12 +38,12 @@ export async function handleAdminQrVerify(req, res) {
     }
 
     if (useRelationalState()) {
-      const customer = await runSql(() => loadCustomerSummaryRelational(verified.customerId));
+      const customer = await runSqlRead(() => loadCustomerSummaryRelational(verified.customerId));
       if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
       return res.status(200).json({ ok: true, customer });
     }
 
-    const remote = await runSql(() => loadAppState());
+    const remote = await runSqlRead(() => loadAppState());
     if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
 
     const customer = customerSummary(remote.data, verified.customerId);

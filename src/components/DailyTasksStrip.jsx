@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, Coffee, Gift, Sparkles, Sun } from 'lucide-react';
 import { claimDailyLoginReward, getCustomerStreak, getDailyTasks, hasDailyClaim } from '../lib/db.js';
 import { claimDailyLoginRewardRemote } from '../lib/customerRewardsClient.js';
-import { useLocalAuth } from '../lib/devAuth.js';
+import { isLocalAuth } from '../lib/devAuth.js';
 
 const ICONS = { sun: Sun, sparkles: Sparkles, coffee: Coffee, gift: Gift };
 
@@ -25,7 +25,7 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
     setClaimMessage('');
 
     try {
-      if (useLocalAuth()) {
+      if (isLocalAuth()) {
         const result = claimDailyLoginReward(db, customer.id);
         if (!result.ok) {
           setClaimMessage(result.message);
