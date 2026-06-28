@@ -104,3 +104,58 @@ export async function sendTestAlert() {
   });
   return data;
 }
+
+// ---- Approval Autopilot: aksiyon önerileri (admin + PIN) ----
+
+// Onay merkezi — bekleyen/onaylı/uygulanmış/reddedilmiş öneriler
+export async function fetchActionCenter() {
+  const { data } = await apiJson('/api/guardian/actions', {
+    method: 'GET',
+    credentials: 'include',
+    ...ADMIN_REQUEST_OPTIONS
+  });
+  return data;
+}
+
+// Tek öneri detayı
+export async function fetchAction(id) {
+  const { data } = await apiJson(`/api/guardian/actions/${encodeURIComponent(id)}`, {
+    method: 'GET',
+    credentials: 'include',
+    ...ADMIN_REQUEST_OPTIONS
+  });
+  return data;
+}
+
+// Öneriyi onayla ve uygula
+export async function approveAction(id) {
+  const { data } = await apiJson(`/api/guardian/actions/${encodeURIComponent(id)}/approve`, {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({}),
+    ...ADMIN_REQUEST_OPTIONS
+  });
+  return data;
+}
+
+// Öneriyi reddet (uygulanmaz)
+export async function rejectAction(id, note = '') {
+  const { data } = await apiJson(`/api/guardian/actions/${encodeURIComponent(id)}/reject`, {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({ note }),
+    ...ADMIN_REQUEST_OPTIONS
+  });
+  return data;
+}
+
+// Uygulanmış aksiyonu geri al (rollback)
+export async function rollbackAction(id) {
+  const { data } = await apiJson(`/api/guardian/actions/${encodeURIComponent(id)}/rollback`, {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({}),
+    ...ADMIN_REQUEST_OPTIONS
+  });
+  return data;
+}

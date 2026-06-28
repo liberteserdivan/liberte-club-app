@@ -11,6 +11,11 @@ import {
 import { raiseAlert, raiseResolvedAlert, sendTestAlert, listAlerts } from '../guardian/guardianAlerts.js';
 import { buildReportBundle, buildHealthSnapshot } from '../guardian/guardianReport.js';
 import { getMetricsSnapshot, getEvents } from '../guardian/guardianMetrics.js';
+import {
+  proposeAction, approveAction, rejectAction, executeApprovedAction,
+  rollbackAction, listApprovalCenter
+} from '../guardian/guardianApprovals.js';
+import { getProposal } from '../guardian/guardianActionProposals.js';
 import { readBodySafe } from '../http.js';
 
 // Liberte Guardian — HTTP yönlendiricisi
@@ -76,7 +81,9 @@ async function handleDetailedHealth(req, res, service) {
     services: overall.services,
     metrics: getMetricsSnapshot(),
     incidents: listIncidents({ status: 'open', limit: 10 }),
-    alerts: listAlerts(10)
+    alerts: listAlerts(10),
+    // Approval Autopilot — onay merkezi (bekleyen/uygulanmış/insan gereken öneriler)
+    actions: listApprovalCenter()
   });
 }
 
@@ -144,6 +151,68 @@ async function handleTestAlert(req, res) {
   return envelope(res, 200, { ok: true, service: 'test-alert', alert: result.alert });
 }
 
+// Action id + op'u query (rewrite) veya path'ten çöz
+function resolveActionTarget(req) {
+  let id = String(req.query?.actionId || '').trim();
+  let op = String(req.query?.op || '').trim().toLowerCase();
+  if (!id || !op) {
+    // /api/guardian/actions/:id/:op path fallback
+    const path = String(req.url || '').split('?')[0];
+    const parts = path.replace(/^\/api\/guardian\/actions\/?/i, '').split('/').filter(Boolean);
+    if (!id && parts[0] && parts[0] !== 'propose') id = parts[0];
+    if (!op) op = parts[1] ? parts[1].toLowerCase() : (parts[0] === 'propose' ? 'propose' : '');
+  }
+  return { id, op };
+}
+
+// Approval Autopilot — öneri yaşam döngüsü (bölüm 6). Hepsi admin + PIN gerektirir.
+async function handleActions(req, res, session) {
+  const { id, op } = resolveActionTarget(req);
+  const adminId = session?.customerId ?? session?.id ?? null;
+  const requestId = req.requestId || null;
+
+  if (req.method === 'GET') {
+    if (id) {
+      const proposal = getProposal(id);
+      return envelope(res, proposal ? 200 : 404, { ok: Boolean(proposal), service: 'actions', proposal });
+    }
+    return envelope(res, 200, { ok: true, service: 'actions', ...listApprovalCenter() });
+  }
+
+  // POST işlemleri
+  const body = readBodySafe(req);
+
+  if (op === 'propose') {
+    const result = await proposeAction(body, { autoExecute: true });
+    return envelope(res, result.ok === false ? 200 : 201, { service: 'actions', ...result });
+  }
+
+  if (!id) {
+    return envelope(res, 400, { ok: false, error: 'Action id gerekli', userMessage: USER_MESSAGE.SERVER_ERROR });
+  }
+
+  switch (op) {
+    case 'approve': {
+      const result = await approveAction(id, { adminId, requestId });
+      return envelope(res, result.ok ? 200 : 409, { service: 'actions', ...result });
+    }
+    case 'reject': {
+      const result = rejectAction(id, { adminId, note: body.note, requestId });
+      return envelope(res, result.ok ? 200 : 409, { service: 'actions', ...result });
+    }
+    case 'execute': {
+      const result = executeApprovedAction(id, { adminId, requestId });
+      return envelope(res, result.ok ? 200 : 409, { service: 'actions', ...result });
+    }
+    case 'rollback': {
+      const result = rollbackAction(id, { adminId, requestId });
+      return envelope(res, result.ok ? 200 : 409, { service: 'actions', ...result });
+    }
+    default:
+      return envelope(res, 400, { ok: false, error: 'Geçersiz action işlemi', userMessage: USER_MESSAGE.SERVER_ERROR });
+  }
+}
+
 // GET metrics / events (admin)
 async function handleMetrics(req, res) {
   return envelope(res, 200, {
@@ -178,6 +247,8 @@ export async function handleGuardian(req, res) {
     case 'safe-mode':
     case 'safemode':
       return handleSafeMode(req, res);
+    case 'actions':
+      return handleActions(req, res, session);
     case 'report':
       return handleReport(req, res);
     case 'test-alert':

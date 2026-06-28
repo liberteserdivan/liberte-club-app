@@ -8846,6 +8846,22 @@ body.menuDetailOpen{
 }
 .guardianIncidentHead{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .guardianHuman{ color:#dc2626; font-weight:800; font-size:12px; }
+/* Approval Autopilot — onay merkezi öneri kartları */
+.guardianProposal{
+  border:2px solid #ea580c;
+  border-radius:14px;
+  padding:12px 14px;
+  margin-bottom:12px;
+  background:#ffffff;
+}
+.guardianHumanCard{ background:#fef2f2; }
+.guardianProposalHead{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.guardianProposalHead strong{ color:#0f172a; font-size:14px; }
+.guardianProposalDesc{ margin:4px 0 8px; color:#334155; font-size:13px; line-height:1.4; }
+.guardianProposalList{ margin:6px 0; font-size:12px; color:#334155; }
+.guardianProposalList span{ font-weight:800; color:#0f172a; }
+.guardianProposalList ul{ margin:4px 0 0; padding-left:18px; }
+.guardianProposalList li{ margin:2px 0; }
 .guardianMemoryNote{
   display:flex;
   align-items:flex-start;

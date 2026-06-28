@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import useGuardianHealth from '../hooks/useGuardianHealth.js';
 import {
-  enableSafeMode, disableSafeMode, generateReport, sendTestAlert, resolveIncident
+  enableSafeMode, disableSafeMode, generateReport, sendTestAlert, resolveIncident,
+  approveAction, rejectAction, rollbackAction
 } from '../lib/guardianClient.js';
 import { getRecentRequests, getTelemetrySummary } from '../lib/guardianTelemetry.js';
 
@@ -34,6 +35,18 @@ const SERVICE_META = {
 
 function statusMeta(status) {
   return STATUS_META[status] || STATUS_META.healthy;
+}
+
+// Risk seviyesi → renk/etiket (bölüm 8)
+const RISK_META = {
+  0: { color: '#64748b', label: 'Level 0 · Otomatik' },
+  1: { color: '#0284c7', label: 'Level 1 · Güvenli geçici' },
+  2: { color: '#ea580c', label: 'Level 2 · Onay gerekli' },
+  3: { color: '#dc2626', label: 'Level 3 · Otomatik uygulanamaz' }
+};
+
+function riskMeta(level) {
+  return RISK_META[level] ?? RISK_META[3];
 }
 
 // Tek servis kartı
@@ -75,6 +88,12 @@ export default function SystemHealthPanel() {
   const safeMode = health?.safeMode || { enabled: false };
   const telemetry = getTelemetrySummary();
   const recent = getRecentRequests(20);
+
+  // Approval Autopilot — onay merkezi grupları
+  const actions = health?.actions || {};
+  const pendingProposals = actions.pending || [];
+  const humanRequired = actions.humanRequired || [];
+  const appliedActions = actions.executed || [];
 
   // Güvenli aksiyonu sarmala — çift tık/yarış engeli + mesaj
   async function runAction(key, fn, okMsg) {
@@ -120,6 +139,37 @@ export default function SystemHealthPanel() {
       setActionMsg('Rapor panoya kopyalandı.');
     } catch {
       setActionMsg('Kopyalama başarısız — metni elle seçin.');
+    }
+  }
+
+  // Action API çağrısını sarmala: ok:false dönerse hata fırlat (runAction mesajı gösterir)
+  function callAction(fn) {
+    return async () => {
+      const data = await fn();
+      if (data && data.ok === false) {
+        throw new Error(data.message || data.error || 'İşlem uygulanamadı.');
+      }
+    };
+  }
+
+  // Belirli bir incident için Cursor fix prompt üret ve panoya kopyala
+  async function copyCursorPrompt(incidentId) {
+    if (busy) return;
+    setBusy(`cursor-${incidentId || 'latest'}`);
+    setActionMsg('');
+    try {
+      const data = await generateReport(incidentId || null);
+      const text = data?.cursorFixPromptMd || '';
+      if (!text) {
+        setActionMsg('Cursor prompt üretilemedi (açık incident yok).');
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setActionMsg('Cursor fix prompt panoya kopyalandı.');
+    } catch (err) {
+      setActionMsg(err?.message || 'Cursor prompt kopyalanamadı.');
+    } finally {
+      setBusy('');
     }
   }
 
@@ -175,6 +225,116 @@ export default function SystemHealthPanel() {
           onClick={() => runAction('testAlert', () => sendTestAlert(), 'Test bildirimi gönderildi.')}>
           <Bell size={15} /> Test alert gönder
         </button>
+      </div>
+
+      <div className="guardianSection">
+        <h4>Guardian Onay Merkezi</h4>
+        <p className="guardianMuted">
+          Bot sorunları algılar ve güvenli öneriler üretir. Etkili (Level 2) aksiyonlar yalnızca
+          siz onayladıktan sonra uygulanır. Riskli (Level 3) işlemler asla otomatik çalışmaz.
+        </p>
+
+        {pendingProposals.length === 0 && humanRequired.length === 0 && appliedActions.length === 0 && (
+          <p className="guardianMuted">Şu an bekleyen öneri yok.</p>
+        )}
+
+        {/* Bekleyen öneriler — onay/ret */}
+        {pendingProposals.map((p) => {
+          const rm = riskMeta(p.riskLevel);
+          return (
+            <div key={p.id} className="guardianProposal" style={{ borderColor: rm.color }}>
+              <div className="guardianProposalHead">
+                <span className="guardianBadge" style={{ background: rm.color }}>{rm.label}</span>
+                <strong>{p.title}</strong>
+              </div>
+              <p className="guardianProposalDesc">{p.description}</p>
+              <div className="guardianCardMeta">
+                <span>Etkilenen alan: {p.affectedArea}</span>
+                <span>Aksiyon: {p.proposedAction}</span>
+                {p.parameters?.ttlMinutes != null && <span>TTL: {p.parameters.ttlMinutes} dk</span>}
+                {p.incidentId && <span>Incident: {p.incidentId}</span>}
+              </div>
+              {Array.isArray(p.expectedEffect) && p.expectedEffect.length > 0 && (
+                <div className="guardianProposalList">
+                  <span>Beklenen fayda:</span>
+                  <ul>{p.expectedEffect.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </div>
+              )}
+              {Array.isArray(p.risks) && p.risks.length > 0 && (
+                <div className="guardianProposalList">
+                  <span>Riskler:</span>
+                  <ul>{p.risks.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </div>
+              )}
+              {p.rollback?.description && (
+                <div className="guardianCardMeta"><span>Geri alma: {p.rollback.description}</span></div>
+              )}
+              <div className="guardianActions">
+                <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                  onClick={() => runAction(`approve-${p.id}`, callAction(() => approveAction(p.id)), 'Aksiyon onaylandı ve uygulandı.')}>
+                  <CheckCircle2 size={13} /> Onayla ve uygula
+                </button>
+                <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                  onClick={() => runAction(`reject-${p.id}`, callAction(() => rejectAction(p.id, 'admin_reject')), 'Öneri reddedildi.')}>
+                  Reddet
+                </button>
+                {p.incidentId && (
+                  <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                    onClick={() => copyCursorPrompt(p.incidentId)}>
+                    <Copy size={13} /> Cursor prompt&apos;u kopyala
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* İnsan müdahalesi gerekenler (Level 3) — asla otomatik uygulanmaz */}
+        {humanRequired.map((p) => (
+          <div key={p.id} className="guardianProposal guardianHumanCard" style={{ borderColor: '#dc2626' }}>
+            <div className="guardianProposalHead">
+              <span className="guardianBadge" style={{ background: '#dc2626' }}>İnsan müdahalesi gerekiyor</span>
+              <strong>{p.title}</strong>
+            </div>
+            <p className="guardianProposalDesc">{p.description}</p>
+            <p className="guardianMuted">
+              Bu işlem otomatik uygulanamaz. İnsan müdahalesi gerekiyor. Cursor düzeltme prompt&apos;u hazırlandı.
+            </p>
+            <div className="guardianActions">
+              <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                onClick={() => copyCursorPrompt(p.incidentId)}>
+                <Copy size={13} /> Cursor prompt&apos;u kopyala
+              </button>
+              <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                onClick={() => runAction(`reject-${p.id}`, callAction(() => rejectAction(p.id, 'human_required_dismiss')), 'Reddedildi olarak işaretlendi.')}>
+                Reddedildi işaretle
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {/* Uygulanmış aksiyonlar — geri alınabilir */}
+        {appliedActions.map((p) => {
+          const rm = riskMeta(p.riskLevel);
+          return (
+            <div key={p.id} className="guardianProposal" style={{ borderColor: '#16a34a' }}>
+              <div className="guardianProposalHead">
+                <span className="guardianBadge" style={{ background: '#16a34a' }}>Uygulandı</span>
+                <strong>{p.title}</strong>
+                <span className="guardianBadge" style={{ background: rm.color }}>{rm.label}</span>
+              </div>
+              <div className="guardianCardMeta">
+                <span>Aksiyon: {p.proposedAction}</span>
+                {p.executedAt && <span>Uygulandı: {new Date(p.executedAt).toLocaleString('tr-TR')}</span>}
+                {p.approvedBy && <span>Onaylayan: {p.approvedBy}</span>}
+              </div>
+              <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                onClick={() => runAction(`rollback-${p.id}`, callAction(() => rollbackAction(p.id)), 'Aksiyon geri alındı.')}>
+                Geri al
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="guardianSection">

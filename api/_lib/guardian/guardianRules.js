@@ -1,13 +1,18 @@
 import { STATUS, SERVICE, THRESHOLDS } from './guardianConstants.js';
 import { summarizeService, recentDurations } from './guardianMetrics.js';
-import { enableSafeMode, readSafeModeSync } from './guardianSafeMode.js';
+import { readSafeModeSync } from './guardianSafeMode.js';
 import { recordIncident } from './guardianIncidents.js';
 import { raiseAlert } from './guardianAlerts.js';
+import { proposeAction } from './guardianApprovals.js';
 
-// Liberte Guardian — otomatik güvenli müdahale kuralları (bölüm 7)
+// Liberte Guardian — otomatik güvenli müdahale kuralları (bölüm 7 + Approval Autopilot)
 // Tek sorumluluk: metrikleri değerlendirip GÜVENLİ aksiyonları tetiklemek.
 // Asla: veri silme, LP düzeltme, migration, deploy, yetki/secret değişimi.
-// Yalnızca: Safe Mode + polling/realtime/refresh azaltma + incident + alert.
+//
+// ÖNEMLİ (Approval Autopilot): Safe Mode (Level 2) ARTIK OTOMATİK AÇILMAZ.
+// Bot yalnızca otomatik olarak: incident kaydeder + alert üretir +
+// admin onayı için "Safe Mode aç" ÖNERİSİ oluşturur. Etkili müdahale
+// ancak admin + PIN onayından sonra uygulanır.
 
 // Son N ölçümün tamamı eşik üstünde mi? (üst üste yavaşlık)
 function consecutiveSlow(service, thresholdMs, count) {
@@ -16,15 +21,37 @@ function consecutiveSlow(service, thresholdMs, count) {
   return list.every((x) => Number.isFinite(x.durationMs) && x.durationMs >= thresholdMs);
 }
 
-// Tek bir kuralı uygula: Safe Mode aç, incident kaydet, alert üret
-async function applyIntervention({ reason, level, features, incident }) {
-  enableSafeMode({ reason, level, ttlMinutes: 60, features });
+// Tek bir kuralı uygula: incident kaydet + alert üret + Safe Mode ÖNERİSİ oluştur (onaysız uygulanmaz)
+async function applyIntervention({
+  reason, level, features, incident,
+  expectedEffect = [
+    'Gereksiz arka plan trafiği azalır',
+    'Realtime yükü düşer',
+    'Kullanıcı ana akışı açık kalır'
+  ],
+  risks = ['Bazı arka plan güncellemeleri daha geç gelebilir']
+}) {
   const created = recordIncident(incident);
   // requiresHuman ise admin'e bildir (spam guard içerir)
   if (created.requiresHuman) {
     await raiseAlert(created).catch(() => {});
   }
-  return { incidentId: created.id, safeActionsTaken: created.safeActionsTaken };
+  // Level 2 → doğrudan açma yok; admin onayı için öneri üret (dedup'lı)
+  const proposal = await proposeAction({
+    incidentId: created.id,
+    title: `${incident.affectedArea} için Safe Mode önerisi`,
+    description: `${reason} nedeniyle Safe Mode (azaltılmış mod) öneriliyor.`,
+    affectedArea: incident.affectedArea,
+    proposedAction: 'enable_safe_mode',
+    parameters: { level, ttlMinutes: 60, features },
+    expectedEffect,
+    risks,
+    rollback: {
+      type: 'safe_mode_disable',
+      description: 'Safe Mode kapatılırsa normal polling/realtime davranışı geri döner.'
+    }
+  }).catch(() => null);
+  return { incidentId: created.id, proposalId: proposal?.id || null, safeActionsTaken: created.safeActionsTaken };
 }
 
 // 7.1 — DB latency yüksek
