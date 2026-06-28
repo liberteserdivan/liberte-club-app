@@ -10,7 +10,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const gradlePath = join(root, 'android', 'app', 'build.gradle');
 const minCode = Number(process.env.ANDROID_MIN_VERSION_CODE || 27);
 const buildNumber = Number(process.env.BUILD_NUMBER || 0);
-const versionCode = Math.max(minCode, buildNumber || minCode);
+// Acik override (ANDROID_VERSION_CODE) en yuksek onceliklidir.
+// Play'deki son versionCode + 1 icin codemagic.yaml tarafindan set edilir.
+const override = Number(process.env.ANDROID_VERSION_CODE || 0);
+const versionCode = override > 0 ? override : Math.max(minCode, buildNumber || minCode);
 const versionName = String(process.env.APP_VERSION || '1.1.2').trim();
 
 let content = readFileSync(gradlePath, 'utf8');

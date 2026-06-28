@@ -176,7 +176,21 @@ workflows:
           node scripts/generate-android-icons.mjs
           npx cap sync android
       - name: Android surum kodu
-        script: node scripts/set-android-version-code.mjs
+        script: |
+          set -eo pipefail
+          # Google Play'deki en yuksek versionCode'u al, +1 yap — cakismayi kesin onler.
+          # Kimlik: bir onceki adimda yazilan servis hesabi JSON dosyasi.
+          CREDS="$CM_BUILD_DIR/android/play-console-service-account.json"
+          LATEST="$(google-play get-latest-build-number \
+            --package-name "$PACKAGE_NAME" \
+            --credentials "@file:$CREDS" 2>/dev/null || echo '')"
+          if [ -n "$LATEST" ]; then
+            export ANDROID_VERSION_CODE="$((LATEST + 1))"
+            echo "[android-version] Play latest=$LATEST -> versionCode=$ANDROID_VERSION_CODE"
+          else
+            echo "[android-version] Play sorgusu basarisiz — taban/BUILD_NUMBER kullanilacak"
+          fi
+          node scripts/set-android-version-code.mjs
       - name: Derleme dogrulama
         script: |
           echo "[verify] commit=$(git rev-parse --short HEAD)"
