@@ -8803,28 +8803,38 @@ body.menuDetailOpen{
   display:inline-flex;
   align-items:center;
   gap:7px;
-  padding:9px 14px;
+  padding:10px 15px;
   border-radius:12px;
-  border:1px solid #cbd5e1;
-  background:#f8fafc;
+  border:1px solid #94a3b8;
+  background:#ffffff;
+  /* Acik koyu metin — soluk/okunmaz buton sorununu giderir */
+  color:#0f172a;
   font-weight:800;
   font-size:13px;
   cursor:pointer;
 }
-.guardianBtn:disabled{ opacity:.55; cursor:not-allowed; }
+/* Ikonlar marka yesili — metinle birlikte net gorunur */
+.guardianBtn svg{ color:#16a34a; flex-shrink:0; }
+.guardianBtn:hover:not(:disabled){ background:#f1f5f9; border-color:#64748b; }
+.guardianBtn:disabled{ opacity:.6; cursor:not-allowed; color:#475569; }
 .guardianBtnSmall{
   display:inline-flex;
   align-items:center;
   gap:5px;
   margin-top:8px;
-  padding:5px 10px;
+  padding:6px 11px;
   border-radius:10px;
-  border:1px solid #cbd5e1;
-  background:#fff;
+  border:1px solid #94a3b8;
+  background:#ffffff;
+  /* Acik koyu metin — kucuk butonlarda da okunabilirlik */
+  color:#0f172a;
   font-size:12px;
   font-weight:700;
   cursor:pointer;
 }
+.guardianBtnSmall svg{ color:#16a34a; flex-shrink:0; }
+.guardianBtnSmall:hover:not(:disabled){ background:#f1f5f9; }
+.guardianBtnSmall:disabled{ opacity:.6; cursor:not-allowed; color:#475569; }
 .guardianSection{ background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:14px 16px; }
 .guardianSection h4{ margin:0 0 10px; font-size:15px; font-weight:900; }
 .guardianMuted{ color:#94a3b8; font-size:13px; }
