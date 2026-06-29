@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { KeyRound, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
@@ -51,6 +51,8 @@ export default function Login({ db, commit, setSession }) {
   const [legalType, setLegalType] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState(null);
+  // Duplicate login submit koruması — uçuştaki giriş varken ikinci POST başlatma
+  const loginInFlightRef = useRef(false);
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
 
@@ -180,6 +182,11 @@ export default function Login({ db, commit, setSession }) {
     const pinValue = readPins(false);
     if (!ph || !pinValue) return;
 
+    // Uçuşta bir giriş varsa ikinci submit'i yok say — duplicate /api/auth/login
+    // (çift tıklama, hızlı tekrar) tek request'e düşer.
+    if (loginInFlightRef.current) return;
+    loginInFlightRef.current = true;
+
     setLoading(true);
     setInfo('');
 
@@ -223,6 +230,7 @@ export default function Login({ db, commit, setSession }) {
       notify(e.message || 'Giriş yapılamadı');
     } finally {
       setLoading(false);
+      loginInFlightRef.current = false;
     }
   }
 

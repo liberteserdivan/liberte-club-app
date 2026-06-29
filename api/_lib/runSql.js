@@ -26,3 +26,18 @@ export function runSqlRead(task) {
     attemptTimeoutMs: READ_ATTEMPT_TIMEOUT_MS
   });
 }
+
+// Oturum/auth doğrulama okumaları için FAIL-FAST varyant.
+// Auth kontrolü ucuz ve indeksli bir lookup'tır; bayat bağlantıda 4x6sn (~30sn)
+// retry yığını oturum bağımlı uçların (ör. yetkisiz /api/state) 30sn+ asılı
+// kalıp 401 dönmesine yol açıyordu. Daha kısa timeout + az deneme ile en kötü
+// durumda hızlı 401 döner; sağlıklı bağlantıda zaten <1sn'dir.
+const SESSION_READ_ATTEMPT_TIMEOUT_MS = 3000;
+export function runSqlReadFast(task) {
+  const retries = isSqlRequestActive() ? 1 : 2;
+  return withSqlRetry(task, {
+    retries,
+    resetClient: resetSqlClient,
+    attemptTimeoutMs: SESSION_READ_ATTEMPT_TIMEOUT_MS
+  });
+}

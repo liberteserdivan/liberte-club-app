@@ -3,7 +3,7 @@ import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
 import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
-import { runSql, runSqlRead } from './runSql.js';
+import { runSql, runSqlRead, runSqlReadFast } from './runSql.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -76,9 +76,9 @@ export async function getSession(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  // Oturum okuma READ-ağırlıklıdır; bayat bağlantıda her deneme 6sn ile sınırlanır.
+  // Oturum okuma fail-fast — bayat bağlantıda kısa timeout + az deneme.
   // (Rol değişiminde yapılan tek UPDATE idempotenttir; sınırlı retry güvenlidir.)
-  return runSqlRead(async () => {
+  return runSqlReadFast(async () => {
     const sql = getSql();
     if (!sql) return null;
 
@@ -112,8 +112,8 @@ export async function getSessionForQr(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  // Salt-okunur — bayat bağlantıda sınırlı deneme (fail-fast).
-  return runSqlRead(async () => {
+  // Salt-okunur — bayat bağlantıda fail-fast (kısa timeout + az deneme).
+  return runSqlReadFast(async () => {
     const sql = getSql();
     if (!sql) return null;
 
@@ -143,9 +143,10 @@ export async function getSessionForBootstrap(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  // Salt-okunur bootstrap — bayat bağlantıda her deneme 6sn ile sınırlanır,
-  // böylece realtime/state/push gibi oturum bağımlı uçlar 60-120sn asılı kalmaz.
-  return runSqlRead(async () => {
+  // Salt-okunur bootstrap — fail-fast (kısa timeout + az deneme); böylece
+  // realtime/state/push gibi oturum bağımlı uçlar 30-120sn asılı kalmaz ve
+  // yetkisiz/expired token'da hızlı 401 döner.
+  return runSqlReadFast(async () => {
     const sql = getSql();
     if (!sql) return null;
 

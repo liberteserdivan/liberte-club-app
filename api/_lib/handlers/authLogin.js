@@ -24,16 +24,11 @@ function sessionMatchesPhone(session, normalizedPhone) {
   return cleanPhone(session.customer.phone) === normalizedPhone;
 }
 
-// Başarılı giriş yanıtını oluştur — sadakat kartı dahil
-async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = null) {
-  const sql = getSql();
-  let loyalty = null;
-  if (sql && customer?.id) {
-    const row = await findLoyaltyByCustomerId(sql, customer.id);
-    loyalty = row ? loyaltyRowToCard(row, customer.id) : null;
-  }
-
-  return withRealtimeToken({
+// Başarılı giriş yanıtının çekirdek alanları (DB/imza gerektirmez).
+// Oturum zaten oluşturulduğu (cookie + DB satırı yazıldığı) için bu gövde
+// her koşulda güvenle dönebilir; sadakat kartı opsiyoneldir.
+function loginBodyCore(trace, customer, sessionMeta, existing, loyalty) {
+  return {
     ok: true,
     requestId: trace.requestId,
     customerId: customer.id,
@@ -45,11 +40,49 @@ async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = nu
     customer: toCustomerSnapshot(customer),
     loyalty,
     timings: trace.successTimings()
-  }, {
-    customerId: customer.id,
-    isAdmin: Boolean(customer.isAdmin),
-    adminVerified: Boolean(existing?.adminVerified)
-  });
+  };
+}
+
+// Minimal başarı gövdesi — DB veya realtime token üretimi BAŞARISIZ olsa bile
+// dönülebilir. Oturum oluştuktan sonra 500 yerine bunu kullanırız.
+function buildPlainLoginBody(trace, customer, sessionMeta, existing = null) {
+  const core = loginBodyCore(trace, customer, sessionMeta, existing, null);
+  try {
+    // realtime token imzası başarısız olabilir — opsiyonel, login'i bloklamaz
+    return withRealtimeToken(core, {
+      customerId: customer.id,
+      isAdmin: Boolean(customer.isAdmin),
+      adminVerified: Boolean(existing?.adminVerified)
+    });
+  } catch {
+    return core;
+  }
+}
+
+// Başarılı giriş yanıtını oluştur — sadakat kartı dahil.
+// Sadakat sorgusu non-fatal: hata/timeout olursa loyalty null döner, login bozulmaz
+// (istemci kartı /api/state ile yine çeker).
+async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = null) {
+  const sql = getSql();
+  let loyalty = null;
+  if (sql && customer?.id) {
+    try {
+      const row = await findLoyaltyByCustomerId(sql, customer.id);
+      loyalty = row ? loyaltyRowToCard(row, customer.id) : null;
+    } catch {
+      // Sadakat kartı opsiyonel — login akışını bloklamaz
+      loyalty = null;
+    }
+  }
+
+  return withRealtimeToken(
+    loginBodyCore(trace, customer, sessionMeta, existing, loyalty),
+    {
+      customerId: customer.id,
+      isAdmin: Boolean(customer.isAdmin),
+      adminVerified: Boolean(existing?.adminVerified)
+    }
+  );
 }
 
 // Giriş — telefon + PIN; normalize tablo üzerinden.
@@ -83,14 +116,17 @@ export async function handleAuthLogin(req, res) {
       return res.status(outcome.status).json(outcome.body);
     }
 
-    // Mevcut geçerli oturum yeniden kullanılıyor — yeni oturum oluşturma
+    // Mevcut geçerli oturum yeniden kullanılıyor — yeni oturum oluşturma.
+    // Oturum geçerli olduğu için gövde üretimi başarısız olsa bile 200 dön.
     if (outcome.kind === 'reuse') {
-      const bodyOk = await buildLoginSuccessBody(
-        trace,
-        outcome.customer,
-        { role: outcome.role, token: outcome.token },
-        outcome.existing
-      );
+      const reuseMeta = { role: outcome.role, token: outcome.token };
+      let bodyOk;
+      try {
+        bodyOk = await buildLoginSuccessBody(trace, outcome.customer, reuseMeta, outcome.existing);
+      } catch (bodyError) {
+        console.error('[auth.customer-login]', trace.requestId, 'reuse_body_failed', bodyError?.message || bodyError);
+        bodyOk = buildPlainLoginBody(trace, outcome.customer, reuseMeta, outcome.existing);
+      }
       trace.log('session_reuse', { customerId: outcome.customer.id, status: 'ok', durationMs: Date.now() - startedAt });
       return res.status(200).json(bodyOk);
     }
@@ -125,7 +161,17 @@ export async function handleAuthLogin(req, res) {
       durationMs: Date.now() - startedAt
     });
 
-    const bodyOk = await buildLoginSuccessBody(trace, outcome.customer, session);
+    // Oturum DURABLE olarak oluşturuldu (cookie + DB satırı yazıldı). Bundan sonra
+    // gövde üretimi (sadakat sorgusu / realtime token) BAŞARISIZ olsa bile 500
+    // DÖNME — kullanıcı zaten authenticated; aksi halde "login 500 ama profile açık"
+    // tutarsızlığı oluşur. Hata olursa minimal başarı gövdesiyle 200 dön.
+    let bodyOk;
+    try {
+      bodyOk = await buildLoginSuccessBody(trace, outcome.customer, session);
+    } catch (bodyError) {
+      console.error('[auth.customer-login]', trace.requestId, 'success_body_failed', bodyError?.message || bodyError);
+      bodyOk = buildPlainLoginBody(trace, outcome.customer, session);
+    }
     return res.status(200).json(bodyOk);
   } catch (e) {
     console.error('[auth.customer-login]', trace.requestId, e?.stack || e?.message || e);
