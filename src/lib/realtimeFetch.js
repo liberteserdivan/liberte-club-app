@@ -1,20 +1,47 @@
 import { apiJson, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
+import { canAttempt, recordSuccess, recordFailure } from './backgroundCircuit.js';
 
-const LOYALTY_FETCH_OPTIONS = { timeoutMs: 8_000 };
+// Müşteri realtime fetch'leri kısa zaman aşımıyla yapılır — 90-120sn asılı kalmaz.
+const REALTIME_FETCH_OPTIONS = { timeoutMs: 6_000, retryTransient: false };
+const LOYALTY_FETCH_OPTIONS = REALTIME_FETCH_OPTIONS;
+const REALTIME_CIRCUIT_KEY = 'realtime';
+const FAILED_RESULT = Object.freeze({ response: { ok: false, status: 0 }, data: { ok: false } });
 
-// Arka plan sync — ağ hatasında toast tetikleme
+// Aynı uç için aynı anda yalnızca bir istek — pending varken ikincisi onu paylaşır
+const inflightRealtime = new Map();
+
+// Arka plan sync — ağ hatasında toast tetikleme + devre kesici
 async function safeRealtimeRequest(path, options = {}) {
-  try {
-    return await apiJson(path, options);
-  } catch {
-    return { response: { ok: false, status: 0 }, data: { ok: false } };
-  }
+  // Devre açıksa (3 ardışık hata) yeni istek başlatma — retry storm engeli
+  if (!canAttempt(REALTIME_CIRCUIT_KEY)) return FAILED_RESULT;
+
+  // Pending istek varsa onu paylaş (in-flight dedup)
+  const existing = inflightRealtime.get(path);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      const result = await apiJson(path, { ...REALTIME_FETCH_OPTIONS, ...options });
+      if (result.response.ok) recordSuccess(REALTIME_CIRCUIT_KEY);
+      else recordFailure(REALTIME_CIRCUIT_KEY);
+      return result;
+    } catch {
+      recordFailure(REALTIME_CIRCUIT_KEY);
+      return FAILED_RESULT;
+    } finally {
+      inflightRealtime.delete(path);
+    }
+  })();
+
+  inflightRealtime.set(path, promise);
+  return promise;
 }
 
-// Geçici ağ/DB hatasında bir kez daha dene
+// Geçici ağ/DB hatasında bir kez daha dene (devre açık değilse)
 async function safeRealtimeRequestWithRetry(path, options = {}) {
   const first = await safeRealtimeRequest(path, options);
   if (first.response.ok && first.data?.ok) return first;
+  if (!canAttempt(REALTIME_CIRCUIT_KEY)) return first;
   await new Promise((resolve) => setTimeout(resolve, 350));
   return safeRealtimeRequest(path, options);
 }

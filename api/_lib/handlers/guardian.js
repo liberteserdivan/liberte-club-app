@@ -22,6 +22,35 @@ import { readBodySafe } from '../http.js';
 // Tek sorumluluk: guardian resource'larını uygun yetki ile servis etmek.
 // Public: yalnızca temel health. Diğer her şey admin + admin PIN gerektirir.
 
+// Guardian health hiçbir koşulda Vercel fonksiyon limitine (504) düşmemeli.
+// Bu süre içinde dönmezse "degraded" özet döneriz; UI takılmaz, kart yeşil kalmaz.
+const HEALTH_DEADLINE_MS = 8000;
+
+// Bir health işini zaman sınırıyla yarıştır — süre dolarsa fallback değer döner
+function withHealthDeadline(promise, fallback) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(fallback);
+    }, HEALTH_DEADLINE_MS);
+    Promise.resolve(promise)
+      .then((value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
+}
+
 // Standart yanıt zarfı (bölüm 2 formatı)
 function envelope(res, statusCode, body) {
   return res.status(statusCode).json({
@@ -49,9 +78,19 @@ async function requireAdmin(req, res) {
   return requireAdminSession(req, res, { pinRequired: true, light: true });
 }
 
+// Guardian kendi yavaşlığında bile UI'yı bloklamasın — degraded fallback özeti
+const DEGRADED_OVERALL_FALLBACK = Object.freeze({
+  ok: false,
+  status: STATUS.DEGRADED,
+  requiresHuman: false,
+  safeMode: { enabled: false, level: STATUS.DEGRADED, reason: 'health_timeout' },
+  userMessage: USER_MESSAGE.SAFE_MODE,
+  services: {}
+});
+
 // Temel (public) health — yalnızca durum, hassas detay yok
 async function handlePublicHealth(req, res) {
-  const overall = await checkOverall();
+  const overall = await withHealthDeadline(checkOverall(), DEGRADED_OVERALL_FALLBACK);
   return envelope(res, overall.ok ? 200 : 503, {
     ok: overall.ok,
     status: overall.status,
@@ -63,15 +102,17 @@ async function handlePublicHealth(req, res) {
 
 // Detaylı health (admin) — servis kırılımı + otomatik müdahale değerlendirmesi
 async function handleDetailedHealth(req, res, service) {
-  // Önce güvenli otomatik aksiyonları değerlendir (best-effort)
-  await evaluateAndIntervene().catch(() => {});
+  // Önce güvenli otomatik aksiyonları değerlendir (best-effort, deadline ile)
+  await withHealthDeadline(evaluateAndIntervene().catch(() => {}), null);
 
   if (service && service !== 'overall') {
-    const report = await checkByService(service);
+    const report = await withHealthDeadline(checkByService(service), {
+      ok: false, status: STATUS.DEGRADED, service, durationMs: HEALTH_DEADLINE_MS
+    });
     return envelope(res, report.ok ? 200 : 503, report);
   }
 
-  const overall = await checkOverall();
+  const overall = await withHealthDeadline(checkOverall(), DEGRADED_OVERALL_FALLBACK);
   return envelope(res, overall.ok ? 200 : 503, {
     ok: overall.ok,
     status: overall.status,

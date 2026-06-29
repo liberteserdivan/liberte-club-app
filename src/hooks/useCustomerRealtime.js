@@ -11,6 +11,7 @@ import {
 } from '../lib/realtimeFetch.js';
 import { isSupabaseRealtimeEnabled, refreshRealtimeSessionFromServer } from '../lib/supabaseClient.js';
 import { subscribeForegroundResume } from '../lib/appForeground.js';
+import { isCustomerRealtimeDisabled } from '../lib/safeMode.js';
 
 // Müşteri ekranı — filtreli postgres dinleyicileri
 export function useCustomerRealtime({
@@ -28,6 +29,8 @@ export function useCustomerRealtime({
 
   useEffect(() => {
     if (!enabled || !customerId || !commit) return undefined;
+    // Acil bayrak veya Safe Mode realtime degraded ise müşteri realtime hiç açılmaz
+    if (isCustomerRealtimeDisabled()) return undefined;
 
     let cancelled = false;
     const channelKey = `customer:${customerId}`;

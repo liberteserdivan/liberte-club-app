@@ -11,6 +11,12 @@ import { Capacitor } from '@capacitor/core';
 import { reportError } from './errorHub.js';
 import { getDeviceId } from './deviceId.js';
 import { apiJson } from './apiClient.js';
+import { canAttempt, recordSuccess, recordFailure, resetCircuit } from './backgroundCircuit.js';
+
+// Push kaydı kritik DEĞİLDİR: login/ana ekranı asla bloklamamalı.
+// Bu yüzden kısa zaman aşımı + devre kesici ile arka planda çalışır.
+const PUSH_CIRCUIT_KEY = 'push';
+const PUSH_REGISTER_TIMEOUT_MS = 5_000;
 
 // Sunucuya cihaz token kaydı — session cookie ile doğrulanır
 async function syncPushDeviceRegistration(customer, {
@@ -20,9 +26,17 @@ async function syncPushDeviceRegistration(customer, {
 }) {
   if (!customer?.id) return { ok: false };
 
+  // Devre açıksa (3 ardışık hata/timeout) bu turda tekrar deneme — istek selini engelle.
+  // 504/timeout'ta login veya ana ekran bloklanmaz; kullanıcı manuel "Bildirimleri aç"
+  // dediğinde resetPushCircuit() ile devre sıfırlanır.
+  if (!canAttempt(PUSH_CIRCUIT_KEY)) return { ok: false, skipped: true };
+
   try {
     const { response, data } = await apiJson('/api/push/register-device', {
       method: 'POST',
+      timeoutMs: PUSH_REGISTER_TIMEOUT_MS,
+      retryTransient: false,
+      skipUnauthorized: true,
       body: JSON.stringify({
         customerId: customer.id,
         token,
@@ -33,11 +47,20 @@ async function syncPushDeviceRegistration(customer, {
         buildNumber: String(import.meta.env?.VITE_BUILD_NUMBER || '')
       })
     });
+    if (response.ok) recordSuccess(PUSH_CIRCUIT_KEY);
+    else recordFailure(PUSH_CIRCUIT_KEY);
     return { ok: response.ok, data };
   } catch (error) {
+    recordFailure(PUSH_CIRCUIT_KEY);
     console.warn('[push.register-device]', error?.message || error);
     return { ok: false };
   }
+}
+
+// Kullanıcı manuel "Bildirimleri aç" dediğinde push devresini sıfırla (arka plan değil,
+// kullanıcı aksiyonu olduğu için engellenmemeli).
+export function resetPushCircuit() {
+  resetCircuit(PUSH_CIRCUIT_KEY);
 }
 
 // İzin sonucunu logla — store review için
@@ -336,6 +359,7 @@ function upsertPushSubscription(db, customer, token) {
 
 // Native uygulamada Capacitor push token kaydı
 export async function enableNativePush(customer, db, commit) {
+  resetCircuit(PUSH_CIRCUIT_KEY); // Kullanıcı aksiyonu — devre engellemesini kaldır
   if (isAndroid()) {
     const androidPermission = await ensureAndroidNotificationPermission();
     if (!androidPermission.ok) {
@@ -372,6 +396,7 @@ export async function enableNativePush(customer, db, commit) {
 
 // Push bildirimlerini etkinleştir
 export async function enablePush(customer, db, commit) {
+  resetCircuit(PUSH_CIRCUIT_KEY); // Kullanıcı aksiyonu — devre engellemesini kaldır
   if (isNativeApp()) {
     return enableNativePush(customer, db, commit);
   }

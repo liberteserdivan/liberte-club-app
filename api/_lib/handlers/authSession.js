@@ -2,7 +2,7 @@ import { applyCors } from '../http.js';
 import { destroySession, getSessionForBootstrap, readAuthToken } from '../auth.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
-import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
+import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
 import { resetSqlClient } from '../sql.js';
 
 // Oturum okuma ve çıkış
@@ -35,12 +35,12 @@ export async function handleAuthSession(req, res) {
     const hasSessionToken = Boolean(readAuthToken(req));
     trace.log('start', { step: 'start', hasSessionToken });
 
-    // Bootstrap salt-okunur ve hafif; bayat bağlantıda 6sn'de vazgeçip taze
-    // bağlantıyla yeniden dener (uygulama açılışı/çıkış sonrası takılmayı önler).
-    // retries=2: en kötü ~12.5sn ile sınırlı, istemci zaman aşımının (25sn) altında.
+    // Bootstrap salt-okunur ve hafif; bayat bağlantıda 5sn'de vazgeçip taze
+    // bağlantıyla bir kez daha dener (uygulama açılışı/çıkış sonrası takılmayı önler).
+    // attemptTimeoutMs=5000, retries=1: en kötü ~10sn ile sınırlı (önceki 18sn değil).
     const session = await withSqlRetry(
       () => getSessionForBootstrap(req),
-      { resetClient: resetSqlClient, attemptTimeoutMs: 6000, retries: 2 }
+      { resetClient: resetSqlClient, attemptTimeoutMs: 5000, retries: 1 }
     );
     trace.log('verify_session', {
       step: 'verify_session',
@@ -74,6 +74,17 @@ export async function handleAuthSession(req, res) {
       error: e?.message || String(e),
       durationMs: Date.now() - startedAt
     });
+
+    // Bayat/geçici DB bağlantısında 500 yerine kontrollü 503 dön; istemci login
+    // ekranına döner ama sonsuz 18sn 500 döngüsüne girmez.
+    if (isTransientDbError(e)) {
+      return res.status(503).json(trace.failBody(
+        'session_unavailable',
+        'SESSION_TEMPORARILY_UNAVAILABLE',
+        'Oturum şu an doğrulanamadı. Lütfen tekrar giriş yapın.'
+      ));
+    }
+
     return res.status(500).json(trace.failBody(
       'catch_error',
       publicDbErrorCode(e, 'SESSION_RESTORE_FAILED'),

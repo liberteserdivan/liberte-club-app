@@ -3,6 +3,7 @@ import { fetchCustomerLoyaltySnapshot } from '../lib/realtimeFetch.js';
 import { getLpBalance, getLpLifetime } from '../lib/loyaltyStamps.js';
 import { isIosNative, isNativeApp } from '../lib/platform.js';
 import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForeground.js';
+import { isCustomerRealtimeDisabled, shouldReducePolling } from '../lib/safeMode.js';
 
 // Anlık güncelleme realtime (websocket) ile gelir; bu yoklama yalnızca yedektir.
 // Bu yüzden seyrek tutulur — boşa giden egress (giden trafik) ~%90 azalır.
@@ -12,6 +13,8 @@ const LP_POLL_MS_NATIVE = 20_000;
 const LP_POLL_MS_WEB = 30_000;
 const LP_BURST_MS_NATIVE = 5_000;
 const LP_BURST_WINDOW_MS = 20_000;
+// Safe Mode / realtime kapalıyken yedek yoklama çok seyrekleşir (arka plan yükü düşer)
+const LP_POLL_MS_SAFE = 120_000;
 
 // LP kartı gerçekten değişti mi
 function loyaltySnapshotChanged(prev, next) {
@@ -73,6 +76,8 @@ export function useCustomerLoyaltyPoll({
     }
 
     function resolvePollInterval() {
+      // Safe Mode/realtime kapalıyken yedek yoklama 120sn'ye çekilir
+      if (isCustomerRealtimeDisabled() || shouldReducePolling()) return LP_POLL_MS_SAFE;
       if (isNativeApp() && Date.now() < burstUntil) return LP_BURST_MS_NATIVE;
       return isNativeApp() ? LP_POLL_MS_NATIVE : LP_POLL_MS_WEB;
     }

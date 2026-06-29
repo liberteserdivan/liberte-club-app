@@ -3,7 +3,7 @@ import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
 import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
-import { runSql } from './runSql.js';
+import { runSql, runSqlRead } from './runSql.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -76,7 +76,9 @@ export async function getSession(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  return runSql(async () => {
+  // Oturum okuma READ-ağırlıklıdır; bayat bağlantıda her deneme 6sn ile sınırlanır.
+  // (Rol değişiminde yapılan tek UPDATE idempotenttir; sınırlı retry güvenlidir.)
+  return runSqlRead(async () => {
     const sql = getSql();
     if (!sql) return null;
 
@@ -110,7 +112,8 @@ export async function getSessionForQr(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  return runSql(async () => {
+  // Salt-okunur — bayat bağlantıda sınırlı deneme (fail-fast).
+  return runSqlRead(async () => {
     const sql = getSql();
     if (!sql) return null;
 
@@ -140,7 +143,9 @@ export async function getSessionForBootstrap(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  return runSql(async () => {
+  // Salt-okunur bootstrap — bayat bağlantıda her deneme 6sn ile sınırlanır,
+  // böylece realtime/state/push gibi oturum bağımlı uçlar 60-120sn asılı kalmaz.
+  return runSqlRead(async () => {
     const sql = getSql();
     if (!sql) return null;
 
@@ -478,7 +483,8 @@ export async function requireAdminSession(req, res, { pinRequired = true, light 
     const sql = getSql();
     if (sql) {
       const { findCustomerById } = await import('./customersStore.js');
-      const live = await findCustomerById(sql, identity.customerId);
+      // Bayat bağlantıda admin doğrulaması da fail-fast olsun (guardian/health 90sn beklemesin)
+      const live = await runSqlRead(() => findCustomerById(sql, identity.customerId));
       if (!live?.isAdmin) {
         res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
         return null;

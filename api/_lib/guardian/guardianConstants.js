@@ -36,7 +36,8 @@ export const SERVICE = Object.freeze({
 export const THRESHOLDS = Object.freeze({
   DB_PING_DEGRADED_MS: 1500,
   DB_PING_CRITICAL_MS: 3000,
-  DB_HEALTH_TIMEOUT_MS: 6000,
+  // DB ping kısa tutulur — guardian health hiçbir zaman Vercel 504'üne (90sn) düşmemeli
+  DB_HEALTH_TIMEOUT_MS: 2500,
   LOGIN_SLOW_MS: 8000,
   LP_SLOW_MS: 10000,
   QR_SLOW_MS: 5000,

@@ -9,6 +9,13 @@ import {
   approveAction, rejectAction, rollbackAction
 } from '../lib/guardianClient.js';
 import { getRecentRequests, getTelemetrySummary } from '../lib/guardianTelemetry.js';
+import { deriveClientHealth, clientStatusForService } from '../lib/clientHealthSeverity.js';
+
+// İki sağlık seviyesinden kötü olanı seç (server overall + client severity birleşimi)
+const SEVERITY_RANK = { healthy: 0, degraded: 1, incident: 2, critical: 3 };
+function worstSeverity(a, b) {
+  return (SEVERITY_RANK[b] ?? 0) > (SEVERITY_RANK[a] ?? 0) ? b : a;
+}
 
 // Liberte Guardian — admin "Sistem Sağlığı" paneli
 // Tek sorumluluk: sağlık/incident/safe-mode verisini göstermek ve güvenli
@@ -49,10 +56,13 @@ function riskMeta(level) {
   return RISK_META[level] ?? RISK_META[3];
 }
 
-// Tek servis kartı
-function ServiceCard({ serviceKey, report }) {
+// Tek servis kartı — client telemetry severity'si server raporundan kötüyse o gösterilir
+function ServiceCard({ serviceKey, report, clientStatus }) {
   const meta = SERVICE_META[serviceKey] || { label: serviceKey, Icon: Server };
-  const sMeta = statusMeta(report?.status);
+  const effectiveStatus = clientStatus
+    ? worstSeverity(report?.status || 'healthy', clientStatus)
+    : report?.status;
+  const sMeta = statusMeta(effectiveStatus);
   const ServiceIcon = meta.Icon;
   const StatusIcon = sMeta.Icon;
   return (
@@ -80,14 +90,32 @@ export default function SystemHealthPanel() {
   const [reportText, setReportText] = useState('');
   const [actionMsg, setActionMsg] = useState('');
 
-  const overall = health?.status || 'healthy';
-  const overallMeta = statusMeta(overall);
-  const services = health?.services || {};
-  const incidents = health?.incidents || [];
-  const alerts = health?.alerts || [];
-  const safeMode = health?.safeMode || { enabled: false };
   const telemetry = getTelemetrySummary();
   const recent = getRecentRequests(20);
+
+  // Client telemetry'den gerçeğe uygun severity türet — server "healthy" dese bile
+  // cihazda hata/timeout varsa panel yeşil kalmaz.
+  const clientHealth = deriveClientHealth(recent);
+
+  const serverOverall = health?.status || 'healthy';
+  // Genel durum = server overall ile client severity'nin kötüsü
+  const overall = worstSeverity(serverOverall, clientHealth.severity);
+  const overallMeta = statusMeta(overall);
+  const services = health?.services || {};
+  // Server incident'ları + client kaynaklı incident'lar birleştirilir
+  const serverIncidents = health?.incidents || [];
+  const clientIncidents = clientHealth.incidents.map((inc, idx) => ({
+    id: `client-${idx}`,
+    level: inc.level,
+    title: inc.title,
+    affectedArea: inc.affectedArea,
+    startedAt: Date.now(),
+    occurrences: 1,
+    clientOnly: true
+  }));
+  const incidents = [...serverIncidents, ...clientIncidents];
+  const alerts = health?.alerts || [];
+  const safeMode = health?.safeMode || { enabled: false };
 
   // Approval Autopilot — onay merkezi grupları
   const actions = health?.actions || {};
@@ -205,7 +233,12 @@ export default function SystemHealthPanel() {
 
       <div className="guardianGrid">
         {['db', 'login', 'qr', 'loyalty', 'realtime', 'config'].map((key) => (
-          <ServiceCard key={key} serviceKey={key} report={services[key]} />
+          <ServiceCard
+            key={key}
+            serviceKey={key}
+            report={services[key]}
+            clientStatus={clientStatusForService(key, clientHealth)}
+          />
         ))}
       </div>
 
@@ -355,10 +388,14 @@ export default function SystemHealthPanel() {
             {Array.isArray(inc.safeActionsTaken) && inc.safeActionsTaken.length > 0 && (
               <div className="guardianCardMeta">Bot aksiyonu: {inc.safeActionsTaken.join(', ')}</div>
             )}
-            <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
-              onClick={() => runAction(`resolve-${inc.id}`, () => resolveIncident(inc.id), 'Incident çözüldü olarak işaretlendi.')}>
-              Çözüldü işaretle
-            </button>
+            {inc.clientOnly ? (
+              <div className="guardianCardMeta"><span>Kaynak: cihaz telemetrisi (son 20 istek)</span></div>
+            ) : (
+              <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                onClick={() => runAction(`resolve-${inc.id}`, () => resolveIncident(inc.id), 'Incident çözüldü olarak işaretlendi.')}>
+                Çözüldü işaretle
+              </button>
+            )}
           </div>
         ))}
       </div>
