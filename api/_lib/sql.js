@@ -139,10 +139,20 @@ export async function pingSql(sql) {
 export async function primeSqlConnection(timeoutMs = 2500, sqlOverride = null) {
   const sql = sqlOverride || getSql();
   if (!sql) return false;
-  const ping = sql`SELECT 1 AS ok`.then(() => true).catch(() => false);
+
+  // KRİTİK: Bağlantıyı yalnızca GERÇEKTEN koptuğunda (sorgu reddi) sıfırla.
+  // Eski hâli timeout'ta da reset ediyordu; bu, yavaş ama çalışan bir bağlantıyı
+  // atıp yenisini açtırarak bağlantı çöplüğü + Supabase havuz doygunluğu (kısır
+  // döngü) yaratıyordu. Yavaşlık ≠ kopukluk: timeout'ta bağlantı KORUNUR, zaten
+  // postgres.js bir sonraki sorguda kopuk bağlantıyı kendi otomatik yeniler.
+  let pingRejected = false;
+  const ping = sql`SELECT 1 AS ok`
+    .then(() => true)
+    .catch(() => { pingRejected = true; return false; });
   const timeout = new Promise((resolve) => { setTimeout(() => resolve(false), timeoutMs); });
+
   const ok = await Promise.race([ping, timeout]);
-  if (!ok) resetSqlClient();
+  if (pingRejected) resetSqlClient();
   return ok;
 }
 

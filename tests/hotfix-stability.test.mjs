@@ -154,6 +154,21 @@ test('primeSqlConnection: takılan bağlantı timeout ile false döner (login bl
   assert.ok(Date.now() - t < 1000, 'timeout kısa sürede dönmeli');
 });
 
+test('primeSqlConnection: timeout bağlantıyı SIFIRLAMAZ, yalnızca ping reddi sıfırlar', () => {
+  // Olay kök nedeni: timeout'ta da reset ediliyordu -> çalışan ama yavaş bağlantı
+  // atılıp yeni bağlantılar açılıyor, Supabase havuzu doyup tüm sorgular takılıyordu.
+  // Bu test o kısır döngünün geri gelmesini engeller (kaynak sözleşmesi kilidi).
+  const source = readFileSync(join(root, 'api/_lib/sql.js'), 'utf8');
+  assert.ok(
+    source.includes('if (pingRejected) resetSqlClient()'),
+    'reset SADECE gerçek bağlantı kopması (pingRejected) ile yapılmalı'
+  );
+  assert.ok(
+    !/if \(!ok\)\s*resetSqlClient/.test(source),
+    'timeout sonucuna (!ok) göre reset YAPILMAMALI'
+  );
+});
+
 test('handleAuthLogin login sorgularından önce primeSqlConnection çağırır', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/authLogin.js'), 'utf8');
   const idxPrime = source.indexOf('primeSqlConnection(');
