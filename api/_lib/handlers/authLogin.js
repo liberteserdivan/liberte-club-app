@@ -114,19 +114,23 @@ export async function handleAuthLogin(req, res) {
     // B-3: Asıl limit HESAP (telefon) bazlıdır — brute-force tek hesaba karşı
     // sınırlanır. IP bazlı limit ise gevşektir; böylece kafe gibi paylaşımlı bir
     // IP'de farklı müşteriler birbirini kilitlemez (ortak IP'de toplu 429 olmaz).
-    // PERF: Telefon ve IP limit sayaçları birbirinden bağımsız iki sorgudur;
-    // ardışık beklemek yerine PARALEL çalıştırılır (bir DB gidiş-dönüşü tasarrufu).
-    // İkisi de aynı anda sayacı artırır — bu davranış istenen yöndedir (her ikisi
-    // de gerçek bir deneme olarak sayılmalı), yalnızca gecikmeyi düşürür.
+    // STABİLİTE: Rate-limit kontrolleri SIRALI yapılır (paralel DEĞİL). Paralel
+    // çalıştırma havuzdan aynı anda 2 bağlantı kapıp, yoğun/yeniden-deneme anlarında
+    // pooler bağlantı tükenmesine ve takılmaya yol açıyordu. fra1'de her sorgu ~birkaç
+    // ms olduğundan sıralı yapmanın gecikme maliyeti ihmal edilebilir; karşılığında
+    // login tek bağlantı kullanıp çok daha dayanıklı olur.
     const loginPhone = cleanPhone(String(readBody(req).phone || '').trim());
-    const phoneLimitCheck = loginPhone.length >= 10
-      ? enforceAuthRateLimit(req, 'auth_login', { maxHits: 15, identifier: loginPhone })
-      : Promise.resolve(false);
+    if (loginPhone.length >= 10
+      && await enforceAuthRateLimit(req, 'auth_login', { maxHits: 15, identifier: loginPhone })) {
+      return res.status(429).json(trace.failBody(
+        'rate_limit',
+        'RATE_LIMITED',
+        'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.'
+      ));
+    }
     // Gevşek IP üst sınırı: tek IP'nin çok sayıda farklı hesabı denemesini (credential
     // stuffing) yakalar, normal kafe trafiğini engellemez.
-    const ipLimitCheck = enforceAuthRateLimit(req, 'auth_login_ip', { maxHits: 80 });
-    const [phoneLimited, ipLimited] = await Promise.all([phoneLimitCheck, ipLimitCheck]);
-    if (phoneLimited || ipLimited) {
+    if (await enforceAuthRateLimit(req, 'auth_login_ip', { maxHits: 80 })) {
       return res.status(429).json(trace.failBody(
         'rate_limit',
         'RATE_LIMITED',
@@ -238,18 +242,19 @@ async function resolveLoginOutcome(req, trace) {
 
   const sql = getSql();
 
-  // PERF: Müşteri kaydı ve PIN-auth varlığı yalnızca telefona bağlı, BİRBİRİNDEN
-  // BAĞIMSIZ iki sorgudur. Ardışık beklemek yerine paralel çalıştırılır
-  // (bir DB gidiş-dönüşü tasarrufu). Oturumdan müşteri zaten elde edildiyse
-  // tekrar sorgulanmaz.
-  const cachedCustomer = sessionMatchesPhone(existing, phone) ? existing.customer : null;
-  const customerLookup = cachedCustomer
-    ? Promise.resolve(cachedCustomer)
-    : sql
-      ? import('../customersStore.js').then((m) => m.findCustomerByPhone(sql, phone))
-      : findCustomerByPhone(phone);
-  const pinAuthLookup = sql ? hasCustomerPinAuth(sql, phone) : Promise.resolve(false);
-  const [customer, hasPinAuth] = await Promise.all([customerLookup, pinAuthLookup]);
+  // STABİLİTE: Müşteri kaydı ve PIN-auth varlığı SIRALI sorgulanır (paralel DEĞİL).
+  // Paralel sorgu havuzdan aynı anda 2 bağlantı kapıp pooler tükenmesi riskini
+  // artırıyordu. Tek bağlantıyı yeniden kullanmak çok daha dayanıklı; fra1'de
+  // ek gecikme ihmal edilebilir.
+  let customer = sessionMatchesPhone(existing, phone) ? existing.customer : null;
+  if (!customer && sql) {
+    const { findCustomerByPhone: findByPhoneSql } = await import('../customersStore.js');
+    customer = await findByPhoneSql(sql, phone);
+  } else if (!customer) {
+    customer = await findCustomerByPhone(phone);
+  }
+
+  const hasPinAuth = sql ? await hasCustomerPinAuth(sql, phone) : false;
 
   trace.log('lookup', {
     rawPhone,
