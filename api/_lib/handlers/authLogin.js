@@ -16,7 +16,7 @@ import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js
 import { findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
-import { resetSqlClient } from '../sql.js';
+import { resetSqlClient, primeSqlConnection } from '../sql.js';
 
 // Oturumdaki müşteri girilen telefonla eşleşiyor mu?
 function sessionMatchesPhone(session, normalizedPhone) {
@@ -70,6 +70,10 @@ export async function handleAuthLogin(req, res) {
   const startedAt = Date.now();
 
   try {
+    // Bağlantıyı login sorgularından ÖNCE tazele — bayat pooler bağlantısında
+    // login'in ortasında saniyelerce takılmayı (uzun bekleme) baştan önler.
+    await primeSqlConnection().catch(() => {});
+
     const outcome = await withSqlRetry(
       () => resolveLoginOutcome(req, trace),
       { resetClient: resetSqlClient, attemptTimeoutMs: 6000, retries: 2 }

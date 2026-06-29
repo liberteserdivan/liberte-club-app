@@ -120,6 +120,20 @@ export async function pingSql(sql) {
   }
 }
 
+// Login gibi gecikmeye duyarlı akışlardan ÖNCE bağlantıyı tazele.
+// Bayat (pooler'ın kapattığı) bağlantı, asıl sorgu anında saniyelerce stall
+// edebilir. Kısa SELECT 1 ile önden yokla; başarısız/timeout olursa istemciyi
+// sıfırla (sonraki getSql taze bağlantı açar). Yan etkisiz, salt-okunur.
+export async function primeSqlConnection(timeoutMs = 2500, sqlOverride = null) {
+  const sql = sqlOverride || getSql();
+  if (!sql) return false;
+  const ping = sql`SELECT 1 AS ok`.then(() => true).catch(() => false);
+  const timeout = new Promise((resolve) => { setTimeout(() => resolve(false), timeoutMs); });
+  const ok = await Promise.race([ping, timeout]);
+  if (!ok) resetSqlClient();
+  return ok;
+}
+
 // İstek kapsamında mıyız — iç içe retry gereksiz
 export function isSqlRequestActive() {
   return Boolean(requestStorage.getStore());

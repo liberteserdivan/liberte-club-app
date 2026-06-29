@@ -134,3 +134,30 @@ test('applyAuthResult yeni oturumda ağ durumunu sıfırlar', () => {
   const body = sliceFunction(source, 'applyAuthResult');
   assert.match(body, /resetRemoteFetchState\(\)/, 'login ağ durumunu temiz başlatmalı');
 });
+
+// ---------------------------------------------------------------------------
+// 5) Login öncesi DB bağlantı ön-tazeleme (soğuk/bayat bağlantı gecikmesi)
+// ---------------------------------------------------------------------------
+test('primeSqlConnection: canlı bağlantı true döner', async () => {
+  const { primeSqlConnection } = await import('../api/_lib/sql.js');
+  const fakeSql = () => Promise.resolve([{ ok: 1 }]);
+  const ok = await primeSqlConnection(1000, fakeSql);
+  assert.equal(ok, true, 'SELECT 1 başarılıysa true');
+});
+
+test('primeSqlConnection: takılan bağlantı timeout ile false döner (login bloklanmaz)', async () => {
+  const { primeSqlConnection } = await import('../api/_lib/sql.js');
+  const stuckSql = () => new Promise(() => {}); // asla çözülmez
+  const t = Date.now();
+  const ok = await primeSqlConnection(120, stuckSql);
+  assert.equal(ok, false, 'timeout sonrası false');
+  assert.ok(Date.now() - t < 1000, 'timeout kısa sürede dönmeli');
+});
+
+test('handleAuthLogin login sorgularından önce primeSqlConnection çağırır', () => {
+  const source = readFileSync(join(root, 'api/_lib/handlers/authLogin.js'), 'utf8');
+  const idxPrime = source.indexOf('primeSqlConnection(');
+  const idxResolve = source.indexOf('resolveLoginOutcome(req, trace)');
+  assert.ok(idxPrime > 0, 'login primeSqlConnection çağırmalı');
+  assert.ok(idxPrime < idxResolve, 'prime, login okumasından önce gelmeli');
+});
