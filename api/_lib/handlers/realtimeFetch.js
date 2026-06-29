@@ -5,6 +5,7 @@ import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
 import { runSqlRead } from '../runSql.js';
+import { isTransientDbError, publicDbErrorMessage, publicDbErrorCode } from '../dbTransient.js';
 
 // Kampanya/kupon dilimini state'ten oku
 function readPromoSlice(state) {
@@ -154,6 +155,14 @@ export async function handleRealtimeFetch(req, res) {
       error: 'resource gerekli: customer-loyalty, customer-history, customer-notifications, promos, admin-feed, admin-customers'
     });
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error?.message || 'Realtime fetch başarısız' });
+    // O-3: Ham hata mesajını sızdırma. Geçici DB hatasında kontrollü 503,
+    // diğer durumlarda maskelenmiş 500 dön (iç altyapı/şema ipucu vermez).
+    console.error('[realtime.fetch]', error?.message || error);
+    const status = isTransientDbError(error) ? 503 : 500;
+    return res.status(status).json({
+      ok: false,
+      code: publicDbErrorCode(error, 'REALTIME_FETCH_FAILED'),
+      error: publicDbErrorMessage(error, 'Realtime fetch başarısız')
+    });
   }
 }

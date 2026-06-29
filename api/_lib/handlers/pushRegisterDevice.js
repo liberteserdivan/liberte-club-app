@@ -5,6 +5,7 @@ import { createRequestTrace } from '../requestTrace.js';
 import { upsertPushDevice } from '../pushStore.js';
 import { bumpAppStateRevision } from '../relationalState.js';
 import { clampString, oneOfOrDefault, isBodyTooLarge } from '../validateInput.js';
+import { isTransientDbError, publicDbErrorMessage, publicDbErrorCode } from '../dbTransient.js';
 
 // Cihaz/platform için izinli enum değerleri
 const PUSH_PLATFORMS = ['web', 'ios', 'android'];
@@ -99,11 +100,13 @@ export async function handlePushRegisterDevice(req, res) {
       customer: toCustomerSnapshot(customer)
     });
   } catch (error) {
+    // O-3: Ham hata mesajını istemciye sızdırma; maskeli kod/mesaj dön.
     console.error('[push.register-device]', trace.requestId, error?.message || error);
-    return res.status(500).json(trace.failBody(
+    const status = isTransientDbError(error) ? 503 : 500;
+    return res.status(status).json(trace.failBody(
       'unexpected',
-      'PUSH_REGISTER_FAILED',
-      error?.message || 'Cihaz kaydı tamamlanamadı'
+      publicDbErrorCode(error, 'PUSH_REGISTER_FAILED'),
+      publicDbErrorMessage(error, 'Cihaz kaydı tamamlanamadı')
     ));
   }
 }

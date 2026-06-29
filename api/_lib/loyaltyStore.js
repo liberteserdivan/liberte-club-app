@@ -83,6 +83,22 @@ export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
   return loyaltyRowToCard(row, customerId);
 }
 
+// Doğum günü kahvesi dedup'ı için geçmiş doğum günü olaylarını oku (tek iş).
+// RB-7: applyBirthdayCoffee, "bu yıl kullanıldı mı" kontrolünü history üzerinden
+// yapar; relational akışta miniState.history boş başlatıldığından bu olaylar
+// DB'den yüklenmezse müşteri doğum gününde tekrar tekrar ikram alabilir.
+export async function loadBirthdayHistory(sql, customerId) {
+  const rows = await sql`
+    SELECT *
+    FROM loyalty_events
+    WHERE customer_id = ${Number(customerId)}
+      AND event_type IN ('birthday_coffee', 'birthday_reward')
+    ORDER BY id DESC
+    LIMIT 50
+  `;
+  return rows.map(eventRowToHistory);
+}
+
 // Sadakat olayını kaydet
 export async function insertLoyaltyEvent(sql, customerId, historyEntry) {
   const createdAt = historyEntry.createdAt
@@ -193,6 +209,12 @@ export async function applyLoyaltyActionRelational({
       loyalty: { [id]: loyaltyCard },
       history: []
     };
+
+    // RB-7: Doğum günü kahvesi yılda bir kez. Dedup kontrolü geçmiş üzerinden
+    // yapıldığından, bu işlemde önceki doğum günü olaylarını kilit altında yükle.
+    if (action === 'birthday_coffee') {
+      miniState.history = await loadBirthdayHistory(tx, id);
+    }
 
     const result = computeLoyaltyMutation(miniState, { customerId: id, action, category, menuItem, note });
     if (!result.ok) {

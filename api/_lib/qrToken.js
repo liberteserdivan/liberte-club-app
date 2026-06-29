@@ -4,21 +4,26 @@ const TOKEN_VERSION = 1;
 const TOKEN_TTL_MS = 90 * 1000;
 const QR_PREFIX = 'liberte-qr:';
 
-// İmza anahtarı — önce QR_SIGNING_SECRET, yoksa ADMIN_PIN türetmesi
+// İmza anahtarı — üretimde YALNIZCA QR_SIGNING_SECRET kabul edilir.
 export function resolveQrSigningSecret() {
   const qrSecret = String(process.env.QR_SIGNING_SECRET || '').trim();
   if (qrSecret) return { secret: qrSecret, source: 'QR_SIGNING_SECRET' };
 
+  // RB-2: Üretimde düşük entropili ADMIN_PIN türetmesi KULLANILMAZ. Aksi halde
+  // tek geçerli token ile ADMIN_PIN offline brute-force edilip token forge
+  // edilebilirdi. Üretimde anahtar yoksa "missing" döner (QR üretimi 503 olur).
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+  if (isProduction) {
+    return { secret: null, source: 'missing' };
+  }
+
+  // Yalnızca üretim DIŞI ortamlarda geliştirme kolaylığı için türetme/fallback.
   const adminPin = String(process.env.ADMIN_PIN || '').trim();
   if (adminPin) {
     return {
       secret: createHash('sha256').update(`liberte-qr-v1:${adminPin}`).digest('hex'),
       source: 'ADMIN_PIN_DERIVED'
     };
-  }
-
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
-    return { secret: null, source: 'missing' };
   }
 
   return { secret: 'dev-qr-signing-secret', source: 'dev_fallback' };

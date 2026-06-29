@@ -107,6 +107,32 @@ export async function handleAuthLogin(req, res) {
     // login'in ortasında saniyelerce takılmayı (uzun bekleme) baştan önler.
     await primeSqlConnection().catch(() => {});
 
+    // B-2: Rate-limit kontrolü retry DIŞINDA, istek başına TEK kez yapılır.
+    // Aksi halde withSqlRetry her denemede sayacı artırıp tek kullanıcı eylemini
+    // birden çok "hit" sayar ve gerçek müşteriyi yanlışlıkla 429'a düşürürdü.
+    //
+    // B-3: Asıl limit HESAP (telefon) bazlıdır — brute-force tek hesaba karşı
+    // sınırlanır. IP bazlı limit ise gevşektir; böylece kafe gibi paylaşımlı bir
+    // IP'de farklı müşteriler birbirini kilitlemez (ortak IP'de toplu 429 olmaz).
+    const loginPhone = cleanPhone(String(readBody(req).phone || '').trim());
+    if (loginPhone.length >= 10
+      && await enforceAuthRateLimit(req, 'auth_login', { maxHits: 15, identifier: loginPhone })) {
+      return res.status(429).json(trace.failBody(
+        'rate_limit',
+        'RATE_LIMITED',
+        'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.'
+      ));
+    }
+    // Gevşek IP üst sınırı: tek IP'nin çok sayıda farklı hesabı denemesini (credential
+    // stuffing) yakalar, normal kafe trafiğini engellemez.
+    if (await enforceAuthRateLimit(req, 'auth_login_ip', { maxHits: 80 })) {
+      return res.status(429).json(trace.failBody(
+        'rate_limit',
+        'RATE_LIMITED',
+        'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.'
+      ));
+    }
+
     const outcome = await withSqlRetry(
       () => resolveLoginOutcome(req, trace),
       { resetClient: resetSqlClient, attemptTimeoutMs: 6000, retries: 2 }
@@ -204,9 +230,7 @@ async function resolveLoginOutcome(req, trace) {
     return { kind: 'error', status: 500, body: trace.failBody('database', 'DATABASE_URL', 'Veritabanı yapılandırması eksik') };
   }
 
-  if (await enforceAuthRateLimit(req, 'auth_login', { maxHits: 20 })) {
-    return { kind: 'error', status: 429, body: trace.failBody('rate_limit', 'RATE_LIMITED', 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.') };
-  }
+  // NOT: Rate-limit kontrolü handleAuthLogin'de retry dışında yapılır (B-2).
 
   const existing = await getSession(req);
   trace.markStep('session_read');

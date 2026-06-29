@@ -4,6 +4,24 @@ import { isAndroid, isIos, isNativeApp } from './platform.js';
 
 const QR_ONLY = [Html5QrcodeSupportedFormats.QR_CODE];
 
+// B-4: getUserMedia/Html5Qrcode hatalarını kullanıcı dostu mesaja çevir.
+// iOS WKWebView ve web'de izin reddinde jenerik "Kamera açılamadı" yerine
+// ayarlara yönlendiren açık bir mesaj göster (Android'deki davranışa paralel).
+function describeCameraError(error) {
+  const name = error?.name || '';
+  const raw = String(error?.message || '');
+  if (name === 'NotAllowedError' || /permission|denied|izin/i.test(raw)) {
+    return 'Kamera izni verilmedi. Cihaz ayarlarından (Ayarlar → Liberte → Kamera) izni açıp tekrar dene.';
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return 'Uygun bir kamera bulunamadı. Cihazında arka kameranın çalıştığından emin ol.';
+  }
+  if (name === 'NotReadableError') {
+    return 'Kamera başka bir uygulama tarafından kullanılıyor olabilir. Diğer uygulamaları kapatıp tekrar dene.';
+  }
+  return raw || 'Kamera açılamadı.';
+}
+
 // Platforma göre tarama ayarları — iOS WebView daha yüksek fps ve tek format
 function buildScanOptions() {
   const iosNative = isNativeApp() && isIos();
@@ -125,7 +143,9 @@ async function startHtml5Camera(scanner, onDecoded) {
     );
     await tuneIosInlineScanner(scanner);
   } catch (error) {
-    throw error || lastError || new Error('Kamera açılamadı');
+    // B-4: Ham hata yerine kullanıcı dostu, yönlendirici mesaj fırlat.
+    const friendly = describeCameraError(error || lastError);
+    throw new Error(friendly);
   }
 }
 

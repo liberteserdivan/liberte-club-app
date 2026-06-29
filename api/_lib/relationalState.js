@@ -12,10 +12,10 @@ import {
   findCustomerById,
   findLoyaltyByCustomerId,
   loyaltyRowToCard,
-  upsertCustomerRow,
-  upsertLoyaltyRow
+  upsertCustomerRowsBulk,
+  upsertLoyaltyRowsBulk
 } from './customersStore.js';
-import { upsertCustomerEmail } from './customerEmails.js';
+import { upsertCustomerEmailRowsBulk } from './customerEmails.js';
 import { migrateAllLoyalty } from '../../src/lib/loyaltyPoints.js';
 
 const STATE_ID = 'liberte';
@@ -181,29 +181,26 @@ export async function persistStateToRelational(state, externalSql = null) {
   const sql = externalSql || getSql();
   if (!sql || !state) throw new Error('DATABASE_URL eksik');
 
-  for (const customer of state.customers || []) {
-    await upsertCustomerRow(sql, customer);
-    if (customer.email) {
-      await upsertCustomerEmail(sql, {
-        email: customer.email,
-        customerId: customer.id,
-        phone: customer.phone
-      });
-    }
-  }
-
-  for (const [customerId, card] of Object.entries(state.loyalty || {})) {
-    await upsertLoyaltyRow(sql, customerId, card);
-  }
-
-  await upsertMenuToSql(state.categories || [], state.items || [], sql);
-
+  const customers = Array.isArray(state.customers) ? state.customers : [];
+  const loyaltyEntries = Object.entries(state.loyalty || {});
   const globalSlice = extractGlobalSlice(state);
-  await sql`
-    INSERT INTO app_state (id, data, updated_at)
-    VALUES (${STATE_ID}, ${serializeAppStateJson(globalSlice)}, now())
-    ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()
-  `;
+
+  // RB-3 + RB-4: N+1 (binlerce seri sorgu) yerine toplu upsert; tamamı tek
+  // transaction içinde ve SET LOCAL statement_timeout ile sınırlı. Böylece çok
+  // üyeli işletmede admin tam-state yazımı donmaz ve yarım yazım kalmaz (atomik).
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL statement_timeout = '20000ms'`;
+    await upsertCustomerRowsBulk(tx, customers);
+    await upsertCustomerEmailRowsBulk(tx, customers);
+    await upsertLoyaltyRowsBulk(tx, loyaltyEntries);
+    await upsertMenuToSql(state.categories || [], state.items || [], tx);
+
+    await tx`
+      INSERT INTO app_state (id, data, updated_at)
+      VALUES (${STATE_ID}, ${serializeAppStateJson(globalSlice)}, now())
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()
+    `;
+  });
 
   const rows = await sql`SELECT updated_at FROM app_state WHERE id = ${STATE_ID} LIMIT 1`;
   return rows[0]?.updated_at ?? null;

@@ -113,15 +113,13 @@ async function backupCurrentState(sql, nextData, currentSnapshot = null) {
     )`;
 }
 
-// Yalnızca güncelleme zamanını oku — tam JSON çekmeden değişiklik kontrolü
+// Yalnızca güncelleme zamanını oku — tam JSON çekmeden değişiklik kontrolü.
+// B-5: Değişiklik sinyali ARTIK yerel önbellekten okunmaz; her zaman DB'den
+// (tek satır, PK lookup — çok ucuz) okunur. Çok-instanslı Vercel'de bir
+// instance'ın bayat önbelleği "değişmedi" deyip istemciyi yanlış yere senkronsuz
+// bırakıyordu. Doğru revizyon, tutarlılığın anahtarıdır.
 export async function loadAppStateRevision() {
   const t0 = perfNow();
-  const cached = readAppStateCache();
-  if (cached?.updatedAt) {
-    logAppStatePerf('loadAppStateRevision.cache_hit', t0);
-    return { updatedAt: cached.updatedAt };
-  }
-
   const sql = getSql();
   if (!sql) return { updatedAt: null };
 
@@ -178,6 +176,13 @@ export async function loadAppState(options = {}) {
 
   if (!data) {
     data = buildInitialAppState();
+    // Salt-okuma (skipPersist) modunda seed'i veritabanına YAZMA.
+    // GET akışında yazma yan etkisi olmasın diye hesaplanan başlangıç
+    // durumunu döndür; saveAppState çağrılmaz (yavaş GET / çift yazma riski yok).
+    if (skipPersist) {
+      logAppStatePerf('loadAppState.seed.skipPersist', t0);
+      return { data, updatedAt: null };
+    }
     await saveAppState(data);
     updatedAt = new Date().toISOString();
     writeAppStateCache(data, updatedAt);

@@ -3,7 +3,7 @@ import { requireSession } from '../auth.js';
 import { applyDailyLoginRewardRelational } from '../customerRewards.js';
 import { logServerError } from '../logServerError.js';
 import { runSql } from '../runSql.js';
-import { publicDbErrorCode, publicDbErrorMessage, isUndefinedTableError } from '../dbTransient.js';
+import { publicDbErrorCode, publicDbErrorMessage, isUndefinedTableError, isTransientDbError } from '../dbTransient.js';
 import { recordIncident } from '../guardian/guardianIncidents.js';
 
 // daily_claims tablosu eksikse Guardian'a tek seferlik (dedup'lı) incident düş.
@@ -17,6 +17,20 @@ function reportDailyClaimsTableMissing() {
     suspectedRootCauses: ['daily_claims tablosu/sütunları üretimde mevcut değil (migration uygulanmamış).'],
     relatedFiles: ['scripts/sql/001_normalized_schema.sql', 'scripts/sql/005_daily_claims_dedup.sql'],
     recommendedAction: 'daily_claims migration dosyalarını üretim veritabanına uygulayın (001 + 005). Otomatik çalıştırma yapılmaz.'
+  });
+}
+
+// DB geçici sorunu (bayat bağlantı/timeout) → degraded incident. Tablo eksikliğinden
+// AYRI tutulur; migration değil, geçici altyapı sorunu olduğu net görünür.
+function reportDailyClaimTransient() {
+  recordIncident({
+    level: 'degraded',
+    title: 'Günlük ödül geçici DB sorunu yaşıyor',
+    affectedArea: 'loyalty.daily-claim',
+    symptoms: ['Günlük LP claim isteği geçici veritabanı sorunu nedeniyle başarısız oluyor.'],
+    suspectedRootCauses: ['Bayat/kopuk pooler bağlantısı veya geçici DB erişilemezliği.'],
+    relatedFiles: ['api/_lib/sql.js', 'api/_lib/runSql.js'],
+    recommendedAction: 'DB bağlantısını/pooler durumunu kontrol edin. Migration gerekmez; geçici sorundur.'
   });
 }
 
@@ -57,6 +71,16 @@ export async function handleDailyLoginClaim(req, res) {
         ok: false,
         code: 'DAILY_CLAIMS_TABLE_MISSING',
         error: 'Günlük ödül sistemi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.'
+      });
+    }
+
+    // Geçici DB sorunu (bağlantı/timeout) → 503, tablo eksikliğinden AYRI kod.
+    if (isTransientDbError(error)) {
+      try { reportDailyClaimTransient(); } catch { /* incident kaydı best-effort */ }
+      return res.status(503).json({
+        ok: false,
+        code: 'DAILY_CLAIM_TEMPORARILY_UNAVAILABLE',
+        error: 'Günlük ödül şu an alınamıyor. Lütfen tekrar deneyin.'
       });
     }
 

@@ -264,6 +264,36 @@ async function handleMetrics(req, res) {
   });
 }
 
+// Cron isteğinin yetkili olup olmadığını doğrula.
+// Vercel cron, CRON_SECRET tanımlıysa onu "Authorization: Bearer <secret>"
+// başlığıyla gönderir. Secret tanımlı değilse (yapılandırma eksik) güvenli tarafta
+// kalmak için reddederiz — autopilot herkese açık tetiklenemez.
+function isAuthorizedCron(req) {
+  const secret = String(process.env.CRON_SECRET || '').trim();
+  if (!secret) return false;
+  const auth = String(req.headers?.authorization || '').trim();
+  return auth === `Bearer ${secret}`;
+}
+
+// GET cron — bot'u PERIYODIK tetikler (Vercel Cron). Admin oturumu yerine
+// CRON_SECRET ile yetkilendirilir. Aktif sağlık kontrolü + güvenli otomatik
+// müdahale değerlendirmesi yapar (admin detaylı health görünümüyle aynı iş).
+async function handleCron(req, res) {
+  if (!isAuthorizedCron(req)) {
+    return envelope(res, 401, { ok: false, service: 'cron', error: 'Yetkisiz' });
+  }
+  await withHealthDeadline(evaluateAndIntervene().catch(() => {}), null);
+  const overall = await withHealthDeadline(checkOverall(), DEGRADED_OVERALL_FALLBACK);
+  return envelope(res, 200, {
+    ok: overall.ok,
+    service: 'cron',
+    status: overall.status,
+    requiresHuman: overall.requiresHuman,
+    safeMode: overall.safeMode,
+    incidents: listIncidents({ status: 'open', limit: 10 })
+  });
+}
+
 // Ana yönlendirici
 export async function handleGuardian(req, res) {
   res.req = req; // envelope için requestId erişimi
@@ -274,6 +304,11 @@ export async function handleGuardian(req, res) {
   // PUBLIC: yalnızca temel health (servis belirtilmemiş GET)
   if (resource === 'health' && !service && req.method === 'GET' && req.query?.detailed !== '1') {
     return handlePublicHealth(req, res);
+  }
+
+  // CRON: Vercel Cron tetikler; admin oturumu yerine CRON_SECRET ile yetkilendirilir.
+  if (resource === 'cron') {
+    return handleCron(req, res);
   }
 
   // Bundan sonrası admin + PIN gerektirir

@@ -28,49 +28,6 @@ export function readFirebaseWebConfig() {
   };
 }
 
-// Service worker JS içeriğini üret
-export function buildFirebaseMessagingSw(config) {
-  return `importScripts('https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging-compat.js');
-
-const GOOGLE_API_HOSTS = [
-  'firebaseinstallations.googleapis.com',
-  'fcmregistrations.googleapis.com',
-  'firebase.googleapis.com'
-];
-
-self.addEventListener('fetch', (event) => {
-  let url;
-  try {
-    url = new URL(event.request.url);
-  } catch {
-    return;
-  }
-  const isGoogleApi = GOOGLE_API_HOSTS.includes(url.hostname) || url.hostname.endsWith('.googleapis.com');
-  if (!isGoogleApi) return;
-
-  event.respondWith(fetch(new Request(event.request, {
-    referrer: self.location.origin + '/',
-    referrerPolicy: 'strict-origin'
-  })));
-});
-
-firebase.initializeApp(${JSON.stringify(config, null, 2)});
-
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'Liberte Club';
-  const body = payload.notification?.body || 'Yeni bir bildirimin var.';
-  self.registration.showNotification(title, {
-    body,
-    icon: '/liberte-logo.png',
-    badge: '/liberte-logo.png',
-    data: payload.data || {}
-  });
-});
-
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
-`;
-}
+// NOT: Kullanılan service worker, scripts/generate-firebase-sw.mjs tarafından
+// public/firebase-messaging-sw.js olarak üretilir. Buradaki ikinci (compat tabanlı)
+// SW üreticisi hiçbir yerde kullanılmadığı için kaldırıldı (bakım/kafa karışıklığı).

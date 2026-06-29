@@ -5,6 +5,7 @@ import { sendVerificationCode } from '../verificationMail.js';
 import { upsertCustomerEmail } from '../customerEmails.js';
 import { resolveRecoveryCustomer } from '../customerRepair.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
+import { invalidateSessionsForCustomer } from '../auth.js';
 import {
   isValidPinFormat,
   normalizePin,
@@ -86,6 +87,14 @@ async function handleReset(req, res) {
   if (!verified.ok) return res.status(verified.status).json({ error: verified.error });
 
   await saveCustomerPin(sql, phone, customer.id, pin);
+
+  // B-10: PIN sıfırlandı — bu müşterinin eski/çalınmış tüm oturumlarını iptal et.
+  // Aksi halde 30 gün geçerli eski token'lar PIN değişimine rağmen aktif kalırdı.
+  try {
+    await invalidateSessionsForCustomer(sql, customer.id);
+  } catch (sessionError) {
+    console.warn('[forgot-pin.session_invalidate]', sessionError?.message || sessionError);
+  }
 
   const indexSql = getSql();
   if (indexSql) {

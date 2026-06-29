@@ -4,12 +4,17 @@
 // Burada claim'ler normalize tabloda, (customer_id, type, day) tekilliğiyle
 // tutulur; böylece farklı müşteriler eşzamanlı claim yapabilir.
 
+import { isProductionRuntime } from './schemaReady.js';
+
 // Şema garantisi süreç başına bir kez yapılır (idempotent ALTER/INDEX).
 let schemaReadyPromise = null;
 
 // type/day sütunlarını ve (customer_id, type, day) tekilliğini garanti et.
-// Migration (005) zaten uygulanmışsa bu çağrılar no-op olur.
+// Migration (005/008) zaten uygulanmışsa bu çağrılar no-op olur.
+// Üretimde DDL çalıştırılmaz: pooler'da CREATE INDEX kilit/donma yaratabilir;
+// üretimde şema bootstrap SQL (008) ile elle uygulanır. Diğer store'larla tutarlı.
 export async function ensureDailyClaimsSchema(sql) {
+  if (isProductionRuntime()) return;
   if (schemaReadyPromise) return schemaReadyPromise;
   schemaReadyPromise = (async () => {
     await sql`ALTER TABLE daily_claims ADD COLUMN IF NOT EXISTS type text`;

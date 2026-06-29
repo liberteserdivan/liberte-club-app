@@ -5,6 +5,10 @@ import { generateUniqueReferralCode } from './referralCode.js';
 import { loyaltyTemplate } from './loyaltyOps.js';
 import { migrateLoyaltyCard, getCategoryLpGain, levelByLp } from './loyaltyPointsServer.js';
 import { isProductionRuntime } from './schemaReady.js';
+import { chunkArray } from './chunk.js';
+
+// RB-3: Tek toplu sorguda yazılacak azami satır (Postgres parametre limiti güvenli payı)
+const BULK_UPSERT_CHUNK = 500;
 
 // Normalize müşteri tablolarını hazırla — production'da bootstrap SQL yeterli
 export async function ensureCustomersTables(sql) {
@@ -293,6 +297,105 @@ export async function upsertLoyaltyRow(sql, customerId, card) {
       revision = customer_loyalty.revision + 1,
       updated_at = now()
   `;
+}
+
+// RB-3: Tek müşteri satır değerleri (toplu upsert için saf builder).
+// upsertCustomerRow ile aynı sütun eşlemesi; jsonb alanları string'e çevrilir.
+function customerRowValues(customer) {
+  const normalizedPhone = cleanPhone(customer.phone);
+  return {
+    id: Number(customer.id),
+    phone: normalizedPhone,
+    normalized_phone: normalizedPhone,
+    name: String(customer.name || ''),
+    email: customer.email || null,
+    birth_date: customer.birthDate || null,
+    referral_code: customer.referralCode || null,
+    is_admin: Boolean(customer.isAdmin),
+    created_at: customer.createdAt || null,
+    last_visit: customer.lastVisit || null,
+    legacy_json: JSON.stringify(customer)
+  };
+}
+
+// RB-3: Toplu müşteri upsert — admin tam-state yazımında N+1 round-trip yerine
+// tek sorgu. Tek satırlık upsertCustomerRow ile aynı çakışma davranışı.
+export async function upsertCustomerRowsBulk(sql, customers) {
+  const list = (customers || []).filter((c) => c && c.id != null);
+  if (!list.length) return;
+  await ensureCustomersTables(sql);
+  // RB-3: Parça parça yaz — tek devasa sorgu yerine 500'lük gruplar.
+  for (const chunk of chunkArray(list, BULK_UPSERT_CHUNK)) {
+    const rows = chunk.map(customerRowValues);
+    await sql`
+      INSERT INTO customers ${sql(rows,
+        'id', 'phone', 'normalized_phone', 'name', 'email', 'birth_date',
+        'referral_code', 'is_admin', 'created_at', 'last_visit', 'legacy_json'
+      )}
+      ON CONFLICT (id) DO UPDATE SET
+        phone = EXCLUDED.phone,
+        normalized_phone = EXCLUDED.normalized_phone,
+        name = EXCLUDED.name,
+        email = EXCLUDED.email,
+        birth_date = EXCLUDED.birth_date,
+        referral_code = EXCLUDED.referral_code,
+        is_admin = EXCLUDED.is_admin,
+        last_visit = EXCLUDED.last_visit,
+        legacy_json = EXCLUDED.legacy_json,
+        updated_at = now()
+    `;
+  }
+}
+
+// RB-3: Tek sadakat satır değerleri (toplu upsert için saf builder).
+function loyaltyRowValues(customerId, card) {
+  const migrated = migrateLoyaltyCard(card);
+  return {
+    customer_id: Number(customerId),
+    total_stamps: Number(migrated.totalStamps || 0),
+    lifetime_stamps: Number(migrated.lifetimeStamps || 0),
+    available_rewards: Number(migrated.availableRewards || 0),
+    used_rewards: Number(migrated.usedRewards || 0),
+    level: migrated.level || 'Bronze',
+    category_stamps: JSON.stringify(migrated.categoryStamps || {}),
+    category_rewards: JSON.stringify(migrated.categoryRewards || {}),
+    lp_balance: migrated.lpBalance ?? 0,
+    lp_lifetime: migrated.lpLifetime ?? 0,
+    lp_schema_version: migrated.schemaVersion ?? 2,
+    legacy_json: JSON.stringify(migrated)
+  };
+}
+
+// RB-3: Toplu sadakat upsert. entries = [[customerId, card], ...]
+export async function upsertLoyaltyRowsBulk(sql, entries) {
+  const list = (entries || []).filter((entry) => entry && entry[0] != null);
+  if (!list.length) return;
+  await ensureCustomersTables(sql);
+  // RB-3: Parça parça yaz — tek devasa sorgu yerine 500'lük gruplar.
+  for (const chunk of chunkArray(list, BULK_UPSERT_CHUNK)) {
+    const rows = chunk.map(([id, card]) => loyaltyRowValues(id, card));
+    await sql`
+      INSERT INTO customer_loyalty ${sql(rows,
+        'customer_id', 'total_stamps', 'lifetime_stamps', 'available_rewards',
+        'used_rewards', 'level', 'category_stamps', 'category_rewards',
+        'lp_balance', 'lp_lifetime', 'lp_schema_version', 'legacy_json'
+      )}
+      ON CONFLICT (customer_id) DO UPDATE SET
+        total_stamps = EXCLUDED.total_stamps,
+        lifetime_stamps = EXCLUDED.lifetime_stamps,
+        available_rewards = EXCLUDED.available_rewards,
+        used_rewards = EXCLUDED.used_rewards,
+        level = EXCLUDED.level,
+        category_stamps = EXCLUDED.category_stamps,
+        category_rewards = EXCLUDED.category_rewards,
+        lp_balance = EXCLUDED.lp_balance,
+        lp_lifetime = EXCLUDED.lp_lifetime,
+        lp_schema_version = EXCLUDED.lp_schema_version,
+        legacy_json = EXCLUDED.legacy_json,
+        revision = customer_loyalty.revision + 1,
+        updated_at = now()
+    `;
+  }
 }
 
 // Referans verene bonus LP ekle

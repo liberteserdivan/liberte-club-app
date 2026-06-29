@@ -53,10 +53,11 @@ test('runSqlRead read için attemptTimeout, runSql (write) için yok', () => {
   assert.doesNotMatch(runSqlBlock, /attemptTimeoutMs:/);
 });
 
-test('state.js read uçları runSqlRead, write (saveAppState) runSql kullanır', () => {
+test('state.js read uçları runSqlReadFast (fail-fast), write (saveAppState) runSql kullanır', () => {
   const source = readFileSync(join(root, 'api/state.js'), 'utf8');
-  assert.match(source, /runSqlRead\(\(\) => loadAppStateRevision\(\)\)/);
-  assert.match(source, /runSqlRead\(\(\) => \(\s*isFullAdmin/);
+  // Okuma uçları artık fail-fast: bayat bağlantıda 20sn 500 yerine hızlı 503
+  assert.match(source, /runSqlReadFast\(\(\) => loadAppStateRevision\(\)\)/);
+  assert.match(source, /runSqlReadFast\(\(\) => \(\s*isFullAdmin/);
   // Yazma hâlâ runSql (idempotent olmayan tam state yazımı yarışmaya sokulmaz)
   assert.match(source, /runSql\(\(\) => saveAppState/);
 });

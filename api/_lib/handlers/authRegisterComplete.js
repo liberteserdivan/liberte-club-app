@@ -326,8 +326,16 @@ async function handleComplete(req, res, trace, body) {
       trace.requestId
     );
   } else {
+    // RB-5: bumpAppStateRevision best-effort. Transaction (upsert + session +
+    // referral bonusu) zaten commit oldu. Burada atılacak bir transient hata
+    // dış withSqlRetry'ı tetikleyip handleComplete'i baştan çalıştırır ve
+    // idempotent OLMAYAN referral bonusunu/oturumu tekrarlardı (çifte yazma).
     invalidateAppStateCache();
-    await bumpAppStateRevision(sql);
+    try {
+      await bumpAppStateRevision(sql);
+    } catch (bumpError) {
+      console.warn('[register.revision_bump]', trace.requestId, bumpError?.message || bumpError);
+    }
   }
 
   const timings = trace.successTimings();

@@ -1,7 +1,13 @@
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
+import { pbkdf2, randomBytes, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import { cleanPhone, phoneLookupVariants } from './phone.js';
 import { inList } from './sqlIn.js';
 import { ensureSchemaReady } from './schemaReady.js';
+
+// B-1: pbkdf2'nin ASENKRON sürümü. Senkron pbkdf2Sync, 120k iterasyonla event
+// loop'u ~50-150ms bloklayıp eşzamanlı tüm istekleri sıraya sokuyordu. Async
+// sürüm libuv thread havuzunda çalışır; giriş/kayıt eşzamanlılığını korur.
+const pbkdf2Async = promisify(pbkdf2);
 
 const PIN_ITERATIONS = 120000;
 const PIN_KEYLEN = 64;
@@ -24,22 +30,22 @@ export function isValidPinFormat(pin) {
   return value.length === 4 || value.length === 6;
 }
 
-// PIN hash üret — düz metin saklanmaz
-export function hashPin(pin) {
+// PIN hash üret — düz metin saklanmaz (asenkron)
+export async function hashPin(pin) {
   const salt = randomBytes(16).toString('hex');
-  const hash = pbkdf2Sync(
+  const derived = await pbkdf2Async(
     normalizePin(pin),
     salt,
     PIN_ITERATIONS,
     PIN_KEYLEN,
     PIN_DIGEST
-  ).toString('hex');
-  return { salt, hash };
+  );
+  return { salt, hash: derived.toString('hex') };
 }
 
-// PIN doğrula
-function verifyPinHash(pin, salt, hash) {
-  const computed = pbkdf2Sync(
+// PIN doğrula (asenkron)
+async function verifyPinHash(pin, salt, hash) {
+  const computed = await pbkdf2Async(
     normalizePin(pin),
     salt,
     PIN_ITERATIONS,
@@ -67,7 +73,7 @@ function lockMinutesLeft(lockedUntil) {
 export async function saveCustomerPin(sql, phone, customerId, pin) {
   await ensurePinTable(sql);
   const normalizedPhone = cleanPhone(phone);
-  const { salt, hash } = hashPin(pin);
+  const { salt, hash } = await hashPin(pin);
 
   await sql`
     INSERT INTO customer_pin_auth (phone, customer_id, pin_hash, pin_salt, failed_attempts, locked_until, updated_at)
@@ -136,7 +142,7 @@ export async function verifyCustomerPin(sql, phone, pin) {
     return { ok: false, status: 400, error: 'PIN 4 veya 6 haneli olmalı.' };
   }
 
-  const valid = verifyPinHash(pin, row.pin_salt, row.pin_hash);
+  const valid = await verifyPinHash(pin, row.pin_salt, row.pin_hash);
   if (valid) {
     await sql`
       UPDATE customer_pin_auth

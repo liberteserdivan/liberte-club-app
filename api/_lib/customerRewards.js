@@ -141,10 +141,18 @@ export async function applyDailyLoginRewardRelational(customerId) {
   });
 
   // Commit SONRASI: istemci sync'i için revizyonu bump et + önbelleği temizle.
-  // Bu hızlı tek satır UPDATE'tir; eski global FOR UPDATE kilidinden farklı.
+  // BU ADIM BEST-EFFORT (try/catch): claim transaction'ı zaten commit oldu.
+  // Burada atılacak bir transient hata, çağıran runSql sarmalayıcısının TÜM
+  // fonksiyonu retry etmesine yol açar; ikinci denemede insertDailyClaim
+  // ON CONFLICT ile inserted=false döner ve başarılı claim "bugün zaten aldın"
+  // hatasıyla görünürdü. Bump'ı izole ederek bu yanlış sonucu engelliyoruz.
   if (outcome.ok) {
-    await bumpAppStateRevision(sql);
-    invalidateAppStateCache();
+    try {
+      await bumpAppStateRevision(sql);
+      invalidateAppStateCache();
+    } catch (bumpError) {
+      console.warn('[daily.revision_bump]', bumpError?.message || bumpError);
+    }
   }
 
   return outcome;

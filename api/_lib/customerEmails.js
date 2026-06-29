@@ -2,6 +2,7 @@ import { getSql } from './appState.js';
 import { cleanPhone, phoneLookupVariants } from './phone.js';
 import { inList } from './sqlIn.js';
 import { ensureSchemaReady } from './schemaReady.js';
+import { chunkArray } from './chunk.js';
 
 // E-posta karşılaştırması için normalize et
 export function normalizeEmail(email = '') {
@@ -37,6 +38,31 @@ export async function upsertCustomerEmail(sql, { email, customerId, phone }) {
       phone = EXCLUDED.phone,
       updated_at = now()
   `;
+}
+
+// RB-3: Toplu e-posta indeks upsert — admin tam-state yazımında N+1 yerine tek
+// sorgu. Geçersiz e-posta/telefon satırları atlanır (tek satırlık fonksiyonla aynı).
+export async function upsertCustomerEmailRowsBulk(sql, customers) {
+  const rows = [];
+  for (const customer of customers || []) {
+    const normalized = normalizeEmail(customer?.email);
+    const normalizedPhone = cleanPhone(customer?.phone);
+    if (!normalized || normalizedPhone.length < 10 || customer?.id == null) continue;
+    rows.push({ email: normalized, customer_id: Number(customer.id), phone: normalizedPhone });
+  }
+  if (!rows.length) return;
+
+  await ensureCustomerEmailTable(sql);
+  // RB-3: Parça parça yaz — tek devasa sorgu yerine 500'lük gruplar.
+  for (const chunk of chunkArray(rows, 500)) {
+    await sql`
+      INSERT INTO customer_emails ${sql(chunk, 'email', 'customer_id', 'phone')}
+      ON CONFLICT (email) DO UPDATE SET
+        customer_id = EXCLUDED.customer_id,
+        phone = EXCLUDED.phone,
+        updated_at = now()
+    `;
+  }
 }
 
 // app_state müşterilerini e-posta indeksine senkronize et

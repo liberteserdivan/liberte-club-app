@@ -88,3 +88,6 @@ liberte-app-review-package.zip
 # Yerel teshis/audit ciktilari — repoya girmesin (buyuk zip + ic analiz)
 audit-export/
 diagnostics/
+
+.vercel
+.env*

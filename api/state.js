@@ -3,8 +3,8 @@ import { loadAppState, loadAppStateRevision, loadAppStateForCustomer, saveAppSta
 import { getSession, getSessionForBootstrap, requireAdminSession, requireSession } from './_lib/auth.js';
 import { handleQrGenerate } from './_lib/handlers/qrGenerate.js';
 import { logServerError } from './_lib/logServerError.js';
-import { runSql, runSqlRead } from './_lib/runSql.js';
-import { publicDbErrorCode, publicDbErrorMessage } from './_lib/dbTransient.js';
+import { runSql, runSqlReadFast } from './_lib/runSql.js';
+import { publicDbErrorCode, publicDbErrorMessage, isTransientDbError } from './_lib/dbTransient.js';
 import {
   clearAllErrorLogs,
   insertErrorLog,
@@ -55,7 +55,7 @@ export default withSqlRequest(async function handler(req, res) {
 
       const since = String(req.query?.since || '').trim();
       if (since) {
-        const revision = await runSqlRead(() => loadAppStateRevision());
+        const revision = await runSqlReadFast(() => loadAppStateRevision());
         if (isSameAppStateRevision(revision.updatedAt, since)) {
           return res.status(200).json({
             unchanged: true,
@@ -69,10 +69,13 @@ export default withSqlRequest(async function handler(req, res) {
       }
 
       const isFullAdmin = session.isAdmin && session.adminVerified;
-      const remote = await runSqlRead(() => (
+      // GET salt-okuma: yazma yan etkisi olmasın. skipPersist ile seed ve
+      // menu/loyalty migration kalıcılaştırması GET içinde yapılmaz; yalnızca
+      // hesaplanan state döner (fail-fast read altında saveAppState çağrılmaz).
+      const remote = await runSqlReadFast(() => (
         isFullAdmin
-          ? loadAppState()
-          : loadAppStateForCustomer(session.customerId)
+          ? loadAppState({ skipPersist: true })
+          : loadAppStateForCustomer(session.customerId, { skipPersist: true })
       ));
       if (!remote.data) {
         return res.status(200).json({ data: null, updated_at: null, mode: 'cloud' });
@@ -116,7 +119,7 @@ export default withSqlRequest(async function handler(req, res) {
       if (!session) return;
 
       const clientBaseAt = String(body?.updated_at || body?.baseUpdatedAt || '').trim();
-      const remote = await runSqlRead(async () => {
+      const remote = await runSqlReadFast(async () => {
         if (session.isAdmin && session.adminVerified) {
           return loadAppState();
         }
@@ -138,7 +141,7 @@ export default withSqlRequest(async function handler(req, res) {
         const adminSession = await requireAdminSession(req, res, { pinRequired: true });
         if (!adminSession) return;
         await runSql(() => saveAppState(mergeAdminState(canonical, data)));
-        const saved = await runSqlRead(() => loadAppStateRevision());
+        const saved = await runSqlReadFast(() => loadAppStateRevision());
         return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
       }
 
@@ -158,7 +161,7 @@ export default withSqlRequest(async function handler(req, res) {
       // Müşteri yalnızca güvenli profil alanlarını günceller
       const merged = mergeUserState(canonical, data, session.customerId);
       await runSql(() => saveAppState(merged));
-      const saved = await runSqlRead(() => loadAppStateRevision());
+      const saved = await runSqlReadFast(() => loadAppStateRevision());
       return res.status(200).json({ ok: true, mode: 'cloud', updated_at: saved.updatedAt });
     }
 
@@ -169,6 +172,14 @@ export default withSqlRequest(async function handler(req, res) {
       error: err,
       customerId: null
     });
+    // Geçici DB sorunu (bayat bağlantı/timeout) → 20sn 500 yerine hızlı kontrollü 503.
+    // İstemci bunu logout/login döngüsüne sokmaz; ham DB hatası da sızdırılmaz.
+    if (isTransientDbError(err)) {
+      return res.status(503).json({
+        code: 'STATE_TEMPORARILY_UNAVAILABLE',
+        error: 'Veriler şu an alınamıyor. Lütfen tekrar deneyin.'
+      });
+    }
     return res.status(500).json({
       error: publicDbErrorMessage(err, publicErrorMessage(err, 'Veritabanı hatası')),
       code: publicDbErrorCode(err, 'SERVER_ERROR')

@@ -27,6 +27,13 @@ function isTransactionPooler(connectionString) {
   return /:6543(\/|\?|$)/.test(url) || /pooler\.supabase\.com/i.test(url);
 }
 
+// RB-4: Her SQL statement'i DB tarafında üst sınırla. Bayat/asılı bağlantıda
+// tek bir sorgu, fonksiyonun maxDuration'ına (60sn) kadar asılı kalmasın.
+// Tam-state yazımı gibi transaction DIŞI yollar da bu global timeout ile korunur;
+// transaction içindeki "SET LOCAL statement_timeout" bunu daha da düşürebilir.
+// Değer, 8sn'lik transaction timeout'larının üstünde ama 60sn limitinin altında.
+const STATEMENT_TIMEOUT_MS = 25000;
+
 // Vercel + Supabase pooler için bağlantı seçenekleri
 function buildClientOptions(connectionString) {
   const transactionPooler = isTransactionPooler(connectionString);
@@ -35,7 +42,9 @@ function buildClientOptions(connectionString) {
     max: 1,
     idle_timeout: 20,
     connect_timeout: 10,
-    max_lifetime: 60
+    max_lifetime: 60,
+    // Bağlantı başına global statement_timeout (donma koruması)
+    connection: { statement_timeout: STATEMENT_TIMEOUT_MS }
   };
 
   if (transactionPooler) {
@@ -47,7 +56,10 @@ function buildClientOptions(connectionString) {
     options.idle_timeout = 20;
     options.max_lifetime = 60;
     // Bağlantı koparsa postgres.js sorgu sırasında otomatik yeniden bağlanır
-    options.connection = { application_name: 'liberte-club' };
+    options.connection = {
+      application_name: 'liberte-club',
+      statement_timeout: STATEMENT_TIMEOUT_MS
+    };
   }
 
   return options;

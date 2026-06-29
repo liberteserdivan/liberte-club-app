@@ -30,6 +30,9 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    { "path": "/api/guardian/cron", "schedule": "0 */6 * * *" }
+  ],
   "redirects": [
     { "source": "/gizlilik", "destination": "/privacy", "permanent": true },
     { "source": "/kullanim-sartlari", "destination": "/terms", "permanent": true }
@@ -64,6 +67,7 @@
     { "source": "/api/account/delete", "destination": "/api/admin?resource=account-delete" },
     { "source": "/api/guardian/health/:service", "destination": "/api/guardian?resource=health&service=:service" },
     { "source": "/api/guardian/health", "destination": "/api/guardian?resource=health" },
+    { "source": "/api/guardian/cron", "destination": "/api/guardian?resource=cron" },
     { "source": "/api/guardian/incidents", "destination": "/api/guardian?resource=incidents" },
     { "source": "/api/guardian/safe-mode", "destination": "/api/guardian?resource=safe-mode" },
     { "source": "/api/guardian/report", "destination": "/api/guardian?resource=report" },

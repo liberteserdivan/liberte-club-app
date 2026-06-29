@@ -12,6 +12,7 @@ import {
   upsertCustomerEmail
 } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
+import { purgeExpiredAuthData } from './maintenance.js';
 
 export const SESSION_COOKIE = 'liberte_session';
 const SESSION_DAYS = 30;
@@ -52,9 +53,17 @@ export function readAuthToken(req) {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
+// B-14: Çerez Secure bayrağı — Vercel'de VERCEL_ENV daha güvenilir. production
+// veya preview ortamında Secure açık; yalnızca yerel geliştirmede kapalı.
+function isSecureCookieEnv() {
+  return process.env.NODE_ENV === 'production'
+    || process.env.VERCEL_ENV === 'production'
+    || process.env.VERCEL_ENV === 'preview';
+}
+
 // Oturum çerezini ayarla
 export function setSessionCookie(res, token) {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  const secure = isSecureCookieEnv() ? '; Secure' : '';
   const maxAge = SESSION_DAYS * 24 * 60 * 60;
   res.setHeader(
     'Set-Cookie',
@@ -64,7 +73,7 @@ export function setSessionCookie(res, token) {
 
 // Oturum çerezini temizle
 export function clearSessionCookie(res) {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  const secure = isSecureCookieEnv() ? '; Secure' : '';
   res.setHeader(
     'Set-Cookie',
     `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
@@ -318,9 +327,27 @@ export async function destroySession(req, res) {
 
       await ensureSessionTable(sql);
       await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
+
+      // B-9: Cron olmadığından, düşük frekanslı bu yazma yolunda DÜŞÜK OLASILIKLA
+      // süresi dolan kayıtları temizle (best-effort; logout'u yavaşlatmasın).
+      if (Math.random() < 0.05) {
+        try {
+          await purgeExpiredAuthData(sql);
+        } catch (purgeError) {
+          console.warn('[auth.purge]', purgeError?.message || purgeError);
+        }
+      }
     });
   }
   clearSessionCookie(res);
+}
+
+// B-10: Bir müşterinin TÜM oturumlarını iptal et (PIN sıfırlama/değişimi sonrası).
+// Çalınan veya eski token'lar (30 gün geçerli) PIN değişince geçersiz kalsın.
+export async function invalidateSessionsForCustomer(sql, customerId) {
+  if (!sql || !customerId) return;
+  await ensureSessionTable(sql);
+  await sql`DELETE FROM auth_sessions WHERE customer_id = ${Number(customerId)}`;
 }
 
 // Admin PIN doğrula
@@ -484,8 +511,9 @@ export async function requireAdminSession(req, res, { pinRequired = true, light 
     const sql = getSql();
     if (sql) {
       const { findCustomerById } = await import('./customersStore.js');
-      // Bayat bağlantıda admin doğrulaması da fail-fast olsun (guardian/health 90sn beklemesin)
-      const live = await runSqlRead(() => findCustomerById(sql, identity.customerId));
+      // Bayat bağlantıda admin doğrulaması fail-fast olsun (admin-members 19sn'lik
+      // okuma yığınını kısar; guardian/health 90sn beklemesin)
+      const live = await runSqlReadFast(() => findCustomerById(sql, identity.customerId));
       if (!live?.isAdmin) {
         res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
         return null;

@@ -1,6 +1,9 @@
 // Sunucu tarafı kısa süreli app_state önbelleği — tam state ile üye dilimini ayır
 
-const CACHE_TTL_MS = 20_000;
+// B-5: Çok-instanslı dağıtımda bir instance'taki yazı diğerinin önbelleğini
+// temizlemez. Bayatlık penceresini sınırlamak için TTL düşürüldü (20s → 10s).
+// Değişiklik sinyali (loadAppStateRevision) zaten her zaman DB'den okunur.
+const CACHE_TTL_MS = 10_000;
 
 let fullCache = null;
 const customerCaches = new Map();

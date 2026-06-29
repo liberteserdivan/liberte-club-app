@@ -16,62 +16,49 @@ export function readClientIp(req) {
   return forwarded || String(req.socket?.remoteAddress || 'unknown');
 }
 
-// Rate limit kontrolü — aşıldıysa true döner
+// Rate limit kontrolü — aşıldıysa true döner.
+// B-4: SELECT->UPDATE yarış koşulu giderildi. Tek atomik INSERT ... ON CONFLICT
+// ile pencere sıfırlama + sayaç artışı aynı ifadede yapılır; eşzamanlı isteklerde
+// sayaç gerçek istek sayısını yansıtır (brute-force koruması zayıflamaz).
 async function isRateLimitedCore(key, { maxHits = 10, windowMs = WINDOW_MS } = {}) {
   const sql = getSql();
   if (!sql || !key) return false;
 
   await ensureRateLimitTable(sql);
   const rows = await sql`
-    SELECT hit_count, window_start
-    FROM auth_rate_limits
-    WHERE rate_key = ${key}
-    LIMIT 1
+    INSERT INTO auth_rate_limits (rate_key, hit_count, window_start)
+    VALUES (${key}, 1, now())
+    ON CONFLICT (rate_key) DO UPDATE SET
+      hit_count = CASE
+        WHEN now() - auth_rate_limits.window_start > ${windowMs} * interval '1 millisecond'
+          THEN 1
+        ELSE auth_rate_limits.hit_count + 1
+      END,
+      window_start = CASE
+        WHEN now() - auth_rate_limits.window_start > ${windowMs} * interval '1 millisecond'
+          THEN now()
+        ELSE auth_rate_limits.window_start
+      END
+    RETURNING hit_count
   `;
 
-  const row = rows[0];
-  const now = Date.now();
-
-  if (!row) {
-    await sql`
-      INSERT INTO auth_rate_limits (rate_key, hit_count, window_start)
-      VALUES (${key}, 1, now())
-      ON CONFLICT (rate_key) DO UPDATE SET
-        hit_count = 1,
-        window_start = now()
-    `;
-    return false;
-  }
-
-  const windowStart = new Date(row.window_start).getTime();
-  if (now - windowStart > windowMs) {
-    await sql`
-      UPDATE auth_rate_limits
-      SET hit_count = 1, window_start = now()
-      WHERE rate_key = ${key}
-    `;
-    return false;
-  }
-
-  if (Number(row.hit_count) >= maxHits) {
-    return true;
-  }
-
-  await sql`
-    UPDATE auth_rate_limits
-    SET hit_count = hit_count + 1
-    WHERE rate_key = ${key}
-  `;
-  return false;
+  // Atomik artıştan sonra sayaç maxHits'i aşıyorsa engelle (önceki davranışla
+  // tutarlı: maxHits adet istek serbest, sonraki engellenir).
+  return Number(rows[0]?.hit_count || 0) > maxHits;
 }
 
 export async function isRateLimited(key, options = {}) {
   return runSql(() => isRateLimitedCore(key, options));
 }
 
-// Auth uçları için IP + eylem anahtarı
-export async function enforceAuthRateLimit(req, action, { maxHits = 10 } = {}) {
-  const ip = readClientIp(req);
-  const limited = await isRateLimited(`${action}:${ip}`, { maxHits });
+// Auth uçları için rate-limit kontrolü.
+// B-3: Anahtar varsayılan olarak IP'dir; ancak `identifier` verilirse (örn. telefon)
+// anahtar kimlik bazlı olur. Kafe gibi paylaşımlı IP'lerde, bir IP'ye bağlı tüm
+// müşterilerin tek havuzda kilitlenmesini önlemek için login'de telefon bazlı
+// (hesap başına) limit kullanılır; ayrıca gevşek bir IP limiti üst sınır görevi görür.
+export async function enforceAuthRateLimit(req, action, { maxHits = 10, identifier = '' } = {}) {
+  const id = String(identifier || '').trim();
+  const key = id ? `${action}:id:${id}` : `${action}:${readClientIp(req)}`;
+  const limited = await isRateLimited(key, { maxHits });
   return limited;
 }
