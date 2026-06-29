@@ -41,9 +41,13 @@ import ProfilePage from './pages/ProfilePage.jsx';
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 import OnboardingOverlay, { shouldShowOnboarding } from './components/OnboardingOverlay.jsx';
 
-const SPLASH_MIN_MS = 1000;
-const SPLASH_FADE_MS = 880;
-const SPLASH_TOTAL_MS = 1280;
+// PERF: Backend artık hızlı (fra1 + paralel sorgular) olduğundan splash'i soğuk
+// başlangıcı gizlemek için uzun tutmaya gerek yok. Süreler kısaltıldı: yapay
+// bekleme ~2sn'den ~0.66sn'ye indi. Fade boşluğu (TOTAL - FADE = 420ms) CSS'teki
+// `.appSplash` opacity geçişiyle (0.42s) bilinçli olarak eşleşir; pürüzsüz kalır.
+const SPLASH_MIN_MS = 200;
+const SPLASH_FADE_MS = 240;
+const SPLASH_TOTAL_MS = 660;
 const SPLASH_FORCE_MS = 4500;
 const CUSTOMER_HYDRATE_MS = 28_000;
 
