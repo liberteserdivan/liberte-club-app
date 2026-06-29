@@ -92,6 +92,18 @@ export function deriveClientHealth(samples = []) {
     incidents.push(makeIncident('incident', 'Guardian sağlık yanıtı yavaş/kritik', 'config'));
   }
 
+  // 7) admin/members 500/timeout/10sn+ → admin (config) incident.
+  // Tek bir 500 bile genel hata oranını >%20 yapmasa da incident üretir; böylece
+  // Guardian admin/config kartını ve overall durumu yeşil göstermez.
+  const adminMembersBad = recent.some(
+    (s) => isEndpoint(s, '/api/admin/members')
+      && (Number(s.status) >= 500 || s.timeout || s.networkError || Number(s.durationMs) >= 10_000)
+  );
+  if (adminMembersBad) {
+    severity = worse(severity, 'incident');
+    incidents.push(makeIncident('incident', 'Üye listesi hata veriyor (admin/members 500/yavaş)', 'config'));
+  }
+
   // 6) push/register-device 504 → push degraded (login/ana ekranı BOZMAZ)
   const pushBad = recent.some(
     (s) => isEndpoint(s, '/api/push/register-device')
