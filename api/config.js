@@ -173,13 +173,13 @@ async function warmOtherFunctions(req) {
   // realtime, qr (kart QR'ı) ve push (bildirim cihaz kaydı). Her api/*.js ayrı
   // lambda olduğundan, biri ısınmazsa o akış (ör. QR) soğuk başlatma yüzünden
   // takılıyordu. GET ile 401/405 dönse bile lambda uyanır — amaç budur.
-  // NOT: auth ve state için DB HAVUZUNU ısıtan warm uçları kullanılır. Sadece
-  // Node'u uyandırmak (ör. /session 401 dönerek) yetmiyordu; login/state'teki ilk
-  // gerçek sorgu bağlantı kurmayı bekleyince kullanıcı bekliyordu. warm uçları
-  // SELECT 1 ile bağlantıyı önceden kurar → soğuk giriş gecikmesi ortadan kalkar.
+  // NOT: Yalnızca lambda Node'unu uyandıran HAFİF GET'ler kullanılır. DB havuzunu
+  // zorla ısıtan (SELECT 1) warm uçları fan-out'tan ÇIKARILDI: her health çağrısı
+  // birden çok lambda'da bağlantı açtırıp Supabase bağlantı havuzunu doyuruyor ve
+  // tüm sorguları yavaşlatıyordu (kısır prime-timeout/reset döngüsü). Bağlantı
+  // ısınması artık her handler'ın kendi akışındaki primeSqlConnection ile yapılır.
   const targets = [
-    '/api/auth?action=warm',
-    '/api/state?warm=1',
+    '/api/auth/session',
     '/api/realtime?resource=promos',
     '/api/qr/generate',
     '/api/push/register-device'
