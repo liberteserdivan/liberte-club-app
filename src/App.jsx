@@ -24,6 +24,7 @@ import { hideNativeSplash } from './lib/nativeSplash.js';
 import { canRequestPushOnThisDevice, deactivateDevicePushToken } from './lib/pushPrompt.js';
 import { isNativeApp } from './lib/platform.js';
 import { useCommit } from './hooks/useCommit.js';
+import { isRealtimeDisabledByFlag } from './lib/safeMode.js';
 import AppSplash from './components/AppSplash.jsx';
 import Nav from './components/Nav.jsx';
 import AdminPinGate from './components/AdminPinGate.jsx';
@@ -50,6 +51,10 @@ export default function App() {
   const sessionRef = useRef(null);
   const [tab, setTab] = useState('home');
   const [session, setSession] = useState(null);
+  // sessionRef'i render sırasında senkron güncelle. Aksi halde logout sonrası
+  // yeniden render'da useCommit'in effect'i (sessionRef güncelleyen effect'ten
+  // ÖNCE çalışır) bayat session görüp login ekranında /api/state tetikleyebilir.
+  sessionRef.current = session;
   const [db, commit, , refreshRemote, syncState, retrySave] = useCommit(load(), sessionRef, {
     tab,
     sessionCustomerId: session?.customerId ?? null
@@ -73,11 +78,10 @@ export default function App() {
   }, [db.customers]);
 
   useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
-
-  useEffect(() => {
     setUnauthorizedHandler((reason) => {
+      // Zaten oturum yoksa (login ekranı) arka plandan gelen 401 hiçbir şeyi
+      // tetiklemesin — eski in-flight isteğin 401'i login UI'ını bozmamalı.
+      if (!getMemorySession()) return;
       // Oturumu anında kapat — yerel temizlik senkron, realtime arka planda
       logoutSession();
       setMemorySession(null);
@@ -249,6 +253,7 @@ export default function App() {
       isAdmin
       && adminVerified
       && !isLocalAuth()
+      && !isRealtimeDisabledByFlag()
       && (tab === 'admin' || tab === 'qr')
     ),
     db,

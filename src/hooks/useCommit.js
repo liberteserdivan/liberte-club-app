@@ -6,7 +6,7 @@ import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullS
 import { mergeAdminRemoteIntoDb } from '../lib/adminMemberSync.js';
 import { reportError } from '../lib/errorHub.js';
 import { isLocalAuth } from '../lib/devAuth.js';
-import { patchMemorySession, hasAdminPinVerifiedLocally } from '../lib/session.js';
+import { patchMemorySession, hasAdminPinVerifiedLocally, getAuthEpoch } from '../lib/session.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
 import { shouldReduceFullStatePull, shouldReducePolling, subscribeSafeMode } from '../lib/safeMode.js';
 import { subscribeRemoteSyncRequest } from '../lib/syncBus.js';
@@ -140,10 +140,16 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     // Kayıt devam ederken eski snapshot ile üzerine yazmayı önle
     if (!force && savingCount.current > 0) return;
 
+    // İstek başladığı andaki oturum nesli — yanıt geç gelirse (logout/login sonrası)
+    // bu epoch değişmiş olur ve sonuç UI state'ine YAZILMAZ.
+    const epochAtStart = getAuthEpoch();
+    const isStaleAuth = () => getAuthEpoch() !== epochAtStart;
+
     syncing.current = true;
     try {
       if (!force && lastRemoteAt.current) {
         const probe = await loadRemote({ since: lastRemoteAt.current });
+        if (isStaleAuth()) return;
         if (!probe) return;
         if (probe.unauthorized) return;
         if (probe.unchanged) {
@@ -162,6 +168,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       }
 
       const remote = await loadRemote();
+      if (isStaleAuth()) return;
       if (!remote) return;
       if (remote.unauthorized) return;
       if (remote.unchanged) {
@@ -178,6 +185,10 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
         return;
       }
       if (!force && remote.updatedAt && remote.updatedAt === lastRemoteAt.current) return;
+
+      // Yanıt geldiğinde oturum değiştiyse (logout/login) bu eski yanıttır —
+      // yeni auth state'ini (login ekranı vb.) EZME.
+      if (isStaleAuth()) return;
 
       lastRemoteAt.current = remote.updatedAt;
       const session = sessionRef?.current;

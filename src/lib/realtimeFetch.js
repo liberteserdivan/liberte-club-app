@@ -1,5 +1,6 @@
 import { apiJson, ADMIN_REQUEST_OPTIONS } from './apiClient.js';
 import { canAttempt, recordSuccess, recordFailure } from './backgroundCircuit.js';
+import { isRealtimeDisabledByFlag } from './safeMode.js';
 
 // Müşteri realtime fetch'leri kısa zaman aşımıyla yapılır — 90-120sn asılı kalmaz.
 const REALTIME_FETCH_OPTIONS = { timeoutMs: 6_000, retryTransient: false };
@@ -12,6 +13,8 @@ const inflightRealtime = new Map();
 
 // Arka plan sync — ağ hatasında toast tetikleme + devre kesici
 async function safeRealtimeRequest(path, options = {}) {
+  // VITE_DISABLE_REALTIME=true → hiçbir realtime isteği gönderilmez (sert kill switch)
+  if (isRealtimeDisabledByFlag()) return FAILED_RESULT;
   // Devre açıksa (3 ardışık hata) yeni istek başlatma — retry storm engeli
   if (!canAttempt(REALTIME_CIRCUIT_KEY)) return FAILED_RESULT;
 
@@ -83,6 +86,8 @@ export async function fetchPromoSlice() {
 
 // Admin dashboard feed — hata fırlatır
 export async function fetchAdminFeed() {
+  // Bayrak açıkken admin realtime feed de devre dışı
+  if (isRealtimeDisabledByFlag()) throw new Error('realtime_disabled');
   const { response, data } = await apiJson('/api/realtime?resource=admin-feed', {
     ...ADMIN_REQUEST_OPTIONS
   });
@@ -94,6 +99,8 @@ export async function fetchAdminFeed() {
 
 // Admin üye listesi — yönetici sync için (hata fırlatır)
 export async function fetchAdminCustomersStrict() {
+  // Bayrak açıkken admin-customers realtime fetch'i de devre dışı (snapshot/full-state fallback devreye girer)
+  if (isRealtimeDisabledByFlag()) throw new Error('realtime_disabled');
   const { response, data } = await apiJson('/api/realtime?resource=admin-customers', {
     timeoutMs: 45000
   });

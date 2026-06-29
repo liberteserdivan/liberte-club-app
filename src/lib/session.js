@@ -15,6 +15,23 @@ import { clearSafeModeState } from './safeMode.js';
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
 
+// Oturum nesli (authEpoch): her login/logout/bootstrap geçişinde artar.
+// Uçuştaki (in-flight) bir isteğin yanıtı geç geldiğinde, başladığı andaki epoch
+// ile karşılaştırılır; epoch değiştiyse yanıt YOK SAYILIR. Böylece eski oturuma
+// ait /api/state veya /api/realtime yanıtı yeni auth state'i (ör. login ekranını)
+// ezemez ve arka plan 401/500'ü UI'yı bozmaz.
+let authEpoch = 0;
+
+// Aktif oturum neslini döndür
+export function getAuthEpoch() {
+  return authEpoch;
+}
+
+// Oturum değişiminde nesli ilerlet — eski uçuştaki yanıtları geçersiz kıl
+function bumpAuthEpoch() {
+  authEpoch += 1;
+}
+
 export function getRealtimeToken() {
   return memorySession?.realtimeToken || null;
 }
@@ -25,6 +42,8 @@ export function getMemorySession() {
 
 export function setMemorySession(session) {
   memorySession = session;
+  // Oturum kimliği değişti — eski uçuştaki yanıtlar geçersiz olsun
+  bumpAuthEpoch();
 }
 
 // Oturum alanlarını kısmi güncelle
@@ -84,6 +103,7 @@ export async function bootstrapSession() {
       adminVerified: Boolean(data.adminVerified),
       realtimeToken: data.realtimeToken || null
     };
+    bumpAuthEpoch();
 
     if (data.sessionToken) {
       saveNativeAuthToken(data.sessionToken);
@@ -131,6 +151,7 @@ export function applyAuthResult(result) {
     adminVerified: Boolean(result.adminVerified),
     realtimeToken: result.realtimeToken || null
   };
+  bumpAuthEpoch();
 
   if (result.sessionToken) {
     saveNativeAuthToken(result.sessionToken);
@@ -151,6 +172,9 @@ export function logoutSession() {
 
   // 1) Yerel oturumu anında temizle
   memorySession = null;
+  // Oturum nesli ilerler — logout'tan önce başlamış /api/state veya admin-customers
+  // yanıtı geç gelse bile yeni (login ekranı) state'i ezemez.
+  bumpAuthEpoch();
   clearAdminPinVerifiedLocally();
   clearNativeAuthToken();
   // Yönetici PII snapshot'ını da temizle — çıkışta cihazda iz kalmasın

@@ -93,8 +93,9 @@ export function isRealtimeDegraded() {
 }
 
 // Production acil kapatma bayrağı — build sırasında VITE_DISABLE_REALTIME=true ise
-// müşteri realtime tamamen kapatılır (cihazda realtime selini durdurmak için).
-function realtimeDisabledByFlag() {
+// TÜM realtime kaynakları kapatılır (customer, admin, admin-customers, loyalty,
+// dashboard). Cihazdaki realtime selini tamamen durdurmak için sert anahtar.
+export function isRealtimeDisabledByFlag() {
   try {
     return String(import.meta.env?.VITE_DISABLE_REALTIME || '').toLowerCase() === 'true';
   } catch {
@@ -105,7 +106,7 @@ function realtimeDisabledByFlag() {
 // Müşteri realtime (websocket dinleyici) tamamen kapatılmalı mı?
 // Bayrak açıksa veya Safe Mode realtime'ı degraded yaptıysa kapatılır.
 export function isCustomerRealtimeDisabled() {
-  return realtimeDisabledByFlag() || isRealtimeDegraded();
+  return isRealtimeDisabledByFlag() || isRealtimeDegraded();
 }
 
 // Değişiklik aboneliği (hook'lar için)

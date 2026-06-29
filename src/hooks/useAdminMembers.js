@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { applyAdminMemberSync, loadAdminMembersSlice, pickAdminMemberList } from '../lib/adminMemberSync.js';
 import { usePageActive } from './usePageActive.js';
+import { getAuthEpoch } from '../lib/session.js';
 
 // Yönetici paneli — üye listesi ayrı state (db sync ezmesinden bağımsız)
 export function useAdminMembers({ enabled = false, commit, session = null, db = null }) {
@@ -14,16 +15,22 @@ export function useAdminMembers({ enabled = false, commit, session = null, db = 
 
   const pullMembers = useCallback(async () => {
     if (!commit) return false;
+    // İstek başındaki oturum nesli — yanıt geç gelirse (logout/login) yok sayılır
+    const epochAtStart = getAuthEpoch();
     setStatus('loading');
     setError('');
 
     try {
       const slice = await loadAdminMembersSlice(sessionRef.current);
+      // Oturum değiştiyse eski admin-customers yanıtı yeni state'i (login ekranı) ezmesin
+      if (getAuthEpoch() !== epochAtStart) return false;
       setMembers(slice.customers || []);
       applyAdminMemberSync(commit, slice, sessionRef.current);
       setStatus('ready');
       return true;
     } catch (e) {
+      // Logout/login sonrası gelen 401/500 hatası login UI'ı bozmasın
+      if (getAuthEpoch() !== epochAtStart) return false;
       setError(e?.message || 'Üye listesi yüklenemedi');
       setStatus('error');
       return false;
