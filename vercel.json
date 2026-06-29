@@ -1,6 +1,7 @@
 {
   "buildCommand": "npm run build:release",
   "outputDirectory": "dist",
+  "regions": ["fra1"],
   "env": {
     "USE_RELATIONAL_STATE": "1"
   },
