@@ -1,0 +1,3 @@
+# Git'in otomatik LF/CRLF satir sonu donusumunu kapat.
+# Boylece "LF will be replaced by CRLF" uyarilari cikmaz (Windows/OneDrive ortami).
+* -text
