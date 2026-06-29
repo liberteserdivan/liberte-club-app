@@ -173,8 +173,13 @@ async function warmOtherFunctions(req) {
   // realtime, qr (kart QR'ı) ve push (bildirim cihaz kaydı). Her api/*.js ayrı
   // lambda olduğundan, biri ısınmazsa o akış (ör. QR) soğuk başlatma yüzünden
   // takılıyordu. GET ile 401/405 dönse bile lambda uyanır — amaç budur.
+  // NOT: auth ve state için DB HAVUZUNU ısıtan warm uçları kullanılır. Sadece
+  // Node'u uyandırmak (ör. /session 401 dönerek) yetmiyordu; login/state'teki ilk
+  // gerçek sorgu bağlantı kurmayı bekleyince kullanıcı bekliyordu. warm uçları
+  // SELECT 1 ile bağlantıyı önceden kurar → soğuk giriş gecikmesi ortadan kalkar.
   const targets = [
-    '/api/auth/session',
+    '/api/auth?action=warm',
+    '/api/state?warm=1',
     '/api/realtime?resource=promos',
     '/api/qr/generate',
     '/api/push/register-device'

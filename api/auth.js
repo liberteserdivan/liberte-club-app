@@ -8,7 +8,10 @@ const AUTH_ACTIONS = {
   'forgot-pin': () => import('./_lib/handlers/authForgotPin.js').then((m) => m.handleAuthForgotPin),
   'admin-pin': () => import('./_lib/handlers/authAdminPin.js').then((m) => m.handleAuthAdminPin),
   // Üye listesi — auth isolate'ında DB bağlantısı güvenilir
-  'admin-members': () => import('./_lib/handlers/adminMembers.js').then((m) => m.handleAdminMembers)
+  'admin-members': () => import('./_lib/handlers/adminMembers.js').then((m) => m.handleAdminMembers),
+  // DB havuzu ısıtma — login ÖNCESİ auth lambda'sının bağlantısını hazırlar,
+  // böylece giriş sırasındaki ilk sorgu bağlantı kurmayı beklemez (soğuk gecikme yok).
+  warm: () => import('./_lib/handlers/warmPing.js').then((m) => m.handleWarmPing)
 };
 
 export default withSqlRequest(async function handler(req, res) {

@@ -37,6 +37,13 @@ export default withSqlRequest(async function handler(req, res) {
   }
 
   try {
+    // DB havuzu ısıtma — state lambda'sının bağlantısını önceden kur. Kimlik
+    // gerektirmez; login sonrası ilk state çekimi soğuk bağlantı beklemesin.
+    if (req.method === 'GET' && req.query?.warm === '1') {
+      const { handleWarmPing } = await import('./_lib/handlers/warmPing.js');
+      return handleWarmPing(req, res);
+    }
+
     // Hata logları — ayrı function açmamak için mevcut endpoint (Vercel Hobby limiti)
     if (req.method === 'GET' && req.query?.errorLogs === '1') {
       return await handleErrorLogList(req, res);
