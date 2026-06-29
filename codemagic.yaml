@@ -37,6 +37,8 @@ workflows:
         IOS_MIN_BUILD_NUMBER: "61"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
+        # Native build'in vuracağı API kökü — domain/Vercel URL değişiminde burayı güncelle
+        VITE_API_BASE_URL: "https://app.liberte.cafe"
       node: 22
       xcode: latest
     scripts:
@@ -56,6 +58,9 @@ workflows:
         script: |
           export VITE_APP_VERSION="${APP_VERSION:-1.1.17}.${BUILD_NUMBER:-0}"
           export VITE_BUILD_NUMBER="${BUILD_NUMBER:-0}"
+          # Native API kökü Vite build'e geçer; ayarlı değilse production fallback
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.liberte.cafe}"
+          echo "[build] VITE_API_BASE_URL=$VITE_API_BASE_URL"
           npm run build:release
       - name: Capacitor iOS sync ve CocoaPods
         script: |
@@ -146,6 +151,8 @@ workflows:
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.30"
         ANDROID_MIN_VERSION_CODE: "59"
+        # Native build'in vuracağı API kökü — domain/Vercel URL değişiminde burayı güncelle
+        VITE_API_BASE_URL: "https://app.liberte.cafe"
       node: 22
       java: 21
     scripts:
@@ -169,7 +176,9 @@ workflows:
       - name: Web build
         script: |
           export VITE_APP_VERSION="${APP_VERSION:-1.1.17}.${BUILD_NUMBER:-0}"
-          echo "[build] VITE_APP_VERSION=$VITE_APP_VERSION commit=$(git rev-parse --short HEAD)"
+          # Native API kökü Vite build'e geçer; ayarlı değilse production fallback
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.liberte.cafe}"
+          echo "[build] VITE_APP_VERSION=$VITE_APP_VERSION VITE_API_BASE_URL=$VITE_API_BASE_URL commit=$(git rev-parse --short HEAD)"
           npm run build:release
       - name: Capacitor Android sync
         script: |

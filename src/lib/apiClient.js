@@ -6,7 +6,82 @@ import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
 const TOKEN_KEY = 'liberteAuthToken';
 // Temizlenmesi gereken eski/legacy token anahtarları — çıkışta hepsi silinir
 const LEGACY_TOKEN_KEYS = [TOKEN_KEY, 'liberteNativeAuthToken', 'liberteSessionToken'];
-const NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+
+// Native (Capacitor) build'in vuracağı API kökü. Hardcoded değil — build-time
+// VITE_API_BASE_URL ile yönetilir; geçersiz/boşsa production fallback kullanılır.
+// Web/PWA bu sabiti KULLANMAZ (relative path → same-origin) — aşağıdaki
+// resolveApiUrl yalnızca native ortamda bu köke başvurur.
+const FALLBACK_NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+
+// Geliştirme ortamı mı — yalnızca dev'de http://localhost gibi güvensiz köke izin verilir
+function isDevEnv() {
+  try {
+    return Boolean(import.meta.env?.DEV);
+  } catch {
+    return false;
+  }
+}
+
+// API origin'ini normalize et:
+// - boş/geçersiz değeri yok say (null döner → fallback devreye girer)
+// - sadece origin (scheme://host[:port]) kabul edilir, trailing slash/path atılır
+// - production'da yalnızca https:// kabul edilir
+// - allowInsecure (yalnızca dev) ise http://localhost veya http://127.0.0.1 kabul edilir
+export function normalizeApiOrigin(value, { allowInsecure = false } = {}) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  const isHttps = url.protocol === 'https:';
+  const isLocalHttp = url.protocol === 'http:'
+    && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+
+  if (!isHttps && !(allowInsecure && isLocalHttp)) return null;
+
+  // url.origin trailing slash içermez ve path/query'i düşürür → temiz köken
+  return url.origin;
+}
+
+// Native build'in kullanacağı API kökü — env'den çözülür, geçersizse fallback
+function resolveNativeApiOrigin() {
+  let configured = null;
+  try {
+    configured = normalizeApiOrigin(import.meta.env?.VITE_API_BASE_URL, {
+      allowInsecure: isDevEnv()
+    });
+  } catch {
+    configured = null;
+  }
+  return configured || FALLBACK_NATIVE_API_ORIGIN;
+}
+
+const NATIVE_API_ORIGIN = resolveNativeApiOrigin();
+
+// Debug-safe köken bilgisi — tam URL'yi açıkça loglamadan host'u maskeler
+function maskApiOrigin(origin) {
+  try {
+    const { protocol, hostname } = new URL(origin);
+    const masked = hostname.length > 6
+      ? `${hostname.slice(0, 3)}***${hostname.slice(-3)}`
+      : `${hostname.slice(0, 1)}***`;
+    return `${protocol}//${masked}`;
+  } catch {
+    return 'gizli';
+  }
+}
+
+// Yalnızca dev ortamda, maskelenmiş köken bilgisini bir kez yaz (production'da sessiz)
+if (isDevEnv()) {
+  // Token/secret değil; yine de host maskeli yazılır
+  console.info('[apiClient] native API origin:', maskApiOrigin(NATIVE_API_ORIGIN));
+}
 
 // Web'de token kalıcı depoya YAZILMAZ; yalnızca bellekte tutulur (httpOnly cookie
 // kalıcılığı sağlar). Bu, XSS ile token çalınması yüzeyini küçültür.
@@ -18,12 +93,17 @@ export function setUnauthorizedHandler(handler) {
   onUnauthorized = typeof handler === 'function' ? handler : null;
 }
 
-// İstek yolunu tam URL'ye çevir
-function resolveApiUrl(path) {
+// İstek yolunu tam URL'ye çevir.
+// - absolute URL gelirse olduğu gibi döner
+// - native ise yapılandırılmış köke göre tam URL
+// - web/PWA ise relative path (same-origin) korunur
+// native/origin parametreleri test edilebilirlik için enjekte edilebilir;
+// üretimde varsayılanlar (isNativeApp + NATIVE_API_ORIGIN) kullanılır.
+export function resolveApiUrl(path, native = isNativeApp(), origin = NATIVE_API_ORIGIN) {
   if (/^https?:\/\//i.test(path)) return path;
-  if (isNativeApp()) {
+  if (native) {
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${NATIVE_API_ORIGIN}${normalized}`;
+    return `${origin}${normalized}`;
   }
   return path;
 }
