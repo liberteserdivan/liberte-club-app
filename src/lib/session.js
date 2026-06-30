@@ -15,11 +15,8 @@ import { clearSafeModeState } from './safeMode.js';
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
 
-// Oturum nesli (authEpoch): her login/logout/bootstrap geçişinde artar.
-// Uçuştaki (in-flight) bir isteğin yanıtı geç geldiğinde, başladığı andaki epoch
-// ile karşılaştırılır; epoch değiştiyse yanıt YOK SAYILIR. Böylece eski oturuma
-// ait /api/state veya /api/realtime yanıtı yeni auth state'i (ör. login ekranını)
-// ezemez ve arka plan 401/500'ü UI'yı bozmaz.
+// Oturum nesli (authEpoch): login/logout geçişlerinde artar.
+// Uçuştaki istek yanıtı geç geldiğinde epoch değiştiyse yanıt yok sayılır.
 let authEpoch = 0;
 
 // Aktif oturum neslini döndür
@@ -80,10 +77,17 @@ export function hasAdminPinVerifiedLocally() {
   }
 }
 
-// Sunucudan oturumu doğrula
+// Sunucudan oturumu doğrula (açılış bootstrap)
 export async function bootstrapSession() {
   if (isLocalAuth()) {
     return memorySession ? { session: memorySession } : null;
+  }
+
+  const epochAtStart = getAuthEpoch();
+
+  // Bootstrap bitmeden login/logout olduysa bellek oturumunu ezme
+  function authChangedDuringBootstrap() {
+    return getAuthEpoch() !== epochAtStart;
   }
 
   try {
@@ -91,6 +95,11 @@ export async function bootstrapSession() {
       ...AUTH_REQUEST_OPTIONS,
       skipUnauthorized: true
     });
+
+    if (authChangedDuringBootstrap()) {
+      return memorySession ? { session: memorySession } : null;
+    }
+
     if (!response.ok || !data?.ok) {
       memorySession = null;
       return null;
@@ -103,7 +112,7 @@ export async function bootstrapSession() {
       adminVerified: Boolean(data.adminVerified),
       realtimeToken: data.realtimeToken || null
     };
-    bumpAuthEpoch();
+    // Bootstrap restore epoch artırmaz — yalnızca login/logout geçersiz kılır
 
     if (data.sessionToken) {
       saveNativeAuthToken(data.sessionToken);
@@ -115,6 +124,9 @@ export async function bootstrapSession() {
       loyalty: data.loyalty || null
     };
   } catch {
+    if (authChangedDuringBootstrap()) {
+      return memorySession ? { session: memorySession } : null;
+    }
     memorySession = null;
     return null;
   }

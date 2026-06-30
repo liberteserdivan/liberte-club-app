@@ -129,7 +129,10 @@ export default function Login({ db, commit, setSession }) {
 
   function finishSession(result, epochAtLogin = null) {
     // Hızlı çıkış: uçuştaki login yanıtı oturumu geri açmasın
-    if (epochAtLogin != null && getAuthEpoch() !== epochAtLogin) return;
+    if (epochAtLogin != null && getAuthEpoch() !== epochAtLogin) {
+      notify('Oturum açılamadı. Lütfen tekrar deneyin.');
+      return;
+    }
     setPin('');
     setPinConfirm('');
     if (result.customer) {

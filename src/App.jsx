@@ -100,7 +100,11 @@ export default function App() {
 
   useEffect(() => {
     bootstrapSessionWithTimeout().then((result) => {
-      if (result?.session) {
+      const live = getMemorySession();
+      if (live) {
+        // Login bootstrap'tan önce bittiyse geç gelen bootstrap UI'yı ezmesin
+        setSession(live);
+      } else if (result?.session) {
         setSession(result.session);
         if (result.customer) {
           commit((current) => mergeAuthSnapshot(current, {
