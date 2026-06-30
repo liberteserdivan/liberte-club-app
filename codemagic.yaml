@@ -39,6 +39,9 @@ workflows:
         XCODE_SCHEME: App
         # Native build'in vuracağı API kökü — domain/Vercel URL değişiminde burayı güncelle
         VITE_API_BASE_URL: "https://app.liberte.cafe"
+        # App Store post-processing: Apple isleme suresi 5-30+ dk surer; kisa timeout kirmizi build uretir
+        APP_STORE_CONNECT_MAX_FIND_BUILD_WAIT: "20"
+        APP_STORE_CONNECT_MAX_BUILD_PROCESSING_WAIT: "45"
       node: 22
       xcode: latest
     scripts:
@@ -129,7 +132,9 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
+        # Yalnizca IPA yukle; TestFlight beta review Apple islemesi bitince ASC'den manuel acilir.
+        # submit_to_testflight: true post-processing'de Apple "Processing" beklerken build kirmizi gorunebilir.
+        submit_to_testflight: false
 
   android-release:
     name: android-release
