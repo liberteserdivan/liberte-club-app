@@ -5,7 +5,8 @@ import { apiJson } from './apiClient.js';
 // 12sn ile sınırlanır, böylece UI uzun süre asılı kalmaz.
 export async function fetchAdminMembersList() {
   const { response, data } = await apiJson('/api/admin/members', {
-    timeoutMs: 12000
+    timeoutMs: 12000,
+    skipUnauthorized: true
   });
   if (!response.ok || !data?.ok) {
     const message = data?.error || data?.message || 'Üye listesi alınamadı';

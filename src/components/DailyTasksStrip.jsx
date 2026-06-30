@@ -39,6 +39,11 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
       }
 
       const remote = await claimDailyLoginRewardRemote();
+      if (!remote.ok) {
+        setClaimMessage(remote.error || 'Günlük ödül kaydedilemedi.');
+        return;
+      }
+
       commit((current) => ({
         ...current,
         loyalty: {

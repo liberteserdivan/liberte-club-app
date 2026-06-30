@@ -81,8 +81,10 @@ test('state.js geçici DB hatasında 503 döner (ham 500 değil)', () => {
   assert.match(stateSrc, /if \(isTransientDbError\(err\)\) \{[\s\S]*?status\(503\)/);
 });
 
-test('GET içinde çift yazma/retry riski yok: skipPersist ile saveAppState çağrılmaz', () => {
-  // GET dalında saveAppState yalnızca doğum günü bonusu (ayrı, kasıtlı feature)
-  // için kalır; loadAppState skipPersist sayesinde okuma yolunda yazma yapmaz.
-  assert.match(stateSrc, /loadAppState\(\{ skipPersist: true \}\)/);
+test('GET dalında saveAppState çağrılmaz (salt-okuma)', () => {
+  const getStart = stateSrc.indexOf("if (req.method === 'GET')");
+  const postStart = stateSrc.indexOf("if (req.method === 'POST')");
+  const getBlock = stateSrc.slice(getStart, postStart);
+  assert.doesNotMatch(getBlock, /await saveAppState|runSql\(\(\) => saveAppState/, 'GET içinde kalıcı yazım olmamalı');
+  assert.match(getBlock, /loadAppState\(\{ skipPersist: true \}\)/);
 });

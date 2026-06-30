@@ -310,9 +310,19 @@ export async function loadRemote(options = {}){
   const path = since ? `/api/state?since=${encodeURIComponent(since)}` : '/api/state';
 
   try{
-    const {response,data:j}=await dedupedApiJson(path);
+    const {response,data:j}=await dedupedApiJson(path, { skipUnauthorized: true });
     if(response.status === 401){
       return { unauthorized: true };
+    }
+    // Geçici sunucu/DB sorunu — önbellekteki veri kullanılmaya devam eder
+    if(response.status === 503){
+      return {
+        network: true,
+        transient: true,
+        status: 503,
+        code: j?.code || 'STATE_TEMPORARILY_UNAVAILABLE',
+        error: j?.error || 'Veriler şu an alınamıyor. Biraz sonra tekrar dene.'
+      };
     }
     if(!response.ok){
       return { network: response.status >= 500 || response.status === 0, status: response.status };
@@ -354,7 +364,8 @@ export async function saveRemote(db, options = {}){
   try{
     const {response,data}=await dedupedApiJson('/api/state',{
       method:'POST',
-      body:JSON.stringify(payload)
+      body:JSON.stringify(payload),
+      skipUnauthorized: true
     });
 
     if(response.status === 409){

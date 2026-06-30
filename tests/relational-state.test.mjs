@@ -24,7 +24,7 @@ test('appState loadAppState relational modu destekler', () => {
 test('üye state sync hafif compose kullanır', () => {
   const stateApi = readFileSync(join(root, 'api/state.js'), 'utf8');
   assert.match(stateApi, /loadAppStateForCustomer/);
-  assert.match(stateApi, /getSessionForBootstrap/);
+  assert.match(stateApi, /getSessionForQr/);
   const relational = readFileSync(join(root, 'api/_lib/relationalState.js'), 'utf8');
   assert.match(relational, /composeStateForCustomer/);
 });

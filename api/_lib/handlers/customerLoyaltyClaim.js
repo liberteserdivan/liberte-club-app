@@ -48,6 +48,15 @@ export async function handleDailyLoginClaim(req, res) {
     const result = await runSql(() => applyDailyLoginRewardRelational(session.customerId));
 
     if (!result.ok) {
+      // Aynı gün tekrar claim — iş kuralı; 400/500 gibi görünmesin
+      const alreadyClaimed = /bugün zaten aldın/i.test(String(result.error || ''));
+      if (alreadyClaimed) {
+        return res.status(200).json({
+          ok: false,
+          code: 'DAILY_CLAIM_ALREADY_CLAIMED',
+          error: result.error || 'Günlük giriş ödülünü bugün zaten aldın.'
+        });
+      }
       return res.status(400).json({ ok: false, error: result.error || 'Ödül alınamadı' });
     }
 

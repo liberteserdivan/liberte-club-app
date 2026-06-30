@@ -121,9 +121,19 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     }, intervalMs);
   }, [clearSyncTimer, sessionRef]);
 
-  // Uzak yanıt hatasını işle
+  // Uzak yanıt hatasını işle — 503/transient önbellek modunda kalır, logout tetiklenmez
   function handlePullFailure(remote) {
     if (remote?.unauthorized) return;
+
+    if (remote?.transient || remote?.status === 503) {
+      setSyncState((prev) => ({
+        ...prev,
+        status: 'degraded',
+        lastError: remote.error || 'Güncel veriler şu an alınamıyor. Önbellekteki veriler gösteriliyor.'
+      }));
+      return;
+    }
+
     if (!remote?.network) return;
 
     setSyncState((prev) => ({

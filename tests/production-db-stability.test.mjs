@@ -25,10 +25,10 @@ test('state: gecici DB sorunu 503 STATE_TEMPORARILY_UNAVAILABLE doner (500 degil
 
 test('state: auth yoksa DB state okumasi yapmadan 401 doner', () => {
   const src = read('api/state.js');
-  // GET: getSessionForBootstrap null ise 401 (loadAppState cagrilmadan once)
-  const getIdx = src.indexOf("getSessionForBootstrap(req)");
+  // GET: getSessionForQr null ise 401 (loadAppState cagrilmadan once)
+  const getIdx = src.indexOf('getSessionForQr(req)');
   const guardIdx = src.indexOf("status(401).json({ error: 'Oturum gerekli' })");
-  const loadIdx = src.indexOf('loadAppStateForCustomer(session.customerId)');
+  const loadIdx = src.indexOf('loadAppStateForCustomer(session.customerId');
   assert.ok(getIdx !== -1 && guardIdx !== -1 && loadIdx !== -1);
   assert.ok(guardIdx < loadIdx, '401 guard state okumasindan once olmali');
 });

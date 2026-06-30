@@ -1,6 +1,6 @@
 import { applyCors, publicErrorMessage, readBodySafe } from './_lib/http.js';
 import { loadAppState, loadAppStateRevision, loadAppStateForCustomer, saveAppState, isSameAppStateRevision } from './_lib/appState.js';
-import { getSession, getSessionForBootstrap, requireAdminSession, requireSession } from './_lib/auth.js';
+import { getSession, getSessionForQr, requireAdminSession, requireSession } from './_lib/auth.js';
 import { handleQrGenerate } from './_lib/handlers/qrGenerate.js';
 import { logServerError } from './_lib/logServerError.js';
 import { runSql, runSqlReadFast } from './_lib/runSql.js';
@@ -18,9 +18,7 @@ import {
   mergeAdminState,
   mergeUserState
 } from './_lib/stateAccess.js';
-import { applyBirthdayReward } from './_lib/loyaltyOps.js';
 import { enforceAuthRateLimit } from './_lib/rateLimit.js';
-import { useRelationalState } from './_lib/relationalConfig.js';
 import { withSqlRequest } from './_lib/sqlRequest.js';
 import { clampString, oneOfOrDefault, isBodyTooLarge } from './_lib/validateInput.js';
 
@@ -55,7 +53,8 @@ export default withSqlRequest(async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const session = await getSessionForBootstrap(req);
+      // Hafif oturum doğrulama — müşteri/loyalty ek sorgusu yok (bootstrap yükü değil).
+      const session = await getSessionForQr(req);
       if (!session?.customerId) {
         return res.status(401).json({ error: 'Oturum gerekli' });
       }
@@ -88,17 +87,7 @@ export default withSqlRequest(async function handler(req, res) {
         return res.status(200).json({ data: null, updated_at: null, mode: 'cloud' });
       }
 
-      let stateData = remote.data;
-
-      // Doğum günü bonusu — relational modda tam state yazımı yapma
-      if (session.customerId && !session.isAdmin && !useRelationalState()) {
-        const nextState = structuredClone(stateData);
-        const birthday = applyBirthdayReward(nextState, session.customerId);
-        if (birthday.changed) {
-          await saveAppState(nextState);
-          stateData = nextState;
-        }
-      }
+      const stateData = remote.data;
 
       const data = isFullAdmin
         ? filterStateForAdmin(stateData)

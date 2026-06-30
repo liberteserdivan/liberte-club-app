@@ -12,6 +12,7 @@ import {
 } from './appStateCache.js';
 import { logAppStatePerf, perfNow } from './appStatePerf.js';
 import { useRelationalState, composeStateFromRelational, composeStateForCustomer, persistStateToRelational } from './relationalState.js';
+import { filterStateForUser } from './stateAccess.js';
 
 export { getSql } from './sql.js';
 
@@ -212,26 +213,39 @@ export async function loadAppState(options = {}) {
 // Üye oturumu için hafif state yükle
 export async function loadAppStateForCustomer(customerId, options = {}) {
   const skipCache = Boolean(options.skipCache);
+  const id = Number(customerId);
   const t0 = perfNow();
 
-  if (!useRelationalState() || !customerId) {
-    return loadAppState(options);
-  }
-
-  if (!skipCache) {
-    const cached = readAppStateCacheForCustomer(customerId);
-    if (cached?.data) {
-      logAppStatePerf('loadAppStateForCustomer.cache_hit', t0);
-      return { data: cached.data, updatedAt: cached.updatedAt };
+  // Relational mod — tek müşteri dilimi (tam admin blob okunmaz)
+  if (useRelationalState() && id) {
+    if (!skipCache) {
+      const cached = readAppStateCacheForCustomer(id);
+      if (cached?.data) {
+        logAppStatePerf('loadAppStateForCustomer.cache_hit', t0);
+        return { data: cached.data, updatedAt: cached.updatedAt };
+      }
     }
+
+    const composed = await composeStateForCustomer(id);
+    if (composed.data) {
+      writeAppStateCacheForCustomer(id, composed.data, composed.updatedAt);
+      logAppStatePerf('loadAppStateForCustomer', t0);
+    }
+    return composed;
   }
 
-  const composed = await composeStateForCustomer(customerId);
-  if (composed.data) {
-    writeAppStateCacheForCustomer(customerId, composed.data, composed.updatedAt);
-    logAppStatePerf('loadAppStateForCustomer', t0);
+  // Legacy blob — tam JSON okunur ama yanıt bellekte müşteri dilimine indirgenir;
+  // GET skipPersist ile kalıcı yazma yapılmaz.
+  if (id) {
+    const remote = await loadAppState(options);
+    if (!remote.data) return remote;
+    return {
+      data: filterStateForUser(remote.data, id),
+      updatedAt: remote.updatedAt
+    };
   }
-  return composed;
+
+  return loadAppState(options);
 }
 
 // Uygulama durumunu kaydet — kaydetmeden önce mevcut durumu yedekle
