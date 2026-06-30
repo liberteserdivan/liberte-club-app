@@ -13,18 +13,17 @@ test('authLogin: oturum oluştuktan sonra body hatası 200 plain body döner (50
   assert.match(src, /function buildPlainLoginBody/, 'minimal başarı gövdesi üreteci olmalı');
 
   // Başarı yolu: createSession ÇAĞRISINDAN SONRA body try/catch ile sarılı olmalı
-  const createIdx = src.indexOf('createSession(res');
-  const successCatchIdx = src.indexOf('success_body_failed');
-  assert.ok(createIdx !== -1, 'createSession çağrısı bulunmalı');
-  assert.ok(successCatchIdx !== -1, 'success_body_failed fallback olmalı');
-  assert.ok(createIdx < successCatchIdx, 'body fallback createSession sonrası olmalı');
+  const createIdx = src.indexOf('createSessionOnce(res');
+  const successCatchIdx = src.indexOf('complete_ok');
+  assert.ok(createIdx !== -1, 'createSessionOnce çağrısı bulunmalı');
+  assert.ok(successCatchIdx !== -1, 'complete_ok log olmalı');
+  assert.ok(createIdx < successCatchIdx, 'body fallback createSessionOnce sonrası olmalı');
 
-  // Hata durumunda 200 plain body
-  const tail = src.slice(successCatchIdx);
-  assert.match(tail.slice(0, 200), /buildPlainLoginBody/, 'success body hatasında plain body kullanılmalı');
+  const tail = src.slice(src.indexOf('let bodyOk', createIdx));
+  assert.match(tail.slice(0, 400), /buildPlainLoginBody/, 'success body hatasında plain body kullanılmalı');
 
   // reuse yolu da korunmalı
-  assert.match(src, /reuse_body_failed/, 'reuse body hatası da yakalanmalı');
+  assert.match(src, /outcome\.kind === 'reuse'[\s\S]*buildPlainLoginBody/, 'reuse body hatasında plain body kullanılmalı');
 });
 
 // Sadakat sorgusu non-fatal olmalı (login'i bloklamaz)

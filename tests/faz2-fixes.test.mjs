@@ -62,9 +62,9 @@ test('B-4: rateLimit tek atomik INSERT ON CONFLICT RETURNING kullanir', () => {
 // B-2: login rate-limit retry disinda
 test('B-2: handleAuthLogin rate-limit kontrolu retry disinda', () => {
   const src = read('api/_lib/handlers/authLogin.js');
-  // withSqlRetry'dan ONCE enforceAuthRateLimit cagrilmali
-  const rlIdx = src.indexOf("enforceAuthRateLimit(req, 'auth_login'");
-  const retryIdx = src.indexOf('withSqlRetry(');
+  // runSqlLoginRead'dan ONCE enforceAuthRateLimit cagrilmali
+  const rlIdx = src.indexOf("isLoginRateLimited(req, 'auth_login'");
+  const retryIdx = src.indexOf('runSqlLoginRead(');
   assert.ok(rlIdx > 0 && retryIdx > 0 && rlIdx < retryIdx, 'rate-limit retry oncesi olmali');
   // resolveLoginOutcome icinde artik enforceAuthRateLimit cagrisi olmamali
   const resolveStart = src.indexOf('async function resolveLoginOutcome');

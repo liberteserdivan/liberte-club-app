@@ -1,9 +1,7 @@
-﻿// Uretim API rotalari icin ust sure politikasi — Vercel platform timeout onleme
-
-export const ROUTE_TIMING = {
+﻿export const ROUTE_TIMING = {
   SESSION_NO_TOKEN_MS: 0,
   SESSION_WITH_TOKEN_MS: 4000,
-  LOGIN_MS: 18_000,
+  LOGIN_MS: 6000,
   CUSTOMER_READ_MS: 8000,
   GUARDIAN_HYDRATE_MS: 2000
 };

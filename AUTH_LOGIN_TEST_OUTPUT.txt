@@ -1,0 +1,3091 @@
+﻿
+> liberte-club-app@1.1.30 test
+> node --test tests/*.mjs
+
+TAP version 13
+# Subtest: Admin LP i┼şlemleri ├ğift t─▒k guard (runGuardedLp) ile sar─▒l─▒
+ok 1 - Admin LP i┼şlemleri ├ğift t─▒k guard (runGuardedLp) ile sar─▒l─▒
+  ---
+  duration_ms: 15.1037
+  type: 'test'
+  ...
+# Subtest: Hata/ba┼şar─▒ sonras─▒ u├ğu┼ş h├óli finally blo─şunda temizlenir
+ok 2 - Hata/ba┼şar─▒ sonras─▒ u├ğu┼ş h├óli finally blo─şunda temizlenir
+  ---
+  duration_ms: 5.1199
+  type: 'test'
+  ...
+# Subtest: Admin StampCategoryPanel butonlar─▒ busy iken disabled olur
+ok 3 - Admin StampCategoryPanel butonlar─▒ busy iken disabled olur
+  ---
+  duration_ms: 1.7628
+  type: 'test'
+  ...
+# Subtest: Panel busy prop'u m├╝┼şteri bazl─▒ pending ile beslenir
+ok 4 - Panel busy prop'u m├╝┼şteri bazl─▒ pending ile beslenir
+  ---
+  duration_ms: 4.3155
+  type: 'test'
+  ...
+# Subtest: mergeCustomerRecordsById kay─▒tlar─▒ id ile birle┼ştirir
+ok 5 - mergeCustomerRecordsById kay─▒tlar─▒ id ile birle┼ştirir
+  ---
+  duration_ms: 7.5144
+  type: 'test'
+  ...
+# Subtest: applyAdminMemberSlice tam ├╝ye listesini uygular
+ok 6 - applyAdminMemberSlice tam ├╝ye listesini uygular
+  ---
+  duration_ms: 1.8102
+  type: 'test'
+  ...
+# Subtest: applyAdminMemberSlice k─▒smi listeyi tam listeyi ezmekten korur
+ok 7 - applyAdminMemberSlice k─▒smi listeyi tam listeyi ezmekten korur
+  ---
+  duration_ms: 2.1756
+  type: 'test'
+  ...
+# Subtest: resolveAdminCustomers mevcut listeyi korur
+ok 8 - resolveAdminCustomers mevcut listeyi korur
+  ---
+  duration_ms: 1.2485
+  type: 'test'
+  ...
+# Subtest: mergeAdminRemoteIntoDb k─▒smi state ile tam listeyi ezmez
+ok 9 - mergeAdminRemoteIntoDb k─▒smi state ile tam listeyi ezmez
+  ---
+  duration_ms: 2.411
+  type: 'test'
+  ...
+# Subtest: dedupeCustomersByPhone ayn─▒ telefondaki seed admin ile relational admini birle┼ştirir
+ok 10 - dedupeCustomersByPhone ayn─▒ telefondaki seed admin ile relational admini birle┼ştirir
+  ---
+  duration_ms: 0.9513
+  type: 'test'
+  ...
+# Subtest: finalizeAdminMemberCustomers demo seed kay─▒tlar─▒n─▒ d─▒┼şlar
+ok 11 - finalizeAdminMemberCustomers demo seed kay─▒tlar─▒n─▒ d─▒┼şlar
+  ---
+  duration_ms: 2.688
+  type: 'test'
+  ...
+# Subtest: pickAdminMemberList sunucu listesinde snapshot seed kar─▒┼şmaz
+ok 12 - pickAdminMemberList sunucu listesinde snapshot seed kar─▒┼şmaz
+  ---
+  duration_ms: 3.0429
+  type: 'test'
+  ...
+# Subtest: pickAdminMemberList snapshot ile tek kayda d├╝┼şmez
+ok 13 - pickAdminMemberList snapshot ile tek kayda d├╝┼şmez
+  ---
+  duration_ms: 2.2594
+  type: 'test'
+  ...
+# Subtest: admin members endpoint kay─▒tl─▒
+ok 14 - admin members endpoint kay─▒tl─▒
+  ---
+  duration_ms: 8.0617
+  type: 'test'
+  ...
+# Subtest: mergeAdminRemoteIntoDb m├╝┼şteri oturumunda k─▒s─▒tlama yapmaz
+ok 15 - mergeAdminRemoteIntoDb m├╝┼şteri oturumunda k─▒s─▒tlama yapmaz
+  ---
+  duration_ms: 1.1738
+  type: 'test'
+  ...
+# Subtest: adminMembers: veri okumalar─▒ runSqlReadFast ile fail-fast
+ok 16 - adminMembers: veri okumalar─▒ runSqlReadFast ile fail-fast
+  ---
+  duration_ms: 6.0346
+  type: 'test'
+  ...
+# Subtest: adminMembers: ge├ğici DB hatas─▒nda 503 ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE
+ok 17 - adminMembers: ge├ğici DB hatas─▒nda 503 ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE
+  ---
+  duration_ms: 1.6661
+  type: 'test'
+  ...
+# Subtest: adminMembers: auth/PIN kontrol├╝ veri okumas─▒ndan ├ûNCE (h─▒zl─▒ 401/403)
+ok 18 - adminMembers: auth/PIN kontrol├╝ veri okumas─▒ndan ├ûNCE (h─▒zl─▒ 401/403)
+  ---
+  duration_ms: 2.7026
+  type: 'test'
+  ...
+# Subtest: adminMembers: 500 raw DB error s─▒zd─▒rmaz (publicErrorMessage)
+ok 19 - adminMembers: 500 raw DB error s─▒zd─▒rmaz (publicErrorMessage)
+  ---
+  duration_ms: 3.6305
+  type: 'test'
+  ...
+# Subtest: Guardian: telemetride /api/admin/members 500 varsa healthy g├Âstermez
+ok 20 - Guardian: telemetride /api/admin/members 500 varsa healthy g├Âstermez
+  ---
+  duration_ms: 2.4415
+  type: 'test'
+  ...
+# Subtest: Guardian: admin/members yava┼ş (10sn+) ise de incident ├╝retir
+ok 21 - Guardian: admin/members yava┼ş (10sn+) ise de incident ├╝retir
+  ---
+  duration_ms: 1.4188
+  type: 'test'
+  ...
+# Subtest: Guardian: temiz telemetride healthy kal─▒r (regresyon korumas─▒)
+ok 22 - Guardian: temiz telemetride healthy kal─▒r (regresyon korumas─▒)
+  ---
+  duration_ms: 4.5298
+  type: 'test'
+  ...
+# Subtest: App: admin members yaln─▒zca adminVerified sonras─▒ ├ğa─şr─▒l─▒r (login ekran─▒nda yok)
+ok 23 - App: admin members yaln─▒zca adminVerified sonras─▒ ├ğa─şr─▒l─▒r (login ekran─▒nda yok)
+  ---
+  duration_ms: 3.7145
+  type: 'test'
+  ...
+# Subtest: adminPinAuth production ortam─▒nda ALTER TABLE ├ğal─▒┼şt─▒rmaz
+ok 24 - adminPinAuth production ortam─▒nda ALTER TABLE ├ğal─▒┼şt─▒rmaz
+  ---
+  duration_ms: 3.8388
+  type: 'test'
+  ...
+# Subtest: AdminPinGate auth iste─şinde uzun timeout kullan─▒r
+ok 25 - AdminPinGate auth iste─şinde uzun timeout kullan─▒r
+  ---
+  duration_ms: 4.4799
+  type: 'test'
+  ...
+# Subtest: Admin members polling arka planda/gizliyken durur
+ok 26 - Admin members polling arka planda/gizliyken durur
+  ---
+  duration_ms: 8.6581
+  type: 'test'
+  ...
+# Subtest: Admin dashboard stats polling arka planda/gizliyken durur
+ok 27 - Admin dashboard stats polling arka planda/gizliyken durur
+  ---
+  duration_ms: 5.4277
+  type: 'test'
+  ...
+# Subtest: QR/kasa sekmesi art─▒k 5 saniyede bir poll yapmaz
+ok 28 - QR/kasa sekmesi art─▒k 5 saniyede bir poll yapmaz
+  ---
+  duration_ms: 2.3325
+  type: 'test'
+  ...
+# Subtest: Tam state pull sonras─▒ duplicate admin members fetch yok (tek kanal)
+ok 29 - Tam state pull sonras─▒ duplicate admin members fetch yok (tek kanal)
+  ---
+  duration_ms: 3.5346
+  type: 'test'
+  ...
+# Subtest: useCommit native arka planda interval kurmaz
+ok 30 - useCommit native arka planda interval kurmaz
+  ---
+  duration_ms: 1.959
+  type: 'test'
+  ...
+# Subtest: Realtime hook'lar─▒ db ba─ş─▒ml─▒l─▒─ş─▒yla yeniden abone olmaz (hedefli refresh)
+ok 31 - Realtime hook'lar─▒ db ba─ş─▒ml─▒l─▒─ş─▒yla yeniden abone olmaz (hedefli refresh)
+  ---
+  duration_ms: 4.0987
+  type: 'test'
+  ...
+# Subtest: Android native splash yalnizca yesil zemin XML
+ok 32 - Android native splash yalnizca yesil zemin XML
+  ---
+  duration_ms: 14.5848
+  type: 'test'
+  ...
+# Subtest: Android tam ekran splash PNG kullanilmiyor
+ok 33 - Android tam ekran splash PNG kullanilmiyor
+  ---
+  duration_ms: 1.8635
+  type: 'test'
+  ...
+# Subtest: Android 12 sistem splash ikonu ┼şeffaf
+ok 34 - Android 12 sistem splash ikonu ┼şeffaf
+  ---
+  duration_ms: 1.9362
+  type: 'test'
+  ...
+# Subtest: Android s├╝r├╝m numaras─▒ g├╝ncel
+ok 35 - Android s├╝r├╝m numaras─▒ g├╝ncel
+  ---
+  duration_ms: 2.6522
+  type: 'test'
+  ...
+# Subtest: Capacitor splash ye┼şil zemin
+ok 36 - Capacitor splash ye┼şil zemin
+  ---
+  duration_ms: 1.9844
+  type: 'test'
+  ...
+# Subtest: React splash ┼şeffaf logo kullan─▒r
+ok 37 - React splash ┼şeffaf logo kullan─▒r
+  ---
+  duration_ms: 1.3213
+  type: 'test'
+  ...
+# Subtest: parseAppStateData nesneyi oldu─şu gibi d├Ând├╝r├╝r
+ok 38 - parseAppStateData nesneyi oldu─şu gibi d├Ând├╝r├╝r
+  ---
+  duration_ms: 4.4335
+  type: 'test'
+  ...
+# Subtest: parseAppStateData jsonb stringini nesneye ├ğevirir
+ok 39 - parseAppStateData jsonb stringini nesneye ├ğevirir
+  ---
+  duration_ms: 2.4066
+  type: 'test'
+  ...
+# Subtest: parseAppStateData bozuk stringde null d├Âner
+ok 40 - parseAppStateData bozuk stringde null d├Âner
+  ---
+  duration_ms: 1.1547
+  type: 'test'
+  ...
+# Subtest: parseAppStateData ├ğift kodlanm─▒┼ş jsonb stringini a├ğar
+ok 41 - parseAppStateData ├ğift kodlanm─▒┼ş jsonb stringini a├ğar
+  ---
+  duration_ms: 2.3121
+  type: 'test'
+  ...
+# Subtest: serializeAppStateJson ge├ğerli JSON string ├╝retir
+ok 42 - serializeAppStateJson ge├ğerli JSON string ├╝retir
+  ---
+  duration_ms: 1.7473
+  type: 'test'
+  ...
+# Subtest: authLogin: getSessionIdentityForLogin, loadAppState yok
+ok 43 - authLogin: getSessionIdentityForLogin, loadAppState yok
+  ---
+  duration_ms: 10.653
+  type: 'test'
+  ...
+# Subtest: authLogin: createSessionOnce tek deneme
+ok 44 - authLogin: createSessionOnce tek deneme
+  ---
+  duration_ms: 2.3782
+  type: 'test'
+  ...
+# Subtest: authLogin: runSqlLoginRead bounded
+ok 45 - authLogin: runSqlLoginRead bounded
+  ---
+  duration_ms: 2.7614
+  type: 'test'
+  ...
+# Subtest: authLogin: enrichment failure still plain body
+ok 46 - authLogin: enrichment failure still plain body
+  ---
+  duration_ms: 2.5157
+  type: 'test'
+  ...
+# Subtest: LoginPage: 503 tek deneme, loading kapanir
+ok 47 - LoginPage: 503 tek deneme, loading kapanir
+  ---
+  duration_ms: 5.5317
+  type: 'test'
+  ...
+# Subtest: runSqlLoginRead under 6s on hang
+ok 48 - runSqlLoginRead under 6s on hang
+  ---
+  duration_ms: 5220.2176
+  type: 'test'
+  ...
+# Subtest: authSession: cift withSqlRetry sarmalayici yok (10sn kok nedeni)
+ok 49 - authSession: cift withSqlRetry sarmalayici yok (10sn kok nedeni)
+  ---
+  duration_ms: 17.3569
+  type: 'test'
+  ...
+# Subtest: authSession: token yoksa DB oncesi 401
+ok 50 - authSession: token yoksa DB oncesi 401
+  ---
+  duration_ms: 3.3547
+  type: 'test'
+  ...
+# Subtest: authSession: gecersiz oturum 401
+ok 51 - authSession: gecersiz oturum 401
+  ---
+  duration_ms: 3.6951
+  type: 'test'
+  ...
+# Subtest: authSession: transient 503 SESSION_TEMPORARILY_UNAVAILABLE session_unavailable
+ok 52 - authSession: transient 503 SESSION_TEMPORARILY_UNAVAILABLE session_unavailable
+  ---
+  duration_ms: 2.8145
+  type: 'test'
+  ...
+# Subtest: authSession: loadAppState veya syncSessionWithCustomer cagirmaz
+ok 53 - authSession: loadAppState veya syncSessionWithCustomer cagirmaz
+  ---
+  duration_ms: 3.1008
+  type: 'test'
+  ...
+# Subtest: getSessionForBootstrap: runSqlSessionBootstrap kullanir
+ok 54 - getSessionForBootstrap: runSqlSessionBootstrap kullanir
+  ---
+  duration_ms: 3.8657
+  type: 'test'
+  ...
+# Subtest: runSqlSessionBootstrap: transient timeout 4sn altinda fail eder
+ok 55 - runSqlSessionBootstrap: transient timeout 4sn altinda fail eder
+  ---
+  duration_ms: 3861.8473
+  type: 'test'
+  ...
+# Subtest: bootstrapSession: 401 normal null (modal yok)
+ok 56 - bootstrapSession: 401 normal null (modal yok)
+  ---
+  duration_ms: 1.157
+  type: 'test'
+  ...
+# Subtest: bootstrapSession: 503 sessionUnavailable doner
+ok 57 - bootstrapSession: 503 sessionUnavailable doner
+  ---
+  duration_ms: 1.2685
+  type: 'test'
+  ...
+# Subtest: App: sessionUnavailable authNotice ile giris formu acik kalir
+ok 58 - App: sessionUnavailable authNotice ile giris formu acik kalir
+  ---
+  duration_ms: 1.1199
+  type: 'test'
+  ...
+# Subtest: auth.js: GET session token yoksa withSqlRequest oncesi 401 (504 kok nedeni)
+ok 59 - auth.js: GET session token yoksa withSqlRequest oncesi 401 (504 kok nedeni)
+  ---
+  duration_ms: 0.8327
+  type: 'test'
+  ...
+# Subtest: auth.js: no-token path getSql veya hydrateGuardianState cagirmaz
+ok 60 - auth.js: no-token path getSql veya hydrateGuardianState cagirmaz
+  ---
+  duration_ms: 0.5742
+  type: 'test'
+  ...
+# Subtest: authSession: rota deadline guard var (platform timeout onleme, 4sn)
+ok 61 - authSession: rota deadline guard var (platform timeout onleme, 4sn)
+  ---
+  duration_ms: 0.6997
+  type: 'test'
+  ...
+# Subtest: auth.js: login withSqlRequestNoGuardian kullanir (guardian izolasyonu)
+ok 62 - auth.js: login withSqlRequestNoGuardian kullanir (guardian izolasyonu)
+  ---
+  duration_ms: 1.1997
+  type: 'test'
+  ...
+# Subtest: sqlRequest: withSqlRequestNoGuardian hydrate atlar
+ok 63 - sqlRequest: withSqlRequestNoGuardian hydrate atlar
+  ---
+  duration_ms: 0.9786
+  type: 'test'
+  ...
+# Subtest: loyalty daily-claim guardian hydrate kullanmaz
+ok 64 - loyalty daily-claim guardian hydrate kullanmaz
+  ---
+  duration_ms: 0.9997
+  type: 'test'
+  ...
+# Subtest: authLogin: transient/deadline 503 LOGIN_TEMPORARILY_UNAVAILABLE
+ok 65 - authLogin: transient/deadline 503 LOGIN_TEMPORARILY_UNAVAILABLE
+  ---
+  duration_ms: 0.937
+  type: 'test'
+  ...
+# Subtest: App: musteri hydrate timeout logout yapmaz degraded mod
+ok 66 - App: musteri hydrate timeout logout yapmaz degraded mod
+  ---
+  duration_ms: 0.5675
+  type: 'test'
+  ...
+# Subtest: guardianHydrate: bounded timeout (musteri cekirdegi bloklanmaz)
+ok 67 - guardianHydrate: bounded timeout (musteri cekirdegi bloklanmaz)
+  ---
+  duration_ms: 0.4762
+  type: 'test'
+  ...
+# Subtest: mergeAuthSnapshot yeni m├╝┼şteriyi yerel db ye ekler
+ok 68 - mergeAuthSnapshot yeni m├╝┼şteriyi yerel db ye ekler
+  ---
+  duration_ms: 7.521
+  type: 'test'
+  ...
+# Subtest: authLogin: oturum olu┼ştuktan sonra body hatas─▒ 200 plain body d├Âner (500 de─şil)
+ok 69 - authLogin: oturum olu┼ştuktan sonra body hatas─▒ 200 plain body d├Âner (500 de─şil)
+  ---
+  duration_ms: 4.0388
+  type: 'test'
+  ...
+# Subtest: authLogin: sadakat sorgusu non-fatal (try/catch ile loyalty null)
+ok 70 - authLogin: sadakat sorgusu non-fatal (try/catch ile loyalty null)
+  ---
+  duration_ms: 1.9032
+  type: 'test'
+  ...
+# Subtest: runSql: runSqlReadFast k─▒sa timeout + az deneme ile tan─▒ml─▒
+ok 71 - runSql: runSqlReadFast k─▒sa timeout + az deneme ile tan─▒ml─▒
+  ---
+  duration_ms: 2.3289
+  type: 'test'
+  ...
+# Subtest: auth: getSession/getSessionForBootstrap/getSessionForQr fail-fast okuma kullan─▒r
+ok 72 - auth: getSession/getSessionForBootstrap/getSessionForQr fail-fast okuma kullan─▒r
+  ---
+  duration_ms: 1.8628
+  type: 'test'
+  ...
+# Subtest: auth: token yoksa session getter DB'ye gitmeden null d├Âner
+ok 73 - auth: token yoksa session getter DB'ye gitmeden null d├Âner
+  ---
+  duration_ms: 1.6315
+  type: 'test'
+  ...
+# Subtest: LoginPage: duplicate login submit in-flight guard ile engellenir
+ok 74 - LoginPage: duplicate login submit in-flight guard ile engellenir
+  ---
+  duration_ms: 2.3903
+  type: 'test'
+  ...
+# Subtest: App: oturum yokken background 401 logout/login d├Âng├╝s├╝ tetiklemez
+ok 75 - App: oturum yokken background 401 logout/login d├Âng├╝s├╝ tetiklemez
+  ---
+  duration_ms: 2.8793
+  type: 'test'
+  ...
+# Subtest: useCommit: resetDb bellek state'ini seed'e d├Ând├╝r├╝r
+ok 76 - useCommit: resetDb bellek state'ini seed'e d├Ând├╝r├╝r
+  ---
+  duration_ms: 3.8804
+  type: 'test'
+  ...
+# Subtest: App.jsx logout resetDb ├ğa─ş─▒r─▒r
+ok 77 - App.jsx logout resetDb ├ğa─ş─▒r─▒r
+  ---
+  duration_ms: 5.7098
+  type: 'test'
+  ...
+# Subtest: pushPrompt: deactivateDevicePushToken commit kullanmaz
+ok 78 - pushPrompt: deactivateDevicePushToken commit kullanmaz
+  ---
+  duration_ms: 3.2359
+  type: 'test'
+  ...
+# Subtest: LoginPage: u├ğu┼ştaki login ├ğ─▒k─▒┼ş sonras─▒ oturumu geri a├ğmaz
+ok 79 - LoginPage: u├ğu┼ştaki login ├ğ─▒k─▒┼ş sonras─▒ oturumu geri a├ğmaz
+  ---
+  duration_ms: 2.3164
+  type: 'test'
+  ...
+# Subtest: session bootstrap: ge├ğ gelen yan─▒t login sonras─▒ oturumu silmez
+ok 80 - session bootstrap: ge├ğ gelen yan─▒t login sonras─▒ oturumu silmez
+  ---
+  duration_ms: 1.5697
+  type: 'test'
+  ...
+# Subtest: App bootstrap: canl─▒ oturum varken ge├ğ bootstrap UI ezmez
+ok 81 - App bootstrap: canl─▒ oturum varken ge├ğ bootstrap UI ezmez
+  ---
+  duration_ms: 1.8591
+  type: 'test'
+  ...
+# Subtest: applyBirthdayCoffee: gecmis bos ise dogum gununde ikram verir
+ok 82 - applyBirthdayCoffee: gecmis bos ise dogum gununde ikram verir
+  ---
+  duration_ms: 66.5767
+  type: 'test'
+  ...
+# Subtest: applyBirthdayCoffee: ayni yil zaten alinmissa reddeder (dedup)
+ok 83 - applyBirthdayCoffee: ayni yil zaten alinmissa reddeder (dedup)
+  ---
+  duration_ms: 1.5382
+  type: 'test'
+  ...
+# Subtest: applyLoyaltyActionRelational dogum gunu icin gecmis yukler
+ok 84 - applyLoyaltyActionRelational dogum gunu icin gecmis yukler
+  ---
+  duration_ms: 2.7277
+  type: 'test'
+  ...
+# Subtest: RB-4: sql.js baglanti secenekleri statement_timeout iceriyor
+ok 85 - RB-4: sql.js baglanti secenekleri statement_timeout iceriyor
+  ---
+  duration_ms: 10.3621
+  type: 'test'
+  ...
+# Subtest: RB-3: persistStateToRelational toplu upsert ve transaction kullanir
+ok 86 - RB-3: persistStateToRelational toplu upsert ve transaction kullanir
+  ---
+  duration_ms: 2.9916
+  type: 'test'
+  ...
+# Subtest: RB-3: toplu upsert fonksiyonlari customersStore icinde tanimli
+ok 87 - RB-3: toplu upsert fonksiyonlari customersStore icinde tanimli
+  ---
+  duration_ms: 2.382
+  type: 'test'
+  ...
+# Subtest: RB-5: register bumpAppStateRevision try/catch ile sarili
+ok 88 - RB-5: register bumpAppStateRevision try/catch ile sarili
+  ---
+  duration_ms: 2.4047
+  type: 'test'
+  ...
+# Config eri┼şim testleri ge├ğti.
+# Subtest: tests\\config-access.test.mjs
+ok 14 - tests\\config-access.test.mjs
+  ---
+  duration_ms: 357.708
+  type: 'test'
+  ...
+# cors-native.test.mjs: OK
+# Subtest: tests\\cors-native.test.mjs
+ok 15 - tests\\cors-native.test.mjs
+  ---
+  duration_ms: 369.7024
+  type: 'test'
+  ...
+# Subtest: purgeCustomerRelational customers + auth + pin + email tablolar─▒ndan siler
+ok 91 - purgeCustomerRelational customers + auth + pin + email tablolar─▒ndan siler
+  ---
+  duration_ms: 350.7866
+  type: 'test'
+  ...
+# Subtest: adminAccountDelete relational modda purgeCustomerRelational kullan─▒r
+ok 92 - adminAccountDelete relational modda purgeCustomerRelational kullan─▒r
+  ---
+  duration_ms: 2.1921
+  type: 'test'
+  ...
+# Subtest: e┼şzamanl─▒ iki damga K─░L─░TL─░ ak─▒┼şta kaybolmaz (+2)
+ok 93 - e┼şzamanl─▒ iki damga K─░L─░TL─░ ak─▒┼şta kaybolmaz (+2)
+  ---
+  duration_ms: 54.4072
+  type: 'test'
+  ...
+# Subtest: K─░L─░TS─░Z ak─▒┼ş update kaybeder (regresyon kan─▒t─▒)
+ok 94 - K─░L─░TS─░Z ak─▒┼ş update kaybeder (regresyon kan─▒t─▒)
+  ---
+  duration_ms: 7.074
+  type: 'test'
+  ...
+# Subtest: applyLoyaltyActionRelational transaction + FOR UPDATE kullan─▒r
+ok 95 - applyLoyaltyActionRelational transaction + FOR UPDATE kullan─▒r
+  ---
+  duration_ms: 4.336
+  type: 'test'
+  ...
+# Subtest: SAFE_PROFILE_FIELDS email i├ğermez
+ok 96 - SAFE_PROFILE_FIELDS email i├ğermez
+  ---
+  duration_ms: 8.0245
+  type: 'test'
+  ...
+# Subtest: apiClient web token storage: native d─▒┼ş─▒ persist etmez
+ok 97 - apiClient web token storage: native d─▒┼ş─▒ persist etmez
+  ---
+  duration_ms: 1.824
+  type: 'test'
+  ...
+# Subtest: adminFullSnapshot TTL ve minimal alan uygular
+ok 98 - adminFullSnapshot TTL ve minimal alan uygular
+  ---
+  duration_ms: 9.9735
+  type: 'test'
+  ...
+# Subtest: logoutSession admin snapshot temizli─şini i├ğerir
+ok 99 - logoutSession admin snapshot temizli─şini i├ğerir
+  ---
+  duration_ms: 3.1726
+  type: 'test'
+  ...
+# Subtest: verifyCustomerQrToken nonce d├Ând├╝r├╝r
+ok 100 - verifyCustomerQrToken nonce d├Ând├╝r├╝r
+  ---
+  duration_ms: 13.9745
+  type: 'test'
+  ...
+# Subtest: claimQrNonce ayn─▒ nonce+action i├ğin ikinci kez reddeder
+ok 101 - claimQrNonce ayn─▒ nonce+action i├ğin ikinci kez reddeder
+  ---
+  duration_ms: 25.4496
+  type: 'test'
+  ...
+# Subtest: handleAdminLoyaltyAction replay'de 409 d├Âner
+ok 102 - handleAdminLoyaltyAction replay'de 409 d├Âner
+  ---
+  duration_ms: 1.9086
+  type: 'test'
+  ...
+# Subtest: nonce claim loyalty transaction ─░├ç─░NDE yap─▒l─▒r (atomik) - hata olursa geri al─▒n─▒r
+ok 103 - nonce claim loyalty transaction ─░├ç─░NDE yap─▒l─▒r (atomik) - hata olursa geri al─▒n─▒r
+  ---
+  duration_ms: 4.2983
+  type: 'test'
+  ...
+# Subtest: 004 migration unique constraint ve qr_used_tokens i├ğerir
+ok 104 - 004 migration unique constraint ve qr_used_tokens i├ğerir
+  ---
+  duration_ms: 6.1392
+  type: 'test'
+  ...
+# Subtest: customer_emails.email PK ÔåÆ m├╝kerrer e-posta race engellenir
+ok 105 - customer_emails.email PK ÔåÆ m├╝kerrer e-posta race engellenir
+  ---
+  duration_ms: 3.0216
+  type: 'test'
+  ...
+# Subtest: verificationMail crypto.randomInt ve HTML escape kullan─▒r
+ok 106 - verificationMail crypto.randomInt ve HTML escape kullan─▒r
+  ---
+  duration_ms: 2.7384
+  type: 'test'
+  ...
+# Subtest: validateInput yard─▒mc─▒lar─▒ do─şru ├ğal─▒┼ş─▒r
+ok 107 - validateInput yard─▒mc─▒lar─▒ do─şru ├ğal─▒┼ş─▒r
+  ---
+  duration_ms: 5.5192
+  type: 'test'
+  ...
+# Subtest: push register endpoint input validation uygular
+ok 108 - push register endpoint input validation uygular
+  ---
+  duration_ms: 1.9051
+  type: 'test'
+  ...
+# Subtest: error log olu┼şturma input validation uygular
+ok 109 - error log olu┼şturma input validation uygular
+  ---
+  duration_ms: 1.5924
+  type: 'test'
+  ...
+# Subtest: g├╝nl├╝k LP ├Âd├╝l├╝ sunucu API ile kaydedilir
+ok 110 - g├╝nl├╝k LP ├Âd├╝l├╝ sunucu API ile kaydedilir
+  ---
+  duration_ms: 6.2365
+  type: 'test'
+  ...
+# Subtest: vercel loyalty rewrite tan─▒ml─▒
+ok 111 - vercel loyalty rewrite tan─▒ml─▒
+  ---
+  duration_ms: 2.7467
+  type: 'test'
+  ...
+# Subtest: ayn─▒ m├╝┼şteri ayn─▒ g├╝n iki kez claim alamaz
+ok 112 - ayn─▒ m├╝┼şteri ayn─▒ g├╝n iki kez claim alamaz
+  ---
+  duration_ms: 4.1644
+  type: 'test'
+  ...
+# Subtest: farkl─▒ m├╝┼şteriler ayn─▒ g├╝n claim yapabilir (global kilit yok)
+ok 113 - farkl─▒ m├╝┼şteriler ayn─▒ g├╝n claim yapabilir (global kilit yok)
+  ---
+  duration_ms: 1.0006
+  type: 'test'
+  ...
+# Subtest: g├╝nl├╝k ├Âd├╝l global app_state FOR UPDATE kilidini kullanmaz
+ok 114 - g├╝nl├╝k ├Âd├╝l global app_state FOR UPDATE kilidini kullanmaz
+  ---
+  duration_ms: 2.3317
+  type: 'test'
+  ...
+# Subtest: 005 migration daily_claims tekillik indexi tan─▒mlar
+ok 115 - 005 migration daily_claims tekillik indexi tan─▒mlar
+  ---
+  duration_ms: 2.0641
+  type: 'test'
+  ...
+# Subtest: relationalState dailyClaims'i tablodan okur
+ok 116 - relationalState dailyClaims'i tablodan okur
+  ---
+  duration_ms: 3.1752
+  type: 'test'
+  ...
+# Subtest: ensureDailyClaimsSchema production ortaminda SQL calistirmaz
+ok 117 - ensureDailyClaimsSchema production ortaminda SQL calistirmaz
+  ---
+  duration_ms: 9.3634
+  type: 'test'
+  ...
+# Subtest: ensureDailyClaimsSchema production disinda DDL calistirir
+ok 118 - ensureDailyClaimsSchema production disinda DDL calistirir
+  ---
+  duration_ms: 2.041
+  type: 'test'
+  ...
+# [db.connection] BLOCKED {"provider":"neon","hostMasked":"ep-test.***.neon.tech","port":5432,"env":"production","reason":"neon_not_allowed_in_production"}
+# Subtest: describeDatabaseUrl Supabase pooler tan─▒r
+ok 119 - describeDatabaseUrl Supabase pooler tan─▒r
+  ---
+  duration_ms: 6.4932
+  type: 'test'
+  ...
+# Subtest: describeDatabaseUrl Neon tan─▒r
+ok 120 - describeDatabaseUrl Neon tan─▒r
+  ---
+  duration_ms: 2.1431
+  type: 'test'
+  ...
+# Subtest: describeDatabaseUrl bo┼ş URL unknown d├Âner
+ok 121 - describeDatabaseUrl bo┼ş URL unknown d├Âner
+  ---
+  duration_ms: 8.6003
+  type: 'test'
+  ...
+# Subtest: getSql production Neon ba─şlant─▒s─▒n─▒ reddeder
+ok 122 - getSql production Neon ba─şlant─▒s─▒n─▒ reddeder
+  ---
+  duration_ms: 131.0069
+  type: 'test'
+  ...
+# Subtest: READ: bayat/as─▒l─▒ ba─şlant─▒ attemptTimeoutMs ile s─▒n─▒rl─▒ denemede fail/retry yapar
+ok 123 - READ: bayat/as─▒l─▒ ba─şlant─▒ attemptTimeoutMs ile s─▒n─▒rl─▒ denemede fail/retry yapar
+  ---
+  duration_ms: 406.0891
+  type: 'test'
+  ...
+# Subtest: WRITE: attemptTimeoutMs yokken g├Ârev tek kez ├ğal─▒┼ş─▒r (├ğift mutasyon yok)
+ok 124 - WRITE: attemptTimeoutMs yokken g├Ârev tek kez ├ğal─▒┼ş─▒r (├ğift mutasyon yok)
+  ---
+  duration_ms: 72.4446
+  type: 'test'
+  ...
+# Subtest: runSqlRead read i├ğin attemptTimeout, runSql (write) i├ğin yok
+ok 125 - runSqlRead read i├ğin attemptTimeout, runSql (write) i├ğin yok
+  ---
+  duration_ms: 3.4007
+  type: 'test'
+  ...
+# Subtest: state.js read u├ğlar─▒ runSqlReadFast (fail-fast), write (saveAppState) runSql kullan─▒r
+ok 126 - state.js read u├ğlar─▒ runSqlReadFast (fail-fast), write (saveAppState) runSql kullan─▒r
+  ---
+  duration_ms: 2.0259
+  type: 'test'
+  ...
+# Subtest: Yazma transactionlar─▒ statement_timeout ile s─▒n─▒rl─▒
+ok 127 - Yazma transactionlar─▒ statement_timeout ile s─▒n─▒rl─▒
+  ---
+  duration_ms: 3.3205
+  type: 'test'
+  ...
+# Subtest: Supabase pooler kopmas─▒ ge├ğici hata say─▒l─▒r
+ok 128 - Supabase pooler kopmas─▒ ge├ğici hata say─▒l─▒r
+  ---
+  duration_ms: 9.6903
+  type: 'test'
+  ...
+# Subtest: EDBHANDLEREXITED ge├ğici hata say─▒l─▒r
+ok 129 - EDBHANDLEREXITED ge├ğici hata say─▒l─▒r
+  ---
+  duration_ms: 4.3222
+  type: 'test'
+  ...
+# Subtest: ham DB metni istemciye s─▒zd─▒r─▒lmaz
+ok 130 - ham DB metni istemciye s─▒zd─▒r─▒lmaz
+  ---
+  duration_ms: 3.2885
+  type: 'test'
+  ...
+# Subtest: attemptTimeoutMs: tak─▒lan sorgu s─▒n─▒rda vazge├ğip taze ba─şlant─▒yla yeniden dener
+ok 131 - attemptTimeoutMs: tak─▒lan sorgu s─▒n─▒rda vazge├ğip taze ba─şlant─▒yla yeniden dener
+  ---
+  duration_ms: 137.5924
+  type: 'test'
+  ...
+# Subtest: attemptTimeoutMs verilmezse davran─▒┼ş de─şi┼şmez (s─▒n─▒r yok)
+ok 132 - attemptTimeoutMs verilmezse davran─▒┼ş de─şi┼şmez (s─▒n─▒r yok)
+  ---
+  duration_ms: 1.5129
+  type: 'test'
+  ...
+# Subtest: ge├ğici olmayan hata zaman s─▒n─▒r─▒ndan ba─ş─▒ms─▒z hemen y├╝kselir
+ok 133 - ge├ğici olmayan hata zaman s─▒n─▒r─▒ndan ba─ş─▒ms─▒z hemen y├╝kselir
+  ---
+  duration_ms: 2.9343
+  type: 'test'
+  ...
+# Subtest: circuit breaker 3 hata sonras─▒ a├ğ─▒l─▒r ve skip eder
+ok 134 - circuit breaker 3 hata sonras─▒ a├ğ─▒l─▒r ve skip eder
+  ---
+  duration_ms: 20.2685
+  type: 'test'
+  ...
+# Subtest: circuit breaker ba┼şar─▒da ve resette s─▒f─▒rlan─▒r
+ok 135 - circuit breaker ba┼şar─▒da ve resette s─▒f─▒rlan─▒r
+  ---
+  duration_ms: 1.4181
+  type: 'test'
+  ...
+# Subtest: deriveClientHealth ger├ğek telemetry ├Ârne─şinde healthy demez
+ok 136 - deriveClientHealth ger├ğek telemetry ├Ârne─şinde healthy demez
+  ---
+  duration_ms: 7.7039
+  type: 'test'
+  ...
+# Subtest: deriveClientHealth 65 hata/30 timeout yo─şunlu─şunda ye┼şil kalmaz
+ok 137 - deriveClientHealth 65 hata/30 timeout yo─şunlu─şunda ye┼şil kalmaz
+  ---
+  duration_ms: 1.8649
+  type: 'test'
+  ...
+# Subtest: deriveClientHealth temiz telemetride healthy d├Âner
+ok 138 - deriveClientHealth temiz telemetride healthy d├Âner
+  ---
+  duration_ms: 1.4126
+  type: 'test'
+  ...
+# Subtest: deriveClientHealth push 504 auth/login severity'sini incident yapmaz (sadece degraded)
+ok 139 - deriveClientHealth push 504 auth/login severity'sini incident yapmaz (sadece degraded)
+  ---
+  duration_ms: 1.8246
+  type: 'test'
+  ...
+# Subtest: isCustomerRealtimeDisabled Safe Mode realtime degraded ile true d├Âner
+ok 140 - isCustomerRealtimeDisabled Safe Mode realtime degraded ile true d├Âner
+  ---
+  duration_ms: 9.8312
+  type: 'test'
+  ...
+# Subtest: auth/session transient hatada 503 SESSION_TEMPORARILY_UNAVAILABLE d├Âner
+ok 141 - auth/session transient hatada 503 SESSION_TEMPORARILY_UNAVAILABLE d├Âner
+  ---
+  duration_ms: 299.8705
+  type: 'test'
+  ...
+# Subtest: guardian DB_HEALTH_TIMEOUT_MS 3sn alt─▒ (fail-fast)
+ok 142 - guardian DB_HEALTH_TIMEOUT_MS 3sn alt─▒ (fail-fast)
+  ---
+  duration_ms: 6.0947
+  type: 'test'
+  ...
+# Subtest: ESLint config eslint-plugin-react ve jsx-uses-vars kullan─▒r
+ok 143 - ESLint config eslint-plugin-react ve jsx-uses-vars kullan─▒r
+  ---
+  duration_ms: 5.0278
+  type: 'test'
+  ...
+# Subtest: eslint-plugin-react package.json devDependencies i├ğinde
+ok 144 - eslint-plugin-react package.json devDependencies i├ğinde
+  ---
+  duration_ms: 6.3767
+  type: 'test'
+  ...
+# Subtest: B-1: hashPin asenkron (Promise) ve gecerli salt/hash uretir
+ok 145 - B-1: hashPin asenkron (Promise) ve gecerli salt/hash uretir
+  ---
+  duration_ms: 109.2161
+  type: 'test'
+  ...
+# Subtest: B-1: pinAuth artik pbkdf2Sync kullanmiyor
+ok 146 - B-1: pinAuth artik pbkdf2Sync kullanmiyor
+  ---
+  duration_ms: 4.5127
+  type: 'test'
+  ...
+# Subtest: RB-2: production + ADMIN_PIN var ama QR_SIGNING_SECRET yok -> missing
+ok 147 - RB-2: production + ADMIN_PIN var ama QR_SIGNING_SECRET yok -> missing
+  ---
+  duration_ms: 3.0299
+  type: 'test'
+  ...
+# Subtest: RB-2: uretim disinda ADMIN_PIN turetmesi calisir
+ok 148 - RB-2: uretim disinda ADMIN_PIN turetmesi calisir
+  ---
+  duration_ms: 2.9685
+  type: 'test'
+  ...
+# Subtest: B-4: rateLimit tek atomik INSERT ON CONFLICT RETURNING kullanir
+ok 149 - B-4: rateLimit tek atomik INSERT ON CONFLICT RETURNING kullanir
+  ---
+  duration_ms: 2.7709
+  type: 'test'
+  ...
+# Subtest: B-2: handleAuthLogin rate-limit kontrolu retry disinda
+ok 150 - B-2: handleAuthLogin rate-limit kontrolu retry disinda
+  ---
+  duration_ms: 3.8817
+  type: 'test'
+  ...
+# Subtest: O-3: push/realtime handler ham error.message dondurmuyor
+ok 151 - O-3: push/realtime handler ham error.message dondurmuyor
+  ---
+  duration_ms: 3.0244
+  type: 'test'
+  ...
+# Subtest: LP 3.2: customerRewards bumpAppStateRevision try/catch ile sarili
+ok 152 - LP 3.2: customerRewards bumpAppStateRevision try/catch ile sarili
+  ---
+  duration_ms: 1.9561
+  type: 'test'
+  ...
+# Subtest: B-10: invalidateSessionsForCustomer disa aktarilir ve guard icerir
+ok 153 - B-10: invalidateSessionsForCustomer disa aktarilir ve guard icerir
+  ---
+  duration_ms: 3.6718
+  type: 'test'
+  ...
+# Subtest: B-10: forgot-pin reset akisi oturum iptalini cagirir
+ok 154 - B-10: forgot-pin reset akisi oturum iptalini cagirir
+  ---
+  duration_ms: 4.712
+  type: 'test'
+  ...
+# Subtest: B-9: purgeExpiredAuthData disa aktarilir ve sql yoksa guard eder
+ok 155 - B-9: purgeExpiredAuthData disa aktarilir ve sql yoksa guard eder
+  ---
+  duration_ms: 1.3953
+  type: 'test'
+  ...
+# Subtest: B-9: logout (destroySession) dusuk olasilikla temizlik cagirir
+ok 156 - B-9: logout (destroySession) dusuk olasilikla temizlik cagirir
+  ---
+  duration_ms: 2.5251
+  type: 'test'
+  ...
+# Subtest: B-14: cookie Secure bayragi VERCEL_ENV preview/production icerir
+ok 157 - B-14: cookie Secure bayragi VERCEL_ENV preview/production icerir
+  ---
+  duration_ms: 2.5116
+  type: 'test'
+  ...
+# Subtest: Bildirim B-9: buildFirebaseMessagingSw kaldirildi
+ok 158 - Bildirim B-9: buildFirebaseMessagingSw kaldirildi
+  ---
+  duration_ms: 4.4983
+  type: 'test'
+  ...
+# Subtest: Kamera B-4: describeCameraError izin reddini yonlendirir
+ok 159 - Kamera B-4: describeCameraError izin reddini yonlendirir
+  ---
+  duration_ms: 4.3282
+  type: 'test'
+  ...
+# Subtest: B-5: loadAppStateRevision yerel onbellek sinyaline guvenmez
+ok 160 - B-5: loadAppStateRevision yerel onbellek sinyaline guvenmez
+  ---
+  duration_ms: 5.9057
+  type: 'test'
+  ...
+# Subtest: B-5: cache TTL bayatlik penceresi dusuruldu (<= 10s)
+ok 161 - B-5: cache TTL bayatlik penceresi dusuruldu (<= 10s)
+  ---
+  duration_ms: 1.9571
+  type: 'test'
+  ...
+# Subtest: Platform: web/iOS/Android surumleri 1.1.30 hizali
+ok 162 - Platform: web/iOS/Android surumleri 1.1.30 hizali
+  ---
+  duration_ms: 14.1411
+  type: 'test'
+  ...
+# Subtest: RB-3: chunkArray bos dizide bos dondurur
+ok 163 - RB-3: chunkArray bos dizide bos dondurur
+  ---
+  duration_ms: 7.9788
+  type: 'test'
+  ...
+# Subtest: RB-3: chunkArray tek parca (size altinda) dondurur
+ok 164 - RB-3: chunkArray tek parca (size altinda) dondurur
+  ---
+  duration_ms: 1.5697
+  type: 'test'
+  ...
+# Subtest: RB-3: chunkArray buyuk diziyi 500luk parcalara boler
+ok 165 - RB-3: chunkArray buyuk diziyi 500luk parcalara boler
+  ---
+  duration_ms: 1.2132
+  type: 'test'
+  ...
+# Subtest: RB-3: toplu upsertler chunkArray kullanir
+ok 166 - RB-3: toplu upsertler chunkArray kullanir
+  ---
+  duration_ms: 4.738
+  type: 'test'
+  ...
+# Subtest: B-3: enforceAuthRateLimit identifier kabul eder (DB yokken false)
+ok 167 - B-3: enforceAuthRateLimit identifier kabul eder (DB yokken false)
+  ---
+  duration_ms: 2.3763
+  type: 'test'
+  ...
+# Subtest: B-3: login telefon bazli + gevsek IP limiti kullanir
+ok 168 - B-3: login telefon bazli + gevsek IP limiti kullanir
+  ---
+  duration_ms: 2.2475
+  type: 'test'
+  ...
+# Subtest: B-3: enforceAuthRateLimit identifier ile kimlik bazli anahtar uretir
+ok 169 - B-3: enforceAuthRateLimit identifier ile kimlik bazli anahtar uretir
+  ---
+  duration_ms: 4.2878
+  type: 'test'
+  ...
+# Subtest: Bot cron: CRON_SECRET yokken 401 doner
+ok 170 - Bot cron: CRON_SECRET yokken 401 doner
+  ---
+  duration_ms: 11.0917
+  type: 'test'
+  ...
+# Subtest: Bot cron: vercel.json cron ve rewrite icerir
+ok 171 - Bot cron: vercel.json cron ve rewrite icerir
+  ---
+  duration_ms: 3.3755
+  type: 'test'
+  ...
+# Subtest: Incident kaydinda AI fix bekliyor karti olusur
+ok 172 - Incident kaydinda AI fix bekliyor karti olusur
+  ---
+  duration_ms: 30.0267
+  type: 'test'
+  ...
+# Subtest: AI fix karti prompt onizlemesi tasir
+ok 173 - AI fix karti prompt onizlemesi tasir
+  ---
+  duration_ms: 3.5582
+  type: 'test'
+  ...
+# Subtest: Ayni incident icin dedup ÔÇö tek AI fix karti
+ok 174 - Ayni incident icin dedup ÔÇö tek AI fix karti
+  ---
+  duration_ms: 3.3637
+  type: 'test'
+  ...
+# Subtest: Incident cozulunce AI fix karti kapanir
+ok 175 - Incident cozulunce AI fix karti kapanir
+  ---
+  duration_ms: 7.3473
+  type: 'test'
+  ...
+# Subtest: filterAiFixWaitingProposals yalnizca generate_cursor_fix_prompt secer
+ok 176 - filterAiFixWaitingProposals yalnizca generate_cursor_fix_prompt secer
+  ---
+  duration_ms: 1.5572
+  type: 'test'
+  ...
+# Subtest: autoReport yoksa AI fix karti olusmaz
+ok 177 - autoReport yoksa AI fix karti olusmaz
+  ---
+  duration_ms: 1.2229
+  type: 'test'
+  ...
+# Subtest: Incident kaydinda otomatik Cursor raporu olusur
+ok 178 - Incident kaydinda otomatik Cursor raporu olusur
+  ---
+  duration_ms: 41.3314
+  type: 'test'
+  ...
+# Subtest: Ayni occurrences icin rapor yeniden uretilmez (dedup)
+ok 179 - Ayni occurrences icin rapor yeniden uretilmez (dedup)
+  ---
+  duration_ms: 3.0211
+  type: 'test'
+  ...
+# Subtest: Occurrences artinca otomatik rapor tazelenir
+ok 180 - Occurrences artinca otomatik rapor tazelenir
+  ---
+  duration_ms: 5.9991
+  type: 'test'
+  ...
+# Subtest: shouldAutoAlertForIncident ÔÇö incident/critical her zaman alert
+ok 181 - shouldAutoAlertForIncident ÔÇö incident/critical her zaman alert
+  ---
+  duration_ms: 2.3808
+  type: 'test'
+  ...
+# Subtest: Alert metni otomatik rapor hazir bilgisini icerir
+ok 182 - Alert metni otomatik rapor hazir bilgisini icerir
+  ---
+  duration_ms: 4.2737
+  type: 'test'
+  ...
+# Subtest: Allowlist ve blocklist tutarl─▒
+ok 183 - Allowlist ve blocklist tutarl─▒
+  ---
+  duration_ms: 7.2957
+  type: 'test'
+  ...
+# Subtest: Blocked action reddedilir: run_migration
+ok 184 - Blocked action reddedilir: run_migration
+  ---
+  duration_ms: 2.4885
+  type: 'test'
+  ...
+# Subtest: Blocked action reddedilir: deploy_production
+ok 185 - Blocked action reddedilir: deploy_production
+  ---
+  duration_ms: 0.6248
+  type: 'test'
+  ...
+# Subtest: Blocked action reddedilir: modify_loyalty_balance
+ok 186 - Blocked action reddedilir: modify_loyalty_balance
+  ---
+  duration_ms: 0.9525
+  type: 'test'
+  ...
+# Subtest: Blocked action reddedilir: delete_customer
+ok 187 - Blocked action reddedilir: delete_customer
+  ---
+  duration_ms: 0.5968
+  type: 'test'
+  ...
+# Subtest: Blocked action propose edilince g├╝venlik incident d├╝┼şer ve uygulanmaz
+ok 188 - Blocked action propose edilince g├╝venlik incident d├╝┼şer ve uygulanmaz
+  ---
+  duration_ms: 17.7686
+  type: 'test'
+  ...
+# Subtest: Level 2 aksiyon onays─▒z ├ğal─▒┼şmaz, onay sonras─▒ uygulan─▒r
+ok 189 - Level 2 aksiyon onays─▒z ├ğal─▒┼şmaz, onay sonras─▒ uygulan─▒r
+  ---
+  duration_ms: 4.5476
+  type: 'test'
+  ...
+# Subtest: Reddedilen ├Âneri uygulanmaz
+ok 190 - Reddedilen ├Âneri uygulanmaz
+  ---
+  duration_ms: 3.5384
+  type: 'test'
+  ...
+# Subtest: Level 3 ├Âneri human_required olur ve ├ğal─▒┼şt─▒r─▒lamaz
+ok 191 - Level 3 ├Âneri human_required olur ve ├ğal─▒┼şt─▒r─▒lamaz
+  ---
+  duration_ms: 3.017
+  type: 'test'
+  ...
+# Subtest: Level 1 (reduce_polling) otomatik uygulan─▒r
+ok 192 - Level 1 (reduce_polling) otomatik uygulan─▒r
+  ---
+  duration_ms: 2.6892
+  type: 'test'
+  ...
+# Subtest: Level 1 hafif mod fullStatePull/dailyClaim normal b─▒rak─▒r
+ok 193 - Level 1 hafif mod fullStatePull/dailyClaim normal b─▒rak─▒r
+  ---
+  duration_ms: 10.4108
+  type: 'test'
+  ...
+# Subtest: Hafif mod art arda uygulamada ├Ânceki azaltmalar─▒ korur
+ok 194 - Hafif mod art arda uygulamada ├Ânceki azaltmalar─▒ korur
+  ---
+  duration_ms: 2.9091
+  type: 'test'
+  ...
+# Subtest: TTL gereken aksiyon TTL olmadan ├ğal─▒┼şmaz
+ok 195 - TTL gereken aksiyon TTL olmadan ├ğal─▒┼şmaz
+  ---
+  duration_ms: 2.5628
+  type: 'test'
+  ...
+# Subtest: TTL dolunca Safe Mode etkisi sona erer
+ok 196 - TTL dolunca Safe Mode etkisi sona erer
+  ---
+  duration_ms: 1.5625
+  type: 'test'
+  ...
+# Subtest: Safe Mode enable sonras─▒ rollback kapat─▒r
+ok 197 - Safe Mode enable sonras─▒ rollback kapat─▒r
+  ---
+  duration_ms: 2.6594
+  type: 'test'
+  ...
+# Subtest: rollbackProposal Safe Mode tabanl─▒ aksiyonu geri al─▒r
+ok 198 - rollbackProposal Safe Mode tabanl─▒ aksiyonu geri al─▒r
+  ---
+  duration_ms: 1.0586
+  type: 'test'
+  ...
+# Subtest: Proposal ba┼şl─▒k/a├ğ─▒klama PII ve secret i├ğermez
+ok 199 - Proposal ba┼şl─▒k/a├ğ─▒klama PII ve secret i├ğermez
+  ---
+  duration_ms: 2.8463
+  type: 'test'
+  ...
+# Subtest: Action listesi public eri┼şimde 401 d├Âner
+ok 200 - Action listesi public eri┼şimde 401 d├Âner
+  ---
+  duration_ms: 2.0919
+  type: 'test'
+  ...
+# Subtest: Action approve public eri┼şimde 401 d├Âner
+ok 201 - Action approve public eri┼şimde 401 d├Âner
+  ---
+  duration_ms: 3.454
+  type: 'test'
+  ...
+# Subtest: Blocklist beklenen t├╝m riskli aksiyonlar─▒ i├ğerir
+ok 202 - Blocklist beklenen t├╝m riskli aksiyonlar─▒ i├ğerir
+  ---
+  duration_ms: 1.1205
+  type: 'test'
+  ...
+# [GUARDIAN] {
+#   endpoint: '/api/loyalty',
+#   status: 0,
+#   durationMs: null,
+#   requestId: null,
+#   timeout: false
+# }
+# Subtest: x-safe-mode header istemci durumunu g├╝nceller
+ok 203 - x-safe-mode header istemci durumunu g├╝nceller
+  ---
+  duration_ms: 4.9233
+  type: 'test'
+  ...
+# Subtest: Safe Mode a├ğ─▒kken customer full state pull azal─▒r
+ok 204 - Safe Mode a├ğ─▒kken customer full state pull azal─▒r
+  ---
+  duration_ms: 1.155
+  type: 'test'
+  ...
+# Subtest: Header feature bayraklar─▒ (poll/fsp/rt) customer davran─▒┼ş─▒n─▒ s├╝rer
+ok 205 - Header feature bayraklar─▒ (poll/fsp/rt) customer davran─▒┼ş─▒n─▒ s├╝rer
+  ---
+  duration_ms: 1.7
+  type: 'test'
+  ...
+# Subtest: Safe Mode kapal─▒yken normal polling davran─▒┼ş─▒ korunur
+ok 206 - Safe Mode kapal─▒yken normal polling davran─▒┼ş─▒ korunur
+  ---
+  duration_ms: 1.6372
+  type: 'test'
+  ...
+# Subtest: Header dc/adm bayraklar─▒ g├╝nl├╝k claim ve admin refresh davran─▒┼ş─▒n─▒ s├╝rer
+ok 207 - Header dc/adm bayraklar─▒ g├╝nl├╝k claim ve admin refresh davran─▒┼ş─▒n─▒ s├╝rer
+  ---
+  duration_ms: 2.009
+  type: 'test'
+  ...
+# Subtest: Header m bayra─ş─▒ bak─▒m mesaj─▒n─▒ decode eder
+ok 208 - Header m bayra─ş─▒ bak─▒m mesaj─▒n─▒ decode eder
+  ---
+  duration_ms: 1.322
+  type: 'test'
+  ...
+# Subtest: Safe Mode kapal─▒yken bak─▒m mesaj─▒ temizlenir
+ok 209 - Safe Mode kapal─▒yken bak─▒m mesaj─▒ temizlenir
+  ---
+  duration_ms: 1.8883
+  type: 'test'
+  ...
+# Subtest: Header poll=0 ise polling azaltma devreye girmez
+ok 210 - Header poll=0 ise polling azaltma devreye girmez
+  ---
+  duration_ms: 1.5764
+  type: 'test'
+  ...
+# Subtest: Safe Mode reduced ise polling aral─▒─ş─▒ geni┼şler
+ok 211 - Safe Mode reduced ise polling aral─▒─ş─▒ geni┼şler
+  ---
+  duration_ms: 2.7091
+  type: 'test'
+  ...
+# Subtest: Telemetri istekleri kaydeder ve network error sayar
+ok 212 - Telemetri istekleri kaydeder ve network error sayar
+  ---
+  duration_ms: 4.6715
+  type: 'test'
+  ...
+# Subtest: apiClient guardian telemetri + safe mode header entegrasyonu kaynakta var
+ok 213 - apiClient guardian telemetri + safe mode header entegrasyonu kaynakta var
+  ---
+  duration_ms: 4.0036
+  type: 'test'
+  ...
+# Subtest: AdminPage Sistem Sa─şl─▒─ş─▒ sekmesini i├ğerir
+ok 214 - AdminPage Sistem Sa─şl─▒─ş─▒ sekmesini i├ğerir
+  ---
+  duration_ms: 10.5491
+  type: 'test'
+  ...
+# Subtest: checkConfig DATABASE_URL yoksa critical d├Âner
+ok 215 - checkConfig DATABASE_URL yoksa critical d├Âner
+  ---
+  duration_ms: 20.7148
+  type: 'test'
+  ...
+# Subtest: checkOverall standart zarf alanlar─▒n─▒ i├ğerir
+ok 216 - checkOverall standart zarf alanlar─▒n─▒ i├ğerir
+  ---
+  duration_ms: 19.9342
+  type: 'test'
+  ...
+# Subtest: checkLoyalty her zaman standart servis raporu d├Âner
+ok 217 - checkLoyalty her zaman standart servis raporu d├Âner
+  ---
+  duration_ms: 4.428
+  type: 'test'
+  ...
+# Subtest: Public health hassas detay (services/metrics) s─▒zd─▒rmaz
+ok 218 - Public health hassas detay (services/metrics) s─▒zd─▒rmaz
+  ---
+  duration_ms: 13.9009
+  type: 'test'
+  ...
+# Subtest: Admin oturumu olmadan incidents listesi al─▒namaz (401)
+ok 219 - Admin oturumu olmadan incidents listesi al─▒namaz (401)
+  ---
+  duration_ms: 2.3018
+  type: 'test'
+  ...
+# Subtest: Ayn─▒ hata tekrar─▒nda tek incident g├╝ncellenir (spam yok)
+ok 220 - Ayn─▒ hata tekrar─▒nda tek incident g├╝ncellenir (spam yok)
+  ---
+  duration_ms: 20.2278
+  type: 'test'
+  ...
+# Subtest: Critical incident requiresHuman = true olur
+ok 221 - Critical incident requiresHuman = true olur
+  ---
+  duration_ms: 2.3935
+  type: 'test'
+  ...
+# Subtest: Safe actions listesi incident'a kaydedilir
+ok 222 - Safe actions listesi incident'a kaydedilir
+  ---
+  duration_ms: 4.1085
+  type: 'test'
+  ...
+# Subtest: Incident kayd─▒nda PII maskelenir (telefon/e-posta s─▒zmaz)
+ok 223 - Incident kayd─▒nda PII maskelenir (telefon/e-posta s─▒zmaz)
+  ---
+  duration_ms: 3.0349
+  type: 'test'
+  ...
+# Subtest: Incident ├ğ├Âz├╝l├╝nce resolved olur ve requiresHuman d├╝┼şer
+ok 224 - Incident ├ğ├Âz├╝l├╝nce resolved olur ve requiresHuman d├╝┼şer
+  ---
+  duration_ms: 3.2818
+  type: 'test'
+  ...
+# Subtest: maskPhone telefonu maskeler
+ok 225 - maskPhone telefonu maskeler
+  ---
+  duration_ms: 6.1209
+  type: 'test'
+  ...
+# Subtest: maskEmail e-postay─▒ maskeler
+ok 226 - maskEmail e-postay─▒ maskeler
+  ---
+  duration_ms: 1.1436
+  type: 'test'
+  ...
+# Subtest: maskCustomerId m├╝┼şteri kimli─şini maskeler
+ok 227 - maskCustomerId m├╝┼şteri kimli─şini maskeler
+  ---
+  duration_ms: 1.395
+  type: 'test'
+  ...
+# Subtest: redactText DB URL ve JWT s─▒z─▒nt─▒s─▒n─▒ engeller
+ok 228 - redactText DB URL ve JWT s─▒z─▒nt─▒s─▒n─▒ engeller
+  ---
+  duration_ms: 2.283
+  type: 'test'
+  ...
+# Subtest: redactText Resend API key (re_...) maskeler
+ok 229 - redactText Resend API key (re_...) maskeler
+  ---
+  duration_ms: 8.1682
+  type: 'test'
+  ...
+# Subtest: Cursor prompt / incident report i├ğine Resend key a├ğ─▒k yaz─▒lmaz
+ok 230 - Cursor prompt / incident report i├ğine Resend key a├ğ─▒k yaz─▒lmaz
+  ---
+  duration_ms: 4.3672
+  type: 'test'
+  ...
+# Subtest: redactObject hassas anahtarlar─▒ gizler
+ok 231 - redactObject hassas anahtarlar─▒ gizler
+  ---
+  duration_ms: 3.3153
+  type: 'test'
+  ...
+# Subtest: Cursor fix prompt secret/PII i├ğermez ve k─▒s─▒tlar─▒ belirtir
+ok 232 - Cursor fix prompt secret/PII i├ğermez ve k─▒s─▒tlar─▒ belirtir
+  ---
+  duration_ms: 1.598
+  type: 'test'
+  ...
+# Subtest: Incident raporu severity ve cursor prompt i├ğerir
+ok 233 - Incident raporu severity ve cursor prompt i├ğerir
+  ---
+  duration_ms: 4.3044
+  type: 'test'
+  ...
+# Subtest: percentile s─▒ral─▒ de─şerlerden p95 hesaplar
+ok 234 - percentile s─▒ral─▒ de─şerlerden p95 hesaplar
+  ---
+  duration_ms: 10.0177
+  type: 'test'
+  ...
+# Subtest: summarizeService latency ve hata oran─▒n─▒ ├Âzetler
+ok 235 - summarizeService latency ve hata oran─▒n─▒ ├Âzetler
+  ---
+  duration_ms: 8.9059
+  type: 'test'
+  ...
+# Subtest: statusFromSummary y├╝ksek hata oran─▒nda incident d├Âner
+ok 236 - statusFromSummary y├╝ksek hata oran─▒nda incident d├Âner
+  ---
+  duration_ms: 1.5827
+  type: 'test'
+  ...
+# Subtest: Ring buffer 500 olayda s─▒n─▒rlan─▒r
+ok 237 - Ring buffer 500 olayda s─▒n─▒rlan─▒r
+  ---
+  duration_ms: 4.8354
+  type: 'test'
+  ...
+# [api.sql] /api/loyalty postgres connection terminated
+# Subtest: createRequestId LBT- ├Ânekiyle kimlik ├╝retir
+ok 238 - createRequestId LBT- ├Ânekiyle kimlik ├╝retir
+  ---
+  duration_ms: 6.1445
+  type: 'test'
+  ...
+# Subtest: resolveRequestId ge├ğerli gelen kimli─şi korur, ge├ğersizi yeniler
+ok 239 - resolveRequestId ge├ğerli gelen kimli─şi korur, ge├ğersizi yeniler
+  ---
+  duration_ms: 2.6323
+  type: 'test'
+  ...
+# Subtest: API yan─▒t─▒ guardian header'lar─▒n─▒ ekler (safe-mode + guardian-status)
+ok 240 - API yan─▒t─▒ guardian header'lar─▒n─▒ ekler (safe-mode + guardian-status)
+  ---
+  duration_ms: 12.1629
+  type: 'test'
+  ...
+# Subtest: Hata yan─▒t g├Âvdesinde LBT- requestId d├Âner
+ok 241 - Hata yan─▒t g├Âvdesinde LBT- requestId d├Âner
+  ---
+  duration_ms: 6.9013
+  type: 'test'
+  ...
+# Subtest: Varsay─▒lan Safe Mode kapal─▒d─▒r
+ok 242 - Varsay─▒lan Safe Mode kapal─▒d─▒r
+  ---
+  duration_ms: 3.4024
+  type: 'test'
+  ...
+# Subtest: Safe Mode a├ğ─▒l─▒nca polling reduced + realtime degraded d├Âner
+ok 243 - Safe Mode a├ğ─▒l─▒nca polling reduced + realtime degraded d├Âner
+  ---
+  duration_ms: 5.1462
+  type: 'test'
+  ...
+# Subtest: Safe Mode header minimal feature bayraklar─▒n─▒ ta┼ş─▒r (poll/fsp/rt)
+ok 244 - Safe Mode header minimal feature bayraklar─▒n─▒ ta┼ş─▒r (poll/fsp/rt)
+  ---
+  duration_ms: 1.7857
+  type: 'test'
+  ...
+# Subtest: Safe Mode TTL dolunca otomatik kapan─▒r (yeniden de─şerlendirme)
+ok 245 - Safe Mode TTL dolunca otomatik kapan─▒r (yeniden de─şerlendirme)
+  ---
+  duration_ms: 2.0985
+  type: 'test'
+  ...
+# Subtest: Admin oturumu olmadan safe-mode de─şi┼ştirilemez (401)
+ok 246 - Admin oturumu olmadan safe-mode de─şi┼ştirilemez (401)
+  ---
+  duration_ms: 3.8122
+  type: 'test'
+  ...
+# Subtest: resetRemoteFetchState backoff durumunu temizler
+ok 247 - resetRemoteFetchState backoff durumunu temizler
+  ---
+  duration_ms: 90.1474
+  type: 'test'
+  ...
+# Subtest: markRemoteFetchSuccess backoff serisini s─▒f─▒rlar
+ok 248 - markRemoteFetchSuccess backoff serisini s─▒f─▒rlar
+  ---
+  duration_ms: 0.7817
+  type: 'test'
+  ...
+# Subtest: dedup yaln─▒zca GET /api/state i├ğin uygulan─▒r (POST yutulmaz)
+ok 249 - dedup yaln─▒zca GET /api/state i├ğin uygulan─▒r (POST yutulmaz)
+  ---
+  duration_ms: 3.2243
+  type: 'test'
+  ...
+# Subtest: clearSafeModeState durumu s─▒f─▒rlar ve dinleyiciyi tetikler
+ok 250 - clearSafeModeState durumu s─▒f─▒rlar ve dinleyiciyi tetikler
+  ---
+  duration_ms: 20.8995
+  type: 'test'
+  ...
+# Subtest: malformed x-safe-mode header app'i bozmaz
+ok 251 - malformed x-safe-mode header app'i bozmaz
+  ---
+  duration_ms: 5.2118
+  type: 'test'
+  ...
+# Subtest: isUndefinedTableError 42P01 ve "relation does not exist" tespit eder
+ok 252 - isUndefinedTableError 42P01 ve "relation does not exist" tespit eder
+  ---
+  duration_ms: 10.2846
+  type: 'test'
+  ...
+# Subtest: daily-claim handler tablo eksikse DAILY_CLAIMS_TABLE_MISSING d├Âner
+ok 253 - daily-claim handler tablo eksikse DAILY_CLAIMS_TABLE_MISSING d├Âner
+  ---
+  duration_ms: 1.3966
+  type: 'test'
+  ...
+# Subtest: logoutSession a─ş + Safe Mode durumunu s─▒f─▒rlar ve k─▒sa timeout kullan─▒r
+ok 254 - logoutSession a─ş + Safe Mode durumunu s─▒f─▒rlar ve k─▒sa timeout kullan─▒r
+  ---
+  duration_ms: 3.822
+  type: 'test'
+  ...
+# Subtest: applyAuthResult yeni oturumda a─ş durumunu s─▒f─▒rlar
+ok 255 - applyAuthResult yeni oturumda a─ş durumunu s─▒f─▒rlar
+  ---
+  duration_ms: 2.8529
+  type: 'test'
+  ...
+# Subtest: primeSqlConnection: canl─▒ ba─şlant─▒ true d├Âner
+ok 256 - primeSqlConnection: canl─▒ ba─şlant─▒ true d├Âner
+  ---
+  duration_ms: 122.6014
+  type: 'test'
+  ...
+# Subtest: primeSqlConnection: tak─▒lan ba─şlant─▒ timeout ile false d├Âner (login bloklanmaz)
+ok 257 - primeSqlConnection: tak─▒lan ba─şlant─▒ timeout ile false d├Âner (login bloklanmaz)
+  ---
+  duration_ms: 151.6321
+  type: 'test'
+  ...
+# Subtest: primeSqlConnection: timeout ba─şlant─▒y─▒ SIFIRLAMAZ, yaln─▒zca ping reddi s─▒f─▒rlar
+ok 258 - primeSqlConnection: timeout ba─şlant─▒y─▒ SIFIRLAMAZ, yaln─▒zca ping reddi s─▒f─▒rlar
+  ---
+  duration_ms: 5.3079
+  type: 'test'
+  ...
+# Subtest: handleAuthLogin login sorgular─▒ndan ├Ânce primeSqlConnection ├ğa─ş─▒r─▒r
+ok 259 - handleAuthLogin login sorgular─▒ndan ├Ânce primeSqlConnection ├ğa─ş─▒r─▒r
+  ---
+  duration_ms: 1.8801
+  type: 'test'
+  ...
+# Subtest: transaction pooler: lambda ba┼ş─▒na tek ba─şlant─▒ (max:1)
+ok 260 - transaction pooler: lambda ba┼ş─▒na tek ba─şlant─▒ (max:1)
+  ---
+  duration_ms: 3.3016
+  type: 'test'
+  ...
+# Subtest: health endpoint: varsay─▒lan DB ping ve fan-out YOK
+ok 261 - health endpoint: varsay─▒lan DB ping ve fan-out YOK
+  ---
+  duration_ms: 2.3099
+  type: 'test'
+  ...
+# Subtest: keep-warm: yaln─▒zca hafif health ping (DB warm yok)
+ok 262 - keep-warm: yaln─▒zca hafif health ping (DB warm yok)
+  ---
+  duration_ms: 3.0798
+  type: 'test'
+  ...
+# Subtest: Xcode TARGETED_DEVICE_FAMILY yaln─▒zca iPhone
+ok 263 - Xcode TARGETED_DEVICE_FAMILY yaln─▒zca iPhone
+  ---
+  duration_ms: 8.3873
+  type: 'test'
+  ...
+# Subtest: Info.plist iPad y├Ânelim anahtar─▒ yok
+ok 264 - Info.plist iPad y├Ânelim anahtar─▒ yok
+  ---
+  duration_ms: 2.6665
+  type: 'test'
+  ...
+# Subtest: Production index g├Âreli asset yollar─▒ kullan─▒r
+ok 265 - Production index g├Âreli asset yollar─▒ kullan─▒r
+  ---
+  duration_ms: 2.1049
+  type: 'test'
+  ...
+# Subtest: Vite base g├Âreli ÔÇö Capacitor WebView uyumlu
+ok 266 - Vite base g├Âreli ÔÇö Capacitor WebView uyumlu
+  ---
+  duration_ms: 6.6183
+  type: 'test'
+  ...
+# Subtest: Podfile native eklentileri CocoaPods ile baglar
+ok 267 - Podfile native eklentileri CocoaPods ile baglar
+  ---
+  duration_ms: 4.7971
+  type: 'test'
+  ...
+# Subtest: Release imzasi Manual ve push entitlement baglantisi
+ok 268 - Release imzasi Manual ve push entitlement baglantisi
+  ---
+  duration_ms: 3.6689
+  type: 'test'
+  ...
+# Subtest: session.js authEpoch sa─şlar ve login/logout ge├ği┼şlerinde ilerletir
+ok 269 - session.js authEpoch sa─şlar ve login/logout ge├ği┼şlerinde ilerletir
+  ---
+  duration_ms: 8.1575
+  type: 'test'
+  ...
+# Subtest: useCommit pullRemote epoch guard ile stale yan─▒t─▒ yok sayar
+ok 270 - useCommit pullRemote epoch guard ile stale yan─▒t─▒ yok sayar
+  ---
+  duration_ms: 13.0414
+  type: 'test'
+  ...
+# Subtest: useAdminMembers admin-customers i├ğin epoch guard i├ğerir
+ok 271 - useAdminMembers admin-customers i├ğin epoch guard i├ğerir
+  ---
+  duration_ms: 2.7858
+  type: 'test'
+  ...
+# Subtest: safeMode isRealtimeDisabledByFlag export eder ve customer realtime bunu kullan─▒r
+ok 272 - safeMode isRealtimeDisabledByFlag export eder ve customer realtime bunu kullan─▒r
+  ---
+  duration_ms: 3.7214
+  type: 'test'
+  ...
+# Subtest: realtimeFetch bayrak a├ğ─▒kken customer + admin + admin-customers isteklerini k─▒sa devre yapar
+ok 273 - realtimeFetch bayrak a├ğ─▒kken customer + admin + admin-customers isteklerini k─▒sa devre yapar
+  ---
+  duration_ms: 3.3092
+  type: 'test'
+  ...
+# Subtest: App.jsx onUnauthorized oturum yokken erken d├Âner (login ekran─▒ 401'den etkilenmez)
+ok 274 - App.jsx onUnauthorized oturum yokken erken d├Âner (login ekran─▒ 401'den etkilenmez)
+  ---
+  duration_ms: 1.7696
+  type: 'test'
+  ...
+# Subtest: App.jsx useAdminRealtime VITE_DISABLE_REALTIME ile kapan─▒r
+ok 275 - App.jsx useAdminRealtime VITE_DISABLE_REALTIME ile kapan─▒r
+  ---
+  duration_ms: 3.5424
+  type: 'test'
+  ...
+# Subtest: App.jsx sessionRef render s─▒ras─▒nda senkron g├╝ncellenir (logout race ├Ânlemi)
+ok 276 - App.jsx sessionRef render s─▒ras─▒nda senkron g├╝ncellenir (logout race ├Ânlemi)
+  ---
+  duration_ms: 3.3815
+  type: 'test'
+  ...
+# Subtest: useCommit ilk zorunlu tam pull'u erteler (login an─▒nda /api/state pull yok)
+ok 277 - useCommit ilk zorunlu tam pull'u erteler (login an─▒nda /api/state pull yok)
+  ---
+  duration_ms: 10.7565
+  type: 'test'
+  ...
+# Subtest: Admin members yaln─▒zca PIN do─şruland─▒ktan sonra (adminVerified) ├ğekilir
+ok 278 - Admin members yaln─▒zca PIN do─şruland─▒ktan sonra (adminVerified) ├ğekilir
+  ---
+  duration_ms: 2.1676
+  type: 'test'
+  ...
+# Subtest: Admin PIN do─şrulamas─▒nda duplicate members + full state fan-out yok
+ok 279 - Admin PIN do─şrulamas─▒nda duplicate members + full state fan-out yok
+  ---
+  duration_ms: 1.8715
+  type: 'test'
+  ...
+# Subtest: Logout sonras─▒ admin hidrasyonu tekrar ├ğal─▒┼şabilir (ref s─▒f─▒rlan─▒r)
+ok 280 - Logout sonras─▒ admin hidrasyonu tekrar ├ğal─▒┼şabilir (ref s─▒f─▒rlan─▒r)
+  ---
+  duration_ms: 2.657
+  type: 'test'
+  ...
+# Subtest: 503 SERVICE_UNAVAILABLE Sunucuya ulasilamadi demez
+ok 281 - 503 SERVICE_UNAVAILABLE Sunucuya ulasilamadi demez
+  ---
+  duration_ms: 11.1036
+  type: 'test'
+  ...
+# Subtest: 401 formatClientApiError oturum mesaji uretir (unreachable degil)
+ok 282 - 401 formatClientApiError oturum mesaji uretir (unreachable degil)
+  ---
+  duration_ms: 1.331
+  type: 'test'
+  ...
+# Subtest: LoginPage timeout modal Sunucuya ulasilamadi kullanmaz
+ok 283 - LoginPage timeout modal Sunucuya ulasilamadi kullanmaz
+  ---
+  duration_ms: 2.2667
+  type: 'test'
+  ...
+# Subtest: LoginPage auth istekleri skipUnauthorized kullanir
+ok 284 - LoginPage auth istekleri skipUnauthorized kullanir
+  ---
+  duration_ms: 2.124
+  type: 'test'
+  ...
+# Subtest: bootstrapSession 401 sessiz null (modal yok)
+ok 285 - bootstrapSession 401 sessiz null (modal yok)
+  ---
+  duration_ms: 2.3367
+  type: 'test'
+  ...
+# Subtest: Login modal kaynagi noticeModal + notify
+ok 286 - Login modal kaynagi noticeModal + notify
+  ---
+  duration_ms: 1.9967
+  type: 'test'
+  ...
+# Subtest: clearLocalDb liberteDB'yi siler, son telefon/e-posta korunur
+ok 287 - clearLocalDb liberteDB'yi siler, son telefon/e-posta korunur
+  ---
+  duration_ms: 181.8269
+  type: 'test'
+  ...
+# Subtest: A├ğ─▒l─▒┼şta ┼şi┼şmi┼ş/bozuk localStorage uygulamay─▒ kilitlemez (seed d├Âner)
+ok 288 - A├ğ─▒l─▒┼şta ┼şi┼şmi┼ş/bozuk localStorage uygulamay─▒ kilitlemez (seed d├Âner)
+  ---
+  duration_ms: 1.786
+  type: 'test'
+  ...
+# Subtest: logoutSession yerel veri ├Ânbelle─şini (PII) temizler
+ok 289 - logoutSession yerel veri ├Ânbelle─şini (PII) temizler
+  ---
+  duration_ms: 2.475
+  type: 'test'
+  ...
+# Subtest: eski damgalar LP'ye d├Ân├╝┼şt├╝r├╝l├╝r
+ok 290 - eski damgalar LP'ye d├Ân├╝┼şt├╝r├╝l├╝r
+  ---
+  duration_ms: 3.3915
+  type: 'test'
+  ...
+# Subtest: migration eski alanlar─▒ korur
+ok 291 - migration eski alanlar─▒ korur
+  ---
+  duration_ms: 0.9771
+  type: 'test'
+  ...
+# Subtest: tatl─▒ i┼şlemi +2 LP ekler
+ok 292 - tatl─▒ i┼şlemi +2 LP ekler
+  ---
+  duration_ms: 2.3141
+  type: 'test'
+  ...
+# Subtest: tatl─▒ ikram -15 LP d├╝┼şer
+ok 293 - tatl─▒ ikram -15 LP d├╝┼şer
+  ---
+  duration_ms: 2.0265
+  type: 'test'
+  ...
+# Subtest: LP bakiyesi eksiye d├╝┼şmez
+ok 294 - LP bakiyesi eksiye d├╝┼şmez
+  ---
+  duration_ms: 1.2425
+  type: 'test'
+  ...
+# Subtest: kahve i┼şlemi +1 LP ekler
+ok 295 - kahve i┼şlemi +1 LP ekler
+  ---
+  duration_ms: 1.0831
+  type: 'test'
+  ...
+# Subtest: yetersiz LP ile ├Âd├╝l engellenir
+ok 296 - yetersiz LP ile ├Âd├╝l engellenir
+  ---
+  duration_ms: 0.6333
+  type: 'test'
+  ...
+# Subtest: sandvi├ğ i┼şlemi +2 LP ekler
+ok 297 - sandvi├ğ i┼şlemi +2 LP ekler
+  ---
+  duration_ms: 0.7993
+  type: 'test'
+  ...
+# Subtest: sandvi├ğ ikram -18 LP d├╝┼şer
+ok 298 - sandvi├ğ ikram -18 LP d├╝┼şer
+  ---
+  duration_ms: 1.139
+  type: 'test'
+  ...
+# Subtest: sandvi├ğ ikram 18 LP gerektirir
+ok 299 - sandvi├ğ ikram 18 LP gerektirir
+  ---
+  duration_ms: 1.697
+  type: 'test'
+  ...
+# Subtest: Patates Taba─ş─▒ burger LP eklemez
+ok 300 - Patates Taba─ş─▒ burger LP eklemez
+  ---
+  duration_ms: 1.5774
+  type: 'test'
+  ...
+# Subtest: burger LP ├╝r├╝n se├ğmeden eklenmez
+ok 301 - burger LP ├╝r├╝n se├ğmeden eklenmez
+  ---
+  duration_ms: 1.2434
+  type: 'test'
+  ...
+# Subtest: burger ikram 25 LP gerektirir
+ok 302 - burger ikram 25 LP gerektirir
+  ---
+  duration_ms: 1.1171
+  type: 'test'
+  ...
+# Subtest: kahve ikram -7 LP d├╝┼şer
+ok 303 - kahve ikram -7 LP d├╝┼şer
+  ---
+  duration_ms: 1.7599
+  type: 'test'
+  ...
+# Subtest: mergeDb t├╝m loyalty kay─▒tlar─▒n─▒ migrate eder
+ok 304 - mergeDb t├╝m loyalty kay─▒tlar─▒n─▒ migrate eder
+  ---
+  duration_ms: 1.2144
+  type: 'test'
+  ...
+# Subtest: migrateAllLoyalty ├ğoklu kay─▒t
+ok 305 - migrateAllLoyalty ├ğoklu kay─▒t
+  ---
+  duration_ms: 1.0877
+  type: 'test'
+  ...
+# Subtest: apiClient LP aksiyonu i├ğin k─▒sa (15sn) zaman a┼ş─▒m─▒ tan─▒mlar
+ok 306 - apiClient LP aksiyonu i├ğin k─▒sa (15sn) zaman a┼ş─▒m─▒ tan─▒mlar
+  ---
+  duration_ms: 18.6134
+  type: 'test'
+  ...
+# Subtest: qrClient postLoyaltyAction k─▒sa LP zaman a┼ş─▒m─▒n─▒ kullan─▒r (60sn admin de─şil)
+ok 307 - qrClient postLoyaltyAction k─▒sa LP zaman a┼ş─▒m─▒n─▒ kullan─▒r (60sn admin de─şil)
+  ---
+  duration_ms: 3.2801
+  type: 'test'
+  ...
+# Subtest: LP ba┼şar─▒s─▒nda tam /api/state pull tetiklenmez, sonu├ğ local i┼şlenir
+ok 308 - LP ba┼şar─▒s─▒nda tam /api/state pull tetiklenmez, sonu├ğ local i┼şlenir
+  ---
+  duration_ms: 2.1234
+  type: 'test'
+  ...
+# Subtest: LP hatas─▒nda actionBusy finally blo─şunda temizlenir
+ok 309 - LP hatas─▒nda actionBusy finally blo─şunda temizlenir
+  ---
+  duration_ms: 1.9264
+  type: 'test'
+  ...
+# Subtest: LP i┼şlenirken g├Âr├╝n├╝r ilerleme g├Âstergesi var
+ok 310 - LP i┼şlenirken g├Âr├╝n├╝r ilerleme g├Âstergesi var
+  ---
+  duration_ms: 2.7405
+  type: 'test'
+  ...
+# Subtest: 0 toplam LP Bronze seviyesi
+ok 311 - 0 toplam LP Bronze seviyesi
+  ---
+  duration_ms: 5.5529
+  type: 'test'
+  ...
+# Subtest: 50 toplam LP Silver seviyesi
+ok 312 - 50 toplam LP Silver seviyesi
+  ---
+  duration_ms: 3.652
+  type: 'test'
+  ...
+# Subtest: 150 toplam LP Gold seviyesi
+ok 313 - 150 toplam LP Gold seviyesi
+  ---
+  duration_ms: 1.0581
+  type: 'test'
+  ...
+# Subtest: 300 toplam LP Black seviyesi
+ok 314 - 300 toplam LP Black seviyesi
+  ---
+  duration_ms: 2.7564
+  type: 'test'
+  ...
+# Subtest: ikram kullan─▒nca mevcut LP d├╝┼şer seviye d├╝┼şmez
+ok 315 - ikram kullan─▒nca mevcut LP d├╝┼şer seviye d├╝┼şmez
+  ---
+  duration_ms: 14.3371
+  type: 'test'
+  ...
+# Subtest: Silver indirim %5 ayda bir kez
+ok 316 - Silver indirim %5 ayda bir kez
+  ---
+  duration_ms: 8.0591
+  type: 'test'
+  ...
+# Subtest: Gold indirim %10
+ok 317 - Gold indirim %10
+  ---
+  duration_ms: 1.4549
+  type: 'test'
+  ...
+# Subtest: Black indirim %15
+ok 318 - Black indirim %15
+  ---
+  duration_ms: 1.884
+  type: 'test'
+  ...
+# Subtest: Bronze indirim hakk─▒ yok
+ok 319 - Bronze indirim hakk─▒ yok
+  ---
+  duration_ms: 1.9757
+  type: 'test'
+  ...
+# Subtest: do─şum g├╝n├╝ kahvesi t├╝m ├╝yeler i├ğin avantaj metni
+ok 320 - do─şum g├╝n├╝ kahvesi t├╝m ├╝yeler i├ğin avantaj metni
+  ---
+  duration_ms: 8.8678
+  type: 'test'
+  ...
+# Subtest: do─şum g├╝n├╝ kahvesi y─▒lda bir kez
+ok 321 - do─şum g├╝n├╝ kahvesi y─▒lda bir kez
+  ---
+  duration_ms: 2.875
+  type: 'test'
+  ...
+# Subtest: getLevelProgress bir sonraki seviyeyi do─şru hesaplar
+ok 322 - getLevelProgress bir sonraki seviyeyi do─şru hesaplar
+  ---
+  duration_ms: 1.3011
+  type: 'test'
+  ...
+# Subtest: LP kazan─▒m─▒nda hem bakiye hem toplam artar
+ok 323 - LP kazan─▒m─▒nda hem bakiye hem toplam artar
+  ---
+  duration_ms: 7.2673
+  type: 'test'
+  ...
+# Subtest: applyBirthdayCoffee do─şum tarihi yoksa engeller
+ok 324 - applyBirthdayCoffee do─şum tarihi yoksa engeller
+  ---
+  duration_ms: 2.017
+  type: 'test'
+  ...
+# Subtest: burger kategorisi men├╝de +3 LP g├Âsterir
+ok 325 - burger kategorisi men├╝de +3 LP g├Âsterir
+  ---
+  duration_ms: 3.5435
+  type: 'test'
+  ...
+# Subtest: Patates Taba─ş─▒ ├╝r├╝n├╝nde LP rozeti yok
+ok 326 - Patates Taba─ş─▒ ├╝r├╝n├╝nde LP rozeti yok
+  ---
+  duration_ms: 0.774
+  type: 'test'
+  ...
+# Subtest: di─şer burger ├╝r├╝nlerinde LP rozeti var
+ok 327 - di─şer burger ├╝r├╝nlerinde LP rozeti var
+  ---
+  duration_ms: 0.9358
+  type: 'test'
+  ...
+# Subtest: burger kategorisi kasiyerde ├╝r├╝n se├ğimi ister
+ok 328 - burger kategorisi kasiyerde ├╝r├╝n se├ğimi ister
+  ---
+  duration_ms: 1.4999
+  type: 'test'
+  ...
+# Subtest: MenuProductDetailModal document.body portal kullan─▒r
+ok 329 - MenuProductDetailModal document.body portal kullan─▒r
+  ---
+  duration_ms: 13.6317
+  type: 'test'
+  ...
+# Subtest: Men├╝ detay modal CSS tablet kurallar─▒ mevcut
+ok 330 - Men├╝ detay modal CSS tablet kurallar─▒ mevcut
+  ---
+  duration_ms: 6.4371
+  type: 'test'
+  ...
+# Subtest: AppSplash logo ve marka metinleri kullan─▒r
+ok 331 - AppSplash logo ve marka metinleri kullan─▒r
+  ---
+  duration_ms: 4.6443
+  type: 'test'
+  ...
+# Subtest: A├ğ─▒l─▒┼ş bootstrap zaman a┼ş─▒m─▒ tan─▒ml─▒
+ok 332 - A├ğ─▒l─▒┼ş bootstrap zaman a┼ş─▒m─▒ tan─▒ml─▒
+  ---
+  duration_ms: 4.0475
+  type: 'test'
+  ...
+# Subtest: App.jsx session useCommit ├Âncesinde tan─▒ml─▒
+ok 333 - App.jsx session useCommit ├Âncesinde tan─▒ml─▒
+  ---
+  duration_ms: 1.8133
+  type: 'test'
+  ...
+# Subtest: Web/PWA: resolveApiUrl relative path d├Âner (same-origin)
+ok 334 - Web/PWA: resolveApiUrl relative path d├Âner (same-origin)
+  ---
+  duration_ms: 8.0122
+  type: 'test'
+  ...
+# Subtest: Native: env yoksa app.liberte.cafe k├Âk├╝ kullan─▒l─▒r
+ok 335 - Native: env yoksa app.liberte.cafe k├Âk├╝ kullan─▒l─▒r
+  ---
+  duration_ms: 1.0515
+  type: 'test'
+  ...
+# Subtest: Native: VITE_API_BASE_URL ayarl─▒ysa o k├Âken kullan─▒l─▒r
+ok 336 - Native: VITE_API_BASE_URL ayarl─▒ysa o k├Âken kullan─▒l─▒r
+  ---
+  duration_ms: 1.2785
+  type: 'test'
+  ...
+# Subtest: normalizeApiOrigin trailing slash ve path temizler
+ok 337 - normalizeApiOrigin trailing slash ve path temizler
+  ---
+  duration_ms: 1.5923
+  type: 'test'
+  ...
+# Subtest: Production: http:// reddedilir (allowInsecure=false)
+ok 338 - Production: http:// reddedilir (allowInsecure=false)
+  ---
+  duration_ms: 3.5932
+  type: 'test'
+  ...
+# Subtest: Dev: http://localhost yaln─▒zca allowInsecure ile kabul edilir
+ok 339 - Dev: http://localhost yaln─▒zca allowInsecure ile kabul edilir
+  ---
+  duration_ms: 3.2142
+  type: 'test'
+  ...
+# Subtest: resolveApiUrl absolute URL verilirse oldu─şu gibi d├Âner
+ok 340 - resolveApiUrl absolute URL verilirse oldu─şu gibi d├Âner
+  ---
+  duration_ms: 1.0755
+  type: 'test'
+  ...
+# Subtest: normalizeApiOrigin bo┼ş/ge├ğersiz de─şeri yok sayar
+ok 341 - normalizeApiOrigin bo┼ş/ge├ğersiz de─şeri yok sayar
+  ---
+  duration_ms: 1.7948
+  type: 'test'
+  ...
+# [api.sql] /api/state postgres connection terminated unexpectedly
+# Subtest: Ba┼şar─▒l─▒ yan─▒t x-request-id / x-handler / x-duration-ms header'lar─▒ ekler
+ok 342 - Ba┼şar─▒l─▒ yan─▒t x-request-id / x-handler / x-duration-ms header'lar─▒ ekler
+  ---
+  duration_ms: 9.4115
+  type: 'test'
+  ...
+# Subtest: Gelen x-request-id korunur
+ok 343 - Gelen x-request-id korunur
+  ---
+  duration_ms: 1.8415
+  type: 'test'
+  ...
+# Subtest: Hata yan─▒t g├Âvdesinde requestId korunur ve DB detay─▒ s─▒zmaz
+ok 344 - Hata yan─▒t g├Âvdesinde requestId korunur ve DB detay─▒ s─▒zmaz
+  ---
+  duration_ms: 5.4973
+  type: 'test'
+  ...
+# Subtest: sqlRequest observability header'lar─▒n─▒ tan─▒mlar
+ok 345 - sqlRequest observability header'lar─▒n─▒ tan─▒mlar
+  ---
+  duration_ms: 1.9687
+  type: 'test'
+  ...
+# Subtest: cleanPhone 05058665406 -> 5058665406
+ok 346 - cleanPhone 05058665406 -> 5058665406
+  ---
+  duration_ms: 8.3039
+  type: 'test'
+  ...
+# Subtest: cleanPhone +905058665406 -> 5058665406
+ok 347 - cleanPhone +905058665406 -> 5058665406
+  ---
+  duration_ms: 5.2555
+  type: 'test'
+  ...
+# Subtest: cleanPhone 905058665406 -> 5058665406
+ok 348 - cleanPhone 905058665406 -> 5058665406
+  ---
+  duration_ms: 1.1642
+  type: 'test'
+  ...
+# Subtest: cleanPhone 5058665406 ayn─▒ kal─▒r
+ok 349 - cleanPhone 5058665406 ayn─▒ kal─▒r
+  ---
+  duration_ms: 7.7231
+  type: 'test'
+  ...
+# Subtest: normalizePhone cleanPhone alias
+ok 350 - normalizePhone cleanPhone alias
+  ---
+  duration_ms: 1.1665
+  type: 'test'
+  ...
+# Subtest: phoneLookupVariants eski formatlar─▒ i├ğerir
+ok 351 - phoneLookupVariants eski formatlar─▒ i├ğerir
+  ---
+  duration_ms: 1.2766
+  type: 'test'
+  ...
+# Subtest: isValidTrMobilePhone ge├ğerli numara
+ok 352 - isValidTrMobilePhone ge├ğerli numara
+  ---
+  duration_ms: 1.4098
+  type: 'test'
+  ...
+# Subtest: authLogin app_state aramaz ve normalize tablo kullan─▒r
+ok 353 - authLogin app_state aramaz ve normalize tablo kullan─▒r
+  ---
+  duration_ms: 6.0452
+  type: 'test'
+  ...
+# Subtest: 05515992854 t├╝m formatlar ayn─▒ normalize de─şere d├╝┼şer
+ok 354 - 05515992854 t├╝m formatlar ayn─▒ normalize de─şere d├╝┼şer
+  ---
+  duration_ms: 9.723
+  type: 'test'
+  ...
+# Subtest: login ve register ayn─▒ cleanPhone helper kullan─▒r
+ok 355 - login ve register ayn─▒ cleanPhone helper kullan─▒r
+  ---
+  duration_ms: 3.1695
+  type: 'test'
+  ...
+# Subtest: findCustomerByPhone yar─▒m kay─▒t onar─▒m─▒ ├ğa─ş─▒r─▒r
+ok 356 - findCustomerByPhone yar─▒m kay─▒t onar─▒m─▒ ├ğa─ş─▒r─▒r
+  ---
+  duration_ms: 1.5048
+  type: 'test'
+  ...
+# Subtest: register duplicate kayna─ş─▒ loglan─▒r
+ok 357 - register duplicate kayna─ş─▒ loglan─▒r
+  ---
+  duration_ms: 1.7604
+  type: 'test'
+  ...
+# Subtest: login m├╝┼şteri aramas─▒ normalize tablo + onar─▒m kullan─▒r
+ok 358 - login m├╝┼şteri aramas─▒ normalize tablo + onar─▒m kullan─▒r
+  ---
+  duration_ms: 2.3321
+  type: 'test'
+  ...
+# Subtest: state: okuma islemleri runSqlReadFast kullanir (raw/yavas path yok)
+ok 359 - state: okuma islemleri runSqlReadFast kullanir (raw/yavas path yok)
+  ---
+  duration_ms: 5.0356
+  type: 'test'
+  ...
+# Subtest: state: gecici DB sorunu 503 STATE_TEMPORARILY_UNAVAILABLE doner (500 degil)
+ok 360 - state: gecici DB sorunu 503 STATE_TEMPORARILY_UNAVAILABLE doner (500 degil)
+  ---
+  duration_ms: 1.8371
+  type: 'test'
+  ...
+# Subtest: state: auth yoksa DB state okumasi yapmadan 401 doner
+ok 361 - state: auth yoksa DB state okumasi yapmadan 401 doner
+  ---
+  duration_ms: 4.0365
+  type: 'test'
+  ...
+# Subtest: state: customer yolu admin tam state degil, customer slice yukler
+ok 362 - state: customer yolu admin tam state degil, customer slice yukler
+  ---
+  duration_ms: 1.7106
+  type: 'test'
+  ...
+# Subtest: daily-claim: transient -> 503 DAILY_CLAIM_TEMPORARILY_UNAVAILABLE (tablo eksikten ayri)
+ok 363 - daily-claim: transient -> 503 DAILY_CLAIM_TEMPORARILY_UNAVAILABLE (tablo eksikten ayri)
+  ---
+  duration_ms: 2.1324
+  type: 'test'
+  ...
+# Subtest: daily-claim: auth requireSession ile (oturum yoksa hizli 401)
+ok 364 - daily-claim: auth requireSession ile (oturum yoksa hizli 401)
+  ---
+  duration_ms: 1.803
+  type: 'test'
+  ...
+# Subtest: useAdminMembers: in-flight dedup + circuit breaker entegre
+ok 365 - useAdminMembers: in-flight dedup + circuit breaker entegre
+  ---
+  duration_ms: 2.3385
+  type: 'test'
+  ...
+# Subtest: adminMemberClient: client timeout 60sn yerine kisaltildi
+ok 366 - adminMemberClient: client timeout 60sn yerine kisaltildi
+  ---
+  duration_ms: 2.1045
+  type: 'test'
+  ...
+# Subtest: backgroundCircuit: admin-members 3 hata sonrasi 60sn skip eder
+ok 367 - backgroundCircuit: admin-members 3 hata sonrasi 60sn skip eder
+  ---
+  duration_ms: 2.1617
+  type: 'test'
+  ...
+# Subtest: GET /api/state saveAppState cagirmaz
+ok 368 - GET /api/state saveAppState cagirmaz
+  ---
+  duration_ms: 5.3644
+  type: 'test'
+  ...
+# Subtest: GET /api/state hafif oturum dogrulamasi kullanir (getSessionForQr)
+ok 369 - GET /api/state hafif oturum dogrulamasi kullanir (getSessionForQr)
+  ---
+  duration_ms: 1.6321
+  type: 'test'
+  ...
+# Subtest: musteri GET tam admin state yuklemez
+ok 370 - musteri GET tam admin state yuklemez
+  ---
+  duration_ms: 1.9822
+  type: 'test'
+  ...
+# Subtest: loadAppStateForCustomer legacy yolunda filterStateForUser ile dilimler
+ok 371 - loadAppStateForCustomer legacy yolunda filterStateForUser ile dilimler
+  ---
+  duration_ms: 2.1492
+  type: 'test'
+  ...
+# Subtest: /api/state gecici DB hatasi 503 STATE_TEMPORARILY_UNAVAILABLE
+ok 372 - /api/state gecici DB hatasi 503 STATE_TEMPORARILY_UNAVAILABLE
+  ---
+  duration_ms: 2.1796
+  type: 'test'
+  ...
+# Subtest: daily-claim basarida loyalty + dailyClaims doner
+ok 373 - daily-claim basarida loyalty + dailyClaims doner
+  ---
+  duration_ms: 2.5045
+  type: 'test'
+  ...
+# Subtest: duplicate daily claim is kurali yaniti
+ok 374 - duplicate daily claim is kurali yaniti
+  ---
+  duration_ms: 2.4492
+  type: 'test'
+  ...
+# Subtest: daily-claim transient 503 DAILY_CLAIM_TEMPORARILY_UNAVAILABLE
+ok 375 - daily-claim transient 503 DAILY_CLAIM_TEMPORARILY_UNAVAILABLE
+  ---
+  duration_ms: 2.0148
+  type: 'test'
+  ...
+# Subtest: customerRewardsClient throw etmez
+ok 376 - customerRewardsClient throw etmez
+  ---
+  duration_ms: 16.7411
+  type: 'test'
+  ...
+# Subtest: admin members musteri state sync ini bozmaz
+ok 377 - admin members musteri state sync ini bozmaz
+  ---
+  duration_ms: 8.6233
+  type: 'test'
+  ...
+# Subtest: adminMemberClient skipUnauthorized
+ok 378 - adminMemberClient skipUnauthorized
+  ---
+  duration_ms: 2.2303
+  type: 'test'
+  ...
+# Subtest: loadRemote skipUnauthorized
+ok 379 - loadRemote skipUnauthorized
+  ---
+  duration_ms: 1.5898
+  type: 'test'
+  ...
+# Subtest: useCommit 503 transient degraded mod
+ok 380 - useCommit 503 transient degraded mod
+  ---
+  duration_ms: 1.5884
+  type: 'test'
+  ...
+# Subtest: remoteFetch GET /api/state tekillestirme
+ok 381 - remoteFetch GET /api/state tekillestirme
+  ---
+  duration_ms: 1.1411
+  type: 'test'
+  ...
+# Subtest: 503 sonrasi admin-members circuit retry storm durdurur
+ok 382 - 503 sonrasi admin-members circuit retry storm durdurur
+  ---
+  duration_ms: 0.6871
+  type: 'test'
+  ...
+# Subtest: Silver hedefleme do─şru filtreler
+ok 383 - Silver hedefleme do─şru filtreler
+  ---
+  duration_ms: 11.0048
+  type: 'test'
+  ...
+# Subtest: Gold hedefleme do─şru filtreler
+ok 384 - Gold hedefleme do─şru filtreler
+  ---
+  duration_ms: 1.7663
+  type: 'test'
+  ...
+# Subtest: Black hedefleme bo┼ş d├Âner
+ok 385 - Black hedefleme bo┼ş d├Âner
+  ---
+  duration_ms: 0.8873
+  type: 'test'
+  ...
+# Subtest: Son 30 g├╝nde gelenler aktif ├╝yeyi se├ğer
+ok 386 - Son 30 g├╝nde gelenler aktif ├╝yeyi se├ğer
+  ---
+  duration_ms: 6.5392
+  type: 'test'
+  ...
+# Subtest: LP 7+ hedefi mevcut bakiyeye g├Âre filtreler
+ok 387 - LP 7+ hedefi mevcut bakiyeye g├Âre filtreler
+  ---
+  duration_ms: 0.6287
+  type: 'test'
+  ...
+# Subtest: Pasif token g├Ânderime dahil edilmez
+ok 388 - Pasif token g├Ânderime dahil edilmez
+  ---
+  duration_ms: 1.1703
+  type: 'test'
+  ...
+# Subtest: T├╝m kullan─▒c─▒lar ÔÇö m├╝┼şteri listesi bo┼şken kay─▒tl─▒ cihazlar─▒ se├ğer (relational API)
+ok 389 - T├╝m kullan─▒c─▒lar ÔÇö m├╝┼şteri listesi bo┼şken kay─▒tl─▒ cihazlar─▒ se├ğer (relational API)
+  ---
+  duration_ms: 1.3195
+  type: 'test'
+  ...
+# Subtest: Native token varken ayn─▒ ├╝yenin web token─▒ g├Ânderime al─▒nmaz
+ok 390 - Native token varken ayn─▒ ├╝yenin web token─▒ g├Ânderime al─▒nmaz
+  ---
+  duration_ms: 1.7519
+  type: 'test'
+  ...
+# Subtest: Yaln─▒zca web token varsa web kanal─▒ kullan─▒l─▒r
+ok 391 - Yaln─▒zca web token varsa web kanal─▒ kullan─▒l─▒r
+  ---
+  duration_ms: 1.5829
+  type: 'test'
+  ...
+# Subtest: Ayn─▒ kullan─▒c─▒n─▒n birden fazla cihaz─▒na gidebilir
+ok 392 - Ayn─▒ kullan─▒c─▒n─▒n birden fazla cihaz─▒na gidebilir
+  ---
+  duration_ms: 3.0771
+  type: 'test'
+  ...
+# Subtest: Do─şum g├╝n├╝ hedefi birthDate yoksa pasif
+ok 393 - Do─şum g├╝n├╝ hedefi birthDate yoksa pasif
+  ---
+  duration_ms: 2.0898
+  type: 'test'
+  ...
+# Subtest: Do─şum g├╝n├╝ bu ay hedefi ├ğal─▒┼ş─▒r
+ok 394 - Do─şum g├╝n├╝ bu ay hedefi ├ğal─▒┼ş─▒r
+  ---
+  duration_ms: 1.6423
+  type: 'test'
+  ...
+# Subtest: Son aktivite tarihi history ├╝zerinden hesaplan─▒r
+ok 395 - Son aktivite tarihi history ├╝zerinden hesaplan─▒r
+  ---
+  duration_ms: 0.9606
+  type: 'test'
+  ...
+# Subtest: APNs token 64 hex olarak tan─▒n─▒r
+ok 396 - APNs token 64 hex olarak tan─▒n─▒r
+  ---
+  duration_ms: 4.6323
+  type: 'test'
+  ...
+# Subtest: FCM token Firebase Admin ile uyumlu formatta tan─▒n─▒r
+ok 397 - FCM token Firebase Admin ile uyumlu formatta tan─▒n─▒r
+  ---
+  duration_ms: 8.9712
+  type: 'test'
+  ...
+# Subtest: Capacitor native HTTP ve iOS scheme yap─▒land─▒r─▒lm─▒┼ş
+ok 398 - Capacitor native HTTP ve iOS scheme yap─▒land─▒r─▒lm─▒┼ş
+  ---
+  duration_ms: 3.6537
+  type: 'test'
+  ...
+# Subtest: Native push FirebaseMessaging kullan─▒r ÔÇö eski PushNotifications de─şil
+ok 399 - Native push FirebaseMessaging kullan─▒r ÔÇö eski PushNotifications de─şil
+  ---
+  duration_ms: 2.6055
+  type: 'test'
+  ...
+# Subtest: package.json push-notifications yerine firebase messaging kullan─▒r
+ok 400 - package.json push-notifications yerine firebase messaging kullan─▒r
+  ---
+  duration_ms: 7.422
+  type: 'test'
+  ...
+# Subtest: App.entitlements aps-environment production
+ok 401 - App.entitlements aps-environment production
+  ---
+  duration_ms: 2.388
+  type: 'test'
+  ...
+# Subtest: Xcode CODE_SIGN_ENTITLEMENTS App.entitlements dosyas─▒na ba─şl─▒
+ok 402 - Xcode CODE_SIGN_ENTITLEMENTS App.entitlements dosyas─▒na ba─şl─▒
+  ---
+  duration_ms: 2.7604
+  type: 'test'
+  ...
+# Subtest: GoogleService-Info.plist Xcode projesine ba─şl─▒
+ok 403 - GoogleService-Info.plist Xcode projesine ba─şl─▒
+  ---
+  duration_ms: 8.3345
+  type: 'test'
+  ...
+# Subtest: Info.plist remote-notification arka plan modu
+ok 404 - Info.plist remote-notification arka plan modu
+  ---
+  duration_ms: 6.5985
+  type: 'test'
+  ...
+# Subtest: Xcode Push Notifications capability aktif
+ok 405 - Xcode Push Notifications capability aktif
+  ---
+  duration_ms: 3.6959
+  type: 'test'
+  ...
+# Subtest: iOS minimum build number 49
+ok 406 - iOS minimum build number 49
+  ---
+  duration_ms: 2.1461
+  type: 'test'
+  ...
+# Subtest: Codemagic build number alt siniri tanimli
+ok 407 - Codemagic build number alt siniri tanimli
+  ---
+  duration_ms: 2.4928
+  type: 'test'
+  ...
+# Subtest: iOS CocoaPods kurulum scripti mevcut
+ok 408 - iOS CocoaPods kurulum scripti mevcut
+  ---
+  duration_ms: 1.8153
+  type: 'test'
+  ...
+# Subtest: iOS SPM kaldirildi ÔÇö CocoaPods kullanilir
+ok 409 - iOS SPM kaldirildi ÔÇö CocoaPods kullanilir
+  ---
+  duration_ms: 1.5919
+  type: 'test'
+  ...
+# Subtest: Android google-services.json gitignore ile korunur
+ok 410 - Android google-services.json gitignore ile korunur
+  ---
+  duration_ms: 2.4408
+  type: 'test'
+  ...
+# Subtest: GoogleService-Info.plist do─şru Xcode klas├Âr├╝nde olabilir
+ok 411 - GoogleService-Info.plist do─şru Xcode klas├Âr├╝nde olabilir
+  ---
+  duration_ms: 1.6902
+  type: 'test'
+  ...
+# Subtest: Android google-services plugin ko┼şullu uygulan─▒r
+ok 412 - Android google-services plugin ko┼şullu uygulan─▒r
+  ---
+  duration_ms: 1.1564
+  type: 'test'
+  ...
+# Subtest: AndroidManifest POST_NOTIFICATIONS izni korunur
+ok 413 - AndroidManifest POST_NOTIFICATIONS izni korunur
+  ---
+  duration_ms: 1.5164
+  type: 'test'
+  ...
+# Subtest: Android FCM bildirim kanal─▒ MainActivity i├ğinde tan─▒ml─▒
+ok 414 - Android FCM bildirim kanal─▒ MainActivity i├ğinde tan─▒ml─▒
+  ---
+  duration_ms: 4.0352
+  type: 'test'
+  ...
+# Subtest: Android FCM bildirim ikonu ve manifest meta verisi tan─▒ml─▒
+ok 415 - Android FCM bildirim ikonu ve manifest meta verisi tan─▒ml─▒
+  ---
+  duration_ms: 1.9073
+  type: 'test'
+  ...
+# Subtest: Android bildirim izni sistem ayarlarini okur
+ok 416 - Android bildirim izni sistem ayarlarini okur
+  ---
+  duration_ms: 2.8538
+  type: 'test'
+  ...
+# Subtest: Push g├Ânderimi yaln─▒zca admin handler ├╝zerinden
+ok 417 - Push g├Ânderimi yaln─▒zca admin handler ├╝zerinden
+  ---
+  duration_ms: 5.858
+  type: 'test'
+  ...
+# Subtest: ├ç─▒k─▒┼şta cihaz token pasifle┼ştirme fonksiyonu mevcut
+ok 418 - ├ç─▒k─▒┼şta cihaz token pasifle┼ştirme fonksiyonu mevcut
+  ---
+  duration_ms: 2.1634
+  type: 'test'
+  ...
+# Subtest: keystore.properties gitignore ile korunur
+ok 419 - keystore.properties gitignore ile korunur
+  ---
+  duration_ms: 1.203
+  type: 'test'
+  ...
+# Subtest: isGrantedPushSubscription yaln─▒zca granted tokenlar─▒ kabul eder
+ok 420 - isGrantedPushSubscription yaln─▒zca granted tokenlar─▒ kabul eder
+  ---
+  duration_ms: 3.8189
+  type: 'test'
+  ...
+# Subtest: granted_devices hedefi izin vermi┼ş cihazlar─▒ se├ğer
+ok 421 - granted_devices hedefi izin vermi┼ş cihazlar─▒ se├ğer
+  ---
+  duration_ms: 6.0197
+  type: 'test'
+  ...
+# Subtest: PUSH_AUDIENCE_OPTIONS granted_devices i├ğerir
+ok 422 - PUSH_AUDIENCE_OPTIONS granted_devices i├ğerir
+  ---
+  duration_ms: 0.5309
+  type: 'test'
+  ...
+# Subtest: register-device endpoint tan─▒ml─▒
+ok 423 - register-device endpoint tan─▒ml─▒
+  ---
+  duration_ms: 6.2051
+  type: 'test'
+  ...
+# Subtest: firebasePush sunucu kay─▒t API ├ğa─ş─▒r─▒r
+ok 424 - firebasePush sunucu kay─▒t API ├ğa─ş─▒r─▒r
+  ---
+  duration_ms: 1.6896
+  type: 'test'
+  ...
+# Subtest: upsertPushDevice: token UNIQUE ihlaline kar┼ş─▒ INSERT ├Âncesi ├ğak─▒┼şan sat─▒r─▒ temizler
+ok 425 - upsertPushDevice: token UNIQUE ihlaline kar┼ş─▒ INSERT ├Âncesi ├ğak─▒┼şan sat─▒r─▒ temizler
+  ---
+  duration_ms: 200.9794
+  type: 'test'
+  ...
+# Subtest: pasif kay─▒tlar temizlenir
+ok 426 - pasif kay─▒tlar temizlenir
+  ---
+  duration_ms: 7.0516
+  type: 'test'
+  ...
+# Subtest: native kay─▒t varken web kayd─▒ d├╝┼şer
+ok 427 - native kay─▒t varken web kayd─▒ d├╝┼şer
+  ---
+  duration_ms: 6.433
+  type: 'test'
+  ...
+# Subtest: APNs ham token elenir
+ok 428 - APNs ham token elenir
+  ---
+  duration_ms: 0.8549
+  type: 'test'
+  ...
+# Subtest: third-party-auth hatal─▒ token toplan─▒r
+ok 429 - third-party-auth hatal─▒ token toplan─▒r
+  ---
+  duration_ms: 4.5518
+  type: 'test'
+  ...
+# Subtest: resolveQrSigningSecret dev ortam─▒nda fallback d├Âner
+ok 430 - resolveQrSigningSecret dev ortam─▒nda fallback d├Âner
+  ---
+  duration_ms: 13.8407
+  type: 'test'
+  ...
+# Subtest: createCustomerQrToken ├╝retir ve do─şrular
+ok 431 - createCustomerQrToken ├╝retir ve do─şrular
+  ---
+  duration_ms: 5.9463
+  type: 'test'
+  ...
+# Subtest: QR generate endpoint qrPayload d├Ând├╝r├╝r
+ok 432 - QR generate endpoint qrPayload d├Ând├╝r├╝r
+  ---
+  duration_ms: 2.2463
+  type: 'test'
+  ...
+# Subtest: vercel.json api/qr.js i├ğin maxDuration tan─▒mlar
+ok 433 - vercel.json api/qr.js i├ğin maxDuration tan─▒mlar
+  ---
+  duration_ms: 2.307
+  type: 'test'
+  ...
+# Subtest: QrPage web i├ğin zorunlu Bearer token beklemez (yaln─▒zca native hidrasyon)
+ok 434 - QrPage web i├ğin zorunlu Bearer token beklemez (yaln─▒zca native hidrasyon)
+  ---
+  duration_ms: 7.9855
+  type: 'test'
+  ...
+# Subtest: qrClient Bearer token ve POST generate endpoint kullan─▒r
+ok 435 - qrClient Bearer token ve POST generate endpoint kullan─▒r
+  ---
+  duration_ms: 7.3429
+  type: 'test'
+  ...
+# Subtest: apiClient AbortError ve timeout ayr─▒m─▒ yapar
+ok 436 - apiClient AbortError ve timeout ayr─▒m─▒ yapar
+  ---
+  duration_ms: 5.5636
+  type: 'test'
+  ...
+# Subtest: QrPage ger├ğek QR payload ve premium kart kullan─▒r
+ok 437 - QrPage ger├ğek QR payload ve premium kart kullan─▒r
+  ---
+  duration_ms: 2.4118
+  type: 'test'
+  ...
+# Subtest: qrClient production debug loglar─▒ DEV ile s─▒n─▒rl─▒
+ok 438 - qrClient production debug loglar─▒ DEV ile s─▒n─▒rl─▒
+  ---
+  duration_ms: 2.7898
+  type: 'test'
+  ...
+# Subtest: auth session bootstrap sessionToken d├Ând├╝r├╝r
+ok 439 - auth session bootstrap sessionToken d├Ând├╝r├╝r
+  ---
+  duration_ms: 6.9588
+  type: 'test'
+  ...
+# Subtest: Profil ekran─▒nda do─şum g├╝n├╝ alan─▒ yok
+ok 440 - Profil ekran─▒nda do─şum g├╝n├╝ alan─▒ yok
+  ---
+  duration_ms: 1.8208
+  type: 'test'
+  ...
+# Subtest: M├╝┼şteri birthDate g├╝ncellemesi engellenir
+ok 441 - M├╝┼şteri birthDate g├╝ncellemesi engellenir
+  ---
+  duration_ms: 2.4636
+  type: 'test'
+  ...
+# Subtest: deriveSupabaseProjectRef pooler URI parse eder
+ok 442 - deriveSupabaseProjectRef pooler URI parse eder
+  ---
+  duration_ms: 2.2092
+  type: 'test'
+  ...
+# Subtest: readSupabasePublicConfig secret s─▒zd─▒rmaz
+ok 443 - readSupabasePublicConfig secret s─▒zd─▒rmaz
+  ---
+  duration_ms: 0.5472
+  type: 'test'
+  ...
+# Subtest: realtime fetch arka plan sync a─ş hatas─▒nda sessiz kal─▒r
+ok 444 - realtime fetch arka plan sync a─ş hatas─▒nda sessiz kal─▒r
+  ---
+  duration_ms: 0.6236
+  type: 'test'
+  ...
+# Subtest: realtimeManager debounce async hatalar─▒ yutar
+ok 445 - realtimeManager debounce async hatalar─▒ yutar
+  ---
+  duration_ms: 0.3855
+  type: 'test'
+  ...
+# Subtest: realtimeManager debounce tek ├ğa─şr─▒ yapar
+ok 446 - realtimeManager debounce tek ├ğa─şr─▒ yapar
+  ---
+  duration_ms: 89.1723
+  type: 'test'
+  ...
+# Subtest: adminPushSend uygulama i├ği bildirim tablosuna yazmaz
+ok 447 - adminPushSend uygulama i├ği bildirim tablosuna yazmaz
+  ---
+  duration_ms: 0.8909
+  type: 'test'
+  ...
+# Subtest: realtime API route ve config kay─▒tl─▒
+ok 448 - realtime API route ve config kay─▒tl─▒
+  ---
+  duration_ms: 0.6183
+  type: 'test'
+  ...
+# Subtest: admin member-delete endpoint kay─▒tl─▒
+ok 449 - admin member-delete endpoint kay─▒tl─▒
+  ---
+  duration_ms: 0.3042
+  type: 'test'
+  ...
+# Subtest: admin-customers do─şrudan customers tablosunu kullan─▒r
+ok 450 - admin-customers do─şrudan customers tablosunu kullan─▒r
+  ---
+  duration_ms: 0.871
+  type: 'test'
+  ...
+# Subtest: App logout realtime cleanup ├ğa─ş─▒r─▒r
+ok 451 - App logout realtime cleanup ├ğa─ş─▒r─▒r
+  ---
+  duration_ms: 1.519
+  type: 'test'
+  ...
+# Subtest: sql.js production Neon blok korunur
+ok 452 - sql.js production Neon blok korunur
+  ---
+  duration_ms: 0.7214
+  type: 'test'
+  ...
+# referral-code.test.mjs: OK
+# Subtest: tests\\referral-code.test.mjs
+ok 61 - tests\\referral-code.test.mjs
+  ---
+  duration_ms: 402.6542
+  type: 'test'
+  ...
+# Subtest: register-complete kritik yolda loadAppState/saveAppState await etmez
+ok 454 - register-complete kritik yolda loadAppState/saveAppState await etmez
+  ---
+  duration_ms: 4.5095
+  type: 'test'
+  ...
+# Subtest: register-complete email kodu m├╝┼şteri bulmadan ├Ânce do─şrulan─▒r
+ok 455 - register-complete email kodu m├╝┼şteri bulmadan ├Ânce do─şrulan─▒r
+  ---
+  duration_ms: 2.8446
+  type: 'test'
+  ...
+# Subtest: register-complete PIN ve session transaction i├ğinde
+ok 456 - register-complete PIN ve session transaction i├ğinde
+  ---
+  duration_ms: 1.5453
+  type: 'test'
+  ...
+# Subtest: register-complete step s├╝releri loglan─▒r
+ok 457 - register-complete step s├╝releri loglan─▒r
+  ---
+  duration_ms: 2.2945
+  type: 'test'
+  ...
+# Subtest: customersStore admin yetkisi customers.is_admin ile tutulur
+ok 458 - customersStore admin yetkisi customers.is_admin ile tutulur
+  ---
+  duration_ms: 2.6479
+  type: 'test'
+  ...
+# Subtest: auth m├╝┼şteri aramas─▒ ├Ânce normalize tablo kullan─▒r
+ok 459 - auth m├╝┼şteri aramas─▒ ├Ânce normalize tablo kullan─▒r
+  ---
+  duration_ms: 3.2109
+  type: 'test'
+  ...
+# Subtest: relational kay─▒t sonras─▒ state revizyonu g├╝ncellenir
+ok 460 - relational kay─▒t sonras─▒ state revizyonu g├╝ncellenir
+  ---
+  duration_ms: 2.2633
+  type: 'test'
+  ...
+# Subtest: app state ├Ânbelle─şi ├╝ye ve tam listeyi ay─▒r─▒r
+ok 461 - app state ├Ânbelle─şi ├╝ye ve tam listeyi ay─▒r─▒r
+  ---
+  duration_ms: 2.8881
+  type: 'test'
+  ...
+# Subtest: LoginPage kay─▒t sonras─▒ uzak kay─▒t atlar
+ok 462 - LoginPage kay─▒t sonras─▒ uzak kay─▒t atlar
+  ---
+  duration_ms: 6.6177
+  type: 'test'
+  ...
+# Subtest: sql istek kapsam─▒ ÔÇö serverless taze ba─şlant─▒
+ok 463 - sql istek kapsam─▒ ÔÇö serverless taze ba─şlant─▒
+  ---
+  duration_ms: 3.6005
+  type: 'test'
+  ...
+# Subtest: API entrypoint withSqlRequest kullan─▒r
+ok 464 - API entrypoint withSqlRequest kullan─▒r
+  ---
+  duration_ms: 1.7467
+  type: 'test'
+  ...
+# Subtest: USE_RELATIONAL_STATE bayra─ş─▒ relationalConfig i├ğinde tan─▒ml─▒
+ok 465 - USE_RELATIONAL_STATE bayra─ş─▒ relationalConfig i├ğinde tan─▒ml─▒
+  ---
+  duration_ms: 3.8849
+  type: 'test'
+  ...
+# Subtest: appState loadAppState relational modu destekler
+ok 466 - appState loadAppState relational modu destekler
+  ---
+  duration_ms: 1.96
+  type: 'test'
+  ...
+# Subtest: ├╝ye state sync hafif compose kullan─▒r
+ok 467 - ├╝ye state sync hafif compose kullan─▒r
+  ---
+  duration_ms: 6.5749
+  type: 'test'
+  ...
+# Subtest: adminLoyalty relational sadakat yolunu kullan─▒r
+ok 468 - adminLoyalty relational sadakat yolunu kullan─▒r
+  ---
+  duration_ms: 2.8431
+  type: 'test'
+  ...
+# Subtest: migration script do─şru ┼şema yolunu kullan─▒r
+ok 469 - migration script do─şru ┼şema yolunu kullan─▒r
+  ---
+  duration_ms: 2.7107
+  type: 'test'
+  ...
+# Subtest: mintSupabaseRealtimeJwt ÔÇö secret yoksa null
+ok 470 - mintSupabaseRealtimeJwt ÔÇö secret yoksa null
+  ---
+  duration_ms: 5.8984
+  type: 'test'
+  ...
+# Subtest: mintSupabaseRealtimeJwt ÔÇö claim alanlar─▒ do─şru
+ok 471 - mintSupabaseRealtimeJwt ÔÇö claim alanlar─▒ do─şru
+  ---
+  duration_ms: 4.5811
+  type: 'test'
+  ...
+# Subtest: withRealtimeToken ÔÇö body geni┼şletir
+ok 472 - withRealtimeToken ÔÇö body geni┼şletir
+  ---
+  duration_ms: 1.7312
+  type: 'test'
+  ...
+# Subtest: ensureSchemaReady production ortam─▒nda SQL ├ğal─▒┼şt─▒rmaz
+ok 473 - ensureSchemaReady production ortam─▒nda SQL ├ğal─▒┼şt─▒rmaz
+  ---
+  duration_ms: 3.407
+  type: 'test'
+  ...
+# Subtest: sqlIn ÔÇö ANY yerine IN kullanilir (pooler uyumu)
+ok 474 - sqlIn ÔÇö ANY yerine IN kullanilir (pooler uyumu)
+  ---
+  duration_ms: 9.6931
+  type: 'test'
+  ...
+# Subtest: sqlIn modulu export eder
+ok 475 - sqlIn modulu export eder
+  ---
+  duration_ms: 8.1266
+  type: 'test'
+  ...
+# Subtest: formatClientApiError 401 Ref ekler
+ok 476 - formatClientApiError 401 Ref ekler
+  ---
+  duration_ms: 3.3865
+  type: 'test'
+  ...
+# Subtest: formatClientApiError timeout ayr─▒ mesaj
+ok 477 - formatClientApiError timeout ayr─▒ mesaj
+  ---
+  duration_ms: 0.8328
+  type: 'test'
+  ...
+# Subtest: formatClientApiError AbortError sessiz
+ok 478 - formatClientApiError AbortError sessiz
+  ---
+  duration_ms: 0.7474
+  type: 'test'
+  ...
+# Subtest: auth session bootstrap invalidate kullanmaz
+ok 479 - auth session bootstrap invalidate kullanmaz
+  ---
+  duration_ms: 5.9795
+  type: 'test'
+  ...
+# Subtest: db-status Neon production blok i┼şaretler
+ok 480 - db-status Neon production blok i┼şaretler
+  ---
+  duration_ms: 3.0577
+  type: 'test'
+  ...
+# Subtest: remoteFetch generic sunucu yan─▒t vermedi kullanmaz
+ok 481 - remoteFetch generic sunucu yan─▒t vermedi kullanmaz
+  ---
+  duration_ms: 3.4187
+  type: 'test'
+  ...
+# Subtest: apiClient clientMessage ├╝retir
+ok 482 - apiClient clientMessage ├╝retir
+  ---
+  duration_ms: 1.3382
+  type: 'test'
+  ...
+# Subtest: GET full-admin legacy yolu skipPersist ile loadAppState ├ğa─ş─▒r─▒r (yazma yok)
+ok 483 - GET full-admin legacy yolu skipPersist ile loadAppState ├ğa─ş─▒r─▒r (yazma yok)
+  ---
+  duration_ms: 3.0368
+  type: 'test'
+  ...
+# Subtest: GET m├╝┼şteri yolu da skipPersist ile ├ğa─şr─▒l─▒r
+ok 484 - GET m├╝┼şteri yolu da skipPersist ile ├ğa─şr─▒l─▒r
+  ---
+  duration_ms: 0.6044
+  type: 'test'
+  ...
+# Subtest: loadAppState seed dal─▒ skipPersist modunda saveAppState ├ğa─ş─▒rmaz
+ok 485 - loadAppState seed dal─▒ skipPersist modunda saveAppState ├ğa─ş─▒rmaz
+  ---
+  duration_ms: 0.7275
+  type: 'test'
+  ...
+# Subtest: loadAppState menu/loyalty migration kal─▒c─▒la┼şt─▒rmas─▒ skipPersist ile atlan─▒r
+ok 486 - loadAppState menu/loyalty migration kal─▒c─▒la┼şt─▒rmas─▒ skipPersist ile atlan─▒r
+  ---
+  duration_ms: 0.6055
+  type: 'test'
+  ...
+# Subtest: GET seed/migrated state hesaplan─▒p kal─▒c─▒la┼şt─▒r─▒lmadan d├Ând├╝r├╝lebilir
+ok 487 - GET seed/migrated state hesaplan─▒p kal─▒c─▒la┼şt─▒r─▒lmadan d├Ând├╝r├╝lebilir
+  ---
+  duration_ms: 0.503
+  type: 'test'
+  ...
+# Subtest: POST/state yaz─▒m─▒ h├ól├ó runSql ile saveAppState ├ğa─ş─▒r─▒r (write de─şi┼şmedi)
+ok 488 - POST/state yaz─▒m─▒ h├ól├ó runSql ile saveAppState ├ğa─ş─▒r─▒r (write de─şi┼şmedi)
+  ---
+  duration_ms: 0.5305
+  type: 'test'
+  ...
+# Subtest: Read timeout ETIMEDOUT olarak transient s─▒n─▒flan─▒r ÔåÆ kontroll├╝ 503
+ok 489 - Read timeout ETIMEDOUT olarak transient s─▒n─▒flan─▒r ÔåÆ kontroll├╝ 503
+  ---
+  duration_ms: 39.6857
+  type: 'test'
+  ...
+# Subtest: state.js ge├ğici DB hatas─▒nda 503 d├Âner (ham 500 de─şil)
+ok 490 - state.js ge├ğici DB hatas─▒nda 503 d├Âner (ham 500 de─şil)
+  ---
+  duration_ms: 0.9017
+  type: 'test'
+  ...
+# Subtest: GET dal─▒nda saveAppState ├ğa─şr─▒lmaz (salt-okuma)
+ok 491 - GET dal─▒nda saveAppState ├ğa─şr─▒lmaz (salt-okuma)
+  ---
+  duration_ms: 1.0294
+  type: 'test'
+  ...
+# Subtest: ayn─▒ updated_at revizyonu e┼şle┼şir
+ok 492 - ayn─▒ updated_at revizyonu e┼şle┼şir
+  ---
+  duration_ms: 2.417
+  type: 'test'
+  ...
+# Subtest: farkl─▒ updated_at revizyonu ├ğak─▒┼şma say─▒l─▒r
+ok 493 - farkl─▒ updated_at revizyonu ├ğak─▒┼şma say─▒l─▒r
+  ---
+  duration_ms: 0.2506
+  type: 'test'
+  ...
+# Subtest: ge├ğersiz tarih e┼şle┼şmez
+ok 494 - ge├ğersiz tarih e┼şle┼şmez
+  ---
+  duration_ms: 0.1603
+  type: 'test'
+  ...
+# G├╝venlik testleri:
+#   Ô£ô loyalty manip├╝lasyonu 403 tetikler
+#   Ô£ô isAdmin y├╝kseltme 403 tetikler
+#   Ô£ô wheelSpins ekleme 403 tetikler
+#   Ô£ô history de─şi┼ştirme 403 tetikler
+#   Ô£ô g├╝venli profil (isim) g├╝ncelleme ihlal ├╝retmez
+#   Ô£ô e-posta de─şi┼şimi 403 tetikler
+#   Ô£ô mergeUserState e-postay─▒ yazmaz
+#   Ô£ô mergeUserState loyalty yazmaz, profili uygular
+#   Ô£ô mergeUserState isAdmin y├╝kseltmeyi yok sayar
+#   Ô£ô g├╝venli pushSubscriptions/feedback g├╝ncellenebilir
+#   Ô£ô mergeAdminState cashier_pin korur
+#   Ô£ô mergeAdminState bo┼ş m├╝┼şteri listesi canonical ├╝yeleri silmez
+#   Ô£ô mergeAdminState tek m├╝┼şterilik istemci t├╝m ├╝yeleri silmez
+#   Ô£ô filterStateForUser ba┼şka ├╝ye verisi s─▒zd─▒rmaz
+# T├╝m g├╝venlik testleri ge├ğti (14).
+# Subtest: tests\\state-security.test.mjs
+ok 70 - tests\\state-security.test.mjs
+  ---
+  duration_ms: 244.9856
+  type: 'test'
+  ...
+# Subtest: normal sekmeler 60 saniye polling kullan─▒r
+ok 496 - normal sekmeler 60 saniye polling kullan─▒r
+  ---
+  duration_ms: 2.1127
+  type: 'test'
+  ...
+# Subtest: QR sekmesi h─▒zl─▒ polling kullan─▒r ama 5 saniyede bir poll yapmaz
+ok 497 - QR sekmesi h─▒zl─▒ polling kullan─▒r ama 5 saniyede bir poll yapmaz
+  ---
+  duration_ms: 0.4561
+  type: 'test'
+  ...
+# Subtest: admin review-action endpoint kay─▒tl─▒
+ok 498 - admin review-action endpoint kay─▒tl─▒
+  ---
+  duration_ms: 2.3672
+  type: 'test'
+  ...
+# Subtest: Google yorum onay─▒ relational store kullan─▒r
+ok 499 - Google yorum onay─▒ relational store kullan─▒r
+  ---
+  duration_ms: 1.1457
+  type: 'test'
+  ...
+# Subtest: ReviewApprovalAdmin tam state commit yerine API ├ğa─ş─▒r─▒r
+ok 500 - ReviewApprovalAdmin tam state commit yerine API ├ğa─ş─▒r─▒r
+  ---
+  duration_ms: 1.0624
+  type: 'test'
+  ...
+# Subtest: pushDispatch admin push-send ve skipRemote kullan─▒r
+ok 501 - pushDispatch admin push-send ve skipRemote kullan─▒r
+  ---
+  duration_ms: 2.2678
+  type: 'test'
+  ...
+# Subtest: QR m├╝┼şteri boyutu 260px ve y├╝ksek kontrast
+ok 502 - QR m├╝┼şteri boyutu 260px ve y├╝ksek kontrast
+  ---
+  duration_ms: 1.1799
+  type: 'test'
+  ...
+# Subtest: apiClient generic sunucu yan─▒t vermedi kullanmaz
+ok 503 - apiClient generic sunucu yan─▒t vermedi kullanmaz
+  ---
+  duration_ms: 0.8165
+  type: 'test'
+  ...
+# Subtest: adminPushSend relational modda tam state yazmaz
+ok 504 - adminPushSend relational modda tam state yazmaz
+  ---
+  duration_ms: 0.9607
+  type: 'test'
+  ...
+# Subtest: pushCleanup relational SQL kullan─▒r
+ok 505 - pushCleanup relational SQL kullan─▒r
+  ---
+  duration_ms: 0.7434
+  type: 'test'
+  ...
+# Subtest: adminPushSend g├Ânderim ├Âncesi OAuth probe yapmaz
+ok 506 - adminPushSend g├Ânderim ├Âncesi OAuth probe yapmaz
+  ---
+  duration_ms: 1.2661
+  type: 'test'
+  ...
+# Subtest: adminPushSend production h─▒zl─▒ yol kullan─▒r
+ok 507 - adminPushSend production h─▒zl─▒ yol kullan─▒r
+  ---
+  duration_ms: 5.1104
+  type: 'test'
+  ...
+# Subtest: PushNotificationAdmin push kay─▒tlar─▒nda skipRemote kullan─▒r
+ok 508 - PushNotificationAdmin push kay─▒tlar─▒nda skipRemote kullan─▒r
+  ---
+  duration_ms: 1.8191
+  type: 'test'
+  ...
+1..508
+# tests 508
+# suites 0
+# pass 508
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5635.5864

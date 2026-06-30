@@ -1,0 +1,61 @@
+﻿
+> liberte-club-app@1.1.30 build:release
+> node scripts/generate-firebase-sw.mjs && node scripts/generate-pwa-icons.mjs && node scripts/prepare-transparent-logo.mjs && node scripts/generate-splash-assets.mjs && node scripts/generate-ios-assets.mjs && node scripts/generate-android-splash.mjs && node scripts/generate-notification-badge.mjs && node scripts/generate-legal-pages.mjs && vite build
+
+firebase-messaging-sw.js g├╝ncellendi.
+public/icon-192.png (192px, krem zemin + tam rozet)
+public/icon-512.png (512px, krem zemin + tam rozet)
+public/apple-touch-icon.png (180px, krem zemin + tam rozet)
+public/favicon-32.png (32px, krem zemin + tam rozet)
+public/favicon-16.png (16px, krem zemin + tam rozet)
+┼Şeffaf logo ├╝retildi (kaynak dosyadan)
+public/liberte-club-splash-master.png
+splash/ios-1290x2796.png
+splash/ios-1179x2556.png
+splash/ios-1170x2532.png
+splash/ios-1284x2778.png
+splash/ios-1242x2688.png
+splash/ios-828x1792.png
+splash/ios-750x1334.png
+index.html iOS startup linkleri g├╝ncellendi.
+iOS app ikonu haz─▒r: AppIcon-512@2x.png
+iOS native splash: yalnizca yesil zemin
+android/drawable/splash.xml (yalnizca yesil zemin)
+android/drawable/splash_icon_empty.png
+notification-badge.png = liberte-logo silueti (%15 doluluk).
+Yasal sayfalar uretildi: public/privacy.html, public/terms.html, public/support.html
+vite v6.4.3 building for production...
+transforming...
+Ô£ô 1835 modules transformed.
+rendering chunks...
+node.exe : [plugin vite:reporter] 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([plugin vite:reporter] :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(!) C:/Users/ss/OneDrive/Belgeler/GitHub/liberte-club-app/node_modules/@capacitor/app/dist/esm/index.js is dynamically 
+imported by C:/Users/ss/OneDrive/Belgeler/GitHub/liberte-club-app/src/hooks/usePushEnableFlow.js, C:/Users/ss/OneDrive/
+Belgeler/GitHub/liberte-club-app/src/lib/appForeground.js, C:/Users/ss/OneDrive/Belgeler/GitHub/liberte-club-app/src/li
+b/openNotificationSettings.js, C:/Users/ss/OneDrive/Belgeler/GitHub/liberte-club-app/src/lib/openNotificationSettings.j
+s but also statically imported by C:/Users/ss/OneDrive/Belgeler/GitHub/liberte-club-app/src/App.jsx, dynamic import wil
+l not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                    3.85 kB Ôöé gzip:   1.21 kB
+dist/assets/index-YdHhlOq6.css                   174.23 kB Ôöé gzip:  31.78 kB
+dist/assets/web-B1hZumE7.js                        0.19 kB Ôöé gzip:   0.16 kB
+dist/assets/web-C31WHxJw.js                        0.91 kB Ôöé gzip:   0.44 kB
+dist/assets/index.esm-CmSJEUTh.js                  1.35 kB Ôöé gzip:   0.75 kB
+dist/assets/web-BLo_L3Qh.js                        2.12 kB Ôöé gzip:   0.78 kB
+dist/assets/web-C3CESexm.js                        3.71 kB Ôöé gzip:   1.26 kB
+dist/assets/CashierProductPickModal-6aX5MIKx.js    4.47 kB Ôöé gzip:   1.64 kB
+dist/assets/react-vendor-CCXFnprz.js              11.92 kB Ôöé gzip:   4.25 kB
+dist/assets/index.esm-VqqT3rBR.js                 40.57 kB Ôöé gzip:   9.64 kB
+dist/assets/index.esm-MT7gqsgN.js                 56.64 kB Ôöé gzip:   9.34 kB
+dist/assets/AdminPage-CCR0VG2_.js                 87.21 kB Ôöé gzip:  22.91 kB
+dist/assets/supabase-dIChsWQP.js                 212.38 kB Ôöé gzip:  54.92 kB
+dist/assets/CustomerQrScanner-C69P5F3t.js        352.75 kB Ôöé gzip: 106.62 kB
+dist/assets/index-CKVllqJi.js                    428.66 kB Ôöé gzip: 132.63 kB
+Ô£ô built in 7.22s

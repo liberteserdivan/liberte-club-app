@@ -147,6 +147,36 @@ export async function getSessionForQr(req) {
   });
 }
 
+// Login için hafif oturum kimliği — syncSessionWithCustomer / loadAppState YOK
+export async function getSessionIdentityForLogin(req) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  return runSqlReadFast(async () => {
+    const sql = getSql();
+    if (!sql) return null;
+
+    await ensureSessionTable(sql);
+    const rows = await sql`
+      SELECT customer_id, role, admin_verified
+      FROM auth_sessions
+      WHERE token_hash = ${hashToken(token)}
+        AND expires_at > now()
+      LIMIT 1
+    `;
+
+    const row = rows[0];
+    if (!row) return null;
+
+    return {
+      customerId: Number(row.customer_id),
+      role: row.role,
+      isAdmin: row.role === 'admin',
+      adminVerified: Boolean(row.admin_verified)
+    };
+  });
+}
+
 // Oturum bootstrap — tek SQL turunda oturum + müşteri
 export async function getSessionForBootstrap(req) {
   const token = readAuthToken(req);
@@ -289,30 +319,35 @@ export async function syncSessionWithCustomer(req, session) {
   return session;
 }
 
+// Yeni oturum oluştur — tek deneme, retry yok (çift session satırı riski)
+export async function createSessionOnce(res, { customerId, role = 'user', deviceId = '', sql: externalSql = null }) {
+  const sql = externalSql || getSql();
+  if (!sql) throw new Error('DATABASE_URL eksik');
+
+  await ensureSessionTable(sql);
+  const token = randomBytes(32).toString('base64url');
+  const tokenHash = hashToken(token);
+  const safeRole = role === 'admin' ? 'admin' : 'user';
+
+  await sql`
+    INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at)
+    VALUES (
+      ${tokenHash},
+      ${customerId},
+      ${safeRole},
+      ${deviceId || null},
+      now() + interval '30 days'
+    )
+  `;
+
+  setSessionCookie(res, token);
+  return { token, customerId, role: safeRole, isAdmin: safeRole === 'admin' };
+}
+
 // Yeni oturum oluştur
 export async function createSession(res, { customerId, role = 'user', deviceId = '', sql: externalSql = null }) {
   return runSql(async () => {
-    const sql = externalSql || getSql();
-    if (!sql) throw new Error('DATABASE_URL eksik');
-
-    await ensureSessionTable(sql);
-    const token = randomBytes(32).toString('base64url');
-    const tokenHash = hashToken(token);
-    const safeRole = role === 'admin' ? 'admin' : 'user';
-
-    await sql`
-      INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at)
-      VALUES (
-        ${tokenHash},
-        ${customerId},
-        ${safeRole},
-        ${deviceId || null},
-        now() + interval '30 days'
-      )
-    `;
-
-    setSessionCookie(res, token);
-    return { token, customerId, role: safeRole, isAdmin: safeRole === 'admin' };
+    return createSessionOnce(res, { customerId, role, deviceId, sql: externalSql || getSql() });
   });
 }
 

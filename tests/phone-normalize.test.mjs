@@ -37,7 +37,7 @@ test('authLogin app_state aramaz ve normalize tablo kullanır', async () => {
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
   const source = readFileSync(join(process.cwd(), 'api/_lib/handlers/authLogin.js'), 'utf8');
-  assert.doesNotMatch(source, /loadAppState/);
+  assert.doesNotMatch(source, /loadAppState\s*\(/);
   assert.doesNotMatch(source, /repairCustomerDirectory/);
-  assert.match(source, /findCustomerByPhone/);
+  assert.match(source, /findByPhoneSql\(sql, phone\)/);
 });
