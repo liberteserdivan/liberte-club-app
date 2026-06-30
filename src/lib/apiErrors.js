@@ -47,6 +47,20 @@ export function formatClientApiError({ response = null, data = {}, error = null,
     };
   }
 
+  // Geçici servis kullanılamaz — 500 gibi fatal değil, retry/degraded mesajı
+  if (httpStatus === 503) {
+    return {
+      message: withRef(
+        data?.error || data?.message || 'Sunucu geçici olarak yanıt veremedi. Birkaç saniye sonra tekrar deneyin.',
+        requestId
+      ),
+      code: code || 'SERVICE_UNAVAILABLE',
+      requestId,
+      abort: false,
+      retryable: true
+    };
+  }
+
   if (httpStatus === 404) {
     return {
       message: withRef(data?.message || 'Servis bulunamadı.', requestId),

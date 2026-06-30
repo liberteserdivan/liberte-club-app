@@ -3,7 +3,7 @@ import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
 import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
-import { runSql, runSqlRead, runSqlReadFast } from './runSql.js';
+import { runSql, runSqlRead, runSqlReadFast, runSqlSessionBootstrap } from './runSql.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -152,10 +152,9 @@ export async function getSessionForBootstrap(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  // Salt-okunur bootstrap — fail-fast (kısa timeout + az deneme); böylece
-  // realtime/state/push gibi oturum bağımlı uçlar 30-120sn asılı kalmaz ve
-  // yetkisiz/expired token'da hızlı 401 döner.
-  return runSqlReadFast(async () => {
+  // Bootstrap restore — tek katman runSqlSessionBootstrap (~3.6sn üst sınır).
+  // Müşteri + loyalty hafif okuma; syncSessionWithCustomer / loadAppState YOK.
+  return runSqlSessionBootstrap(async () => {
     const sql = getSql();
     if (!sql) return null;
 

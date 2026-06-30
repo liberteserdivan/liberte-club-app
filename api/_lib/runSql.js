@@ -27,6 +27,17 @@ export function runSqlRead(task) {
   });
 }
 
+// Oturum/auth bootstrap okumaları — tek katman, ~3.6sn üst sınır (4sn hedef).
+// authSession.js içinde İKİNCİ withSqlRetry sarmalayıcı KULLANILMAMALI (10sn+ yapar).
+const SESSION_BOOTSTRAP_ATTEMPT_TIMEOUT_MS = 1800;
+export function runSqlSessionBootstrap(task) {
+  return withSqlRetry(task, {
+    retries: 1,
+    resetClient: resetSqlClient,
+    attemptTimeoutMs: SESSION_BOOTSTRAP_ATTEMPT_TIMEOUT_MS
+  });
+}
+
 // Oturum/auth doğrulama okumaları için FAIL-FAST varyant.
 // Auth kontrolü ucuz ve indeksli bir lookup'tır; bayat bağlantıda 4x6sn (~30sn)
 // retry yığını oturum bağımlı uçların (ör. yetkisiz /api/state) 30sn+ asılı

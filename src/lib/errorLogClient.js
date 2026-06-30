@@ -5,7 +5,8 @@ import { apiFetch, apiJson } from './apiClient.js';
 export async function submitErrorLog(payload) {
   const { response } = await apiFetch('/api/state', {
     method: 'POST',
-    body: JSON.stringify({ errorLog: payload })
+    body: JSON.stringify({ errorLog: payload }),
+    skipUnauthorized: true
   });
   return response.ok;
 }

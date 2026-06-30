@@ -112,6 +112,9 @@ export default function App() {
             loyalty: result.loyalty
           }), { skipRemote: true });
         }
+      } else if (result?.sessionUnavailable) {
+        // Oturum ön kontrolü geçici başarısız — giriş formu açık kalsın
+        setAuthNotice(result.message || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.');
       }
       setAuthReady(true);
     });

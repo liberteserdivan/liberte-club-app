@@ -46,10 +46,11 @@ test('runSql: runSqlReadFast kısa timeout + az deneme ile tanımlı', () => {
 
 test('auth: getSession/getSessionForBootstrap/getSessionForQr fail-fast okuma kullanır', () => {
   const src = read('api/_lib/auth.js');
-  assert.match(src, /import \{ runSql, runSqlRead, runSqlReadFast \}/, 'runSqlReadFast import edilmeli');
+  assert.match(src, /import \{ runSql, runSqlRead, runSqlReadFast, runSqlSessionBootstrap \}/, 'runSqlSessionBootstrap import edilmeli');
   // Üç oturum getter'ı da fail-fast okuma kullanmalı
   const count = (src.match(/runSqlReadFast\(async \(\) =>/g) || []).length;
-  assert.ok(count >= 3, `en az 3 session getter runSqlReadFast kullanmalı (bulunan: ${count})`);
+  assert.ok(count >= 2, `getSession/getSessionForQr runSqlReadFast kullanmalı (bulunan: ${count})`);
+  assert.match(src, /runSqlSessionBootstrap\(async \(\) =>/, 'getSessionForBootstrap runSqlSessionBootstrap kullanmalı');
 });
 
 // 3) /api/state cookie/token yoksa DB'ye gitmeden hızlı 401 döner
@@ -59,7 +60,7 @@ test('auth: token yoksa session getter DB\'ye gitmeden null döner', () => {
   const fnStart = src.indexOf('export async function getSessionForBootstrap');
   const body = src.slice(fnStart, fnStart + 400);
   const tokenGuardIdx = body.indexOf('if (!token) return null;');
-  const sqlIdx = body.indexOf('runSqlReadFast');
+  const sqlIdx = body.indexOf('runSqlSessionBootstrap');
   assert.ok(tokenGuardIdx !== -1, 'token yokluk guard olmalı');
   assert.ok(sqlIdx !== -1 && tokenGuardIdx < sqlIdx, 'token guard DB okumasından önce olmalı');
 });

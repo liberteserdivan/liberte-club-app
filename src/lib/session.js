@@ -100,6 +100,22 @@ export async function bootstrapSession() {
       return memorySession ? { session: memorySession } : null;
     }
 
+    // 401 — oturum yok/geçersiz; giriş ekranı için normal, modal yok
+    if (response.status === 401) {
+      memorySession = null;
+      return null;
+    }
+
+    // 503 — geçici DB; giriş formu kullanılabilir kalsın
+    if (response.status === 503) {
+      memorySession = null;
+      return {
+        sessionUnavailable: true,
+        code: data?.code || 'SESSION_TEMPORARILY_UNAVAILABLE',
+        message: data?.error || data?.clientMessage || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
+      };
+    }
+
     if (!response.ok || !data?.ok) {
       memorySession = null;
       return null;

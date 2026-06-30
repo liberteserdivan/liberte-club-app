@@ -2,10 +2,9 @@ import { applyCors } from '../http.js';
 import { destroySession, getSessionForBootstrap, readAuthToken } from '../auth.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
-import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
-import { resetSqlClient } from '../sql.js';
+import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage } from '../dbTransient.js';
 
-// Oturum okuma ve çıkış
+// Oturum okuma ve çıkış — yalnızca session doğrulama + minimal müşteri/loyalty
 export async function handleAuthSession(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -31,20 +30,26 @@ export async function handleAuthSession(req, res) {
   const trace = createRequestTrace('auth.session-restore');
   const startedAt = Date.now();
 
-  try {
-    const hasSessionToken = Boolean(readAuthToken(req));
-    trace.log('start', { step: 'start', hasSessionToken });
+  // Cookie/token yok — DB'ye gitmeden hızlı 401 (giriş ekranı normal akış)
+  const token = readAuthToken(req);
+  if (!token) {
+    trace.log('no_token', { step: 'no_token', durationMs: Date.now() - startedAt });
+    return res.status(401).json({
+      ok: false,
+      error: 'Oturum gerekli',
+      requestId: trace.requestId
+    });
+  }
 
-    // Bootstrap salt-okunur ve hafif; bayat bağlantıda 5sn'de vazgeçip taze
-    // bağlantıyla bir kez daha dener (uygulama açılışı/çıkış sonrası takılmayı önler).
-    // attemptTimeoutMs=5000, retries=1: en kötü ~10sn ile sınırlı (önceki 18sn değil).
-    const session = await withSqlRetry(
-      () => getSessionForBootstrap(req),
-      { resetClient: resetSqlClient, attemptTimeoutMs: 5000, retries: 1 }
-    );
+  try {
+    trace.log('start', { step: 'start', hasSessionToken: true });
+
+    // Tek katman: getSessionForBootstrap içinde runSqlSessionBootstrap (~3.6sn üst sınır).
+    // Burada İKİNCİ withSqlRetry sarmalayıcı kullanılmaz — eski 5s×2 ≈ 10sn hatası.
+    const session = await getSessionForBootstrap(req);
     trace.log('verify_session', {
       step: 'verify_session',
-      hasSessionToken,
+      hasSessionToken: true,
       sessionValid: Boolean(session?.customerId),
       customerId: session?.customerId || null,
       hasCustomerSnapshot: Boolean(session?.customer),
@@ -52,10 +57,14 @@ export async function handleAuthSession(req, res) {
     });
 
     if (!session?.customerId) {
-      return res.status(200).json({ ok: false, requestId: trace.requestId });
+      return res.status(401).json({
+        ok: false,
+        error: 'Oturum geçersiz veya süresi doldu',
+        requestId: trace.requestId
+      });
     }
 
-    const sessionToken = readAuthToken(req) || undefined;
+    const sessionToken = token || undefined;
 
     return res.status(200).json(withRealtimeToken({
       ok: true,
@@ -75,13 +84,11 @@ export async function handleAuthSession(req, res) {
       durationMs: Date.now() - startedAt
     });
 
-    // Bayat/geçici DB bağlantısında 500 yerine kontrollü 503 dön; istemci login
-    // ekranına döner ama sonsuz 18sn 500 döngüsüne girmez.
     if (isTransientDbError(e)) {
       return res.status(503).json(trace.failBody(
         'session_unavailable',
         'SESSION_TEMPORARILY_UNAVAILABLE',
-        'Oturum şu an doğrulanamadı. Lütfen tekrar giriş yapın.'
+        'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
       ));
     }
 

@@ -5,6 +5,7 @@ import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
 import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS } from '../lib/apiClient.js';
+import { formatClientApiError } from '../lib/apiErrors.js';
 import {
   isValidDevPin,
   makeDevAuthCode,
@@ -56,6 +57,23 @@ export default function Login({ db, commit, setSession }) {
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
 
+  // Ağ/zaman aşımı — login modalında "Sunucuya ulaşılamadı" panic metni gösterme
+  function notifyRequestError(error, fallback) {
+    const formatted = formatClientApiError({ error, fallback });
+    if (formatted.abort) return;
+
+    let message = formatted.message || fallback;
+    if (formatted.code === 'FETCH_TIMEOUT' || formatted.code === 'NETWORK_ERROR') {
+      message = 'Giriş şu an tamamlanamadı. Lütfen birkaç saniye sonra tekrar deneyin.';
+    }
+
+    const soft = formatted.retryable
+      || formatted.code === 'FETCH_TIMEOUT'
+      || formatted.code === 'NETWORK_ERROR'
+      || formatted.code === 'SERVICE_UNAVAILABLE';
+    notify(message, soft ? 'info' : 'warning');
+  }
+
   // API hata mesajını kullanıcı dostu metne çevir
   function readApiError(data, fallback) {
     const code = String(data?.code || '').trim();
@@ -84,6 +102,9 @@ export default function Login({ db, commit, setSession }) {
       return `Oturum oluşturulamadı. Ref: ${data?.requestId || '—'}`;
     }
     if (code === 'DATABASE_TRANSIENT') {
+      return 'Sunucu geçici olarak yanıt veremedi. Birkaç saniye sonra tekrar deneyin.';
+    }
+    if (code === 'SESSION_TEMPORARILY_UNAVAILABLE' || code === 'STATE_TEMPORARILY_UNAVAILABLE') {
       return 'Sunucu geçici olarak yanıt veremedi. Birkaç saniye sonra tekrar deneyin.';
     }
     const base = data?.clientMessage || data?.message || data?.error || fallback;
@@ -216,6 +237,7 @@ export default function Login({ db, commit, setSession }) {
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const { response, data } = await apiJson('/api/auth/login', {
           ...AUTH_REQUEST_OPTIONS,
+          skipUnauthorized: true,
           method: 'POST',
           body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
         });
@@ -233,7 +255,7 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
     } catch (e) {
-      notify(e.message || 'Giriş yapılamadı');
+      notifyRequestError(e, 'Giriş yapılamadı');
     } finally {
       setLoading(false);
       loginInFlightRef.current = false;
@@ -284,6 +306,7 @@ export default function Login({ db, commit, setSession }) {
 
       const { response, data } = await apiJson('/api/auth/register-complete', {
         ...REGISTER_REQUEST_OPTIONS,
+        skipUnauthorized: true,
         method: 'POST',
         body: JSON.stringify({
           action: 'send-code',
@@ -308,7 +331,7 @@ export default function Login({ db, commit, setSession }) {
         setInfo(`Doğrulama kodu ${data.emailMasked || maskEmail(fields.em)} adresine gönderildi.`);
       }
     } catch (e) {
-      notify(e.message || 'Kod gönderilemedi');
+      notifyRequestError(e, 'Kod gönderilemedi');
     } finally {
       setLoading(false);
     }
@@ -339,6 +362,7 @@ export default function Login({ db, commit, setSession }) {
 
       const { response, data } = await apiJson('/api/auth/register-complete', {
         ...REGISTER_REQUEST_OPTIONS,
+        skipUnauthorized: true,
         method: 'POST',
         body: JSON.stringify({
           action: 'complete',
@@ -362,7 +386,7 @@ export default function Login({ db, commit, setSession }) {
       }
       finishSession(data);
     } catch (e) {
-      notify(e.message || 'Kayıt tamamlanamadı');
+      notifyRequestError(e, 'Kayıt tamamlanamadı');
     } finally {
       setLoading(false);
     }
@@ -422,6 +446,7 @@ export default function Login({ db, commit, setSession }) {
 
       const { response, data } = await apiJson('/api/auth/forgot-pin', {
         ...AUTH_REQUEST_OPTIONS,
+        skipUnauthorized: true,
         method: 'POST',
         body: JSON.stringify({ action: 'send-code', identifier })
       });
@@ -435,7 +460,7 @@ export default function Login({ db, commit, setSession }) {
         setInfo(`Doğrulama kodu ${data.emailMasked || 'kayıtlı e-posta'} adresine gönderildi.`);
       }
     } catch (e) {
-      notify(e.message || 'Kod gönderilemedi');
+      notifyRequestError(e, 'Kod gönderilemedi');
     } finally {
       setLoading(false);
     }
@@ -468,6 +493,7 @@ export default function Login({ db, commit, setSession }) {
 
       const { response, data } = await apiJson('/api/auth/forgot-pin', {
         ...AUTH_REQUEST_OPTIONS,
+        skipUnauthorized: true,
         method: 'POST',
         body: JSON.stringify({
           action: 'reset',
@@ -483,7 +509,7 @@ export default function Login({ db, commit, setSession }) {
       setInfo('Yeni PIN kaydedildi. Giriş yapabilirsin.');
       switchMode('login');
     } catch (e) {
-      notify(e.message || 'PIN sıfırlanamadı');
+      notifyRequestError(e, 'PIN sıfırlanamadı');
     } finally {
       setLoading(false);
     }
