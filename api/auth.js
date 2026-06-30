@@ -59,6 +59,12 @@ const sessionSqlHandler = withSqlRequestNoGuardian(async function handler(req, r
   return route(req, res);
 });
 
+// Giriş — Guardian hydrate yok; müşteri çekirdeği izole
+const loginSqlHandler = withSqlRequestNoGuardian(async function handler(req, res) {
+  const route = await AUTH_ACTIONS.login();
+  return route(req, res);
+});
+
 export default async function authRouter(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
 
@@ -72,6 +78,15 @@ export default async function authRouter(req, res) {
       return respondSessionNoToken(req, res);
     }
     return sessionSqlHandler(req, res);
+  }
+
+  // /api/auth/login — Guardian/bootstrap yükü yok
+  if (action === 'login') {
+    if (req.method === 'OPTIONS') {
+      applyCors(req, res, 'POST,OPTIONS');
+      return res.status(200).end();
+    }
+    return loginSqlHandler(req, res);
   }
 
   return sqlHandler(req, res);

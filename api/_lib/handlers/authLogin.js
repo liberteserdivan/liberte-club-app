@@ -15,8 +15,10 @@ import {
 import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js';
 import { findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
-import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry } from '../dbTransient.js';
+import { publicDbErrorCode, publicDbErrorMessage, withSqlRetry, isTransientDbError } from '../dbTransient.js';
 import { resetSqlClient, primeSqlConnection } from '../sql.js';
+import { ROUTE_TIMING } from '../routeTiming.js';
+import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 
 // Oturumdaki müşteri girilen telefonla eşleşiyor mu?
 function sessionMatchesPhone(session, normalizedPhone) {
@@ -103,6 +105,7 @@ export async function handleAuthLogin(req, res) {
   const startedAt = Date.now();
 
   try {
+    await withRouteDeadline(async () => {
     // Bağlantıyı login sorgularından ÖNCE tazele — bayat pooler bağlantısında
     // login'in ortasında saniyelerce takılmayı (uzun bekleme) baştan önler.
     await primeSqlConnection().catch(() => {});
@@ -204,8 +207,16 @@ export async function handleAuthLogin(req, res) {
       bodyOk = buildPlainLoginBody(trace, outcome.customer, session);
     }
     return res.status(200).json(bodyOk);
+    }, ROUTE_TIMING.LOGIN_MS, 'auth-login');
   } catch (e) {
     console.error('[auth.customer-login]', trace.requestId, e?.stack || e?.message || e);
+    if (isTransientDbError(e) || isRouteDeadlineError(e)) {
+      return res.status(503).json(trace.failBody(
+        'login_unavailable',
+        'LOGIN_TEMPORARILY_UNAVAILABLE',
+        'Giriş şu an tamamlanamıyor. Lütfen birkaç saniye sonra tekrar deneyin.'
+      ));
+    }
     return res.status(500).json(trace.failBody(
       'unexpected',
       publicDbErrorCode(e, 'LOGIN_FAILED'),

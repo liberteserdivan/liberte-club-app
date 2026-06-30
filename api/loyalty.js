@@ -1,11 +1,11 @@
 import { handleDailyLoginClaim } from './_lib/handlers/customerLoyaltyClaim.js';
-import { withSqlRequest } from './_lib/sqlRequest.js';
+import { withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
 
 const LOYALTY_ACTIONS = {
   'daily-claim': handleDailyLoginClaim
 };
 
-export default withSqlRequest(async function handler(req, res) {
+export default withSqlRequestNoGuardian(async function handler(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
   const route = LOYALTY_ACTIONS[action];
 

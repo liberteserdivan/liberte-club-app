@@ -51,6 +51,7 @@ const SPLASH_FADE_MS = 240;
 const SPLASH_TOTAL_MS = 660;
 const SPLASH_FORCE_MS = 4500;
 const CUSTOMER_HYDRATE_MS = 28_000;
+const CUSTOMER_HYDRATE_RETRY_MS = 12_000;
 
 export default function App() {
   const sessionRef = useRef(null);
@@ -74,6 +75,7 @@ export default function App() {
   const splashStartRef = useRef(Date.now());
   const hydrateStartedRef = useRef(0);
   const adminHydratedRef = useRef(false);
+  const bootstrapSnapshotRef = useRef(null);
   const dbRef = useRef(db);
   dbRef.current = db;
 
@@ -107,6 +109,10 @@ export default function App() {
       } else if (result?.session) {
         setSession(result.session);
         if (result.customer) {
+          bootstrapSnapshotRef.current = {
+            customer: result.customer,
+            loyalty: result.loyalty || null
+          };
           commit((current) => mergeAuthSnapshot(current, {
             customer: result.customer,
             loyalty: result.loyalty
@@ -342,12 +348,25 @@ export default function App() {
     const failTimer = setTimeout(() => {
       const active = getMemorySession();
       if (!active || active.customerId !== hydrateCustomerId) return;
+
+      const snapshot = bootstrapSnapshotRef.current;
+      if (snapshot?.customer?.id === hydrateCustomerId) {
+        commit((current) => mergeAuthSnapshot(current, snapshot), { skipRemote: true });
+      } else {
+        commit((current) => mergeAuthSnapshot(current, {
+          customer: {
+            id: hydrateCustomerId,
+            name: 'Üye',
+            phone: '',
+            email: '',
+            isAdmin: Boolean(active.isAdmin)
+          }
+        }), { skipRemote: true });
+      }
+
       setHydratingCustomer(false);
-      logoutSession();
-      resetDb();
-      setSession(null);
-      setAuthNotice('Hesap bilgilerin yüklenemedi. Lütfen tekrar giriş yap.');
-    }, CUSTOMER_HYDRATE_MS);
+      setAuthNotice('Hesap bilgileri şu an tam senkronize edilemedi. Önbellekteki verilerle devam ediliyor.');
+    }, CUSTOMER_HYDRATE_RETRY_MS);
 
     return () => {
       clearTimeout(hydrateTimer);

@@ -40,6 +40,14 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
 
       const remote = await claimDailyLoginRewardRemote();
       if (!remote.ok) {
+        if (remote.alreadyClaimed) {
+          setClaimMessage(remote.error || 'Günlük giriş ödülünü bugün zaten aldın.');
+          return;
+        }
+        if (remote.transient) {
+          setClaimMessage(remote.error || 'Günlük ödül şu an alınamıyor. Lütfen tekrar deneyin.');
+          return;
+        }
         setClaimMessage(remote.error || 'Günlük ödül kaydedilemedi.');
         return;
       }

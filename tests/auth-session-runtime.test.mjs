@@ -100,15 +100,50 @@ test('auth.js: no-token path getSql veya hydrateGuardianState cagirmaz', () => {
   assert.match(fn, /status\(401\)/);
 });
 
-test('authSession: rota deadline guard var (platform timeout onleme)', () => {
+test('authSession: rota deadline guard var (platform timeout onleme, 4sn)', () => {
   const src = read('api/_lib/handlers/authSession.js');
-  assert.match(src, /SESSION_ROUTE_DEADLINE_MS/);
-  assert.match(src, /withSessionRouteDeadline/);
-  assert.match(src, /SESSION_ROUTE_TIMEOUT/);
+  assert.match(src, /ROUTE_TIMING\.SESSION_WITH_TOKEN_MS/);
+  assert.match(src, /withRouteDeadline/);
+  assert.match(src, /isRouteDeadlineError/);
+  const timing = read('api/_lib/routeTiming.js');
+  assert.match(timing, /SESSION_WITH_TOKEN_MS:\s*4000/);
+});
+
+test('auth.js: login withSqlRequestNoGuardian kullanir (guardian izolasyonu)', () => {
+  const src = read('api/auth.js');
+  assert.match(src, /action === 'login'/);
+  assert.match(src, /loginSqlHandler/);
+  assert.match(src, /withSqlRequestNoGuardian/);
 });
 
 test('sqlRequest: withSqlRequestNoGuardian hydrate atlar', () => {
   const src = read('api/_lib/sqlRequest.js');
   assert.match(src, /export function withSqlRequestNoGuardian/);
   assert.match(src, /hydrateGuardian:\s*false/);
+});
+
+test('loyalty daily-claim guardian hydrate kullanmaz', () => {
+  const src = read('api/loyalty.js');
+  assert.match(src, /withSqlRequestNoGuardian/);
+  assert.doesNotMatch(src, /withSqlRequest\(/);
+});
+
+test('authLogin: transient/deadline 503 LOGIN_TEMPORARILY_UNAVAILABLE', () => {
+  const src = read('api/_lib/handlers/authLogin.js');
+  assert.match(src, /LOGIN_TEMPORARILY_UNAVAILABLE/);
+  assert.match(src, /withRouteDeadline/);
+  assert.match(src, /ROUTE_TIMING\.LOGIN_MS/);
+});
+
+test('App: musteri hydrate timeout logout yapmaz degraded mod', () => {
+  const src = read('src/App.jsx');
+  assert.match(src, /bootstrapSnapshotRef/);
+  assert.doesNotMatch(src, /Hesap bilgilerin yüklenemedi\. Lütfen tekrar giriş yap/);
+  assert.match(src, /Önbellekteki verilerle devam ediliyor/);
+});
+
+test('guardianHydrate: bounded timeout (musteri cekirdegi bloklanmaz)', () => {
+  const src = read('api/_lib/guardian/guardianHydrate.js');
+  assert.match(src, /withRouteDeadline/);
+  assert.match(src, /GUARDIAN_HYDRATE_MS/);
 });

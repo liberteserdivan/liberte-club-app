@@ -3,31 +3,8 @@ import { destroySession, getSessionForBootstrap, readAuthToken } from '../auth.j
 import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage } from '../dbTransient.js';
-
-// Vercel platform timeout'undan önce kontrollü JSON — iç DB helper takılsa bile
-const SESSION_ROUTE_DEADLINE_MS = 9000;
-
-// Rota süresi aşıldı mı?
-function isSessionRouteTimeout(e) {
-  return e?.code === 'SESSION_ROUTE_TIMEOUT';
-}
-
-// Tüm DB işini üst sınır ile sarmala
-async function withSessionRouteDeadline(task, deadlineMs = SESSION_ROUTE_DEADLINE_MS) {
-  let timer;
-  try {
-    return await Promise.race([
-      task(),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          reject(Object.assign(new Error('session route deadline'), { code: 'SESSION_ROUTE_TIMEOUT' }));
-        }, deadlineMs);
-      })
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
+import { ROUTE_TIMING } from '../routeTiming.js';
+import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 
 // Oturum okuma ve çıkış — yalnızca session doğrulama + minimal müşteri/loyalty
 export async function handleAuthSession(req, res) {
@@ -37,12 +14,12 @@ export async function handleAuthSession(req, res) {
   if (req.method === 'POST') {
     const trace = createRequestTrace('auth.session-restore');
     try {
-      await withSessionRouteDeadline(() => destroySession(req, res));
+      await withRouteDeadline(() => destroySession(req, res), ROUTE_TIMING.SESSION_WITH_TOKEN_MS, 'session-logout');
       trace.log('logout_ok', { step: 'logout', status: 'ok' });
       return res.status(200).json({ ok: true, requestId: trace.requestId });
     } catch (e) {
       trace.log('logout_error', { step: 'logout', error: e?.message || String(e) });
-      if (isTransientDbError(e) || isSessionRouteTimeout(e)) {
+      if (isTransientDbError(e) || isRouteDeadlineError(e)) {
         return res.status(503).json(trace.failBody(
           'session_unavailable',
           'SESSION_TEMPORARILY_UNAVAILABLE',
@@ -77,7 +54,11 @@ export async function handleAuthSession(req, res) {
     trace.log('start', { step: 'start', hasSessionToken: true });
 
     // Tek katman: getSessionForBootstrap içinde runSqlSessionBootstrap (~3.6sn üst sınır).
-    const session = await withSessionRouteDeadline(() => getSessionForBootstrap(req));
+    const session = await withRouteDeadline(
+      () => getSessionForBootstrap(req),
+      ROUTE_TIMING.SESSION_WITH_TOKEN_MS,
+      'session-restore'
+    );
     trace.log('verify_session', {
       step: 'verify_session',
       hasSessionToken: true,
@@ -115,7 +96,7 @@ export async function handleAuthSession(req, res) {
       durationMs: Date.now() - startedAt
     });
 
-    if (isTransientDbError(e) || isSessionRouteTimeout(e)) {
+    if (isTransientDbError(e) || isRouteDeadlineError(e)) {
       return res.status(503).json(trace.failBody(
         'session_unavailable',
         'SESSION_TEMPORARILY_UNAVAILABLE',
