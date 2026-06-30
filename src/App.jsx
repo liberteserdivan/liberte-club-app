@@ -10,7 +10,7 @@ import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
 import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
-import { getMemorySession, patchMemorySession, logoutSession, markAdminPinVerifiedLocally, getAuthEpoch } from './session.js';
+import { getMemorySession, patchMemorySession, logoutSession, markAdminPinVerifiedLocally, getAuthEpoch } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { setGuardianRole } from './lib/guardianTelemetry.js';
