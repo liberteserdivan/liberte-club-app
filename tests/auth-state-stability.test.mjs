@@ -79,3 +79,33 @@ test('App: oturum yokken background 401 logout/login döngüsü tetiklemez', () 
   const handler = src.slice(src.indexOf('setUnauthorizedHandler((reason)'), src.indexOf('return () => setUnauthorizedHandler(null)'));
   assert.match(handler, /if \(!getMemorySession\(\)\) return;/, 'oturum yoksa 401 erken dönmeli');
 });
+
+// 6) Hızlı login/logout — çıkışta React db sıfırlanır, stale commit engellenir
+test('useCommit: resetDb bellek state\'ini seed\'e döndürür', () => {
+  const src = read('src/hooks/useCommit.js');
+  assert.match(src, /const resetDb = useCallback/, 'resetDb tanımlı olmalı');
+  assert.match(src, /setDb\(load\(\)\)/, 'resetDb load() ile seed döndürmeli');
+});
+
+test('App.jsx logout resetDb çağırır', () => {
+  const src = read('src/App.jsx');
+  const logout = src.slice(src.indexOf('function handleSetSession'), src.indexOf('const customer = session'));
+  assert.match(logout, /resetDb\(\)/, 'resetDb logout ile çağrılmalı');
+});
+
+test('pushPrompt: deactivateDevicePushToken commit kullanmaz', () => {
+  const src = read('src/lib/pushPrompt.js');
+  const fn = src.slice(src.indexOf('export async function deactivateDevicePushToken'));
+  assert.doesNotMatch(fn.slice(0, 600), /\bcommit\s*\(/, 'logout push commit yapmamalı');
+});
+
+test('LoginPage: uçuştaki login çıkış sonrası oturumu geri açmaz', () => {
+  const src = read('src/pages/LoginPage.jsx');
+  assert.match(src, /epochAtLogin/, 'login epoch guard olmalı');
+  assert.match(src, /getAuthEpoch\(\) !== epochAtLogin/, 'finishSession stale login yoksaymalı');
+});
+
+test('useCustomerRealtime: logout sonrası commit guard', () => {
+  const src = read('src/hooks/useCustomerRealtime.js');
+  assert.match(src, /canCommitForCustomer/, 'müşteri commit guard olmalı');
+});

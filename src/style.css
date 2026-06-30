@@ -8761,6 +8761,18 @@ body.menuDetailOpen{
 .guardianHeroMain h3{ margin:0; font-size:18px; font-weight:900; }
 .guardianHeroMain p{ margin:2px 0 0; font-size:13px; color:#475569; }
 .guardianSafePill{ color:#d97706; font-weight:800; }
+.guardianMaintBanner{
+  position:sticky;
+  top:0;
+  z-index:9000;
+  padding:10px 16px;
+  background:#fef3c7;
+  color:#92400e;
+  font-size:13px;
+  font-weight:700;
+  text-align:center;
+  border-bottom:2px solid #fcd34d;
+}
 .guardianGrid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
@@ -8855,6 +8867,36 @@ body.menuDetailOpen{
   background:#ffffff;
 }
 .guardianHumanCard{ background:#fef2f2; }
+.guardianAiFixSection{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:8px 0 4px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%);
+  border:2px solid #c4b5fd;
+}
+.guardianAiFixHead{ display:flex; align-items:center; gap:8px; color:#5b21b6; }
+.guardianAiFixCard{
+  background:#faf5ff;
+  border-color:#a78bfa !important;
+}
+.guardianAiFixBadge{ background:#7c3aed !important; color:#fff; display:inline-flex; align-items:center; gap:4px; }
+.guardianAiFixPreview{
+  width:100%;
+  margin:8px 0;
+  padding:8px 10px;
+  border:1px solid #ddd6fe;
+  border-radius:10px;
+  background:#fff;
+  font-family:ui-monospace,monospace;
+  font-size:11px;
+  line-height:1.45;
+  color:#334155;
+  resize:vertical;
+}
+.guardianAiFixPrimary{ background:#7c3aed; color:#fff; border-color:#6d28d9; }
 .guardianProposalHead{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
 .guardianProposalHead strong{ color:#0f172a; font-size:14px; }
 .guardianProposalDesc{ margin:4px 0 8px; color:#334155; font-size:13px; line-height:1.4; }

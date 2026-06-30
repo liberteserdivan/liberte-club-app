@@ -125,6 +125,19 @@ export function buildReportBundle(overall, incidentId = null) {
     };
   }
 
+  // Faz 2: incident kaydında otomatik rapor varsa onu kullan (yeniden üretme)
+  if (incident.autoReport?.ready) {
+    return {
+      ok: true,
+      incident,
+      incidentReportMd: incident.autoReport.incidentReportMd,
+      cursorFixPromptMd: incident.autoReport.cursorFixPromptMd,
+      healthSnapshot: buildHealthSnapshot(overall),
+      failedRequests: buildFailedRequests(50),
+      source: 'auto'
+    };
+  }
+
   return {
     ok: true,
     incident,

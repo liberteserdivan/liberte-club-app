@@ -4,6 +4,8 @@ import { resolveRequestId as resolveGuardianRequestId } from './guardian/request
 import { safeModeHeaderValue } from './guardian/guardianSafeMode.js';
 import { recordApiSample } from './guardian/guardianMetrics.js';
 import { serviceForUrl } from './guardian/guardianRouting.js';
+import { hydrateGuardianState } from './guardian/guardianHydrate.js';
+import { scheduleGuardianEvaluation } from './guardian/guardianAutoEvaluate.js';
 
 // İstek için kısa, izlenebilir Guardian kimliği üret (gelen x-request-id varsa korunur)
 function resolveRequestId(req) {
@@ -58,6 +60,7 @@ function attachObservability(req, res) {
         status: res.statusCode,
         requestId
       });
+      scheduleGuardianEvaluation();
     } catch {
       // Metrik hatası yok sayılır
     }
@@ -73,7 +76,11 @@ export function withSqlRequest(handler) {
   return async function sqlRequestHandler(req, res) {
     const requestId = attachObservability(req, res);
     try {
-      await runHandlerWithSql(() => handler(req, res));
+      await runHandlerWithSql(async () => {
+        // Guardian: DB'den Safe Mode/incident senkronu (instance'lar arası tutarlılık)
+        await hydrateGuardianState();
+        return handler(req, res);
+      });
     } catch (error) {
       console.error('[api.sql]', req.url || '', error?.message || error);
       if (res.headersSent) return;

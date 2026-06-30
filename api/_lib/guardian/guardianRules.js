@@ -5,6 +5,7 @@ import { recordIncident } from './guardianIncidents.js';
 import { raiseAlert } from './guardianAlerts.js';
 import { proposeAction } from './guardianApprovals.js';
 import { createProposal, PROPOSAL_STATUS } from './guardianActionProposals.js';
+import { shouldAutoAlertForIncident } from './guardianAutoReport.js';
 
 // Liberte Guardian — otomatik güvenli müdahale kuralları (bölüm 7 + Approval Autopilot)
 // Tek sorumluluk: metrikleri değerlendirip GÜVENLİ aksiyonları tetiklemek.
@@ -54,7 +55,7 @@ async function applyIntervention({
   risks = ['Bazı arka plan güncellemeleri daha geç gelebilir']
 }) {
   const created = recordIncident(incident);
-  if (created.requiresHuman) {
+  if (shouldAutoAlertForIncident(created)) {
     await raiseAlert(created).catch(() => {});
   }
 

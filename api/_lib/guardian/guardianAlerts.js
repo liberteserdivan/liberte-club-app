@@ -47,9 +47,9 @@ export function formatAlertText(incident) {
     'Sonuç:',
     incident.requiresHuman ? 'Sorun devam ediyor. İnsan müdahalesi gerekiyor.' : 'Bot izlemeye devam ediyor.',
     '',
-    'Hazırlandı:',
-    '- INCIDENT_REPORT.md',
-    '- CURSOR_FIX_PROMPT.md'
+    'Hazırlandı (otomatik):',
+    incident.autoReport?.ready ? '- CURSOR_FIX_PROMPT.md (incident kaydında)' : '- INCIDENT_REPORT.md',
+    incident.autoReport?.ready ? '- INCIDENT_REPORT.md (incident kaydında)' : '- CURSOR_FIX_PROMPT.md'
   ];
   return redactText(lines.join('\n'));
 }

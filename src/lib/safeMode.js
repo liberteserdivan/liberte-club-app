@@ -8,44 +8,49 @@ const listeners = new Set();
 let state = {
   enabled: false,
   level: 'healthy',
-  features: {}
+  features: {},
+  maintenanceMessage: ''
 };
 
 // Header değerinden hızlı güncelleme. Sunucu biçimi:
-//   "off" | "on:<level>;poll=<0|1>;fsp=<0|1>;rt=<0|1>"
-// Bu sayede müşteri istemcileri ek istek yapmadan, yalnızca header'dan
-// polling/fullStatePull/realtime davranışını öğrenir (PII/secret yok).
+//   "off" | "on:<level>;poll=<0|1>;fsp=<0|1>;rt=<0|1>;dc=<0|1>;adm=<0|1>[;m=<msg>]"
 export function applySafeModeHeader(headerValue) {
-  const value = String(headerValue || '').trim().toLowerCase();
-  const enabled = value.startsWith('on');
+  const raw = String(headerValue || '').trim();
+  const enabled = raw.toLowerCase().startsWith('on');
 
   if (!enabled) {
-    // Kapalı → normal davranışa dön
-    if (state.enabled) {
-      state = { enabled: false, level: 'healthy', features: {} };
+    if (state.enabled || state.maintenanceMessage) {
+      state = { enabled: false, level: 'healthy', features: {}, maintenanceMessage: '' };
       notify();
     }
     return;
   }
 
-  // "on:<level>;poll=1;fsp=1;rt=1" parçalarını ayrıştır
-  const [head, ...flagParts] = value.split(';');
-  const level = head.split(':')[1] || 'degraded';
+  const [head, ...flagParts] = raw.split(';');
+  const level = (head.split(':')[1] || 'degraded').toLowerCase();
   const flags = {};
   for (const part of flagParts) {
-    const [k, v] = part.split('=');
-    if (k) flags[k] = v;
+    const eq = part.indexOf('=');
+    if (eq <= 0) continue;
+    const key = part.slice(0, eq).toLowerCase();
+    // Bakım mesajı ham bırakılır; diğer bayraklar küçük harfe normalize edilir
+    flags[key] = key === 'm' ? part.slice(eq + 1) : part.slice(eq + 1).toLowerCase();
   }
 
-  // Header'dan gelen minimal, güvenli feature haritası
+  let maintenanceMessage = '';
+  if (flags.m) {
+    try { maintenanceMessage = decodeURIComponent(flags.m); } catch { maintenanceMessage = flags.m; }
+  }
+
   const features = {
     polling: flags.poll === '1' ? 'reduced' : 'normal',
     fullStatePull: flags.fsp === '1' ? 'disabled_for_customer' : 'enabled',
-    realtime: flags.rt === '1' ? 'degraded' : 'normal'
+    realtime: flags.rt === '1' ? 'degraded' : 'normal',
+    dailyClaim: flags.dc === '1' ? 'disabled_temporarily' : 'enabled',
+    adminDashboardRefresh: flags.adm === '1' ? 'reduced' : 'normal'
   };
 
-  const next = { enabled: true, level, features };
-  // Yalnızca gerçek değişiklikte dinleyicileri tetikle (gereksiz render önlenir)
+  const next = { enabled: true, level, features, maintenanceMessage };
   if (JSON.stringify(next) !== JSON.stringify(state)) {
     state = next;
     notify();
@@ -58,7 +63,8 @@ export function applySafeModeConfig(config) {
   state = {
     enabled: Boolean(config.enabled),
     level: config.level || 'healthy',
-    features: config.features || {}
+    features: config.features || {},
+    maintenanceMessage: String(config.maintenanceMessage || '').slice(0, 120)
   };
   notify();
 }
@@ -109,6 +115,21 @@ export function isCustomerRealtimeDisabled() {
   return isRealtimeDisabledByFlag() || isRealtimeDegraded();
 }
 
+// Günlük LP claim geçici kapalı mı?
+export function shouldDisableDailyClaim() {
+  return state.enabled && state.features?.dailyClaim === 'disabled_temporarily';
+}
+
+// Admin dashboard özet yenilemesi seyrekleştirilmeli mi?
+export function shouldReduceAdminDashboardRefresh() {
+  return state.enabled && state.features?.adminDashboardRefresh === 'reduced';
+}
+
+// Bakım mesajı (varsa kullanıcıya gösterilir)
+export function getMaintenanceMessage() {
+  return String(state.maintenanceMessage || '').trim();
+}
+
 // Değişiklik aboneliği (hook'lar için)
 export function subscribeSafeMode(listener) {
   if (typeof listener !== 'function') return () => {};
@@ -127,13 +148,13 @@ function notify() {
 // Böylece önceki oturumdan kalan "on" durumu yeni oturumun polling/fullStatePull
 // davranışını yanlışlıkla kısmaz.
 export function clearSafeModeState() {
-  if (!state.enabled) return;
-  state = { enabled: false, level: 'healthy', features: {} };
+  if (!state.enabled && !state.maintenanceMessage) return;
+  state = { enabled: false, level: 'healthy', features: {}, maintenanceMessage: '' };
   notify();
 }
 
 // Test/temizlik — dinleyiciler dahil her şeyi sıfırlar
 export function resetSafeModeClient() {
-  state = { enabled: false, level: 'healthy', features: {} };
+  state = { enabled: false, level: 'healthy', features: {}, maintenanceMessage: '' };
   listeners.clear();
 }

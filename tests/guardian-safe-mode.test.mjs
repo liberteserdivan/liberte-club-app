@@ -42,7 +42,7 @@ test('Safe Mode header minimal feature bayraklarını taşır (poll/fsp/rt)', ()
   enableSafeMode({ reason: 'DB latency high', level: 'incident', features: { polling: 'reduced', realtime: 'degraded' } });
   const header = safeModeHeaderValue();
   // PII/secret yok; yalnızca güvenli bayraklar
-  assert.match(header, /^on:incident;poll=1;fsp=1;rt=1$/);
+  assert.match(header, /^on:incident;poll=1;fsp=1;rt=1;dc=1;adm=1$/);
   assert.doesNotMatch(header, /reason|@|postgres/i);
   disableSafeMode();
 });

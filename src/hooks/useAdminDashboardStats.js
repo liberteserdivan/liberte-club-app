@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchAdminFeed } from '../lib/realtimeFetch.js';
 import { usePageActive } from './usePageActive.js';
+import { shouldReduceAdminDashboardRefresh, subscribeSafeMode } from '../lib/safeMode.js';
+
+const ADMIN_STATS_INTERVAL_MS = 60_000;
+const ADMIN_STATS_SAFE_INTERVAL_MS = 180_000;
 
 // Yönetici özet — sunucudan üye ve push cihaz sayısı
 export function useAdminDashboardStats({ enabled = false }) {
@@ -8,6 +12,9 @@ export function useAdminDashboardStats({ enabled = false }) {
   const [stats, setStats] = useState({ customerCount: 0, pushDeviceCount: 0 });
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [safeModeTick, setSafeModeTick] = useState(0);
+
+  useEffect(() => subscribeSafeMode(() => setSafeModeTick((n) => n + 1)), []);
 
   const refreshStats = useCallback(async () => {
     if (!enabled) return false;
@@ -45,9 +52,12 @@ export function useAdminDashboardStats({ enabled = false }) {
 
     // Özet sayaçları kritik-anlık değil; 60 sn aralık egress'i azaltır.
     refreshStats();
-    const timer = setInterval(refreshStats, 60_000);
+    const intervalMs = shouldReduceAdminDashboardRefresh()
+      ? ADMIN_STATS_SAFE_INTERVAL_MS
+      : ADMIN_STATS_INTERVAL_MS;
+    const timer = setInterval(refreshStats, intervalMs);
     return () => clearInterval(timer);
-  }, [enabled, active, refreshStats]);
+  }, [enabled, active, refreshStats, safeModeTick]);
 
   return { stats, status, error, refreshStats };
 }

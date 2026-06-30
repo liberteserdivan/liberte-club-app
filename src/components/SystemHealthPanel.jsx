@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Activity, AlertTriangle, CheckCircle2, RefreshCw, ShieldAlert, ShieldCheck,
-  Copy, Bell, Database, Server, LogIn, QrCode, Gift, Radio, Loader2
+  Copy, Bell, Database, Server, LogIn, QrCode, Gift, Radio, Loader2, Sparkles
 } from 'lucide-react';
 import useGuardianHealth from '../hooks/useGuardianHealth.js';
 import {
@@ -120,6 +120,7 @@ export default function SystemHealthPanel() {
   // Approval Autopilot — onay merkezi grupları
   const actions = health?.actions || {};
   const pendingProposals = actions.pending || [];
+  const aiFixWaiting = actions.aiFixWaiting || [];
   const humanRequired = actions.humanRequired || [];
   const appliedActions = actions.executed || [];
 
@@ -267,9 +268,68 @@ export default function SystemHealthPanel() {
           siz onayladıktan sonra uygulanır. Riskli (Level 3) işlemler asla otomatik çalışmaz.
         </p>
 
-        {pendingProposals.length === 0 && humanRequired.length === 0 && appliedActions.length === 0 && (
+        {pendingProposals.length === 0 && aiFixWaiting.length === 0 && humanRequired.length === 0 && appliedActions.length === 0 && (
           <p className="guardianMuted">Şu an bekleyen öneri yok.</p>
         )}
+
+        {/* Faz 3 — AI fix bekliyor kartları (Level 3, otomatik uygulanmaz) */}
+        {aiFixWaiting.length > 0 && (
+          <div className="guardianAiFixSection">
+            <div className="guardianAiFixHead">
+              <Sparkles size={16} />
+              <strong>AI Fix Bekliyor</strong>
+              <span className="guardianBadge" style={{ background: '#7c3aed' }}>{aiFixWaiting.length}</span>
+            </div>
+            <p className="guardianMuted">
+              Bot incident raporu ve Cursor promptunu hazırladı. Düzeltme otomatik uygulanmaz —
+              promptu kopyalayıp Cursor&apos;da manuel düzeltme yapın.
+            </p>
+          </div>
+        )}
+        {aiFixWaiting.map((p) => (
+          <div key={p.id} className="guardianProposal guardianAiFixCard">
+            <div className="guardianProposalHead">
+              <span className="guardianBadge guardianAiFixBadge"><Sparkles size={12} /> AI fix bekliyor</span>
+              <strong>{p.title}</strong>
+            </div>
+            <p className="guardianProposalDesc">{p.description}</p>
+            <div className="guardianCardMeta">
+              <span>Etkilenen alan: {p.affectedArea}</span>
+              {p.incidentId && <span>Incident: {p.incidentId}</span>}
+              {p.parameters?.reportGeneratedAt && (
+                <span>Rapor: {new Date(p.parameters.reportGeneratedAt).toLocaleString('tr-TR')}</span>
+              )}
+            </div>
+            {p.parameters?.promptPreview && (
+              <textarea
+                className="guardianAiFixPreview"
+                readOnly
+                rows={4}
+                value={p.parameters.promptPreview}
+              />
+            )}
+            <div className="guardianActions">
+              <button type="button" className="guardianBtnSmall guardianAiFixPrimary" disabled={Boolean(busy)}
+                onClick={() => copyCursorPrompt(p.incidentId)}>
+                <Copy size={13} /> Cursor prompt&apos;u kopyala
+              </button>
+              <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                onClick={() => runAction(`report-${p.incidentId}`, async () => {
+                  const data = await generateReport(p.incidentId || null);
+                  if (data?.ok && data.incidentReportMd) {
+                    setReportText(`${data.incidentReportMd}\n\n----- CURSOR_FIX_PROMPT.md -----\n${data.cursorFixPromptMd || ''}`);
+                    setActionMsg('Tam rapor hazır — aşağıdan kopyalayabilirsiniz.');
+                  }
+                }, 'Tam rapor yüklendi.')}>
+                <Server size={13} /> Tam raporu göster
+              </button>
+              <button type="button" className="guardianBtnSmall" disabled={Boolean(busy)}
+                onClick={() => runAction(`reject-${p.id}`, callAction(() => rejectAction(p.id, 'ai_fix_dismissed')), 'AI fix kartı kapatıldı.')}>
+                Kapat
+              </button>
+            </div>
+          </div>
+        ))}
 
         {/* Bekleyen öneriler — onay/ret */}
         {pendingProposals.map((p) => {

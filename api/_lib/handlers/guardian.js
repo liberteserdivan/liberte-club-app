@@ -9,6 +9,7 @@ import {
   listIncidents, recordIncident, resolveIncident
 } from '../guardian/guardianIncidents.js';
 import { raiseAlert, raiseResolvedAlert, sendTestAlert, listAlerts } from '../guardian/guardianAlerts.js';
+import { shouldAutoAlertForIncident } from '../guardian/guardianAutoReport.js';
 import { buildReportBundle, buildHealthSnapshot } from '../guardian/guardianReport.js';
 import { getMetricsSnapshot, getEvents } from '../guardian/guardianMetrics.js';
 import {
@@ -175,7 +176,7 @@ async function handleIncidents(req, res) {
     suspectedRootCauses: Array.isArray(body.suspectedRootCauses) ? body.suspectedRootCauses : [],
     relatedFiles: Array.isArray(body.relatedFiles) ? body.relatedFiles : []
   });
-  if (created.requiresHuman) await raiseAlert(created).catch(() => {});
+  if (shouldAutoAlertForIncident(created)) await raiseAlert(created).catch(() => {});
   return envelope(res, 201, { ok: true, service: 'incidents', incident: created });
 }
 

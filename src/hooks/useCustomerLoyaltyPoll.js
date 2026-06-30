@@ -4,6 +4,7 @@ import { getLpBalance, getLpLifetime } from '../lib/loyaltyStamps.js';
 import { isIosNative, isNativeApp } from '../lib/platform.js';
 import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForeground.js';
 import { isCustomerRealtimeDisabled, shouldReducePolling } from '../lib/safeMode.js';
+import { getMemorySession } from '../lib/session.js';
 
 // Anlık güncelleme realtime (websocket) ile gelir; bu yoklama yalnızca yedektir.
 // Bu yüzden seyrek tutulur — boşa giden egress (giden trafik) ~%90 azalır.
@@ -61,6 +62,8 @@ export function useCustomerLoyaltyPoll({
       }
       inFlight = false;
       if (cancelled || !loyalty) return;
+      const session = getMemorySession();
+      if (!session || Number(session.customerId) !== Number(customerId)) return;
 
       const current = dbRef.current;
       const prev = current.loyalty?.[customerId];

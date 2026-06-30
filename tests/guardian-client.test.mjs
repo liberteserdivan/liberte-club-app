@@ -5,7 +5,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   applySafeModeHeader, applySafeModeConfig, isSafeModeEnabled,
-  shouldReduceFullStatePull, shouldReducePolling, isRealtimeDegraded, resetSafeModeClient
+  shouldReduceFullStatePull, shouldReducePolling, isRealtimeDegraded,
+  shouldDisableDailyClaim, shouldReduceAdminDashboardRefresh, getMaintenanceMessage,
+  resetSafeModeClient
 } from '../src/lib/safeMode.js';
 import {
   recordRequest, getRecentRequests, getTelemetrySummary, resetTelemetry
@@ -46,6 +48,27 @@ test('Safe Mode kapalıyken normal polling davranışı korunur', () => {
   assert.equal(shouldReducePolling(), false);
   assert.equal(shouldReduceFullStatePull(), false);
   assert.equal(isRealtimeDegraded(), false);
+});
+
+test('Header dc/adm bayrakları günlük claim ve admin refresh davranışını sürer', () => {
+  resetSafeModeClient();
+  applySafeModeHeader('on:incident;poll=1;fsp=1;rt=1;dc=1;adm=1');
+  assert.equal(shouldDisableDailyClaim(), true);
+  assert.equal(shouldReduceAdminDashboardRefresh(), true);
+});
+
+test('Header m bayrağı bakım mesajını decode eder', () => {
+  resetSafeModeClient();
+  const msg = encodeURIComponent('Sistem yoğun — lütfen bekleyin.');
+  applySafeModeHeader(`on:degraded;poll=0;fsp=0;rt=0;dc=0;adm=0;m=${msg}`);
+  assert.equal(getMaintenanceMessage(), 'Sistem yoğun — lütfen bekleyin.');
+});
+
+test('Safe Mode kapalıyken bakım mesajı temizlenir', () => {
+  resetSafeModeClient();
+  applySafeModeHeader('on:degraded;m=test');
+  applySafeModeHeader('off');
+  assert.equal(getMaintenanceMessage(), '');
 });
 
 test('Header poll=0 ise polling azaltma devreye girmez', () => {

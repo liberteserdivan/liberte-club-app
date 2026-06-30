@@ -10,7 +10,7 @@ import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
 import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
-import { getMemorySession, patchMemorySession, logoutSession, setMemorySession, markAdminPinVerifiedLocally } from './lib/session.js';
+import { getMemorySession, patchMemorySession, logoutSession, markAdminPinVerifiedLocally, getAuthEpoch } from './session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { setGuardianRole } from './lib/guardianTelemetry.js';
@@ -31,6 +31,7 @@ import AdminPinGate from './components/AdminPinGate.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
 import ErrorToastHost from './components/ErrorToastHost.jsx';
 import SyncStatusBanner from './components/SyncStatusBanner.jsx';
+import useGuardianSafeMode from './hooks/useGuardianSafeMode.js';
 import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MenuPage from './pages/MenuPage.jsx';
@@ -59,7 +60,7 @@ export default function App() {
   // yeniden render'da useCommit'in effect'i (sessionRef güncelleyen effect'ten
   // ÖNCE çalışır) bayat session görüp login ekranında /api/state tetikleyebilir.
   sessionRef.current = session;
-  const [db, commit, , refreshRemote, syncState, retrySave] = useCommit(load(), sessionRef, {
+  const [db, commit, , refreshRemote, syncState, retrySave, resetDb] = useCommit(load(), sessionRef, {
     tab,
     sessionCustomerId: session?.customerId ?? null
   });
@@ -86,9 +87,8 @@ export default function App() {
       // Zaten oturum yoksa (login ekranı) arka plandan gelen 401 hiçbir şeyi
       // tetiklemesin — eski in-flight isteğin 401'i login UI'ını bozmamalı.
       if (!getMemorySession()) return;
-      // Oturumu anında kapat — yerel temizlik senkron, realtime arka planda
       logoutSession();
-      setMemorySession(null);
+      resetDb();
       setSession(null);
       setAuthNotice(reason === 'expired'
         ? 'Oturumun sona erdi. Lütfen tekrar giriş yap.'
@@ -96,7 +96,7 @@ export default function App() {
       void closeAllRealtimeChannels().catch(() => {});
     });
     return () => setUnauthorizedHandler(null);
-  }, []);
+  }, [resetDb]);
 
   useEffect(() => {
     bootstrapSessionWithTimeout().then((result) => {
@@ -165,24 +165,26 @@ export default function App() {
   function handleSetSession(next) {
     if (!next) {
       const prevCustomerId = customer?.id || null;
+      const epochAtLogout = getAuthEpoch();
 
-      // 1) UI'yi ANINDA giriş ekranına al — kullanıcı beklemesin
+      // 1) UI'yi ANINDA giriş ekranına al — bellek + storage + React db sıfırlanır
       logoutSession();
-      setMemorySession(null);
+      resetDb();
       setSession(null);
       setAdminGateSkipped(false);
-      // Yeni oturumda admin hidrasyonu tekrar çalışabilsin
       adminHydratedRef.current = false;
 
-      // 2) Temizlik işlemleri arka planda (UI'yı bloklamaz)
+      // 2) Temizlik arka planda — logout sonrası commit/state yazımı YOK
       void (async () => {
+        if (getAuthEpoch() !== epochAtLogout) return;
         try {
           if (prevCustomerId) {
-            await deactivateDevicePushToken(prevCustomerId, dbRef.current, commit);
+            await deactivateDevicePushToken(prevCustomerId);
           }
         } catch {
           // Çıkış akışı yine de tamamlandı
         }
+        if (getAuthEpoch() !== epochAtLogout) return;
         try {
           await closeAllRealtimeChannels();
         } catch {
@@ -191,7 +193,6 @@ export default function App() {
       })();
       return;
     }
-    setMemorySession(next);
     setSession(next);
     setAdminGateSkipped(false);
     setAuthNotice('');
@@ -326,14 +327,17 @@ export default function App() {
     setHydratingCustomer(true);
     hydrateStartedRef.current = Date.now();
 
+    const hydrateCustomerId = session?.customerId;
     const hydrateTimer = setTimeout(() => {
       refreshRemote(true);
     }, 400);
 
     const failTimer = setTimeout(() => {
+      const active = getMemorySession();
+      if (!active || active.customerId !== hydrateCustomerId) return;
       setHydratingCustomer(false);
       logoutSession();
-      setMemorySession(null);
+      resetDb();
       setSession(null);
       setAuthNotice('Hesap bilgilerin yüklenemedi. Lütfen tekrar giriş yap.');
     }, CUSTOMER_HYDRATE_MS);
@@ -342,7 +346,7 @@ export default function App() {
       clearTimeout(hydrateTimer);
       clearTimeout(failTimer);
     };
-  }, [awaitingCustomer, session?.customerId, refreshRemote]);
+  }, [awaitingCustomer, session?.customerId, refreshRemote, resetDb]);
 
   useEffect(() => {
     if (!awaitingCustomer || !customer) return;
@@ -421,6 +425,8 @@ export default function App() {
   const theme = cssVars(db.settings);
   const shellBooting = splashPhase !== 'hidden';
   const shellClass = shellBooting ? 'appShell appShell--booting' : 'appShell';
+  const safeModeState = useGuardianSafeMode();
+  const maintenanceNotice = String(safeModeState?.maintenanceMessage || '').trim();
 
   let mainContent;
   if (!authReady) {
@@ -523,6 +529,9 @@ export default function App() {
   return (
     <>
       <AppSplash phase={splashPhase} onImageReady={() => setSplashImageReady(true)} />
+      {maintenanceNotice && splashPhase === 'hidden' && (
+        <div className="guardianMaintBanner" role="status">{maintenanceNotice}</div>
+      )}
       <div className={shellClass}>{mainContent}</div>
     </>
   );

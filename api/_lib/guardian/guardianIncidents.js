@@ -1,10 +1,13 @@
 import { STATUS, statusRequiresHuman } from './guardianConstants.js';
 import { redactText } from './mask.js';
+import { persistIncidentToDb } from './guardianStore.js';
+import { attachAutoReportToIncident } from './guardianAutoReport.js';
+import { proposeAiFixForIncident, dismissAiFixForResolvedIncident } from './guardianAiFix.js';
 
 // Liberte Guardian — incident kayıt sistemi (in-memory)
 // Tek sorumluluk: olayları seviyelere ayırıp dedup ile tek kayıtta toplamak.
 // Aynı (alan + başlık anahtarı) için yeni kayıt açmaz; mevcut incident güncellenir.
-// NOT: Bellek tabanlı (lambda ömrü). Kalıcı kayıt: scripts/sql/006_guardian.sql.
+// NOT: Bellek + DB (guardianStore). Tüm instance'lar hydrate ile senkron olur.
 
 const MAX_INCIDENTS = 100;
 
@@ -58,6 +61,9 @@ export function recordIncident({
     existing.relatedFiles = mergeUnique(existing.relatedFiles, relatedFiles);
     if (recommendedAction) existing.recommendedAction = redactText(recommendedAction);
     existing.requiresHuman = statusRequiresHuman(existing.level);
+    attachAutoReportToIncident(existing);
+    void proposeAiFixForIncident(existing);
+    void persistIncidentToDb(existing);
     return existing;
   }
 
@@ -80,8 +86,11 @@ export function recordIncident({
     recommendedAction: redactText(recommendedAction)
   };
 
+  attachAutoReportToIncident(incident);
+  void proposeAiFixForIncident(incident);
   s.list.push(incident);
   if (s.list.length > MAX_INCIDENTS) s.list.splice(0, s.list.length - MAX_INCIDENTS);
+  void persistIncidentToDb(incident);
   return incident;
 }
 
@@ -93,6 +102,8 @@ export function resolveIncident(id) {
   inc.status = 'resolved';
   inc.resolvedAt = new Date().toISOString();
   inc.requiresHuman = false;
+  dismissAiFixForResolvedIncident(id);
+  void persistIncidentToDb(inc);
   return inc;
 }
 
@@ -137,4 +148,22 @@ function STATUS_RANK(level) {
 // Test/temizlik
 export function resetIncidents() {
   globalThis.__liberteGuardianIncidents = undefined;
+}
+
+// DB hydrate — açık incident'ları belleğe birleştir (dedup anahtarı korunur)
+export function mergeIncidentsFromDb(rows = []) {
+  const s = store();
+  for (const row of rows) {
+    if (!row?.id) continue;
+    const key = row._key || dedupKey(row.affectedArea, row.title);
+    const existing = s.list.find((inc) => inc.id === row.id || (inc.status === 'open' && inc._key === key));
+    if (existing) {
+      const remoteSeen = Date.parse(row.lastSeenAt || 0);
+      const localSeen = Date.parse(existing.lastSeenAt || 0);
+      if (remoteSeen >= localSeen) Object.assign(existing, row, { _key: key });
+      continue;
+    }
+    s.list.push({ ...row, _key: key });
+  }
+  if (s.list.length > MAX_INCIDENTS) s.list.splice(0, s.list.length - MAX_INCIDENTS);
 }

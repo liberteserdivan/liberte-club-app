@@ -12,6 +12,13 @@ import {
 import { isSupabaseRealtimeEnabled, refreshRealtimeSessionFromServer } from '../lib/supabaseClient.js';
 import { subscribeForegroundResume } from '../lib/appForeground.js';
 import { isCustomerRealtimeDisabled } from '../lib/safeMode.js';
+import { getMemorySession } from '../lib/session.js';
+
+// Oturum hâlâ bu müşteriye ait mi — logout sonrası geç gelen realtime commit'ini engelle
+function canCommitForCustomer(customerId) {
+  const session = getMemorySession();
+  return session && Number(session.customerId) === Number(customerId);
+}
 
 // Müşteri ekranı — filtreli postgres dinleyicileri
 export function useCustomerRealtime({
@@ -46,8 +53,9 @@ export function useCustomerRealtime({
 
         function refreshLoyaltyFromServer() {
           debouncedLoyalty.current(async () => {
+            if (!canCommitForCustomer(customerId)) return;
             const loyalty = await fetchCustomerLoyaltySnapshot();
-            if (!loyalty || cancelled) return;
+            if (!loyalty || cancelled || !canCommitForCustomer(customerId)) return;
             const current = dbRef.current;
             const prev = current.loyalty?.[customerId];
             if (prev && JSON.stringify(prev) === JSON.stringify(loyalty)) return;
@@ -78,8 +86,9 @@ export function useCustomerRealtime({
             refreshLoyaltyFromServer();
 
             debouncedHistory.current(async () => {
+              if (!canCommitForCustomer(customerId)) return;
               const historyRows = await fetchCustomerHistory(20);
-              if (!historyRows || cancelled) return;
+              if (!historyRows || cancelled || !canCommitForCustomer(customerId)) return;
               const current = dbRef.current;
               const others = (current.history || []).filter((row) => Number(row.customerId) !== Number(customerId));
               commit({
@@ -96,8 +105,9 @@ export function useCustomerRealtime({
             event: '*',
             onChange: () => {
               debouncedPromos.current(async () => {
+                if (!canCommitForCustomer(customerId)) return;
                 const promos = await fetchPromoSlice();
-                if (!promos || cancelled) return;
+                if (!promos || cancelled || !canCommitForCustomer(customerId)) return;
                 const current = dbRef.current;
                 commit({
                   ...current,

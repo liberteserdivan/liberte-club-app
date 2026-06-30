@@ -6,6 +6,13 @@ import {
 } from '../lib/realtimeManager.js';
 import { fetchAdminFeed } from '../lib/realtimeFetch.js';
 import { isSupabaseRealtimeEnabled } from '../lib/supabaseClient.js';
+import { getMemorySession } from '../lib/session.js';
+
+// Yönetici oturumu hâlâ geçerli mi — logout sonrası commit engeli
+function canCommitAsAdmin() {
+  const session = getMemorySession();
+  return Boolean(session?.isAdmin && session?.adminVerified);
+}
 
 // Admin panel — yalnızca admin PIN doğrulandığında açılır
 export function useAdminRealtime({
@@ -28,8 +35,9 @@ export function useAdminRealtime({
     async function refreshFeed() {
       debouncedFeed.current(async () => {
         try {
+          if (!canCommitAsAdmin()) return;
           const feed = await fetchAdminFeed();
-          if (!feed || cancelled) return;
+          if (!feed || cancelled || !canCommitAsAdmin()) return;
           const current = dbRef.current;
           commit({
             ...current,

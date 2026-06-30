@@ -65,23 +65,16 @@ async function revokePushTokenOnServer(customerId) {
   }
 }
 
-// Çıkışta bu cihazın tokenını yerel ve sunucuda pasifleştir
-export async function deactivateDevicePushToken(customerId, db, commit) {
-  if (!customerId || typeof commit !== 'function') return;
+// Çıkışta bu cihazın tokenını yerel ve sunucuda pasifleştir.
+// commit YAPMAZ — logout sonrası resetDb ile db sıfırlanır; geç gelen commit
+// clearLocalDb sonrası PII'yi localStorage'a geri yazıp çökme/yarışma yaratıyordu.
+export async function deactivateDevicePushToken(customerId) {
+  if (!customerId) return;
 
   const localToken = getLocalPushToken(customerId);
   if (!localToken) return;
 
-  const now = new Date().toLocaleString('tr-TR');
-  const pushSubscriptions = (db.pushSubscriptions || []).map((row) => {
-    if (Number(row.customerId) === Number(customerId) && row.token === localToken) {
-      return { ...row, active: false, deactivatedAt: now };
-    }
-    return row;
-  });
-
   clearLocalPushDevice(customerId);
-  commit({ ...db, pushSubscriptions }, { skipRemote: true });
   await revokePushTokenOnServer(customerId);
 }
 

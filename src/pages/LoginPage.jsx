@@ -15,7 +15,7 @@ import {
   verifyDevPin
 } from '../lib/devAuth.js';
 import { getDeviceId } from '../lib/deviceId.js';
-import { applyAuthResult } from '../lib/session.js';
+import { applyAuthResult, getAuthEpoch } from '../lib/session.js';
 import {
   STORE_APP_NAME,
   BRAND_SLOGAN,
@@ -127,7 +127,9 @@ export default function Login({ db, commit, setSession }) {
     return p;
   }
 
-  function finishSession(result) {
+  function finishSession(result, epochAtLogin = null) {
+    // Hızlı çıkış: uçuştaki login yanıtı oturumu geri açmasın
+    if (epochAtLogin != null && getAuthEpoch() !== epochAtLogin) return;
     setPin('');
     setPinConfirm('');
     if (result.customer) {
@@ -186,6 +188,7 @@ export default function Login({ db, commit, setSession }) {
     // (çift tıklama, hızlı tekrar) tek request'e düşer.
     if (loginInFlightRef.current) return;
     loginInFlightRef.current = true;
+    const epochAtLogin = getAuthEpoch();
 
     setLoading(true);
     setInfo('');
@@ -203,7 +206,7 @@ export default function Login({ db, commit, setSession }) {
           role: customer.isAdmin ? 'admin' : 'user',
           isAdmin: Boolean(customer.isAdmin),
           adminVerified: false
-        });
+        }, epochAtLogin);
         return;
       }
 
@@ -223,7 +226,7 @@ export default function Login({ db, commit, setSession }) {
           throw new Error(readApiError(data, 'Giriş yapılamadı'));
         }
 
-        finishSession(data);
+        finishSession(data, epochAtLogin);
         return;
       }
     } catch (e) {

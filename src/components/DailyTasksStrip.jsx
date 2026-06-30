@@ -3,6 +3,7 @@ import { Check, Coffee, Gift, Sparkles, Sun } from 'lucide-react';
 import { claimDailyLoginReward, getCustomerStreak, getDailyTasks, hasDailyClaim } from '../lib/db.js';
 import { claimDailyLoginRewardRemote } from '../lib/customerRewardsClient.js';
 import { isLocalAuth } from '../lib/devAuth.js';
+import { shouldDisableDailyClaim } from '../lib/safeMode.js';
 
 const ICONS = { sun: Sun, sparkles: Sparkles, coffee: Coffee, gift: Gift };
 
@@ -14,6 +15,7 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
   const streak = getCustomerStreak(db, customer.id);
   const doneCount = tasks.filter((task) => task.done).length;
   const dailyClaimed = hasDailyClaim(db, customer.id, 'daily_login');
+  const dailyClaimBlocked = shouldDisableDailyClaim();
 
   async function handleDailyClaim() {
     if (dailyClaimed) {
@@ -66,7 +68,7 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
         </div>
       </div>
 
-      {!dailyClaimed && (
+      {!dailyClaimed && !dailyClaimBlocked && (
         <button
           type="button"
           className="dailyClaimBtn goldBtn"
@@ -75,6 +77,9 @@ export default function DailyTasksStrip({ db, customer, commit, setTab }) {
         >
           {claimLoading ? 'Kaydediliyor…' : 'Günlük giriş ödülünü al (+1 LP)'}
         </button>
+      )}
+      {dailyClaimBlocked && !dailyClaimed && (
+        <p className="dailyClaimMessage">Sistem yoğun — günlük ödül birazdan tekrar açılacak.</p>
       )}
       {claimMessage && <p className="dailyClaimMessage">{claimMessage}</p>}
 

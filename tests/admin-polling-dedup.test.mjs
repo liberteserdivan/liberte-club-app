@@ -17,7 +17,7 @@ test('Admin dashboard stats polling arka planda/gizliyken durur', () => {
   const source = readFileSync(join(root, 'src/hooks/useAdminDashboardStats.js'), 'utf8');
   assert.match(source, /usePageActive/);
   assert.match(source, /if \(!active\) return undefined;/);
-  assert.match(source, /\[enabled, active, refreshStats\]/);
+  assert.match(source, /\[enabled, active, refreshStats, safeModeTick\]/);
 });
 
 test('QR/kasa sekmesi artık 5 saniyede bir poll yapmaz', () => {

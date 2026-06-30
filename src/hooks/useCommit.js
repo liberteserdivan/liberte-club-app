@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatClientApiError } from '../lib/apiErrors.js';
-import { loadRemote, save, saveRemote } from '../lib/db.js';
+import { loadRemote, save, saveRemote, load } from '../lib/db.js';
 import { prepareLocalState } from '../lib/localStateCache.js';
 import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullSnapshot.js';
 import { mergeAdminRemoteIntoDb } from '../lib/adminMemberSync.js';
@@ -323,8 +323,9 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     });
   }, [pullRemote]);
 
-  // Arka planda buluta kaydet
+  // Buluta kaydet — oturum yokken kuyruğa alma (logout sonrası stale commit koruması)
   function queueSaveRemote(nextDb, seq) {
+    if (!canPullRemote(sessionRef)) return;
     const session = sessionRef?.current;
     if (isPartialAdminCustomerList(nextDb, session)) {
       pullRemoteRef.current(true);
@@ -378,10 +379,24 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
 
   // Senkron hatasından sonra tekrar dene
   const retrySave = useCallback(() => {
+    if (!canPullRemote(sessionRef)) return;
     saveSeq.current += 1;
     const seq = saveSeq.current;
     queueSaveRemote(db, seq);
-  }, [db]);
+  }, [db, sessionRef]);
 
-  return [db, commit, mode, pullRemote, syncState, retrySave];
+  // Çıkışta React db state'ini seed'e sıfırla — clearLocalDb yalnızca storage'ı
+  // temizler; bellekteki PII kalırsa hızlı login/logout yarışında commit geri yazar.
+  const resetDb = useCallback(() => {
+    saveSeq.current += 1;
+    savingCount.current = 0;
+    syncing.current = false;
+    lastRemoteAt.current = null;
+    clearSyncTimer();
+    setDb(load());
+    setMode('local');
+    setSyncState({ status: 'idle', lastError: null, lastOkAt: null });
+  }, [clearSyncTimer]);
+
+  return [db, commit, mode, pullRemote, syncState, retrySave, resetDb];
 }

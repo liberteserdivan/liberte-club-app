@@ -1,4 +1,5 @@
 import { redactText, redactObject, maskCustomerId } from './mask.js';
+import { filterAiFixWaitingProposals } from './guardianAiFix.js';
 
 // Liberte Guardian — Approval Autopilot öneri (proposal) ve uygulama (execution) deposu
 // Tek sorumluluk: aksiyon önerilerini ve uygulama kayıtlarını bellekte tutmak.
@@ -169,6 +170,12 @@ export function listProposals({ status = null, limit = 50 } = {}) {
 
 // Onay merkezi için gruplu görünüm
 export function listProposalGroups() {
+  const humanRequired = listProposals({ status: PROPOSAL_STATUS.HUMAN_REQUIRED, limit: 50 });
+  const aiFixWaiting = filterAiFixWaitingProposals(humanRequired);
+  const otherHumanRequired = humanRequired.filter(
+    (p) => p.proposedAction !== 'generate_cursor_fix_prompt'
+  );
+
   return {
     pending: listProposals({ status: PROPOSAL_STATUS.PENDING, limit: 50 }),
     approved: listProposals({ status: PROPOSAL_STATUS.APPROVED, limit: 20 }),
@@ -178,7 +185,8 @@ export function listProposalGroups() {
     ],
     rejected: listProposals({ status: PROPOSAL_STATUS.REJECTED, limit: 20 }),
     rolledBack: listProposals({ status: PROPOSAL_STATUS.ROLLED_BACK, limit: 20 }),
-    humanRequired: listProposals({ status: PROPOSAL_STATUS.HUMAN_REQUIRED, limit: 20 })
+    humanRequired: otherHumanRequired,
+    aiFixWaiting
   };
 }
 

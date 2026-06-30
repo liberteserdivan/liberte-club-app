@@ -84,7 +84,8 @@ function performAction(action, params = {}) {
           reason: params.reason || 'maintenance_message',
           level: STATUS.DEGRADED,
           ttlMinutes,
-          features: { ...(params.features || {}), maintenanceMessage: 'on' }
+          features: params.features || {},
+          maintenanceMessage: params.message || 'Sistem yoğun — lütfen bir süre sonra tekrar deneyin.'
         })
       };
     default:

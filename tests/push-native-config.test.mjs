@@ -182,7 +182,8 @@ test('Push gönderimi yalnızca admin handler üzerinden', () => {
 test('Çıkışta cihaz token pasifleştirme fonksiyonu mevcut', () => {
   const prompt = readFileSync(join(root, 'src', 'lib', 'pushPrompt.js'), 'utf8');
   assert.match(prompt, /deactivateDevicePushToken/);
-  assert.match(prompt, /active: false/);
+  assert.match(prompt, /clearLocalPushDevice/);
+  assert.match(prompt, /revokePushTokenOnServer/);
 });
 
 test('keystore.properties gitignore ile korunur', () => {
