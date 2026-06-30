@@ -1,10 +1,9 @@
 import { apiFetch } from './apiClient.js';
 
 // Sunucu ısınması — Vercel soğuk başlatmasını kullanıcıdan gizler.
-// /api/health çağrısı config.js lambda'sını uyandırır; o da kendi içinde
-// auth, realtime, qr ve push lambda'larını ısıtır (fan-out). Böylece uygulama
-// açılır açılmaz (giriş ekranı görünürken) arka planda tüm fonksiyonlar uyanır;
-// kullanıcı giriş yaptığında veya QR açtığında soğuk başlatma gecikmesi olmaz.
+// /api/health yalnızca config lambda'sını uyandırır (DB ping / fan-out YOK).
+// Bağlantı havuzu koruması: açılışta tek hafif ping, gerçek istekler kendi
+// lambda'larında primeSqlConnection ile bağlantı kurar.
 
 // Aynı kısa pencerede tekrar tekrar ısınma isteği atmayı engelle
 const WARM_MIN_INTERVAL_MS = 45_000;

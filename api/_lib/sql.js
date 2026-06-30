@@ -51,8 +51,10 @@ function buildClientOptions(connectionString) {
     // Pooler (PgBouncer transaction mode) — prepared statement kapalı
     options.prepare = false;
     options.fetch_types = false;
-    // Aynı instance'ta eşzamanlı isteklerin tek bağlantıda sıraya girmemesi için
-    options.max = 3;
+    // STABİLİTE: Lambda başına TEK pooler bağlantısı. max:3 aynı instance'ta 3 slot
+    // kaplıyordu; çok sayıda eşzamanlı lambda × 3 = Supabase havuz tükenmesi → 503/504.
+    // postgres.js dahili kuyruk ile sorguları sıraya koyar; fra1'de gecikme ihmal edilebilir.
+    options.max = 1;
     options.idle_timeout = 20;
     options.max_lifetime = 60;
     // Bağlantı koparsa postgres.js sorgu sırasında otomatik yeniden bağlanır

@@ -6,7 +6,7 @@ import { usePageActive } from './usePageActive.js';
 // Tek sorumluluk: detaylı sağlık verisini periyodik çekmek (sayfa aktifken).
 // Sayfa arka plandayken polling durur (kaynak tasarrufu).
 
-const DEFAULT_INTERVAL_MS = 30_000;
+const DEFAULT_INTERVAL_MS = 60_000;
 
 export default function useGuardianHealth({ enabled = true, intervalMs = DEFAULT_INTERVAL_MS } = {}) {
   const [health, setHealth] = useState(null);

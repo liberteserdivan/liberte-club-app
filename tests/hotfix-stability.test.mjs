@@ -176,3 +176,33 @@ test('handleAuthLogin login sorgularından önce primeSqlConnection çağırır'
   assert.ok(idxPrime > 0, 'login primeSqlConnection çağırmalı');
   assert.ok(idxPrime < idxResolve, 'prime, login okumasından önce gelmeli');
 });
+
+// ---------------------------------------------------------------------------
+// 6) Bağlantı havuzu koruması — pooler max:1, health fan-out yok
+// ---------------------------------------------------------------------------
+test('transaction pooler: lambda başına tek bağlantı (max:1)', () => {
+  const source = readFileSync(join(root, 'api/_lib/sql.js'), 'utf8');
+  assert.match(
+    source,
+    /transactionPooler[\s\S]*?options\.max = 1/,
+    'pooler modunda max:1 olmalı (havuz tükenmesi koruması)'
+  );
+  assert.doesNotMatch(
+    source,
+    /transactionPooler[\s\S]*?options\.max = 3/,
+    'pooler modunda max:3 OLMAMALI'
+  );
+});
+
+test('health endpoint: varsayılan DB ping ve fan-out YOK', () => {
+  const source = readFileSync(join(root, 'api/config.js'), 'utf8');
+  assert.doesNotMatch(source, /warmOtherFunctions/, 'fan-out fonksiyonu kaldırılmalı');
+  assert.match(source, /req\.query\?\.db/, 'DB ping yalnızca ?db=1 ile opsiyonel olmalı');
+});
+
+test('keep-warm: yalnızca hafif health ping (DB warm yok)', () => {
+  const source = readFileSync(join(root, '.github/workflows/keep-warm.yml'), 'utf8');
+  assert.match(source, /\/api\/health/, 'health ping olmalı');
+  assert.doesNotMatch(source, /action=warm/, 'auth warm ping OLMAMALI');
+  assert.doesNotMatch(source, /warm=1/, 'state warm ping OLMAMALI');
+});

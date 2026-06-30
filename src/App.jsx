@@ -265,20 +265,24 @@ export default function App() {
     onCustomersChanged: pullAdminMembers
   });
 
-  // Yönetici oturumunda snapshot ile listeyi doldur ve sunucudan doğrula
+  // Yönetici oturumunda snapshot ile listeyi doldur; sunucu sync'i geciktir.
+  // STABİLİTE: useAdminMembers zaten üye listesini çeker — burada tekrar tetikleme.
+  // refreshRemote + admin-members + guardian aynı anda DB bağlantısı açmasın.
   useEffect(() => {
     if (!authReady || !session?.isAdmin || !session?.adminVerified || adminHydratedRef.current) return;
     adminHydratedRef.current = true;
     const merged = mergeAdminSnapshotIntoDb(db, session);
     if (merged !== db) commit(merged, { skipRemote: true });
-    pullAdminMembers();
-    refreshRemote(true);
-  }, [authReady, session?.isAdmin, session?.adminVerified, session?.customerId, db, commit, refreshRemote, pullAdminMembers]);
+    const syncTimer = setTimeout(() => refreshRemote(true), 2500);
+    return () => clearTimeout(syncTimer);
+  }, [authReady, session?.isAdmin, session?.adminVerified, session?.customerId, db, commit, refreshRemote]);
 
-  // Yönetim sekmesi açılınca tam üye listesini yenile
+  // Yönetim sekmesine geçince listeyi yenile — ilk açılışta useAdminMembers zaten çeker,
+  // burada kısa gecikme ile tekrar (çift istek fırtınasını önler).
   useEffect(() => {
-    if (tab !== 'admin' || !isAdmin || !adminVerified) return;
-    pullAdminMembers();
+    if (tab !== 'admin' || !isAdmin || !adminVerified) return undefined;
+    const timer = setTimeout(() => pullAdminMembers({ manual: true }), 1500);
+    return () => clearTimeout(timer);
   }, [tab, isAdmin, adminVerified, pullAdminMembers]);
 
   // Push bildirimi tıklamasında uygulama içi sekme aç
@@ -385,9 +389,13 @@ export default function App() {
   useEffect(() => {
     if (!customer?.id) return undefined;
 
-    refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
+    // Push kaydı giriş/state sync'ten SONRA — açılışta DB bağlantısı yarışmasın
+    const pushDelayMs = isNativeApp() ? 4000 : 2000;
+    const pushTimer = setTimeout(() => {
+      refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
+    }, pushDelayMs);
 
-    if (!isNativeApp()) return undefined;
+    if (!isNativeApp()) return () => clearTimeout(pushTimer);
 
     const unbindTokenRefresh = bindNativeTokenRefresh(customer, db, commit);
 
@@ -395,7 +403,7 @@ export default function App() {
       ensureNativePushRegistered(customer, db, commit).catch(() => {});
     }
 
-    registerNativePush();
+    const registerTimer = setTimeout(registerNativePush, pushDelayMs);
 
     const unsubscribeResume = subscribeForegroundResume(() => {
       registerNativePush();
@@ -403,6 +411,8 @@ export default function App() {
     });
 
     return () => {
+      clearTimeout(pushTimer);
+      clearTimeout(registerTimer);
       unsubscribeResume();
       unbindTokenRefresh();
     };

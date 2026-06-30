@@ -2,6 +2,8 @@ name: keep-warm
 
 # Vercel Hobby lambda'larini sicak tut: bos kalip soguyan fonksiyonlari periyodik
 # olarak uyandirir; boylece ilk ziyaretcinin soguk baslangic gecikmesi olmaz.
+# STABİLİTE: Yalnizca hafif /api/health ping — DB warm ve fan-out KALDIRILDI
+# (baglanti havuzu tukenmesine yol aciyordu).
 # Public repo => GitHub Actions dakikalari ucretsiz/sinirsiz.
 # NOT: Zamanli is, repo 60 gun hic aktivite gormezse otomatik devre disi kalir.
 on:
@@ -17,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Sunucuyu isit (health + auth + state DB havuzu)
+      - name: Sunucuyu isit (hafif health — DB yok)
         run: |
-          curl -fsS --max-time 30 "https://app.liberte.cafe/api/health" -o /dev/null || true
-          curl -fsS --max-time 30 "https://app.liberte.cafe/api/auth?action=warm" -o /dev/null || true
-          curl -fsS --max-time 30 "https://app.liberte.cafe/api/state?warm=1" -o /dev/null || true
+          curl -fsS --max-time 15 "https://app.liberte.cafe/api/health" -o /dev/null || true
