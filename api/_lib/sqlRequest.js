@@ -73,12 +73,23 @@ function attachObservability(req, res) {
 // API girişi — paylaşılan DB istemcisini istek kapsamına bağlar ve
 // yakalanmamış hatalara karşı son güvenlik ağı sağlar.
 export function withSqlRequest(handler) {
+  return buildSqlRequestHandler(handler, { hydrateGuardian: true });
+}
+
+// Oturum uçları — Guardian hydrate YOK (504 önleme; token kontrolünden sonra SQL)
+export function withSqlRequestNoGuardian(handler) {
+  return buildSqlRequestHandler(handler, { hydrateGuardian: false });
+}
+
+function buildSqlRequestHandler(handler, { hydrateGuardian }) {
   return async function sqlRequestHandler(req, res) {
     const requestId = attachObservability(req, res);
     try {
       await runHandlerWithSql(async () => {
-        // Guardian: DB'den Safe Mode/incident senkronu (instance'lar arası tutarlılık)
-        await hydrateGuardianState();
+        if (hydrateGuardian) {
+          // Guardian: DB'den Safe Mode/incident senkronu (instance'lar arası tutarlılık)
+          await hydrateGuardianState();
+        }
         return handler(req, res);
       });
     } catch (error) {

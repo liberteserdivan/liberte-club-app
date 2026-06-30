@@ -76,3 +76,39 @@ test('App: sessionUnavailable authNotice ile giris formu acik kalir', () => {
   assert.match(src, /result\?\.sessionUnavailable/);
   assert.match(src, /setAuthNotice/);
 });
+
+test('auth.js: GET session token yoksa withSqlRequest oncesi 401 (504 kok nedeni)', () => {
+  const src = read('api/auth.js');
+  assert.match(src, /readSessionTokenQuick/);
+  assert.match(src, /respondSessionNoToken/);
+  const bypassIdx = src.indexOf("action === 'session'");
+  const quickIdx = src.indexOf('readSessionTokenQuick(req)');
+  const sqlHandlerIdx = src.indexOf('return sqlHandler(req, res)');
+  assert.ok(bypassIdx !== -1 && quickIdx !== -1);
+  assert.ok(bypassIdx < sqlHandlerIdx, 'session bypass sqlHandler dan once');
+  assert.match(src, /withSqlRequestNoGuardian/);
+  assert.doesNotMatch(src.slice(0, src.indexOf('const sqlHandler')), /hydrateGuardianState/);
+});
+
+test('auth.js: no-token path getSql veya hydrateGuardianState cagirmaz', () => {
+  const src = read('api/auth.js');
+  const fn = src.slice(src.indexOf('function respondSessionNoToken'), src.indexOf('const AUTH_ACTIONS'));
+  assert.doesNotMatch(fn, /\bgetSql\b/);
+  assert.doesNotMatch(fn, /withSqlRequest/);
+  assert.doesNotMatch(fn, /runHandlerWithSql/);
+  assert.doesNotMatch(fn, /hydrateGuardianState/);
+  assert.match(fn, /status\(401\)/);
+});
+
+test('authSession: rota deadline guard var (platform timeout onleme)', () => {
+  const src = read('api/_lib/handlers/authSession.js');
+  assert.match(src, /SESSION_ROUTE_DEADLINE_MS/);
+  assert.match(src, /withSessionRouteDeadline/);
+  assert.match(src, /SESSION_ROUTE_TIMEOUT/);
+});
+
+test('sqlRequest: withSqlRequestNoGuardian hydrate atlar', () => {
+  const src = read('api/_lib/sqlRequest.js');
+  assert.match(src, /export function withSqlRequestNoGuardian/);
+  assert.match(src, /hydrateGuardian:\s*false/);
+});

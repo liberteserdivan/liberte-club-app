@@ -1,5 +1,35 @@
 // Kimlik doğrulama yönlendirici — Vercel Hobby 12 function limiti
-import { withSqlRequest } from './_lib/sqlRequest.js';
+import { applyCors } from './_lib/http.js';
+import { createRequestTrace } from './_lib/requestTrace.js';
+import { withSqlRequest, withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
+
+const SESSION_COOKIE = 'liberte_session';
+
+// Hafif token okuma — getSql / withSqlRequest / auth.js import YOK
+function readSessionTokenQuick(req) {
+  const header = req.headers.authorization || '';
+  if (header.startsWith('Bearer ')) {
+    return header.slice(7).trim();
+  }
+  const cookie = req.headers.cookie || '';
+  const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+// Cookie/token yok — anında 401 (SQL, Guardian, schema, retry yok)
+function respondSessionNoToken(req, res) {
+  applyCors(req, res, 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+  const trace = createRequestTrace('auth.session-restore');
+  return res.status(401).json({
+    ok: false,
+    error: 'Oturum gerekli',
+    requestId: trace.requestId
+  });
+}
 
 const AUTH_ACTIONS = {
   login: () => import('./_lib/handlers/authLogin.js').then((m) => m.handleAuthLogin),
@@ -7,14 +37,11 @@ const AUTH_ACTIONS = {
   'register-complete': () => import('./_lib/handlers/authRegisterComplete.js').then((m) => m.handleAuthRegisterComplete),
   'forgot-pin': () => import('./_lib/handlers/authForgotPin.js').then((m) => m.handleAuthForgotPin),
   'admin-pin': () => import('./_lib/handlers/authAdminPin.js').then((m) => m.handleAuthAdminPin),
-  // Üye listesi — auth isolate'ında DB bağlantısı güvenilir
   'admin-members': () => import('./_lib/handlers/adminMembers.js').then((m) => m.handleAdminMembers),
-  // DB havuzu ısıtma — login ÖNCESİ auth lambda'sının bağlantısını hazırlar,
-  // böylece giriş sırasındaki ilk sorgu bağlantı kurmayı beklemez (soğuk gecikme yok).
   warm: () => import('./_lib/handlers/warmPing.js').then((m) => m.handleWarmPing)
 };
 
-export default withSqlRequest(async function handler(req, res) {
+const sqlHandler = withSqlRequest(async function handler(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
   const loader = AUTH_ACTIONS[action];
 
@@ -25,3 +52,27 @@ export default withSqlRequest(async function handler(req, res) {
   const route = await loader();
   return route(req, res);
 });
+
+// Token varken veya POST logout — SQL gerekir ama Guardian hydrate yok
+const sessionSqlHandler = withSqlRequestNoGuardian(async function handler(req, res) {
+  const route = await AUTH_ACTIONS.session();
+  return route(req, res);
+});
+
+export default async function authRouter(req, res) {
+  const action = String(req.query?.action || '').trim().toLowerCase();
+
+  // /api/auth/session — token yoksa platform 504'e gitmeden anında 401
+  if (action === 'session') {
+    if (req.method === 'OPTIONS') {
+      applyCors(req, res, 'GET,POST,OPTIONS');
+      return res.status(200).end();
+    }
+    if (req.method === 'GET' && !readSessionTokenQuick(req)) {
+      return respondSessionNoToken(req, res);
+    }
+    return sessionSqlHandler(req, res);
+  }
+
+  return sqlHandler(req, res);
+}
