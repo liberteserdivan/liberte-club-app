@@ -1,5 +1,6 @@
 import { withSqlRetry } from './dbTransient.js';
 import { isSqlRequestActive, resetSqlClient } from './sql.js';
+import { ROUTE_TIMING } from './routeTiming.js';
 
 // Read uçları için bayat bağlantıda her deneme bu süreyle sınırlanır.
 // Postgres.js'in ~15sn TCP zaman aşımını beklemek yerine erken vazgeçip
@@ -49,12 +50,15 @@ export function runSqlReadFast(task) {
   });
 }
 
-// Login kimlik doğrulama okumaları — tek deneme, kısa timeout (iç içe retry yok)
-const LOGIN_READ_ATTEMPT_TIMEOUT_MS = 2200;
+// Login kimlik doğrulama okumaları — tek deneme, route deadline içinde kontrollü timeout
+export function getLoginReadAttemptTimeoutMs() {
+  return ROUTE_TIMING.LOGIN_READ_ATTEMPT_MS;
+}
+
 export function runSqlLoginRead(task) {
   return withSqlRetry(task, {
     retries: 0,
     resetClient: resetSqlClient,
-    attemptTimeoutMs: LOGIN_READ_ATTEMPT_TIMEOUT_MS
+    attemptTimeoutMs: getLoginReadAttemptTimeoutMs()
   });
 }

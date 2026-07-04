@@ -23,7 +23,7 @@ test('authLogin: route deadline credential_lookup step', () => {
 
 test('authLogin: session_create 503 step', () => {
   const src = read('api/_lib/handlers/authLogin.js');
-  assert.match(src, /unavailableBody\('session_create'\)/);
+  assert.match(src, /unavailableBody\([\s\S]*'session_create'/);
 });
 
 test('authLogin: enrichment credential deadline disinda', () => {
@@ -46,6 +46,40 @@ test('authLogin: credential lookup minimal findCustomerForLogin', () => {
   assert.doesNotMatch(src, /loadAppState/);
   assert.doesNotMatch(src, /syncSessionWithCustomer/);
   assert.doesNotMatch(src, /getSessionIdentityForLogin/);
+});
+
+test('authLogin: LOGIN_READ_ATTEMPT_MS 4000ms', () => {
+  assert.match(read('api/_lib/routeTiming.js'), /LOGIN_READ_ATTEMPT_MS:\s*4000/);
+  assert.match(read('api/_lib/handlers/authLogin.js'), /getLoginReadAttemptTimeoutMs/);
+});
+
+test('authLogin: rate limit paralel Promise.all', () => {
+  const src = read('api/_lib/handlers/authLogin.js');
+  assert.match(src, /Promise\.all\([\s\S]*isLoginRateLimited/);
+  assert.match(src, /recordRateLimitMs/);
+});
+
+test('authLogin: credential_lookup 503 db_error_type query_timeout', async () => {
+  const { createLoginPhaseTracker } = await import('../api/_lib/loginPhase.js');
+  const trace = { requestId: 'test-req', successTimings: () => ({ parse_body_ms: 900 }) };
+  const phases = createLoginPhaseTracker(trace, 6000);
+  phases.setPhase('credential_lookup');
+  const err = Object.assign(new Error('ETIMEDOUT: sql attempt timeout'), { code: 'ETIMEDOUT' });
+  const body = phases.unavailableBody('credential_lookup', 'LOGIN_TEMPORARILY_UNAVAILABLE', {
+    error: err,
+    queryTimeoutMs: 4000
+  });
+  assert.equal(body.step, 'credential_lookup');
+  assert.equal(body.timings.db_error_type, 'query_timeout');
+  assert.equal(body.timings.query_timeout_ms, 4000);
+  assert.doesNotMatch(JSON.stringify(body), /login_unavailable/);
+});
+
+test('classifyLoginDbError: guvenli siniflar', async () => {
+  const { classifyLoginDbError } = await import('../api/_lib/dbTransient.js');
+  const timeoutErr = Object.assign(new Error('ETIMEDOUT: sql attempt timeout'), { code: 'ETIMEDOUT' });
+  assert.equal(classifyLoginDbError(timeoutErr), 'query_timeout');
+  assert.equal(classifyLoginDbError(null, { routeDeadline: true }), 'route_deadline');
 });
 
 test('withRouteDeadline: phase error payload', async () => {

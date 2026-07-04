@@ -123,3 +123,25 @@ export async function withSqlRetry(task, { retries = 4, resetClient, attemptTime
 
   throw lastError;
 }
+
+// Login credential_lookup 503 için güvenli DB hata sınıfı (secret/ham mesaj yok)
+export function classifyLoginDbError(error, { routeDeadline = false } = {}) {
+  if (routeDeadline) return 'route_deadline';
+
+  const code = String(error?.code || '').toUpperCase();
+  const text = String(error?.message || error || '').toLowerCase();
+
+  if (code === 'ETIMEDOUT' || text.includes('sql attempt timeout')) {
+    return 'query_timeout';
+  }
+  if (
+    code === 'ECONNREFUSED'
+    || code === 'ECONNRESET'
+    || text.includes('connect')
+    || text.includes('connection')
+  ) {
+    return 'connection_transient';
+  }
+  if (isTransientDbError(error)) return 'db_transient';
+  return 'db_unavailable';
+}

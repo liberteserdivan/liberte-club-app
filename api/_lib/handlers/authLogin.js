@@ -15,18 +15,19 @@ import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js
 import { findCustomerForLogin, findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 import { publicDbErrorCode, publicDbErrorMessage, isTransientDbError } from '../dbTransient.js';
-import { runSqlLoginRead } from '../runSql.js';
+import { runSqlLoginRead, getLoginReadAttemptTimeoutMs } from '../runSql.js';
 import { ROUTE_TIMING } from '../routeTiming.js';
 import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 import { createLoginPhaseTracker } from '../loginPhase.js';
 
 // Rate-limit — DB gecikirse fail-open (login bloklanmaz)
 async function isLoginRateLimited(req, action, options) {
+  const failOpenMs = ROUTE_TIMING.LOGIN_RATE_LIMIT_FAILOPEN_MS || 900;
   try {
     const result = await Promise.race([
       enforceAuthRateLimit(req, action, options),
       new Promise((_, reject) => {
-        setTimeout(() => reject(Object.assign(new Error('rate limit timeout'), { code: 'ETIMEDOUT' })), 900);
+        setTimeout(() => reject(Object.assign(new Error('rate limit timeout'), { code: 'ETIMEDOUT' })), failOpenMs);
       })
     ]);
     return result;
@@ -34,6 +35,15 @@ async function isLoginRateLimited(req, action, options) {
     console.warn('[auth.customer-login] rate_limit_skip', error?.message || error);
     return false;
   }
+}
+
+// Kontrollü 503 yanıtı için güvenli tanılama alanları
+function loginUnavailableDiagnostics(phases, error) {
+  return {
+    error,
+    queryTimeoutMs: getLoginReadAttemptTimeoutMs(),
+    routeDeadline: isRouteDeadlineError(error)
+  };
 }
 
 function loginBodyCore(trace, customer, sessionMeta, existing, loyalty) {
@@ -105,7 +115,7 @@ function respondLoginUnavailable(res, phases, trace, error) {
     step = step === 'parse_request' ? 'credential_lookup' : step;
   }
 
-  return res.status(503).json(phases.unavailableBody(step));
+  return res.status(503).json(phases.unavailableBody(step, 'LOGIN_TEMPORARILY_UNAVAILABLE', loginUnavailableDiagnostics(phases, error)));
 }
 
 // Giriş — telefon + PIN
@@ -130,10 +140,14 @@ export async function handleAuthLogin(req, res) {
   try {
     outcome = await withRouteDeadline(async () => {
       phases.setPhase('rate_limit');
-      if (await isLoginRateLimited(req, 'auth_login', { maxHits: 15, identifier: loginPhone })) {
-        return { kind: 'error', status: 429, body: trace.failBody('rate_limit', 'RATE_LIMITED', 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.') };
-      }
-      if (await isLoginRateLimited(req, 'auth_login_ip', { maxHits: 80 })) {
+      const rateLimitStarted = Date.now();
+      const [loginLimited, ipLimited] = await Promise.all([
+        isLoginRateLimited(req, 'auth_login', { maxHits: 15, identifier: loginPhone }),
+        isLoginRateLimited(req, 'auth_login_ip', { maxHits: 80 })
+      ]);
+      phases.recordRateLimitMs(Date.now() - rateLimitStarted);
+
+      if (loginLimited || ipLimited) {
         return { kind: 'error', status: 429, body: trace.failBody('rate_limit', 'RATE_LIMITED', 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.') };
       }
 
@@ -187,7 +201,11 @@ export async function handleAuthLogin(req, res) {
   } catch (sessionError) {
     console.error('[auth.customer-login]', trace.requestId, 'session_create', sessionError?.message || sessionError);
     if (isTransientDbError(sessionError)) {
-      return res.status(503).json(phases.unavailableBody('session_create'));
+      return res.status(503).json(phases.unavailableBody(
+        'session_create',
+        'LOGIN_TEMPORARILY_UNAVAILABLE',
+        loginUnavailableDiagnostics(phases, sessionError)
+      ));
     }
     return res.status(500).json(trace.failBody(
       'session_create',
@@ -262,7 +280,7 @@ async function resolveLoginOutcome(req, trace, phases, body) {
   const hasPinAuth = customer ? false : await hasCustomerPinAuth(sql, phone);
 
   trace.log('lookup', {
-    normalizedPhone: phone,
+    phoneLen: phone.length,
     step: 'credential_lookup',
     foundCustomer: Boolean(customer),
     customerId: customer?.id || null,
