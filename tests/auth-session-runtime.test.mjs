@@ -129,12 +129,15 @@ test('loyalty daily-claim guardian hydrate kullanmaz', () => {
 });
 
 test('authLogin: transient/deadline 503 LOGIN_TEMPORARILY_UNAVAILABLE', () => {
-  const src = read('api/_lib/handlers/authLogin.js');
-  assert.match(src, /LOGIN_TEMPORARILY_UNAVAILABLE/);
-  assert.match(src, /withRouteDeadline/);
-  assert.match(src, /ROUTE_TIMING\.LOGIN_MS/);
+  const handler = read('api/_lib/handlers/authLogin.js');
+  const phaseLib = read('api/_lib/loginPhase.js');
+  assert.match(phaseLib, /LOGIN_TEMPORARILY_UNAVAILABLE/);
+  assert.match(handler, /LOGIN_CREDENTIAL_MS/);
+  assert.match(handler, /unavailableBody/);
+  assert.doesNotMatch(handler, /step:\s*'login_unavailable'/);
+  assert.doesNotMatch(phaseLib, /step:\s*'login_unavailable'/);
   const timing = read('api/_lib/routeTiming.js');
-  assert.match(timing, /LOGIN_MS:\s*6000/);
+  assert.match(timing, /LOGIN_CREDENTIAL_MS:\s*6000/);
 });
 
 test('App: musteri hydrate timeout logout yapmaz degraded mod', () => {

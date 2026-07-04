@@ -169,12 +169,9 @@ test('primeSqlConnection: timeout bağlantıyı SIFIRLAMAZ, yalnızca ping reddi
   );
 });
 
-test('handleAuthLogin login sorgularından önce primeSqlConnection çağırır', () => {
+test('handleAuthLogin login credential path primeSqlConnection kullanmaz', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/authLogin.js'), 'utf8');
-  const idxPrime = source.indexOf('primeSqlConnection(');
-  const idxResolve = source.indexOf('resolveLoginOutcome(req, trace)');
-  assert.ok(idxPrime > 0, 'login primeSqlConnection çağırmalı');
-  assert.ok(idxPrime < idxResolve, 'prime, login okumasından önce gelmeli');
+  assert.doesNotMatch(source, /primeSqlConnection\(/, 'login prime ile gecikmemeli');
 });
 
 // ---------------------------------------------------------------------------

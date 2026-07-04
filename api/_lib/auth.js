@@ -18,7 +18,7 @@ export const SESSION_COOKIE = 'liberte_session';
 const SESSION_DAYS = 30;
 
 // Token hash üret
-function hashToken(token) {
+export function hashToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 

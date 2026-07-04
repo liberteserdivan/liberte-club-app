@@ -121,6 +121,35 @@ async function resolveCustomerRowByPhone(sql, phone) {
   return row;
 }
 
+// Login için salt-okunur müşteri arama — UPDATE/repair/state yok
+export async function findCustomerForLogin(sql, phone) {
+  const normalized = cleanPhone(phone);
+  if (!sql || normalized.length < 10) return null;
+
+  const variants = phoneLookupVariants(phone);
+  const rows = await sql`
+    SELECT id, phone, name, email, birth_date, referral_code, is_admin
+    FROM customers
+    WHERE normalized_phone = ${normalized}
+       OR phone IN ${inList(sql, variants)}
+    ORDER BY is_admin DESC, id ASC
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    id: Number(row.id),
+    phone: cleanPhone(row.phone),
+    name: String(row.name || 'Liberte Üye'),
+    email: row.email ? String(row.email) : '',
+    birthDate: row.birth_date || '',
+    referralCode: row.referral_code || null,
+    isAdmin: Boolean(row.is_admin)
+  };
+}
+
 // Telefon ile müşteri bul — yarım kayıt varsa onar
 export async function findCustomerByPhone(sql, phone) {
   const row = await resolveCustomerRowByPhone(sql, phone);

@@ -49,11 +49,11 @@ export function runSqlReadFast(task) {
   });
 }
 
-// Login kimlik doğrulama okumaları — ~5sn üst sınır (2 x 2.5sn), yazma yok.
-const LOGIN_READ_ATTEMPT_TIMEOUT_MS = 2500;
+// Login kimlik doğrulama okumaları — tek deneme, kısa timeout (iç içe retry yok)
+const LOGIN_READ_ATTEMPT_TIMEOUT_MS = 2200;
 export function runSqlLoginRead(task) {
   return withSqlRetry(task, {
-    retries: 1,
+    retries: 0,
     resetClient: resetSqlClient,
     attemptTimeoutMs: LOGIN_READ_ATTEMPT_TIMEOUT_MS
   });

@@ -1,10 +1,8 @@
-﻿// Rota suresi ust siniri — ic DB helper takilsa bile kontrollu JSON doner
-
-export function isRouteDeadlineError(error) {
+﻿export function isRouteDeadlineError(error) {
   return error?.code === 'ROUTE_DEADLINE';
 }
 
-export async function withRouteDeadline(task, deadlineMs, label = 'route') {
+export async function withRouteDeadline(task, deadlineMs, label = 'route', { getPhase } = {}) {
   if (!deadlineMs || deadlineMs <= 0) return task();
 
   let timer;
@@ -13,7 +11,11 @@ export async function withRouteDeadline(task, deadlineMs, label = 'route') {
       task(),
       new Promise((_, reject) => {
         timer = setTimeout(() => {
-          reject(Object.assign(new Error(`${label} deadline`), { code: 'ROUTE_DEADLINE' }));
+          const phase = typeof getPhase === 'function' ? getPhase() : 'route_deadline';
+          reject(Object.assign(new Error(`${label} deadline`), {
+            code: 'ROUTE_DEADLINE',
+            phase: phase || 'route_deadline'
+          }));
         }, deadlineMs);
       })
     ]);
