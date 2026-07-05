@@ -50,6 +50,15 @@ export function useAdminMembers({ enabled = false, commit, session = null, db = 
         // Logout/login sonrası gelen 401/500 hatası login UI'ı bozmasın
         if (getAuthEpoch() !== epochAtStart) return false;
         setError(e?.message || 'Üye listesi yüklenemedi');
+        if (e?.code || e?.requestId) {
+          console.info('[admin-members]', {
+            code: e?.code || null,
+            status: e?.httpStatus || null,
+            requestId: e?.requestId || null,
+            step: e?.step || null,
+            timings: e?.timings || null
+          });
+        }
         setStatus('error');
         return false;
       } finally {

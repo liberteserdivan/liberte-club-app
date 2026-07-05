@@ -74,11 +74,11 @@ test('useAdminMembers: in-flight dedup + circuit breaker entegre', () => {
   assert.match(src, /recordSuccess\(ADMIN_MEMBERS_CIRCUIT\)/, 'basari devreyi sifirlamali');
 });
 
-test('adminMemberClient: client timeout 60sn yerine kisaltildi', () => {
+test('adminMemberClient: native icin ADMIN_MEMBERS_REQUEST_OPTIONS kullanir', () => {
   const src = read('src/lib/adminMemberClient.js');
   const fn = src.slice(src.indexOf('export async function fetchAdminMembersList'), src.indexOf('export async function applyAdminMemberLoyalty'));
-  assert.match(fn, /timeoutMs:\s*12000/, 'admin members fetch 12sn ile sinirli olmali');
-  assert.doesNotMatch(fn, /timeoutMs:\s*60000/, '60sn timeout kaldirilmali');
+  assert.match(fn, /ADMIN_MEMBERS_REQUEST_OPTIONS/, 'admin members native uzun timeout kullanmali');
+  assert.doesNotMatch(fn, /timeoutMs:\s*60000/, '60sn sabit timeout kaldirilmali');
 });
 
 // Davranissal: devre 3 hatadan sonra acilir, 60sn skip eder, basari sifirlar

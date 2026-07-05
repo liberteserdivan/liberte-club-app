@@ -54,8 +54,21 @@ export default function Login({ db, commit, setSession }) {
   const [notice, setNotice] = useState(null);
   // Duplicate login submit koruması — uçuştaki giriş varken ikinci POST başlatma
   const loginInFlightRef = useRef(false);
+  const loginAttemptRef = useRef(0);
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
+
+  // Native teşhis — PIN/token/telefon loglanmaz
+  function logLoginDiag(label, meta = {}) {
+    try {
+      console.info('[login]', {
+        label,
+        ...meta
+      });
+    } catch {
+      // yoksay
+    }
+  }
 
   // Ağ/zaman aşımı — login modalında "Sunucuya ulaşılamadı" panic metni gösterme
   function notifyRequestError(error, fallback) {
@@ -66,6 +79,13 @@ export default function Login({ db, commit, setSession }) {
     if (formatted.code === 'FETCH_TIMEOUT' || formatted.code === 'NETWORK_ERROR') {
       message = 'Giriş şu an tamamlanamadı. Lütfen birkaç saniye sonra tekrar deneyin.';
     }
+
+    logLoginDiag('error', {
+      code: error?.code || formatted.code || null,
+      step: error?.step || null,
+      status: error?.httpStatus || null,
+      requestId: error?.requestId || null
+    });
 
     const soft = formatted.retryable
       || formatted.code === 'FETCH_TIMEOUT'
@@ -216,6 +236,8 @@ export default function Login({ db, commit, setSession }) {
     if (loginInFlightRef.current) return;
     loginInFlightRef.current = true;
     const epochAtLogin = getAuthEpoch();
+    const attemptId = loginAttemptRef.current + 1;
+    loginAttemptRef.current = attemptId;
 
     setLoading(true);
     setInfo('');
@@ -246,13 +268,24 @@ export default function Login({ db, commit, setSession }) {
 
       if (response.status === 503 || data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE') {
         notify(readApiError(data, 'Giriş şu an tamamlanamıyor. Lütfen birkaç saniye sonra tekrar deneyin.'), 'info');
+        logLoginDiag('unavailable', { status: response.status, code: data?.code, requestId: data?.requestId, step: data?.step });
         return;
       }
 
       if (!response.ok || data?.ok === false) {
-        throw new Error(readApiError(data, 'Giriş yapılamadı'));
+        const err = new Error(readApiError(data, 'Giriş yapılamadı'));
+        err.code = data?.code || null;
+        err.requestId = data?.requestId || null;
+        err.step = data?.step || null;
+        err.httpStatus = response.status;
+        throw err;
       }
 
+      // Zaman aşımı veya logout sonrası geç gelen yanıt UI'yı bozmasın
+      if (attemptId !== loginAttemptRef.current) return;
+      if (getAuthEpoch() !== epochAtLogin) return;
+
+      logLoginDiag('success', { status: response.status, requestId: data?.requestId, step: data?.step });
       finishSession(data, epochAtLogin);
     } catch (e) {
       notifyRequestError(e, 'Giriş yapılamadı');

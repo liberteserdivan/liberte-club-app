@@ -10,7 +10,7 @@ const read = (rel) => readFileSync(join(root, rel), 'utf8');
 // 1) authEpoch (sessionGeneration) — oturum değişiminde nesil ilerler
 test('session.js authEpoch sağlar ve login/logout geçişlerinde ilerletir', () => {
   const src = read('src/lib/session.js');
-  assert.match(src, /export function getAuthEpoch\(\)/, 'getAuthEpoch export edilmeli');
+  assert.match(src, /export .*getAuthEpoch/, 'getAuthEpoch export edilmeli');
   assert.match(src, /function bumpAuthEpoch\(\)/, 'bumpAuthEpoch tanımlı olmalı');
   // logoutSession ve applyAuthResult içinde nesil ilerlemeli
   const logout = src.slice(src.indexOf('export function logoutSession'), src.indexOf('export function readSession'));

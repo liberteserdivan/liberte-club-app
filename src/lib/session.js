@@ -11,22 +11,16 @@ import { clearAdminSnapshot } from './adminFullSnapshot.js';
 import { clearLocalDb } from './db.js';
 import { resetRemoteFetchState } from './remoteFetch.js';
 import { clearSafeModeState } from './safeMode.js';
+import { bumpAuthEpoch as bumpAuthEpochCounter, getAuthEpoch } from './authEpoch.js';
+
+export { getAuthEpoch } from './authEpoch.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
 
-// Oturum nesli (authEpoch): login/logout geçişlerinde artar.
-// Uçuştaki istek yanıtı geç geldiğinde epoch değiştiyse yanıt yok sayılır.
-let authEpoch = 0;
-
-// Aktif oturum neslini döndür
-export function getAuthEpoch() {
-  return authEpoch;
-}
-
 // Oturum değişiminde nesli ilerlet — eski uçuştaki yanıtları geçersiz kıl
 function bumpAuthEpoch() {
-  authEpoch += 1;
+  bumpAuthEpochCounter();
 }
 
 export function getRealtimeToken() {

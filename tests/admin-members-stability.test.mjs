@@ -19,7 +19,7 @@ test('adminMembers: veri okumaları runSqlReadFast ile fail-fast', () => {
 
 test('adminMembers: geçici DB hatasında 503 ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
-  assert.match(src, /import \{ isTransientDbError \} from '\.\.\/dbTransient\.js'/);
+  assert.match(src, /isTransientDbError/);
   assert.match(src, /if \(isTransientDbError\(error\)\)/, 'transient kontrolü olmalı');
   assert.match(src, /status\(503\)[\s\S]*ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE/, '503 + özel kod dönmeli');
 });

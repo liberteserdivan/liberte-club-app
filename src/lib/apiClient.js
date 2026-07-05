@@ -2,6 +2,7 @@ import { formatClientApiError } from './apiErrors.js';
 import { isNativeApp, isIos, isAndroid } from './platform.js';
 import { recordRequest } from './guardianTelemetry.js';
 import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
+import { getAuthEpoch } from './authEpoch.js';
 
 // Kalıcı native API kökü — liberte.cafe bağımlılığı yok; Vercel production deployment
 export const DEFAULT_NATIVE_API_ORIGIN = 'https://liberte-club-app.vercel.app';
@@ -319,7 +320,7 @@ function sleep(ms) {
 }
 
 // Tek bir ağ isteğini gerçekleştir — token, header ve zaman aşımı uygular
-async function performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized) {
+async function performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized, epochAtStart) {
   try {
     const response = await fetchWithTimeout(url, {
       ...fetchOptions,
@@ -327,7 +328,8 @@ async function performApiFetch(url, fetchOptions, headers, native, requestTimeou
       credentials: native ? 'omit' : 'include'
     }, requestTimeout);
 
-    if (response.status === 401 && onUnauthorized && !skipUnauthorized) {
+    // Bayat uçuş 401'i yeni login'i veya logout sonrası girişi bozmamalı
+    if (response.status === 401 && onUnauthorized && !skipUnauthorized && getAuthEpoch() === epochAtStart) {
       onUnauthorized('expired');
     }
 
@@ -346,6 +348,7 @@ async function performApiFetch(url, fetchOptions, headers, native, requestTimeou
 // Kimlik bilgili API isteği — idempotent isteklerde geçici hatada bir kez tekrar dener
 export async function apiFetch(path, options = {}) {
   const { timeoutMs, skipUnauthorized = false, retryTransient, ...fetchOptions } = options;
+  const epochAtStart = getAuthEpoch();
   const headers = {
     'Content-Type': 'application/json',
     ...(fetchOptions.headers || {})
@@ -366,7 +369,7 @@ export async function apiFetch(path, options = {}) {
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized);
+      return await performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized, epochAtStart);
     } catch (error) {
       lastError = error;
       // Son deneme veya tekrar denenemeyen hata ise yükselt
@@ -388,7 +391,10 @@ export async function apiJson(path, options = {}) {
   try {
     response = await apiFetch(path, options);
   } catch (error) {
-    // Hata/timeout/network telemetriye düşer; hata semantiği değişmez (yeniden fırlatılır)
+    logNativeApiDiag(path, null, {
+      code: error?.code || null,
+      step: error?.code === 'FETCH_TIMEOUT' ? 'fetch_timeout' : 'network_error'
+    });
     recordRequest({
       endpoint: path,
       method,
@@ -451,13 +457,16 @@ export async function apiJson(path, options = {}) {
   return { response, data };
 }
 
-// Auth uçları — soğuk başlangıç + DB yazımı için daha uzun zaman aşımı
+// Auth uçları — native soğuk başlangıç için uzun zaman aşımı (Android + iOS)
 export const AUTH_REQUEST_OPTIONS = {
-  timeoutMs: isNativeApp() && isIos() ? NATIVE_AUTH_FETCH_TIMEOUT_MS : AUTH_FETCH_TIMEOUT_MS
+  timeoutMs: isNativeApp() ? NATIVE_AUTH_FETCH_TIMEOUT_MS : AUTH_FETCH_TIMEOUT_MS
 };
 export const REGISTER_REQUEST_OPTIONS = { timeoutMs: 90_000 };
 export const SYNC_REQUEST_OPTIONS = { timeoutMs: 25000 };
 export const ADMIN_REQUEST_OPTIONS = { timeoutMs: 60_000 };
+export const ADMIN_MEMBERS_REQUEST_OPTIONS = {
+  timeoutMs: isNativeApp() ? 45_000 : 12_000
+};
 // Kasiyer LP işlemi — kullanıcı işlemin başında bekler; 60sn'lik genel admin
 // zaman aşımı paneli çok uzun süre kilitli/donmuş gösterir. Bu yüzden LP
 // aksiyonu daha kısa (15sn) tutulur; timeout sonrası kullanıcı tekrar dener.

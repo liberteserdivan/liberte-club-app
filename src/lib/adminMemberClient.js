@@ -1,18 +1,20 @@
-import { apiJson } from './apiClient.js';
+import { apiJson, ADMIN_MEMBERS_REQUEST_OPTIONS } from './apiClient.js';
 
 // Yönetici — tüm üyeleri sunucudan çek.
-// Sunucu artık fail-fast (~6-12sn) döndüğü için 60sn client timeout gereksiz;
-// 12sn ile sınırlanır, böylece UI uzun süre asılı kalmaz.
 export async function fetchAdminMembersList() {
   const { response, data } = await apiJson('/api/admin/members', {
-    timeoutMs: 12000,
+    ...ADMIN_MEMBERS_REQUEST_OPTIONS,
     skipUnauthorized: true
   });
   if (!response.ok || !data?.ok) {
     const message = data?.error || data?.message || 'Üye listesi alınamadı';
     const error = new Error(message);
     error.httpStatus = response.status;
+    error.code = data?.code || null;
+    error.requestId = data?.requestId || null;
+    error.step = data?.step || null;
     error.needsAdminPin = Boolean(data?.needsAdminPin);
+    error.timings = data?.timings || null;
     throw error;
   }
   return data;
