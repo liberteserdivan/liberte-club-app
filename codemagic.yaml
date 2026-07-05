@@ -416,21 +416,20 @@ workflows:
           npx cap sync android
       - name: Android surum kodu
         script: node scripts/set-android-version-code.mjs
-      - name: Release APK uret
+      - name: Debug APK uret (BrowserStack WebView)
         script: |
           cd android
           chmod +x gradlew
-          export MOBILE_SMOKE_BUILD=true
-          ./gradlew assembleRelease
-          echo "[smoke] Play Store upload YAPILMADI — WebView debug smoke build"
+          ./gradlew assembleDebug
+          echo "[smoke] Debug APK — Play upload yok, WebView debug acik"
       - name: BrowserStack gercek cihaz smoke testleri
         script: |
-          export MOBILE_ANDROID_APK_PATH="$CM_BUILD_DIR/android/app/build/outputs/apk/release/app-release.apk"
+          export MOBILE_ANDROID_APK_PATH="$CM_BUILD_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$MOBILE_ANDROID_APK_PATH" || (echo "HATA: APK bulunamadi: $MOBILE_ANDROID_APK_PATH" && exit 1)
           node scripts/verify-mobile-test-env.mjs
           node scripts/run-browserstack-mobile-tests.mjs
     artifacts:
-      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/apk/debug/*.apk
       - e2e/mobile/reports/*.json
     publishing:
       email:

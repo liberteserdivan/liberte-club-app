@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Mobil smoke test secretlarini Codemagic liberte_android grubuna yazar ve build tetikler.
- * Kaynak: .env.mobile-test.local (gitignore) — degerler loglanmaz.
+ * Kaynak: .env.mobile-test.local (gitignore) â€” degerler loglanmaz.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -113,8 +113,16 @@ async function main() {
   console.log('[mobile-setup] Secret alanlari hazir (degerler loglanmaz)');
   const groupId = await findGroupId(token, appId);
   console.log(`[mobile-setup] Grup: ${GROUP_NAME}`);
-  await importVariables(token, groupId, secrets);
-  console.log('[mobile-setup] Codemagic grubuna yazildi');
+  try {
+    await importVariables(token, groupId, secrets);
+    console.log('[mobile-setup] Codemagic grubuna yazildi');
+  } catch (error) {
+    if (String(error.message || '').includes('already exists')) {
+      console.log('[mobile-setup] Degiskenler zaten mevcut — atlaniyor');
+    } else {
+      throw error;
+    }
+  }
   const buildId = await triggerSmokeBuild(token, appId, secrets);
   console.log(`[mobile-setup] Build: ${buildId || 'tetiklendi'}`);
 }

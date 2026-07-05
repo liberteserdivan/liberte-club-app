@@ -92,7 +92,8 @@ test('mobil e2e: smoke build webview debug bayragi', () => {
   const yaml = read('codemagic.yaml');
   const gradle = read('android/app/build.gradle');
   const main = read('android/app/src/main/java/cafe/liberte/app/MainActivity.java');
-  assert.match(yaml, /MOBILE_SMOKE_BUILD=true/);
+  assert.match(yaml, /assembleDebug/);
+  assert.match(yaml, /apk\/debug\/app-debug\.apk/);
   assert.match(gradle, /ENABLE_WEBVIEW_DEBUG/);
   assert.match(main, /ENABLE_WEBVIEW_DEBUG/);
 });
