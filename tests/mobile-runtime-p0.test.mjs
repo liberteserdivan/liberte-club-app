@@ -88,6 +88,15 @@ test('mobil e2e: codemagic workflowlari tanimli', () => {
   assert.doesNotMatch(yaml, /\bnvm\b/);
 });
 
+test('mobil e2e: smoke build webview debug bayragi', () => {
+  const yaml = read('codemagic.yaml');
+  const gradle = read('android/app/build.gradle');
+  const main = read('android/app/src/main/java/cafe/liberte/app/MainActivity.java');
+  assert.match(yaml, /MOBILE_SMOKE_BUILD=true/);
+  assert.match(gradle, /ENABLE_WEBVIEW_DEBUG/);
+  assert.match(main, /ENABLE_WEBVIEW_DEBUG/);
+});
+
 test('mobil e2e: app url alias cozumleme', () => {
   const src = read('scripts/run-browserstack-mobile-tests.mjs');
   assert.match(src, /BROWSERSTACK_ANDROID_APP_URL/);

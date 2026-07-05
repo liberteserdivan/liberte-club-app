@@ -6,18 +6,18 @@ import { switchToAppWebView, waitForTestId, isDisplayed } from './webview.js';
 const ADMIN_MEMBERS_TIMEOUT_MS = 45_000;
 const LOGIN_TIMEOUT_MS = 40_000;
 
-/** Splash sonrası login veya ana ekran */
+/** Splash sonrasÄ± login veya ana ekran */
 export async function assertAppLaunch(browser, meta) {
   await switchToAppWebView(browser);
   const loginVisible = await isDisplayed(browser, SELECTORS.loginPhone, 25_000);
   const homeVisible = await isDisplayed(browser, SELECTORS.navHome, 8_000);
   if (!loginVisible && !homeVisible) {
-    throw new Error('A뿯½ılış sonrası login veya home g뿯½r뿯½nmedi');
+    throw new Error('Aë¿¯Â½Ä±lÄ±ÅŸ sonrasÄ± login veya home gë¿¯Â½rë¿¯Â½nmedi');
   }
   logSafe('app-launch', { ...meta, step: 'launch', status: 'ok' });
 }
 
-/** Telefon + PIN ile giriş */
+/** Telefon + PIN ile giriÅŸ */
 export async function loginWithPin(browser, meta) {
   const { phone, pin } = getMobileTestCredentials();
   await switchToAppWebView(browser);
@@ -41,13 +41,13 @@ export async function loginWithPin(browser, meta) {
 
   const errorVisible = await isDisplayed(browser, '.loginError, .adminPinError', 2_000);
   if (errorVisible) {
-    throw new Error('Login sonrası hata mesajı g뿯½r뿯½nd뿯½');
+    throw new Error('Login sonrasÄ± hata mesajÄ± gë¿¯Â½rë¿¯Â½ndë¿¯Â½');
   }
 
   logSafe('login', { ...meta, step: 'login', status: 'ok' });
 }
 
-/** Profilden 뿯½ıkış */
+/** Profilden ë¿¯Â½Ä±kÄ±ÅŸ */
 export async function logoutFromProfile(browser, meta) {
   await switchToAppWebView(browser);
   const profileNav = await waitForTestId(browser, SELECTORS.navProfile);
@@ -58,12 +58,15 @@ export async function logoutFromProfile(browser, meta) {
   logSafe('logout', { ...meta, step: 'logout', status: 'ok' });
 }
 
-/** Uygulamayı yeniden başlat — oturum korunmalı */
+/** UygulamayÄ± yeniden baÅŸlat â€” oturum korunmalÄ± */
 export async function relaunchAndAssertSession(browser, meta) {
   const appPackage = browser.capabilities['appium:appPackage'] || browser.capabilities.appPackage;
   const appActivity = browser.capabilities['appium:appActivity'] || browser.capabilities.appActivity;
   if (appPackage && appActivity) {
-    await browser.execute('mobile: terminateApp', { appId: appPackage });
+    await browser.execute('mobile: shell', {
+      command: 'am',
+      args: ['force-stop', appPackage]
+    });
     await browser.pause(1_500);
     await browser.execute('mobile: activateApp', { appId: appPackage });
   } else {
@@ -73,12 +76,12 @@ export async function relaunchAndAssertSession(browser, meta) {
   const stillLoggedIn = await isDisplayed(browser, SELECTORS.navHome, 30_000);
   const loginAgain = await isDisplayed(browser, SELECTORS.loginPhone, 3_000);
   if (!stillLoggedIn || loginAgain) {
-    throw new Error('Relaunch sonrası oturum korunmadı');
+    throw new Error('Relaunch sonrasÄ± oturum korunmadÄ±');
   }
   logSafe('session-restore', { ...meta, step: 'session-restore', status: 'ok' });
 }
 
-/** Admin PIN ve 뿯½ye listesi */
+/** Admin PIN ve ë¿¯Â½ye listesi */
 export async function verifyAdminMembers(browser, meta) {
   const { adminPin } = getMobileTestCredentials();
   if (!adminPin) {
@@ -114,10 +117,10 @@ export async function verifyAdminMembers(browser, meta) {
     const statusEl = await browser.$(SELECTORS.adminMembersStatus);
     if (await statusEl.isDisplayed()) {
       statusText = await statusEl.getText();
-      if (/뿯½ye listeleniyor/i.test(statusText)) {
+      if (/ë¿¯Â½ye listeleniyor/i.test(statusText)) {
         break;
       }
-      if (/y뿯½klenemedi|hata|503|500|timeout/i.test(statusText)) {
+      if (/yë¿¯Â½klenemedi|hata|503|500|timeout/i.test(statusText)) {
         const diag = createApiDiagnostic({
           ...meta,
           path: '/api/admin/members',
@@ -127,13 +130,13 @@ export async function verifyAdminMembers(browser, meta) {
           durationMs: Date.now() - started
         });
         logSafe('admin-members-fail', diag);
-        throw new Error('Admin 뿯½ye listesi hata durumunda');
+        throw new Error('Admin ë¿¯Â½ye listesi hata durumunda');
       }
     }
     await browser.pause(1_000);
   }
 
-  if (!/뿯½ye listeleniyor/i.test(statusText)) {
+  if (!/ë¿¯Â½ye listeleniyor/i.test(statusText)) {
     const diag = createApiDiagnostic({
       ...meta,
       path: '/api/admin/members',
@@ -143,7 +146,7 @@ export async function verifyAdminMembers(browser, meta) {
       durationMs: Date.now() - started
     });
     logSafe('admin-members-timeout', diag);
-    throw new Error('Admin 뿯½ye listesi zaman aşımı');
+    throw new Error('Admin ë¿¯Â½ye listesi zaman aÅŸÄ±mÄ±');
   }
 
   logSafe('admin-members', createApiDiagnostic({
@@ -155,7 +158,7 @@ export async function verifyAdminMembers(browser, meta) {
   }));
 }
 
-/** Login/logout d뿯½ng뿯½s뿯½ */
+/** Login/logout dë¿¯Â½ngë¿¯Â½së¿¯Â½ */
 export async function repeatLoginLogout(browser, meta, cycles = 3) {
   for (let i = 0; i < cycles; i += 1) {
     await loginWithPin(browser, { ...meta, step: `login-cycle-${i + 1}` });

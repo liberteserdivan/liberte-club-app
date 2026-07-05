@@ -22,7 +22,8 @@ export const config = {
       buildName: process.env.CM_COMMIT || process.env.GITHUB_SHA || 'local',
       sessionName: `android-smoke-${deviceName}`,
       networkLogs: true,
-      interactiveDebugging: true
+      interactiveDebugging: true,
+      webviewDebugging: true
     }
   }],
   before: async () => {
