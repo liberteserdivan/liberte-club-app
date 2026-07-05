@@ -46,10 +46,17 @@ const branch = process.argv[3] || 'main';
 const token = String(process.env.CODEMAGIC_API_TOKEN || process.env.CM_API_TOKEN || '').trim();
 const appId = String(process.env.CODEMAGIC_APP_ID || '').trim();
 
-const validWorkflows = new Set(['ios-release', 'android-release']);
+const validWorkflows = new Set([
+  'ios-release',
+  'android-release',
+  'android-test-artifact',
+  'ios-test-artifact',
+  'android-mobile-smoke',
+  'mobile-device-tests'
+]);
 
 if (!validWorkflows.has(workflowId)) {
-  console.error(`Geçersiz workflow: ${workflowId}. Seçenekler: ios-release, android-release`);
+  console.error(`Geçersiz workflow: ${workflowId}. Seçenekler: ${[...validWorkflows].join(', ')}`);
   process.exit(1);
 }
 

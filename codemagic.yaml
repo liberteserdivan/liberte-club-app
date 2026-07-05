@@ -369,6 +369,76 @@ workflows:
           success: true
           failure: true
 
+  android-mobile-smoke:
+    name: android-mobile-smoke
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    triggering:
+      events: []
+    environment:
+      groups:
+        - liberte_android
+      vars:
+        ANDROID_RELEASE: "true"
+        PACKAGE_NAME: cafe.liberte.app
+        APP_VERSION: "1.1.30"
+        ANDROID_MIN_VERSION_CODE: "59"
+        VITE_API_BASE_URL: "https://liberte-club-app.vercel.app"
+        MOBILE_API_HOST: "https://liberte-club-app.vercel.app"
+        BROWSERSTACK_USERNAME: $BROWSERSTACK_USERNAME
+        BROWSERSTACK_ACCESS_KEY: $BROWSERSTACK_ACCESS_KEY
+        MOBILE_TEST_PHONE: $MOBILE_TEST_PHONE
+        MOBILE_TEST_PIN: $MOBILE_TEST_PIN
+        MOBILE_TEST_ADMIN_PIN: $MOBILE_TEST_ADMIN_PIN
+      node: 22
+      java: 21
+    scripts:
+      - name: Node ortami dogrula
+        script: |
+          node --version
+          npm --version
+      - name: npm install
+        script: npm ci --legacy-peer-deps
+      - name: Firebase ve imza (Play kimligi yok)
+        script: |
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/setup-codemagic-android-signing.mjs
+          test -f android/app/google-services.json || (echo "HATA: GOOGLE_SERVICES_JSON env ekle" && exit 1)
+          test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
+      - name: Web build
+        script: |
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.30}.${BUILD_NUMBER:-0}"
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://liberte-club-app.vercel.app}"
+          npm run build:release
+      - name: Capacitor Android sync
+        script: |
+          node scripts/generate-android-icons.mjs
+          npx cap sync android
+      - name: Android surum kodu
+        script: node scripts/set-android-version-code.mjs
+      - name: Release APK uret
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          echo "[smoke] Play Store upload YAPILMADI"
+      - name: BrowserStack gercek cihaz smoke testleri
+        script: |
+          export MOBILE_ANDROID_APK_PATH="$CM_BUILD_DIR/android/app/build/outputs/apk/release/app-release.apk"
+          test -f "$MOBILE_ANDROID_APK_PATH" || (echo "HATA: APK bulunamadi: $MOBILE_ANDROID_APK_PATH" && exit 1)
+          node scripts/verify-mobile-test-env.mjs
+          node scripts/run-browserstack-mobile-tests.mjs
+    artifacts:
+      - android/app/build/outputs/apk/release/*.apk
+      - e2e/mobile/reports/*.json
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true
+
   mobile-device-tests:
     name: mobile-device-tests
     max_build_duration: 120
@@ -377,6 +447,7 @@ workflows:
       events: []
     environment:
       groups:
+        - liberte_android
         - mobile_device_tests
       vars:
         MOBILE_API_HOST: "https://liberte-club-app.vercel.app"
@@ -401,7 +472,9 @@ workflows:
       - name: Test bagimliliklari
         script: npm ci --legacy-peer-deps
       - name: BrowserStack gercek cihaz smoke testleri
-        script: node scripts/run-browserstack-mobile-tests.mjs
+        script: |
+          node scripts/verify-mobile-test-env.mjs
+          node scripts/run-browserstack-mobile-tests.mjs
     artifacts:
       - e2e/mobile/reports/*.json
     publishing:
