@@ -1,4 +1,5 @@
 import { privacyPolicyUrl, supportEmail } from './constants.js';
+import { DEFAULT_PUBLIC_SITE_ORIGIN } from './apiClient.js';
 
 export const SUPPORT_PAGE_TITLE = 'Liberte Gastro Cafe Destek';
 
@@ -21,7 +22,7 @@ export const SUPPORT_TOPICS = [
   'Hesap silme ve gizlilik talepleri'
 ];
 
-export const supportPageUrl = 'https://app.liberte.cafe/support';
+export const supportPageUrl = `${DEFAULT_PUBLIC_SITE_ORIGIN}/support`;
 
 export const supportContact = {
   email: supportEmail,

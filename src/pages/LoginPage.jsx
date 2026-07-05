@@ -241,8 +241,7 @@ export default function Login({ db, commit, setSession }) {
         ...AUTH_REQUEST_OPTIONS,
         skipUnauthorized: true,
         method: 'POST',
-        body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() }),
-        timeoutMs: 12_000
+        body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
       });
 
       if (response.status === 503 || data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE') {

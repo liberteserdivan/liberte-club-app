@@ -81,7 +81,7 @@ async function handlePushStatus(res) {
     iosWebPushHint: 'iPhone için: Firebase Console → Cloud Messaging → Apple → APNs Authentication Key (.p8) yükleyin.',
     androidHint: 'Android için: Google Cloud Console → Firebase Cloud Messaging API etkin olmalı.',
     webHint: 'Web token varsa: Firebase Console → Cloud Messaging → Web Push sertifikası VAPID ile aynı olmalı.',
-    site: 'https://app.liberte.cafe'
+    site: process.env.PUBLIC_SITE_ORIGIN || 'https://liberte-club-app.vercel.app'
   });
 }
 

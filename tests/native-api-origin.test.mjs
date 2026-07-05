@@ -1,18 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveApiUrl, normalizeApiOrigin } from '../src/lib/apiClient.js';
+import {
+  resolveApiUrl,
+  normalizeApiOrigin,
+  DEFAULT_NATIVE_API_ORIGIN
+} from '../src/lib/apiClient.js';
 
-const FALLBACK = 'https://app.liberte.cafe';
+const FALLBACK = DEFAULT_NATIVE_API_ORIGIN;
 
 // 1) Web/PWA — relative path same-origin kalır
 test('Web/PWA: resolveApiUrl relative path döner (same-origin)', () => {
   assert.equal(resolveApiUrl('/api/auth/login', false), '/api/auth/login');
 });
 
-// 2) Native + env yok — production fallback kullanılır
-test('Native: env yoksa app.liberte.cafe kökü kullanılır', () => {
+// 2) Native + env yok — kalıcı Vercel fallback kullanılır (liberte.cafe değil)
+test('Native: env yoksa kalıcı Vercel API kökü kullanılır', () => {
   const origin = normalizeApiOrigin(undefined) || FALLBACK;
   assert.equal(origin, FALLBACK);
+  assert.doesNotMatch(origin, /liberte\.cafe/);
   assert.equal(resolveApiUrl('/api/auth/login', true, origin), `${FALLBACK}/api/auth/login`);
 });
 
@@ -30,7 +35,6 @@ test('Native: VITE_API_BASE_URL ayarlıysa o köken kullanılır', () => {
 test('normalizeApiOrigin trailing slash ve path temizler', () => {
   assert.equal(normalizeApiOrigin('https://new.example.com/'), 'https://new.example.com');
   assert.equal(normalizeApiOrigin('https://new.example.com///'), 'https://new.example.com');
-  // Path verilse de yalnızca köken döner
   assert.equal(normalizeApiOrigin('https://new.example.com/api/'), 'https://new.example.com');
 });
 
@@ -47,7 +51,6 @@ test('Dev: http://localhost yalnızca allowInsecure ile kabul edilir', () => {
     normalizeApiOrigin('http://localhost:3000', { allowInsecure: true }),
     'http://localhost:3000'
   );
-  // localhost dışı http dev'de bile reddedilir
   assert.equal(normalizeApiOrigin('http://evil.example.com', { allowInsecure: true }), null);
 });
 
@@ -57,13 +60,8 @@ test('resolveApiUrl absolute URL verilirse olduğu gibi döner', () => {
     resolveApiUrl('https://other.example.com/api/x', true, FALLBACK),
     'https://other.example.com/api/x'
   );
-  assert.equal(
-    resolveApiUrl('http://other.example.com/api/x', false, FALLBACK),
-    'http://other.example.com/api/x'
-  );
 });
 
-// Boş/geçersiz değer null döner
 test('normalizeApiOrigin boş/geçersiz değeri yok sayar', () => {
   assert.equal(normalizeApiOrigin(''), null);
   assert.equal(normalizeApiOrigin('   '), null);

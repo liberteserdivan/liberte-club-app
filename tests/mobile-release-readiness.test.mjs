@@ -10,7 +10,8 @@ test('apiClient: native Bearer + credentials omit, web credentials include', () 
   const src = read('src/lib/apiClient.js');
   assert.match(src, /credentials: native \? 'omit' : 'include'/);
   assert.match(src, /headers\.Authorization = `Bearer \$\{token\}`/);
-  assert.match(src, /FALLBACK_NATIVE_API_ORIGIN = 'https:\/\/app\.liberte\.cafe'/);
+  assert.match(src, /DEFAULT_NATIVE_API_ORIGIN = 'https:\/\/liberte-club-app\.vercel\.app'/);
+  assert.doesNotMatch(src, /app\.liberte\.cafe/);
 });
 
 test('session: native sessionToken storage + bootstrap skipUnauthorized', () => {
@@ -42,9 +43,10 @@ test('migrateLoyaltyCard: double-encoded categoryStamps crash etmez', async () =
   }));
 });
 
-test('capacitor: production API codemagic vars', () => {
+test('capacitor: production API codemagic vars — liberte.cafe yok', () => {
   const yaml = read('codemagic.yaml');
-  assert.match(yaml, /VITE_API_BASE_URL.*app\.liberte\.cafe/);
+  assert.match(yaml, /VITE_API_BASE_URL.*liberte-club-app\.vercel\.app/);
+  assert.doesNotMatch(yaml, /VITE_API_BASE_URL.*app\.liberte\.cafe/);
   const cap = JSON.parse(read('capacitor.config.json'));
   assert.equal(cap.webDir, 'dist');
   assert.equal(cap.appId, 'cafe.liberte.app');
@@ -54,4 +56,10 @@ test('apiClient: production token prefix log sinirli', () => {
   const src = read('src/lib/apiClient.js');
   assert.match(src, /prefix: token \? `\$\{token\.slice\(0, 6\)/);
   assert.doesNotMatch(src, /console\.(log|info).*sessionToken/);
+});
+
+test('LoginPage: native auth timeout AUTH_REQUEST_OPTIONS ile (12sn override yok)', () => {
+  const src = read('src/pages/LoginPage.jsx');
+  assert.match(src, /\.\.\.AUTH_REQUEST_OPTIONS/);
+  assert.doesNotMatch(src, /timeoutMs:\s*12_000/);
 });

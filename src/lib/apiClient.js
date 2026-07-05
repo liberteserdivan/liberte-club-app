@@ -3,15 +3,18 @@ import { isNativeApp, isIos, isAndroid } from './platform.js';
 import { recordRequest } from './guardianTelemetry.js';
 import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
 
+// Kalıcı native API kökü — liberte.cafe bağımlılığı yok; Vercel production deployment
+export const DEFAULT_NATIVE_API_ORIGIN = 'https://liberte-club-app.vercel.app';
+export const DEFAULT_PUBLIC_SITE_ORIGIN = DEFAULT_NATIVE_API_ORIGIN;
+
 const TOKEN_KEY = 'liberteAuthToken';
 // Temizlenmesi gereken eski/legacy token anahtarları — çıkışta hepsi silinir
 const LEGACY_TOKEN_KEYS = [TOKEN_KEY, 'liberteNativeAuthToken', 'liberteSessionToken'];
 
-// Native (Capacitor) build'in vuracağı API kökü. Hardcoded değil — build-time
-// VITE_API_BASE_URL ile yönetilir; geçersiz/boşsa production fallback kullanılır.
-// Web/PWA bu sabiti KULLANMAZ (relative path → same-origin) — aşağıdaki
-// resolveApiUrl yalnızca native ortamda bu köke başvurur.
-const FALLBACK_NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+// Native (Capacitor) build'in vuracağı API kökü. Build-time VITE_API_BASE_URL ile
+// yönetilir; geçersiz/boşsa kalıcı Vercel production fallback kullanılır.
+// Web/PWA bu sabiti KULLANMAZ (relative path → same-origin).
+const FALLBACK_NATIVE_API_ORIGIN = DEFAULT_NATIVE_API_ORIGIN;
 
 // Geliştirme ortamı mı — yalnızca dev'de http://localhost gibi güvensiz köke izin verilir
 function isDevEnv() {
@@ -64,6 +67,11 @@ function resolveNativeApiOrigin() {
 
 const NATIVE_API_ORIGIN = resolveNativeApiOrigin();
 
+// Native build'in çözdüğü API kökü — teşhis/test için (secret loglanmaz)
+export function getNativeApiOrigin() {
+  return NATIVE_API_ORIGIN;
+}
+
 // Debug-safe köken bilgisi — tam URL'yi açıkça loglamadan host'u maskeler
 function maskApiOrigin(origin) {
   try {
@@ -77,9 +85,28 @@ function maskApiOrigin(origin) {
   }
 }
 
-// Yalnızca dev ortamda, maskelenmiş köken bilgisini bir kez yaz (production'da sessiz)
-if (isDevEnv()) {
-  // Token/secret değil; yine de host maskeli yazılır
+// Native teşhis — PIN/token/telefon loglanmaz; yalnızca host maskeli ve path/status
+function logNativeApiDiag(path, response, data = {}) {
+  if (!isNativeApp()) return;
+  try {
+    const platform = isIos() ? 'ios' : (isAndroid() ? 'android' : 'native');
+    console.info('[api]', {
+      platform,
+      webOrigin: typeof window !== 'undefined' ? (window.location?.origin || '') : '',
+      apiHost: maskApiOrigin(NATIVE_API_ORIGIN),
+      path: String(path || '').split('?')[0],
+      status: response?.status ?? 0,
+      requestId: response?.headers?.get?.('x-request-id') || data?.requestId || null,
+      step: data?.step || null,
+      code: data?.code || null
+    });
+  } catch {
+    // Teşhis hatası isteği etkilemez
+  }
+}
+
+// Dev ortamda maskelenmiş köken bilgisini bir kez yaz
+if (isDevEnv() && isNativeApp()) {
   console.info('[apiClient] native API origin:', maskApiOrigin(NATIVE_API_ORIGIN));
 }
 
@@ -402,6 +429,8 @@ export async function apiJson(path, options = {}) {
     data.clientMessage = formatted.message;
     data.clientCode = formatted.code;
   }
+
+  logNativeApiDiag(path, response, data);
 
   // Guardian telemetrisi + Safe Mode header senkronu (best-effort)
   try {

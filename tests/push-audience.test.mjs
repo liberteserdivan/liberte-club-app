@@ -50,9 +50,15 @@ test('Black hedefleme boş döner', () => {
 });
 
 test('Son 30 günde gelenler aktif üyeyi seçer', () => {
-  const resolved = resolvePushAudience(baseDb, 'visited_30d');
-  assert.equal(resolved.targetUserCount, 1);
-  assert.equal(resolved.deviceCount, 2);
+  // baseDb son ziyaret 05.06.2026 — gerçek tarihe bağlı kalınca 30 gün penceresi dışına çıkar
+  test.mock.timers.enable({ now: new Date('2026-06-10T12:00:00+03:00') });
+  try {
+    const resolved = resolvePushAudience(baseDb, 'visited_30d');
+    assert.equal(resolved.targetUserCount, 1);
+    assert.equal(resolved.deviceCount, 2);
+  } finally {
+    test.mock.timers.reset();
+  }
 });
 
 test('LP 7+ hedefi mevcut bakiyeye göre filtreler', () => {

@@ -1,5 +1,5 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
-import { apiFetch } from './apiClient.js';
+import { apiFetch, getNativeApiOrigin, DEFAULT_PUBLIC_SITE_ORIGIN } from './apiClient.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
 import { markPushEnabledOnDevice, getLocalPushToken } from './pushPrompt.js';
 import { resolvePushChannel } from './pushAudience.js';
@@ -79,11 +79,13 @@ export function getFirebaseSwUrl() {
 }
 
 export const FIREBASE_SW_URL = '/firebase-messaging-sw.js';
-export const PUSH_SITE_ORIGIN = 'https://app.liberte.cafe';
 
-// Firebase API key referrer — native uygulama localhost'tan servis edilir
+// Push bildirim ikon/deeplink kökü — liberte.cafe bağımlılığı yok
+export const PUSH_SITE_ORIGIN = DEFAULT_PUBLIC_SITE_ORIGIN;
+
+// Firebase API key referrer — native uygulama için yapılandırılmış site kökü
 export function getFirebaseReferrerOrigin() {
-  if (isNativeApp()) return PUSH_SITE_ORIGIN;
+  if (isNativeApp()) return getNativeApiOrigin();
   if (typeof window !== 'undefined') return window.location.origin;
   return PUSH_SITE_ORIGIN;
 }

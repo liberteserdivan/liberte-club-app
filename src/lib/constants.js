@@ -1,3 +1,5 @@
+import { DEFAULT_PUBLIC_SITE_ORIGIN } from './apiClient.js';
+
 export const firebaseConfig = {
   apiKey: 'AIzaSyCDWpSpPoEsMirO0Grbpbabaju7QALVERC',
   authDomain: 'liberte-club.firebaseapp.com',
@@ -18,9 +20,9 @@ export const yemeksepetiUrl = 'https://www.yemeksepeti.com/restaurant/x9yt/liber
 export const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=Liberte+Gastro+Cafe+Serdivan+Sakarya';
 export const phoneUrl = 'tel:+905058665406';
 export const supportEmail = 'liberteserdivan@gmail.com';
-export const privacyPolicyUrl = 'https://app.liberte.cafe/privacy';
-export const termsUrl = 'https://app.liberte.cafe/terms';
-export const supportUrl = 'https://app.liberte.cafe/support';
+export const privacyPolicyUrl = `${DEFAULT_PUBLIC_SITE_ORIGIN}/privacy`;
+export const termsUrl = `${DEFAULT_PUBLIC_SITE_ORIGIN}/terms`;
+export const supportUrl = `${DEFAULT_PUBLIC_SITE_ORIGIN}/support`;
 
 // Varsayılan marka logosu (public klasörü)
 export const DEFAULT_LOGO = '/liberte-logo-source.png?v=11';
