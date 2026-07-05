@@ -45,14 +45,12 @@ workflows:
       node: 22
       xcode: latest
     scripts:
-      - name: Node.js 22 hazirla
+      - name: Node ortami dogrula
         script: |
-          nvm install 22
-          nvm use 22
-          node -v
-          npm -v
+          node --version
+          npm --version
       - name: npm install
-        script: npm install --legacy-peer-deps
+        script: npm ci --legacy-peer-deps
       - name: Firebase config
         script: |
           node scripts/materialize-firebase-native-config.mjs
@@ -161,14 +159,12 @@ workflows:
       node: 22
       java: 21
     scripts:
-      - name: Node.js 22 hazirla
+      - name: Node ortami dogrula
         script: |
-          nvm install 22
-          nvm use 22
-          node -v
-          npm -v
+          node --version
+          npm --version
       - name: npm install
-        script: npm install --legacy-peer-deps
+        script: npm ci --legacy-peer-deps
       - name: Android ortam kontrolu
         script: node scripts/verify-codemagic-android-env.mjs
       - name: Firebase, imza ve Play kimlik
@@ -268,12 +264,12 @@ workflows:
       node: 22
       java: 21
     scripts:
-      - name: Node.js 22 hazirla
+      - name: Node ortami dogrula
         script: |
-          nvm install 22
-          nvm use 22
+          node --version
+          npm --version
       - name: npm install
-        script: npm install --legacy-peer-deps
+        script: npm ci --legacy-peer-deps
       - name: Firebase ve imza (Play kimligi yok)
         script: |
           node scripts/materialize-firebase-native-config.mjs
@@ -332,12 +328,12 @@ workflows:
       node: 22
       xcode: latest
     scripts:
-      - name: Node.js 22 hazirla
+      - name: Node ortami dogrula
         script: |
-          nvm install 22
-          nvm use 22
+          node --version
+          npm --version
       - name: npm install
-        script: npm install --legacy-peer-deps
+        script: npm ci --legacy-peer-deps
       - name: Firebase config
         script: |
           node scripts/materialize-firebase-native-config.mjs
@@ -390,12 +386,12 @@ workflows:
         CM_COMMIT: $CM_COMMIT
       node: 22
     scripts:
-      - name: Node.js 22 hazirla
+      - name: Node ortami dogrula
         script: |
-          nvm install 22
-          nvm use 22
+          node --version
+          npm --version
       - name: Test bagimliliklari
-        script: npm install --legacy-peer-deps
+        script: npm ci --legacy-peer-deps
       - name: BrowserStack gercek cihaz smoke testleri
         script: |
           if [ -z "$BROWSERSTACK_USERNAME" ] || [ -z "$BROWSERSTACK_ACCESS_KEY" ]; then

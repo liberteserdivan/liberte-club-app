@@ -79,6 +79,7 @@ test('mobil e2e: codemagic workflowlari tanimli', () => {
   assert.match(yaml, /ios-test-artifact:/);
   assert.match(yaml, /mobile-device-tests:/);
   assert.match(yaml, /ENABLE_PLAY_UPLOAD/);
+  assert.doesNotMatch(yaml, /\bnvm\b/);
 });
 
 test('mobil e2e: UI testid secicileri', () => {
