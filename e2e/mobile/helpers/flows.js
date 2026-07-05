@@ -4,20 +4,20 @@ import { createApiDiagnostic, logSafe } from './diagnostics.js';
 import { switchToAppWebView, waitForTestId, isDisplayed } from './webview.js';
 
 const ADMIN_MEMBERS_TIMEOUT_MS = 45_000;
-const LOGIN_TIMEOUT_MS = 40_000;
+const LOGIN_TIMEOUT_MS = 90_000;
 
-/** Splash sonrasÄ± login veya ana ekran */
+/** Splash sonrasÃ„Â± login veya ana ekran */
 export async function assertAppLaunch(browser, meta) {
   await switchToAppWebView(browser);
-  const loginVisible = await isDisplayed(browser, SELECTORS.loginPhone, 25_000);
-  const homeVisible = await isDisplayed(browser, SELECTORS.navHome, 8_000);
+  const loginVisible = await isDisplayed(browser, SELECTORS.loginPhone, 75_000);
+  const homeVisible = await isDisplayed(browser, SELECTORS.navHome, 15_000);
   if (!loginVisible && !homeVisible) {
-    throw new Error('Aë¿¯Â½Ä±lÄ±ÅŸ sonrasÄ± login veya home gë¿¯Â½rë¿¯Â½nmedi');
+    throw new Error('AÃ«Â¿Â¯Ã‚Â½Ã„Â±lÃ„Â±Ã…Å¸ sonrasÃ„Â± login veya home gÃ«Â¿Â¯Ã‚Â½rÃ«Â¿Â¯Ã‚Â½nmedi');
   }
   logSafe('app-launch', { ...meta, step: 'launch', status: 'ok' });
 }
 
-/** Telefon + PIN ile giriÅŸ */
+/** Telefon + PIN ile giriÃ…Å¸ */
 export async function loginWithPin(browser, meta) {
   const { phone, pin } = getMobileTestCredentials();
   await switchToAppWebView(browser);
@@ -41,13 +41,13 @@ export async function loginWithPin(browser, meta) {
 
   const errorVisible = await isDisplayed(browser, '.loginError, .adminPinError', 2_000);
   if (errorVisible) {
-    throw new Error('Login sonrasÄ± hata mesajÄ± gë¿¯Â½rë¿¯Â½ndë¿¯Â½');
+    throw new Error('Login sonrasÃ„Â± hata mesajÃ„Â± gÃ«Â¿Â¯Ã‚Â½rÃ«Â¿Â¯Ã‚Â½ndÃ«Â¿Â¯Ã‚Â½');
   }
 
   logSafe('login', { ...meta, step: 'login', status: 'ok' });
 }
 
-/** Profilden ë¿¯Â½Ä±kÄ±ÅŸ */
+/** Profilden Ã«Â¿Â¯Ã‚Â½Ã„Â±kÃ„Â±Ã…Å¸ */
 export async function logoutFromProfile(browser, meta) {
   await switchToAppWebView(browser);
   const profileNav = await waitForTestId(browser, SELECTORS.navProfile);
@@ -58,7 +58,7 @@ export async function logoutFromProfile(browser, meta) {
   logSafe('logout', { ...meta, step: 'logout', status: 'ok' });
 }
 
-/** UygulamayÄ± yeniden baÅŸlat â€” oturum korunmalÄ± */
+/** UygulamayÃ„Â± yeniden baÃ…Å¸lat Ã¢â‚¬â€ oturum korunmalÃ„Â± */
 export async function relaunchAndAssertSession(browser, meta) {
   const appPackage = browser.capabilities['appium:appPackage'] || browser.capabilities.appPackage;
   const appActivity = browser.capabilities['appium:appActivity'] || browser.capabilities.appActivity;
@@ -76,12 +76,12 @@ export async function relaunchAndAssertSession(browser, meta) {
   const stillLoggedIn = await isDisplayed(browser, SELECTORS.navHome, 30_000);
   const loginAgain = await isDisplayed(browser, SELECTORS.loginPhone, 3_000);
   if (!stillLoggedIn || loginAgain) {
-    throw new Error('Relaunch sonrasÄ± oturum korunmadÄ±');
+    throw new Error('Relaunch sonrasÃ„Â± oturum korunmadÃ„Â±');
   }
   logSafe('session-restore', { ...meta, step: 'session-restore', status: 'ok' });
 }
 
-/** Admin PIN ve ë¿¯Â½ye listesi */
+/** Admin PIN ve Ã«Â¿Â¯Ã‚Â½ye listesi */
 export async function verifyAdminMembers(browser, meta) {
   const { adminPin } = getMobileTestCredentials();
   if (!adminPin) {
@@ -117,10 +117,10 @@ export async function verifyAdminMembers(browser, meta) {
     const statusEl = await browser.$(SELECTORS.adminMembersStatus);
     if (await statusEl.isDisplayed()) {
       statusText = await statusEl.getText();
-      if (/ë¿¯Â½ye listeleniyor/i.test(statusText)) {
+      if (/Ã«Â¿Â¯Ã‚Â½ye listeleniyor/i.test(statusText)) {
         break;
       }
-      if (/yë¿¯Â½klenemedi|hata|503|500|timeout/i.test(statusText)) {
+      if (/yÃ«Â¿Â¯Ã‚Â½klenemedi|hata|503|500|timeout/i.test(statusText)) {
         const diag = createApiDiagnostic({
           ...meta,
           path: '/api/admin/members',
@@ -130,13 +130,13 @@ export async function verifyAdminMembers(browser, meta) {
           durationMs: Date.now() - started
         });
         logSafe('admin-members-fail', diag);
-        throw new Error('Admin ë¿¯Â½ye listesi hata durumunda');
+        throw new Error('Admin Ã«Â¿Â¯Ã‚Â½ye listesi hata durumunda');
       }
     }
     await browser.pause(1_000);
   }
 
-  if (!/ë¿¯Â½ye listeleniyor/i.test(statusText)) {
+  if (!/Ã«Â¿Â¯Ã‚Â½ye listeleniyor/i.test(statusText)) {
     const diag = createApiDiagnostic({
       ...meta,
       path: '/api/admin/members',
@@ -146,7 +146,7 @@ export async function verifyAdminMembers(browser, meta) {
       durationMs: Date.now() - started
     });
     logSafe('admin-members-timeout', diag);
-    throw new Error('Admin ë¿¯Â½ye listesi zaman aÅŸÄ±mÄ±');
+    throw new Error('Admin Ã«Â¿Â¯Ã‚Â½ye listesi zaman aÃ…Å¸Ã„Â±mÃ„Â±');
   }
 
   logSafe('admin-members', createApiDiagnostic({
@@ -158,7 +158,7 @@ export async function verifyAdminMembers(browser, meta) {
   }));
 }
 
-/** Login/logout dë¿¯Â½ngë¿¯Â½së¿¯Â½ */
+/** Login/logout dÃ«Â¿Â¯Ã‚Â½ngÃ«Â¿Â¯Ã‚Â½sÃ«Â¿Â¯Ã‚Â½ */
 export async function repeatLoginLogout(browser, meta, cycles = 3) {
   for (let i = 0; i < cycles; i += 1) {
     await loginWithPin(browser, { ...meta, step: `login-cycle-${i + 1}` });

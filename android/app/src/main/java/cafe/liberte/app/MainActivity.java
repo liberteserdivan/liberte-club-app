@@ -6,7 +6,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import cafe.liberte.app.BuildConfig;
 import com.getcapacitor.BridgeActivity;
 
 // Ana aktivite — Capacitor köprüsü ve native izin eklentileri
@@ -57,8 +56,8 @@ public class MainActivity extends BridgeActivity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
 
-        // Appium/BrowserStack WebView baglami icin — yalnizca smoke build veya debug
-        if (BuildConfig.DEBUG || BuildConfig.ENABLE_WEBVIEW_DEBUG) {
+        // Debug/smoke APK — Appium WebView baglami (Play release etkilenmez)
+        if (BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
     }

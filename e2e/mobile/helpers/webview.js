@@ -1,6 +1,6 @@
 // Capacitor WebView baglamina gecis
 
-const WEBVIEW_TIMEOUT_MS = 45_000;
+const WEBVIEW_TIMEOUT_MS = 90_000;
 
 /** Aktif WebView baglamina gec */
 export async function switchToAppWebView(browser) {

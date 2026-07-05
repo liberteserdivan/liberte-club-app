@@ -94,8 +94,7 @@ test('mobil e2e: smoke build webview debug bayragi', () => {
   const main = read('android/app/src/main/java/cafe/liberte/app/MainActivity.java');
   assert.match(yaml, /assembleDebug/);
   assert.match(yaml, /apk\/debug\/app-debug\.apk/);
-  assert.match(gradle, /ENABLE_WEBVIEW_DEBUG/);
-  assert.match(main, /ENABLE_WEBVIEW_DEBUG/);
+  assert.match(main, /BuildConfig\.DEBUG/);
 });
 
 test('mobil e2e: app url alias cozumleme', () => {

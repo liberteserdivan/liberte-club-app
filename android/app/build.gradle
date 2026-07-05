@@ -47,9 +47,6 @@ android {
             }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            // BrowserStack smoke build'inde WebView debug acilir (Play release etkilenmez)
-            def smokeBuild = System.getenv('MOBILE_SMOKE_BUILD') == 'true'
-            buildConfigField 'boolean', 'ENABLE_WEBVIEW_DEBUG', smokeBuild ? 'true' : 'false'
         }
     }
 
