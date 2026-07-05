@@ -33,4 +33,3 @@ export async function uploadBrowserStackApp(appPath, customId = '') {
     fileName: path.basename(appPath)
   };
 }
-

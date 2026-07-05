@@ -78,8 +78,20 @@ test('mobil e2e: codemagic workflowlari tanimli', () => {
   assert.match(yaml, /android-test-artifact:/);
   assert.match(yaml, /ios-test-artifact:/);
   assert.match(yaml, /mobile-device-tests:/);
+  assert.match(yaml, /mobile_device_tests/);
+  assert.match(yaml, /BROWSERSTACK_APP_ANDROID_URL/);
+  assert.match(yaml, /BROWSERSTACK_ANDROID_APP_URL/);
   assert.match(yaml, /ENABLE_PLAY_UPLOAD/);
   assert.doesNotMatch(yaml, /\bnvm\b/);
+});
+
+test('mobil e2e: app url alias cozumleme', () => {
+  const src = read('scripts/run-browserstack-mobile-tests.mjs');
+  assert.match(src, /BROWSERSTACK_ANDROID_APP_URL/);
+  assert.match(src, /BROWSERSTACK_IOS_APP_URL/);
+  assert.match(src, /logEnvPresence/);
+  assert.match(src, /skipping Android/);
+  assert.match(src, /skipping iOS/);
 });
 
 test('mobil e2e: UI testid secicileri', () => {

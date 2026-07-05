@@ -376,6 +376,8 @@ workflows:
     triggering:
       events: []
     environment:
+      groups:
+        - mobile_device_tests
       vars:
         MOBILE_API_HOST: "https://liberte-club-app.vercel.app"
         BROWSERSTACK_USERNAME: $BROWSERSTACK_USERNAME
@@ -383,6 +385,12 @@ workflows:
         MOBILE_TEST_PHONE: $MOBILE_TEST_PHONE
         MOBILE_TEST_PIN: $MOBILE_TEST_PIN
         MOBILE_TEST_ADMIN_PIN: $MOBILE_TEST_ADMIN_PIN
+        MOBILE_ANDROID_APK_PATH: $MOBILE_ANDROID_APK_PATH
+        BROWSERSTACK_APP_ANDROID_URL: $BROWSERSTACK_APP_ANDROID_URL
+        BROWSERSTACK_ANDROID_APP_URL: $BROWSERSTACK_ANDROID_APP_URL
+        MOBILE_IOS_IPA_PATH: $MOBILE_IOS_IPA_PATH
+        BROWSERSTACK_APP_IOS_URL: $BROWSERSTACK_APP_IOS_URL
+        BROWSERSTACK_IOS_APP_URL: $BROWSERSTACK_IOS_APP_URL
         CM_COMMIT: $CM_COMMIT
       node: 22
     scripts:
@@ -393,16 +401,7 @@ workflows:
       - name: Test bagimliliklari
         script: npm ci --legacy-peer-deps
       - name: BrowserStack gercek cihaz smoke testleri
-        script: |
-          if [ -z "$BROWSERSTACK_USERNAME" ] || [ -z "$BROWSERSTACK_ACCESS_KEY" ]; then
-            echo "[mobile-e2e] BROWSERSTACK_USERNAME / BROWSERSTACK_ACCESS_KEY tanimli degil"
-            exit 1
-          fi
-          if [ -z "$MOBILE_TEST_PHONE" ] || [ -z "$MOBILE_TEST_PIN" ]; then
-            echo "[mobile-e2e] MOBILE_TEST_PHONE / MOBILE_TEST_PIN tanimli degil"
-            exit 1
-          fi
-          node scripts/run-browserstack-mobile-tests.mjs
+        script: node scripts/run-browserstack-mobile-tests.mjs
     artifacts:
       - e2e/mobile/reports/*.json
     publishing:

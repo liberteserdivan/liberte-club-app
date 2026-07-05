@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-/**
- * BrowserStack gercek cihaz smoke test orchestrator.
- * Secret'lar yalnizca env'den okunur.
- */
+/** BrowserStack gercek cihaz smoke test orchestrator */
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -16,7 +13,68 @@ const devices = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'e2e/mobile/browserstack/devices.json'), 'utf8')
 );
 
-/** wdio kosusunu calistirir */
+const ANDROID_APP_ENV_KEYS = [
+  'MOBILE_ANDROID_APK_PATH',
+  'BROWSERSTACK_APP_ANDROID_URL',
+  'BROWSERSTACK_ANDROID_APP_URL'
+];
+
+const IOS_APP_ENV_KEYS = [
+  'MOBILE_IOS_IPA_PATH',
+  'BROWSERSTACK_APP_IOS_URL',
+  'BROWSERSTACK_IOS_APP_URL'
+];
+
+const PRESENCE_LOG_KEYS = [
+  'MOBILE_ANDROID_APK_PATH',
+  'BROWSERSTACK_APP_ANDROID_URL',
+  'BROWSERSTACK_ANDROID_APP_URL',
+  'MOBILE_IOS_IPA_PATH',
+  'BROWSERSTACK_APP_IOS_URL',
+  'BROWSERSTACK_IOS_APP_URL',
+  'BROWSERSTACK_USERNAME',
+  'BROWSERSTACK_ACCESS_KEY',
+  'MOBILE_TEST_PHONE',
+  'MOBILE_TEST_PIN',
+  'MOBILE_TEST_ADMIN_PIN'
+];
+
+function envPresent(key) {
+  return String(process.env[key] || '').trim() ? 'present' : 'missing';
+}
+
+function logEnvPresence() {
+  for (const key of PRESENCE_LOG_KEYS) {
+    console.log(`[mobile-e2e] env ${key}: ${envPresent(key)}`);
+  }
+}
+
+function firstEnvValue(keys) {
+  for (const key of keys) {
+    const value = String(process.env[key] || '').trim();
+    if (value) return { key, value };
+  }
+  return null;
+}
+
+async function resolveAppUrl(platform) {
+  const keys = platform === 'ios' ? IOS_APP_ENV_KEYS : ANDROID_APP_ENV_KEYS;
+  const hit = firstEnvValue(keys);
+  if (!hit) return null;
+
+  const { key, value } = hit;
+  if (/^bs:\/\//i.test(value) || /^https?:\/\//i.test(value)) {
+    return { appUrl: value, artifactName: key, sourceKey: key };
+  }
+  if (fs.existsSync(value)) {
+    const uploaded = await uploadBrowserStackApp(value, `liberte-${platform}-${Date.now()}`);
+    return { appUrl: uploaded.appUrl, artifactName: uploaded.fileName, sourceKey: key };
+  }
+
+  console.log(`[mobile-e2e] ${platform} env ${key} present but path invalid — skipping`);
+  return null;
+}
+
 function runWdio(configRelativePath, envExtra) {
   const configPath = path.join(ROOT, configRelativePath);
   const result = spawnSync(
@@ -32,7 +90,6 @@ function runWdio(configRelativePath, envExtra) {
   return result.status === 0;
 }
 
-/** Tek cihazda smoke kosusu */
 async function runDeviceSmoke({ platform, device, appUrl, artifactName }) {
   const started = Date.now();
   const config = platform === 'ios'
@@ -67,24 +124,25 @@ async function runDeviceSmoke({ platform, device, appUrl, artifactName }) {
   };
 }
 
-/** Platform icin app URL cozer */
-async function resolveAppUrl(platform) {
-  const envKey = platform === 'ios' ? 'BROWSERSTACK_APP_IOS_URL' : 'BROWSERSTACK_APP_ANDROID_URL';
-  const pathKey = platform === 'ios' ? 'MOBILE_IOS_IPA_PATH' : 'MOBILE_ANDROID_APK_PATH';
-  if (process.env[envKey]) {
-    return { appUrl: process.env[envKey], artifactName: process.env[envKey] };
-  }
-  const appPath = process.env[pathKey];
-  if (appPath && fs.existsSync(appPath)) {
-    const uploaded = await uploadBrowserStackApp(appPath, `liberte-${platform}-${Date.now()}`);
-    return { appUrl: uploaded.appUrl, artifactName: uploaded.fileName };
-  }
-  return null;
-}
-
 async function main() {
+  logEnvPresence();
   assertMobileTestEnv();
   getBrowserStackAuth();
+
+  const androidResolved = await resolveAppUrl('android');
+  const iosResolved = await resolveAppUrl('ios');
+
+  if (!androidResolved) {
+    console.log('[mobile-e2e] Android app URL missing — skipping Android');
+  }
+  if (!iosResolved) {
+    console.log('[mobile-e2e] iOS app URL missing — skipping iOS');
+  }
+  if (!androidResolved && !iosResolved) {
+    throw new Error(
+      'Hicbir platform app URL/path tanimli degil. Android: MOBILE_ANDROID_APK_PATH, BROWSERSTACK_APP_ANDROID_URL, BROWSERSTACK_ANDROID_APP_URL. iOS: MOBILE_IOS_IPA_PATH, BROWSERSTACK_APP_IOS_URL, BROWSERSTACK_IOS_APP_URL'
+    );
+  }
 
   const report = createRunReport({
     provider: devices.provider || 'browserstack',
@@ -92,17 +150,12 @@ async function main() {
     artifacts: []
   });
 
-  const platforms = String(process.env.MOBILE_E2E_PLATFORMS || 'android,ios')
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean);
+  const platformRuns = [];
+  if (androidResolved) platformRuns.push(['android', androidResolved]);
+  if (iosResolved) platformRuns.push(['ios', iosResolved]);
 
-  for (const platform of platforms) {
-    const resolved = await resolveAppUrl(platform);
-    if (!resolved) {
-      console.log(`[mobile-e2e] ${platform} app yolu/URL yok — atlaniyor`);
-      continue;
-    }
+  for (const [platform, resolved] of platformRuns) {
+    console.log(`[mobile-e2e] ${platform} app source: ${resolved.sourceKey}`);
     report.artifacts.push({ platform, name: resolved.artifactName, appUrl: 'bs://***' });
 
     for (const device of devices[platform] || []) {
@@ -117,7 +170,7 @@ async function main() {
   }
 
   if (report.summary.total === 0) {
-    throw new Error('Hic cihaz kosusu yapilmadi — MOBILE_ANDROID_APK_PATH / MOBILE_IOS_IPA_PATH veya bs:// URL gerekli');
+    throw new Error('Cihaz matrisi bos veya tum kosular atlandi');
   }
 
   const reportPath = writeRunReport(report);
