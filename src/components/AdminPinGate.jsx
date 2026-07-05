@@ -63,6 +63,7 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
         <p>QR tarama ve yönetim işlemleri için yönetici PIN gir.</p>
         <form onSubmit={submit}>
           <input
+            data-testid="admin-pin-input"
             type="password"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -70,7 +71,7 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
             onChange={(e) => setPin(e.target.value)}
             placeholder="Yönetici PIN"
           />
-          <button type="submit" disabled={loading}>
+          <button data-testid="admin-pin-submit" type="submit" disabled={loading}>
             {loading ? 'Kontrol ediliyor...' : 'Doğrula'}
           </button>
         </form>

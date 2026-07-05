@@ -595,10 +595,11 @@ export default function Login({ db, commit, setSession }) {
           {authMode === 'login' && (
             <>
               <label>Telefon numaranız</label>
-              <input value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
+              <input data-testid="login-phone" value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
 
               <label>PIN</label>
               <input
+                data-testid="login-pin"
                 value={pin}
                 onChange={(e) => setPin(formatPinInput(e.target.value))}
                 placeholder="4 veya 6 haneli PIN"
@@ -607,7 +608,7 @@ export default function Login({ db, commit, setSession }) {
                 autoComplete="current-password"
               />
 
-              <button disabled={loading} onClick={loginWithPin}>
+              <button data-testid="login-submit" disabled={loading} onClick={loginWithPin}>
                 <LogIn /> {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
               </button>
 
@@ -620,7 +621,7 @@ export default function Login({ db, commit, setSession }) {
           {authMode === 'register' && registerStep === 'form' && (
             <>
               <label>Telefon numaranız</label>
-              <input value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
+              <input data-testid="login-phone" value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
 
               <label>Ad Soyad <em>*</em></label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad soyad giriniz" autoComplete="name" />

@@ -92,11 +92,11 @@ export default function ProfilePage({
 
       <PageSection label="Hesap">
         <div className="profileActionStack">
-          <button type="button" className="profileAction" onClick={logout}>
+          <button type="button" data-testid="logout-button" className="profileAction" onClick={logout}>
             <LogOut size={18} /> Çıkış Yap
           </button>
           {isAdmin && (
-            <button type="button" className="profileAction" onClick={() => (onOpenAdmin ? onOpenAdmin() : setTab('admin'))}>
+            <button type="button" data-testid="open-admin-panel" className="profileAction" onClick={() => (onOpenAdmin ? onOpenAdmin() : setTab('admin'))}>
               <ShieldCheck size={18} /> Yönetim Paneli
             </button>
           )}

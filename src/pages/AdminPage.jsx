@@ -1343,10 +1343,10 @@ function UsersAdmin({
     });
   }
 
-  return <div className="adminMemberPanel">
+  return <div className="adminMemberPanel" data-testid="admin-members-panel">
     <div className="card adminSectionCard userAdminIntro">
       <div className="adminSectionHead"><div><span>ÜYELER</span><h3>Üye ayarları</h3></div></div>
-      <p className="adminHint">
+      <p className="adminHint" data-testid="admin-members-status">
         {adminMembersStatus === 'ready'
           ? `${customers.length} üye listeleniyor.`
           : 'Telefon ve e-posta tekil tutulur. Arama yapıp üye detayına geçebilirsin.'}

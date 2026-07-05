@@ -217,6 +217,10 @@ workflows:
           ./gradlew bundleRelease
       - name: Play Console yukle (opsiyonel)
         script: |
+          if [ "${ENABLE_PLAY_UPLOAD:-false}" != "true" ]; then
+            echo "[play] Upload atlandi — ENABLE_PLAY_UPLOAD=true olmadan Play'e yuklenmez"
+            exit 0
+          fi
           cd android
           AAB_PATH="app/build/outputs/bundle/release/app-release.aab"
           if [ ! -f "$AAB_PATH" ]; then
@@ -238,6 +242,173 @@ workflows:
           fi
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  android-test-artifact:
+    name: android-test-artifact
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    triggering:
+      events: []
+    environment:
+      groups:
+        - liberte_android
+      vars:
+        ANDROID_RELEASE: "true"
+        PACKAGE_NAME: cafe.liberte.app
+        APP_VERSION: "1.1.30"
+        ANDROID_MIN_VERSION_CODE: "59"
+        VITE_API_BASE_URL: "https://liberte-club-app.vercel.app"
+      node: 22
+      java: 21
+    scripts:
+      - name: Node.js 22 hazirla
+        script: |
+          nvm install 22
+          nvm use 22
+      - name: npm install
+        script: npm install --legacy-peer-deps
+      - name: Firebase ve imza (Play kimligi yok)
+        script: |
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/setup-codemagic-android-signing.mjs
+          test -f android/app/google-services.json || (echo "HATA: GOOGLE_SERVICES_JSON env ekle" && exit 1)
+          test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
+      - name: Web build
+        script: |
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.30}.${BUILD_NUMBER:-0}"
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://liberte-club-app.vercel.app}"
+          npm run build:release
+      - name: Capacitor Android sync
+        script: |
+          node scripts/generate-android-icons.mjs
+          npx cap sync android
+      - name: Android surum kodu
+        script: node scripts/set-android-version-code.mjs
+      - name: Release APK (BrowserStack / cihaz testi)
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          echo "[artifact] Play Store upload YAPILMADI — yalnizca APK uretildi"
+    artifacts:
+      - android/app/build/outputs/apk/release/*.apk
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  ios-test-artifact:
+    name: ios-test-artifact
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    triggering:
+      events: []
+    environment:
+      groups:
+        - app_store_connect
+      ios_signing:
+        provisioning_profiles:
+          - liberte_app_store_profile
+        certificates:
+          - liberte_distribution
+      vars:
+        IOS_RELEASE: "true"
+        BUNDLE_ID: cafe.liberte.app
+        APP_VERSION: "1.1.30"
+        IOS_MIN_BUILD_NUMBER: "61"
+        XCODE_WORKSPACE: ios/App/App.xcworkspace
+        XCODE_SCHEME: App
+        VITE_API_BASE_URL: "https://liberte-club-app.vercel.app"
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Node.js 22 hazirla
+        script: |
+          nvm install 22
+          nvm use 22
+      - name: npm install
+        script: npm install --legacy-peer-deps
+      - name: Firebase config
+        script: |
+          node scripts/materialize-firebase-native-config.mjs
+          test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
+      - name: Web build
+        script: |
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.30}.${BUILD_NUMBER:-0}"
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://liberte-club-app.vercel.app}"
+          npm run build:release
+      - name: Capacitor iOS sync ve CocoaPods
+        script: node scripts/setup-ios-cocoapods.mjs
+      - name: iOS surum
+        script: |
+          cd ios/App
+          agvtool new-marketing-version "$APP_VERSION"
+          agvtool new-version -all "${BUILD_NUMBER:-61}"
+      - name: Manuel imza dosyalarini Xcode projesine uygula
+        script: xcode-project use-profiles
+      - name: iOS IPA (TestFlight upload yok)
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+          echo "[artifact] TestFlight / App Store upload YAPILMADI — yalnizca IPA uretildi"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  mobile-device-tests:
+    name: mobile-device-tests
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    triggering:
+      events: []
+    environment:
+      vars:
+        MOBILE_API_HOST: "https://liberte-club-app.vercel.app"
+        BROWSERSTACK_USERNAME: $BROWSERSTACK_USERNAME
+        BROWSERSTACK_ACCESS_KEY: $BROWSERSTACK_ACCESS_KEY
+        MOBILE_TEST_PHONE: $MOBILE_TEST_PHONE
+        MOBILE_TEST_PIN: $MOBILE_TEST_PIN
+        MOBILE_TEST_ADMIN_PIN: $MOBILE_TEST_ADMIN_PIN
+        CM_COMMIT: $CM_COMMIT
+      node: 22
+    scripts:
+      - name: Node.js 22 hazirla
+        script: |
+          nvm install 22
+          nvm use 22
+      - name: Test bagimliliklari
+        script: npm install --legacy-peer-deps
+      - name: BrowserStack gercek cihaz smoke testleri
+        script: |
+          if [ -z "$BROWSERSTACK_USERNAME" ] || [ -z "$BROWSERSTACK_ACCESS_KEY" ]; then
+            echo "[mobile-e2e] BROWSERSTACK_USERNAME / BROWSERSTACK_ACCESS_KEY tanimli degil"
+            exit 1
+          fi
+          if [ -z "$MOBILE_TEST_PHONE" ] || [ -z "$MOBILE_TEST_PIN" ]; then
+            echo "[mobile-e2e] MOBILE_TEST_PHONE / MOBILE_TEST_PIN tanimli degil"
+            exit 1
+          fi
+          node scripts/run-browserstack-mobile-tests.mjs
+    artifacts:
+      - e2e/mobile/reports/*.json
     publishing:
       email:
         recipients:

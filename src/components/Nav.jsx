@@ -22,6 +22,7 @@ export default function Nav({ tab, setTab, isAdmin = false }) {
         <button
           type="button"
           key={id}
+          data-testid={`nav-${id}`}
           className={[
             tab === id ? 'active' : '',
             id === 'qr' ? 'nav-qr' : ''

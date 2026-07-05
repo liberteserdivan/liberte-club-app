@@ -58,3 +58,38 @@ test('auth readAuthToken Bearer destekler', () => {
   const src = read('api/_lib/auth.js');
   assert.match(src, /Bearer /);
 });
+
+test('mobil e2e: klasor yapisi mevcut', () => {
+  const required = [
+    'e2e/mobile/specs/smoke.spec.js',
+    'e2e/mobile/helpers/flows.js',
+    'e2e/mobile/helpers/credentials.js',
+    'e2e/mobile/wdio.browserstack.android.conf.js',
+    'e2e/mobile/browserstack/devices.json',
+    'scripts/run-browserstack-mobile-tests.mjs'
+  ];
+  for (const rel of required) {
+    assert.ok(readFileSync(join(root, rel)), `${rel} ok`);
+  }
+});
+
+test('mobil e2e: codemagic workflowlari tanimli', () => {
+  const yaml = read('codemagic.yaml');
+  assert.match(yaml, /android-test-artifact:/);
+  assert.match(yaml, /ios-test-artifact:/);
+  assert.match(yaml, /mobile-device-tests:/);
+  assert.match(yaml, /ENABLE_PLAY_UPLOAD/);
+});
+
+test('mobil e2e: UI testid secicileri', () => {
+  assert.match(read('src/pages/LoginPage.jsx'), /data-testid="login-pin"/);
+  assert.match(read('src/pages/ProfilePage.jsx'), /data-testid="logout-button"/);
+  assert.match(read('src/components/AdminPinGate.jsx'), /data-testid="admin-pin-input"/);
+  assert.match(read('src/pages/AdminPage.jsx'), /data-testid="admin-members-panel"/);
+});
+
+test('mobil e2e: package scriptleri', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert.ok(pkg.scripts['test:e2e:mobile']);
+  assert.ok(pkg.devDependencies['@wdio/cli']);
+});
