@@ -92,18 +92,24 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            npm install -g appium@2
+            set -x
+            npm install -g appium@2.11.5
             appium driver install uiautomator2
-            appium --address 127.0.0.1 --port 4723 --log appium.log &
+            appium --address 127.0.0.1 --port 4723 --allow-insecure chromedriver_autodownload --log appium.log &
             APPIUM_PID=$!
             trap 'kill "$APPIUM_PID" 2>/dev/null || true' EXIT
-            for i in $(seq 1 60); do
+            for i in $(seq 1 90); do
               if curl -sf http://127.0.0.1:4723/status >/dev/null; then break; fi
               sleep 2
             done
             curl -sf http://127.0.0.1:4723/status
+            adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
             node scripts/verify-local-mobile-test-env.mjs
-            node scripts/run-local-android-smoke.mjs
+            node scripts/run-local-android-smoke.mjs || {
+              echo '--- appium.log tail ---'
+              tail -n 80 appium.log || true
+              exit 1
+            }
 
       - name: Rapor artifact
         if: always()

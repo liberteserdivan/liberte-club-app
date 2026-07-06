@@ -6,7 +6,7 @@ export const config = {
   reporters: ['spec'],
   mochaOpts: {
     ui: 'bdd',
-    timeout: 240_000
+    timeout: 300_000
   },
   connectionRetryTimeout: 120_000,
   connectionRetryCount: 2,

@@ -13,6 +13,7 @@ export const config = {
   hostname: process.env.APPIUM_HOST || '127.0.0.1',
   port: Number(process.env.APPIUM_PORT || 4723),
   path: '/',
+  waitforTimeout: 30_000,
   specs: [smokeSpec],
   capabilities: [{
     platformName: 'Android',
@@ -21,9 +22,13 @@ export const config = {
     'appium:app': apkPath,
     'appium:appPackage': 'cafe.liberte.app',
     'appium:appActivity': 'cafe.liberte.app.MainActivity',
+    'appium:appWaitActivity': '*',
+    'appium:appWaitDuration': 60_000,
     'appium:automationName': 'UiAutomator2',
     'appium:autoGrantPermissions': true,
-    'appium:newCommandTimeout': 240
+    'appium:newCommandTimeout': 300,
+    'appium:ignoreHiddenApiPolicyError': true,
+    'appium:adbExecTimeout': 120_000
   }],
   before: async () => {
     process.env.E2E_PLATFORM = 'android';
