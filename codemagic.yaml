@@ -391,6 +391,7 @@ workflows:
         MOBILE_TEST_PIN: $MOBILE_TEST_PIN
         MOBILE_TEST_ADMIN_PIN: $MOBILE_TEST_ADMIN_PIN
         MOBILE_SMOKE_QUICK: "true"
+        MOBILE_SMOKE_P0_ONLY: "true"
       node: 22
       java: 21
     scripts:

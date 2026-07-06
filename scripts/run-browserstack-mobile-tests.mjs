@@ -36,11 +36,16 @@ const PRESENCE_LOG_KEYS = [
   'BROWSERSTACK_ACCESS_KEY',
   'MOBILE_TEST_PHONE',
   'MOBILE_TEST_PIN',
-  'MOBILE_TEST_ADMIN_PIN'
+  'MOBILE_TEST_ADMIN_PIN',
+  'MOBILE_SMOKE_P0_ONLY'
 ];
 
 function envPresent(key) {
   return String(process.env[key] || '').trim() ? 'present' : 'missing';
+}
+
+function smokeModeLabel() {
+  return String(process.env.MOBILE_SMOKE_P0_ONLY || '').trim() === 'true' ? 'p0' : 'full';
 }
 
 function logEnvPresence() {
@@ -90,7 +95,6 @@ function runWdio(configRelativePath, envExtra) {
   return result.status === 0;
 }
 
-
 /** CI smoke icin cihaz sayisini sinirla */
 function pickSmokeDevices(platform) {
   const list = devices[platform] || [];
@@ -99,6 +103,7 @@ function pickSmokeDevices(platform) {
   }
   return list;
 }
+
 async function runDeviceSmoke({ platform, device, appUrl, artifactName }) {
   const started = Date.now();
   const config = platform === 'ios'
@@ -134,6 +139,7 @@ async function runDeviceSmoke({ platform, device, appUrl, artifactName }) {
 }
 
 async function main() {
+  console.log(`[mobile-e2e] smoke mode: ${smokeModeLabel()}`);
   logEnvPresence();
   assertMobileTestEnv();
   getBrowserStackAuth();

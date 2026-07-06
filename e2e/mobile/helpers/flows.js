@@ -74,10 +74,37 @@ async function submitAdminPinIfVisible(browser) {
   throw new Error('Admin PIN gate kapanmadi');
 }
 
+/** Musteri akisinda admin PIN tam ekranini atla */
+async function dismissAdminPinGateForCustomer(browser) {
+  if (!(await isDisplayed(browser, SELECTORS.adminPinInput, 3_000))) {
+    return;
+  }
+  if (await isDisplayed(browser, SELECTORS.adminPinSkip, 2_000)) {
+    await safeClick(browser, SELECTORS.adminPinSkip);
+  }
+}
+
 /** Login sonrasi engelleyici overlay'leri temizler */
 async function dismissPostLoginBlockers(browser) {
-  await submitAdminPinIfVisible(browser);
+  await dismissAdminPinGateForCustomer(browser);
   await dismissOnboardingIfVisible(browser);
+}
+
+/** Login submit sonrasi home gorunene kadar bekler */
+async function waitForHomeAfterLogin(browser) {
+  const deadline = Date.now() + LOGIN_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (await isDisplayed(browser, SELECTORS.navHome, 2_000)) {
+      return;
+    }
+    if (await isDisplayed(browser, '.loginError', 1_000)) {
+      throw new Error('Login hata mesaji gorundu');
+    }
+    await dismissAdminPinGateForCustomer(browser);
+    await dismissOnboardingIfVisible(browser);
+    await browser.pause(800);
+  }
+  throw new Error('Login sonrasi home gorunmedi');
 }
 
 /** Telefon + PIN ile giris */
@@ -89,17 +116,13 @@ export async function loginWithPin(browser, meta) {
     return;
   }
 
-  const phoneInput = await waitForTestId(browser, SELECTORS.loginPhone, LOGIN_TIMEOUT_MS);
-  await phoneInput.clearValue();
-  await phoneInput.setValue(phone);
-
-  const pinInput = await waitForTestId(browser, SELECTORS.loginPin, LOGIN_TIMEOUT_MS);
-  await pinInput.clearValue();
-  await pinInput.setValue(pin);
+  await waitForTestId(browser, SELECTORS.loginPhone, LOGIN_TIMEOUT_MS);
+  await setPinInputValue(browser, SELECTORS.loginPhone, phone);
+  await waitForTestId(browser, SELECTORS.loginPin, LOGIN_TIMEOUT_MS);
+  await setPinInputValue(browser, SELECTORS.loginPin, pin);
 
   await safeClick(browser, SELECTORS.loginSubmit);
-
-  await waitForTestId(browser, SELECTORS.navHome, LOGIN_TIMEOUT_MS);
+  await waitForHomeAfterLogin(browser);
   await dismissPostLoginBlockers(browser);
 
   const errorVisible = await isDisplayed(browser, '.loginError, .adminPinError', 2_000);

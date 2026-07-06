@@ -62,6 +62,7 @@ test('auth readAuthToken Bearer destekler', () => {
 test('mobil e2e: klasor yapisi mevcut', () => {
   const required = [
     'e2e/mobile/specs/smoke.spec.js',
+    'e2e/mobile/specs/smoke-p0.spec.js',
     'e2e/mobile/helpers/flows.js',
     'e2e/mobile/helpers/credentials.js',
     'e2e/mobile/wdio.browserstack.android.conf.js',
@@ -84,8 +85,15 @@ test('mobil e2e: codemagic workflowlari tanimli', () => {
   assert.match(yaml, /BROWSERSTACK_ANDROID_APP_URL/);
   assert.match(yaml, /MOBILE_ANDROID_APK_PATH/);
   assert.match(yaml, /MOBILE_SMOKE_QUICK/);
+  assert.match(yaml, /MOBILE_SMOKE_P0_ONLY/);
   assert.match(yaml, /ENABLE_PLAY_UPLOAD/);
   assert.doesNotMatch(yaml, /\bnvm\b/);
+});
+
+test('mobil e2e: wdio P0 spec secimi', () => {
+  const android = read('e2e/mobile/wdio.browserstack.android.conf.js');
+  assert.match(android, /MOBILE_SMOKE_P0_ONLY/);
+  assert.match(android, /smoke-p0\.spec\.js/);
 });
 
 test('mobil e2e: smoke build webview debug bayragi', () => {
@@ -99,7 +107,7 @@ test('mobil e2e: smoke build webview debug bayragi', () => {
 
 test('mobil e2e: admin pin gate dismiss helper', () => {
   const flows = read('e2e/mobile/helpers/flows.js');
-  assert.match(flows, /submitAdminPinIfVisible/);
+  assert.match(flows, /dismissAdminPinGateForCustomer/);
   assert.match(flows, /dismissOnboardingIfVisible/);
   assert.match(flows, /startActivity/);
   assert.match(read('e2e/mobile/helpers/selectors.js'), /adminPinSkip/);

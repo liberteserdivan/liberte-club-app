@@ -2,6 +2,8 @@ import { config as shared } from './wdio.shared.conf.js';
 
 const deviceName = process.env.BS_DEVICE_NAME || 'Samsung Galaxy S24';
 const osVersion = process.env.BS_OS_VERSION || '14.0';
+const p0Only = String(process.env.MOBILE_SMOKE_P0_ONLY || '').trim() === 'true';
+const smokeSpec = p0Only ? './specs/smoke-p0.spec.js' : './specs/smoke.spec.js';
 
 export const config = {
   ...shared,
@@ -10,7 +12,7 @@ export const config = {
   hostname: 'hub.browserstack.com',
   port: 443,
   path: '/wd/hub',
-  specs: ['./specs/smoke.spec.js'],
+  specs: [smokeSpec],
   capabilities: [{
     platformName: 'Android',
     'appium:app': process.env.BROWSERSTACK_APP_URL,
@@ -20,7 +22,7 @@ export const config = {
       osVersion,
       projectName: 'Liberte Club',
       buildName: process.env.CM_COMMIT || process.env.GITHUB_SHA || 'local',
-      sessionName: `android-smoke-${deviceName}`,
+      sessionName: p0Only ? `android-smoke-p0-${deviceName}` : `android-smoke-${deviceName}`,
       networkLogs: true,
       interactiveDebugging: true
     }
