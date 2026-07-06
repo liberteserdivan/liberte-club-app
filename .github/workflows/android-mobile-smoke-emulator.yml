@@ -61,6 +61,12 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
+      - name: Test secret kontrolu
+        env:
+          MOBILE_TEST_PHONE: ${{ secrets.MOBILE_TEST_PHONE }}
+          MOBILE_TEST_PIN: ${{ secrets.MOBILE_TEST_PIN }}
+        run: node scripts/verify-local-mobile-test-env.mjs
+
 
       - name: KVM izinleri
         run: |
