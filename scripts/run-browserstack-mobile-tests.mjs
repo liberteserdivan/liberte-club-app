@@ -90,6 +90,15 @@ function runWdio(configRelativePath, envExtra) {
   return result.status === 0;
 }
 
+
+/** CI smoke icin cihaz sayisini sinirla */
+function pickSmokeDevices(platform) {
+  const list = devices[platform] || [];
+  if (String(process.env.MOBILE_SMOKE_QUICK || '').trim() === 'true') {
+    return list.slice(0, 1);
+  }
+  return list;
+}
 async function runDeviceSmoke({ platform, device, appUrl, artifactName }) {
   const started = Date.now();
   const config = platform === 'ios'
@@ -158,7 +167,7 @@ async function main() {
     console.log(`[mobile-e2e] ${platform} app source: ${resolved.sourceKey}`);
     report.artifacts.push({ platform, name: resolved.artifactName, appUrl: 'bs://***' });
 
-    for (const device of devices[platform] || []) {
+    for (const device of pickSmokeDevices(platform)) {
       console.log(`[mobile-e2e] ${platform} ${device.deviceName} (${device.osVersion})`);
       appendDeviceResult(report, await runDeviceSmoke({
         platform,

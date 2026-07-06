@@ -83,7 +83,7 @@ test('mobil e2e: codemagic workflowlari tanimli', () => {
   assert.match(yaml, /BROWSERSTACK_APP_ANDROID_URL/);
   assert.match(yaml, /BROWSERSTACK_ANDROID_APP_URL/);
   assert.match(yaml, /MOBILE_ANDROID_APK_PATH/);
-  assert.match(yaml, /verify-mobile-test-env\.mjs/);
+  assert.match(yaml, /MOBILE_SMOKE_QUICK/);
   assert.match(yaml, /ENABLE_PLAY_UPLOAD/);
   assert.doesNotMatch(yaml, /\bnvm\b/);
 });
