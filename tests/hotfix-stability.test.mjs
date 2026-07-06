@@ -126,7 +126,7 @@ test('logoutSession ağ + Safe Mode durumunu sıfırlar ve kısa timeout kullan�
   const body = sliceFunction(source, 'logoutSession');
   assert.match(body, /resetRemoteFetchState\(\)/, 'logout ağ durumunu sıfırlamalı');
   assert.match(body, /clearSafeModeState\(\)/, 'logout Safe Mode durumunu sıfırlamalı');
-  assert.match(body, /timeoutMs:\s*4000/, 'sunucu logout 4sn timeout ile fire-and-forget olmalı');
+  assert.match(body, /timeoutMs: isNativeApp\(\) \? 6000 : 4000/, 'sunucu logout kisa timeout ile tamamlanmali');
 });
 
 test('applyAuthResult yeni oturumda ağ durumunu sıfırlar', () => {

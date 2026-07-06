@@ -28,10 +28,10 @@ test('B-9: purgeExpiredAuthData disa aktarilir ve sql yoksa guard eder', async (
   await purgeExpiredAuthData(null);
 });
 
-test('B-9: logout (destroySession) dusuk olasilikla temizlik cagirir', () => {
+test('B-9: logout (destroySession) hizli oturum silme kullanir', () => {
   const src = read('api/_lib/auth.js');
-  assert.match(src, /Math\.random\(\) < 0\.05/);
-  assert.match(src, /purgeExpiredAuthData\(sql\)/);
+  assert.match(src, /runSqlSessionDelete/);
+  assert.doesNotMatch(src, /purgeExpiredAuthData\(sql\)/);
 });
 
 // B-14: cookie Secure VERCEL_ENV ile kosullu

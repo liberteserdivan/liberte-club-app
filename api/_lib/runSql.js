@@ -62,3 +62,12 @@ export function runSqlLoginRead(task) {
     attemptTimeoutMs: getLoginReadAttemptTimeoutMs()
   });
 }
+
+// Çıkışta oturum silme — tek deneme, kısa timeout (hemen ardından login yarışmasını önler)
+export function runSqlSessionDelete(task) {
+  return withSqlRetry(task, {
+    retries: 0,
+    resetClient: resetSqlClient,
+    attemptTimeoutMs: 3000
+  });
+}

@@ -3,7 +3,7 @@ import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
 import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
-import { runSql, runSqlRead, runSqlReadFast, runSqlSessionBootstrap } from './runSql.js';
+import { runSql, runSqlRead, runSqlReadFast, runSqlSessionBootstrap, runSqlSessionDelete } from './runSql.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -12,7 +12,6 @@ import {
   upsertCustomerEmail
 } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
-import { purgeExpiredAuthData } from './maintenance.js';
 
 export const SESSION_COOKIE = 'liberte_session';
 const SESSION_DAYS = 30;
@@ -360,26 +359,16 @@ export async function createSession(res, { customerId, role = 'user', deviceId =
   });
 }
 
-// Oturumu sonlandır
+// Oturumu sonlandır — hızlı silme; hemen ardından gelen login ile DB yarışmasın
 export async function destroySession(req, res) {
   const token = readAuthToken(req);
   if (token) {
-    await runSql(async () => {
+    await runSqlSessionDelete(async () => {
       const sql = getSql();
       if (!sql) return;
 
       await ensureSessionTable(sql);
       await sql`DELETE FROM auth_sessions WHERE token_hash = ${hashToken(token)}`;
-
-      // B-9: Cron olmadığından, düşük frekanslı bu yazma yolunda DÜŞÜK OLASILIKLA
-      // süresi dolan kayıtları temizle (best-effort; logout'u yavaşlatmasın).
-      if (Math.random() < 0.05) {
-        try {
-          await purgeExpiredAuthData(sql);
-        } catch (purgeError) {
-          console.warn('[auth.purge]', purgeError?.message || purgeError);
-        }
-      }
     });
   }
   clearSessionCookie(res);

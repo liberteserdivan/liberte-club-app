@@ -18,6 +18,34 @@ test('AUTH_REQUEST_OPTIONS: tum native platformlarda 40sn', () => {
   assert.doesNotMatch(src, /isNativeApp\(\) && isIos\(\) \? NATIVE_AUTH_FETCH_TIMEOUT_MS/);
 });
 
+test('apiClient: native fetch CapacitorHttp icin AbortController kullanmaz', () => {
+  const src = read('src/lib/apiClient.js');
+  assert.match(src, /if \(isNativeApp\(\)\) \{[\s\S]*nativeFetchWithTimeout/);
+  assert.doesNotMatch(src, /isNativeApp\(\) && isAndroid\(\)/);
+});
+
+test('apiClient: login omitAuth bayat Bearer gondermez', () => {
+  const src = read('src/lib/apiClient.js');
+  assert.match(src, /omitAuth/);
+  const login = read('src/pages/LoginPage.jsx');
+  assert.match(login, /omitAuth:\s*true/);
+  assert.match(login, /waitForPendingLogout/);
+});
+
+test('session: cikis sonrasi pending logout beklenebilir', () => {
+  const src = read('src/lib/session.js');
+  assert.match(src, /pendingLogoutPromise/);
+  assert.match(src, /waitForPendingLogout/);
+  assert.match(src, /resetSupabaseClient/);
+});
+
+test('destroySession: hizli runSqlSessionDelete kullanir', () => {
+  const auth = read('api/_lib/auth.js');
+  const runSql = read('api/_lib/runSql.js');
+  assert.match(runSql, /runSqlSessionDelete/);
+  assert.match(auth, /runSqlSessionDelete/);
+});
+
 test('session/logout: tum token depolari temizlenir', () => {
   const src = read('src/lib/session.js');
   assert.match(src, /clearNativeAuthToken\(\)/);

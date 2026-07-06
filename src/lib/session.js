@@ -12,11 +12,15 @@ import { clearLocalDb } from './db.js';
 import { resetRemoteFetchState } from './remoteFetch.js';
 import { clearSafeModeState } from './safeMode.js';
 import { bumpAuthEpoch as bumpAuthEpochCounter, getAuthEpoch } from './authEpoch.js';
+import { resetSupabaseClient } from './supabaseClient.js';
+import { isNativeApp } from './platform.js';
 
 export { getAuthEpoch } from './authEpoch.js';
 
 // Bellekte tutulan oturum — localStorage kullanılmaz
 let memorySession = null;
+// Sunucu çıkış isteği uçuşta — hemen ardından login bu promise'i bekler
+let pendingLogoutPromise = null;
 
 // Oturum değişiminde nesli ilerlet — eski uçuştaki yanıtları geçersiz kıl
 function bumpAuthEpoch() {
@@ -164,6 +168,16 @@ export function applyAuthResult(result) {
   return memorySession;
 }
 
+// Çıkış sunucuya yazılana kadar bekle — iOS'ta hemen ardından login yarışmasını önler
+export async function waitForPendingLogout() {
+  if (!pendingLogoutPromise) return;
+  try {
+    await pendingLogoutPromise;
+  } catch {
+    // Yerel çıkış zaten tamamlandı
+  }
+}
+
 // Oturumu kapat — yerel temizlik ANINDA, sunucu iptali arka planda.
 // Token önce yakalanıp hemen silinir; böylece UI beklemez ve sonraki giriş
 // tazelenen tokenı ezmez.
@@ -176,6 +190,7 @@ export function logoutSession() {
   // yanıtı geç gelse bile yeni (login ekranı) state'i ezemez.
   bumpAuthEpoch();
   clearNativeAuthToken();
+  resetSupabaseClient();
   // Yönetici PII snapshot'ını da temizle — çıkışta cihazda iz kalmasın
   clearAdminSnapshot();
   // Yerel veri önbelleğini (liberteDB) temizle — müşteri/loyalty/history PII'si
@@ -186,17 +201,24 @@ export function logoutSession() {
   resetRemoteFetchState();
   clearSafeModeState();
 
-  // 2) Sunucudaki oturumu arka planda iptal et — kısa timeout, bloklamaz.
-  // Token storage'dan silindiği için Authorization header açıkça verilir.
+  // 2) Sunucudaki oturumu iptal et — native'de kısa süre beklenir (re-login yarışması)
   if (!isLocalAuth() && token) {
-    apiJson('/api/auth/session', {
+    const logoutRequest = apiJson('/api/auth/session', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-      timeoutMs: 4000,
-      skipUnauthorized: true
+      timeoutMs: isNativeApp() ? 6000 : 4000,
+      skipUnauthorized: true,
+      omitAuth: true
     }).catch(() => {
       // Sunucu iptali başarısız olsa da yerel çıkış tamamlandı
+    }).finally(() => {
+      if (pendingLogoutPromise === logoutRequest) {
+        pendingLogoutPromise = null;
+      }
     });
+    pendingLogoutPromise = logoutRequest;
+  } else {
+    pendingLogoutPromise = null;
   }
 }
 

@@ -248,11 +248,9 @@ function makeTimeoutError() {
   return timeoutErr;
 }
 
-// Android (Capacitor) fetch — patched fetch + AbortController sinyali POST
-// isteğinde promise'i hiç settle etmeyebiliyor (sonsuz bekleme/spinner).
-// Bu yüzden sinyal GEÇMEYİZ; zaman aşımını Promise.race ile garanti ederiz.
-// Böylece istek ya başarılı döner ya net bir hatayla biter, asla asılı kalmaz.
-// iOS sorunsuz çalıştığı için AbortController yolunda bırakılır.
+// Capacitor native fetch (iOS + Android) — CapacitorHttp + AbortController sinyali
+// POST isteğinde promise'i hiç settle etmeyebiliyor (çıkış sonrası login dahil).
+// Sinyal GEÇMEYİZ; zaman aşımını Promise.race ile garanti ederiz.
 function nativeFetchWithTimeout(url, rest, timeoutMs) {
   let timer = null;
   const timeoutPromise = new Promise((_, reject) => {
@@ -295,8 +293,8 @@ function webFetchWithTimeout(url, rest, userSignal, timeoutMs) {
 // Fetch isteğine üst zaman sınırı ekle — platforma göre güvenli strateji
 function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const { signal: userSignal, ...rest } = options;
-  // Sorun yalnızca Android'de görüldü; iOS/web çalışan AbortController yolunda kalır
-  if (isNativeApp() && isAndroid()) {
+  // CapacitorHttp etkin native uygulamada AbortController POST'u asılı bırakabilir
+  if (isNativeApp()) {
     return nativeFetchWithTimeout(url, rest, timeoutMs);
   }
   return webFetchWithTimeout(url, rest, userSignal, timeoutMs);
@@ -347,15 +345,18 @@ async function performApiFetch(url, fetchOptions, headers, native, requestTimeou
 
 // Kimlik bilgili API isteği — idempotent isteklerde geçici hatada bir kez tekrar dener
 export async function apiFetch(path, options = {}) {
-  const { timeoutMs, skipUnauthorized = false, retryTransient, ...fetchOptions } = options;
+  const { timeoutMs, skipUnauthorized = false, retryTransient, omitAuth = false, ...fetchOptions } = options;
   const epochAtStart = getAuthEpoch();
   const headers = {
     'Content-Type': 'application/json',
     ...(fetchOptions.headers || {})
   };
 
-  const token = readStoredAuthToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  // Giriş/kayıt: bayat Bearer gönderme (çıkış sonrası iOS native yarışması)
+  if (!omitAuth) {
+    const token = readStoredAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
 
   const native = isNativeApp();
   const url = resolveApiUrl(path);

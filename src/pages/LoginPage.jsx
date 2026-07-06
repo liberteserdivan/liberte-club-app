@@ -16,7 +16,7 @@ import {
   verifyDevPin
 } from '../lib/devAuth.js';
 import { getDeviceId } from '../lib/deviceId.js';
-import { applyAuthResult, getAuthEpoch } from '../lib/session.js';
+import { applyAuthResult, getAuthEpoch, waitForPendingLogout } from '../lib/session.js';
 import {
   STORE_APP_NAME,
   BRAND_SLOGAN,
@@ -243,6 +243,8 @@ export default function Login({ db, commit, setSession }) {
     setInfo('');
 
     try {
+      await waitForPendingLogout();
+
       if (isLocalAuth()) {
         const customer = findByPhone(ph);
         if (!customer) {
@@ -262,6 +264,7 @@ export default function Login({ db, commit, setSession }) {
       const { response, data } = await apiJson('/api/auth/login', {
         ...AUTH_REQUEST_OPTIONS,
         skipUnauthorized: true,
+        omitAuth: true,
         method: 'POST',
         body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
       });
@@ -282,8 +285,14 @@ export default function Login({ db, commit, setSession }) {
       }
 
       // Zaman aşımı veya logout sonrası geç gelen yanıt UI'yı bozmasın
-      if (attemptId !== loginAttemptRef.current) return;
-      if (getAuthEpoch() !== epochAtLogin) return;
+      if (attemptId !== loginAttemptRef.current) {
+        notify('Giriş tamamlanamadı. Lütfen tekrar deneyin.', 'info');
+        return;
+      }
+      if (getAuthEpoch() !== epochAtLogin) {
+        notify('Oturum açılamadı. Lütfen tekrar deneyin.', 'info');
+        return;
+      }
 
       logLoginDiag('success', { status: response.status, requestId: data?.requestId, step: data?.step });
       finishSession(data, epochAtLogin);
