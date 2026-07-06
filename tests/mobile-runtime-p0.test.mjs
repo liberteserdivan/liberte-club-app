@@ -132,5 +132,15 @@ test('mobil e2e: UI testid secicileri', () => {
 test('mobil e2e: package scriptleri', () => {
   const pkg = JSON.parse(read('package.json'));
   assert.ok(pkg.scripts['test:e2e:mobile']);
+  assert.ok(pkg.scripts['test:e2e:mobile:emulator']);
   assert.ok(pkg.devDependencies['@wdio/cli']);
+});
+
+test('mobil e2e: GitHub emulator workflow', () => {
+  const wf = read('.github/workflows/android-mobile-smoke-emulator.yml');
+  assert.match(wf, /android-emulator-runner/);
+  assert.match(wf, /run-local-android-smoke/);
+  assert.match(wf, /MOBILE_TEST_PHONE/);
+  assert.match(read('e2e/mobile/wdio.local.android.conf.js'), /smoke-p0\.spec\.js/);
+  assert.match(read('scripts/verify-local-mobile-test-env.mjs'), /MOBILE_TEST_PHONE/);
 });

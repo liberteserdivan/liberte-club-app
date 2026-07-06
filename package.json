@@ -50,6 +50,7 @@
     "release:android:ship": "node scripts/publish-android-play.mjs internal --build",
     "cap:sync:ios:only": "npx cap sync ios",
     "test:e2e:mobile": "node scripts/run-browserstack-mobile-tests.mjs",
+    "test:e2e:mobile:emulator": "node scripts/run-local-android-smoke.mjs",
     "test:e2e:mobile:android": "wdio run e2e/mobile/wdio.browserstack.android.conf.js",
     "test:e2e:mobile:ios": "wdio run e2e/mobile/wdio.browserstack.ios.conf.js",
     "import:menu": "node scripts/import-menu-from-xlsx.mjs"
