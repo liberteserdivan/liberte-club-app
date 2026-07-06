@@ -44,33 +44,6 @@ export function patchMemorySession(patch) {
   return memorySession;
 }
 
-const ADMIN_PIN_FLAG_KEY = 'liberteAdminPinVerified';
-
-// Bu oturumda admin PIN doğrulandı mı — sunucu gecikmesinde ezilmesin
-export function markAdminPinVerifiedLocally() {
-  try {
-    sessionStorage.setItem(ADMIN_PIN_FLAG_KEY, String(Date.now()));
-  } catch {
-    // yoksay
-  }
-}
-
-export function clearAdminPinVerifiedLocally() {
-  try {
-    sessionStorage.removeItem(ADMIN_PIN_FLAG_KEY);
-  } catch {
-    // yoksay
-  }
-}
-
-export function hasAdminPinVerifiedLocally() {
-  try {
-    return Boolean(sessionStorage.getItem(ADMIN_PIN_FLAG_KEY));
-  } catch {
-    return false;
-  }
-}
-
 // Sunucudan oturumu doğrula (açılış bootstrap)
 export async function bootstrapSession() {
   if (isLocalAuth()) {
@@ -119,7 +92,7 @@ export async function bootstrapSession() {
       customerId: data.customerId,
       role: data.role,
       isAdmin: Boolean(data.isAdmin),
-      adminVerified: Boolean(data.adminVerified),
+      adminVerified: Boolean(data.isAdmin) || Boolean(data.adminVerified),
       realtimeToken: data.realtimeToken || null
     };
     // Bootstrap restore epoch artırmaz — yalnızca login/logout geçersiz kılır
@@ -170,7 +143,7 @@ export function applyAuthResult(result) {
     customerId: result.customerId,
     role: result.role || 'user',
     isAdmin: Boolean(result.isAdmin),
-    adminVerified: Boolean(result.adminVerified),
+    adminVerified: Boolean(result.isAdmin) || Boolean(result.adminVerified),
     realtimeToken: result.realtimeToken || null
   };
   bumpAuthEpoch();
@@ -197,7 +170,6 @@ export function logoutSession() {
   // Oturum nesli ilerler — logout'tan önce başlamış /api/state veya admin-customers
   // yanıtı geç gelse bile yeni (login ekranı) state'i ezemez.
   bumpAuthEpoch();
-  clearAdminPinVerifiedLocally();
   clearNativeAuthToken();
   // Yönetici PII snapshot'ını da temizle — çıkışta cihazda iz kalmasın
   clearAdminSnapshot();

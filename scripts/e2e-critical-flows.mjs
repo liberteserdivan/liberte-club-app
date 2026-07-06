@@ -224,9 +224,8 @@ rows.push({
   ok: wrongPin.status === 401 || wrongPin.data?.code === 'PIN_INVALID'
 });
 
-// 3) Admin login
+// 3) Admin login — ayrı panel PIN artık gerekmez
 const adminCustomerPin = String(process.env.E2E_ADMIN_CUSTOMER_PIN || '').trim();
-const adminPanelPin = String(process.env.ADMIN_PIN || process.env.CASHIER_PIN || '').trim();
 let adminToken = null;
 
 if (!adminCustomerPin) {
@@ -247,27 +246,9 @@ if (!adminCustomerPin) {
     body: JSON.stringify({ phone: ADMIN_PHONE, pin: adminCustomerPin, deviceId: `${deviceId}-admin` })
   });
   rows.push(adminLogin);
-  adminToken = adminLogin.token;
-
-  if (adminLogin.ok && adminPanelPin) {
-    const adminPin = await request('3-admin-pin', `${BASE}/api/auth?action=admin-pin`, {
-      method: 'POST',
-      headers: authHeaders(adminLogin.token),
-      body: JSON.stringify({ pin: adminPanelPin })
-    });
-    rows.push(adminPin);
-    if (!adminPin.ok) adminToken = null;
-  } else if (adminLogin.ok && !adminPanelPin) {
-    rows.push({
-      flow: '3-admin-pin',
-      ok: false,
-      status: 0,
-      durationMs: 0,
-      requestId: null,
-      note: 'ADMIN_PIN env eksik — panel doğrulaması atlandı',
-      data: null,
-      token: null
-    });
+  if (adminLogin.ok) {
+    adminToken = adminLogin.token;
+  } else {
     adminToken = null;
   }
 }

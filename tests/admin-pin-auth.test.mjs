@@ -12,8 +12,8 @@ test('adminPinAuth production ortamında ALTER TABLE çalıştırmaz', () => {
   assert.match(source, /if \(isProductionRuntime\(\)\) return;/);
 });
 
-test('AdminPinGate auth isteğinde uzun timeout kullanır', () => {
-  const source = readFileSync(join(root, 'src', 'components', 'AdminPinGate.jsx'), 'utf8');
-  assert.match(source, /AUTH_REQUEST_OPTIONS/);
-  assert.match(source, /formatClientApiError/);
+test('authAdminPin handler ayrı PIN doğrulaması istemez', () => {
+  const source = readFileSync(join(root, 'api', '_lib', 'handlers', 'authAdminPin.js'), 'utf8');
+  assert.doesNotMatch(source, /verifyAdminPinAttempt/);
+  assert.match(source, /markAdminVerified/);
 });

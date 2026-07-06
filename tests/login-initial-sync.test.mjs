@@ -17,21 +17,16 @@ test('useCommit ilk zorunlu tam pull\'u erteler (login anında /api/state pull y
   assert.doesNotMatch(source, /pullRemote\(true\);\s*scheduleSyncTimer\(\);\s*\}\s*,\s*120\)/);
 });
 
-test('Admin members yalnızca PIN doğrulandıktan sonra (adminVerified) çekilir', () => {
+test('Admin members yalnızca doğrulanmış admin oturumunda çekilir', () => {
   const source = readFileSync(join(root, 'src/App.jsx'), 'utf8');
   // useAdminMembers enabled koşulu adminVerified içermeli
   assert.match(source, /useAdminMembers\(\{\s*enabled:\s*Boolean\(isAdmin && adminVerified/);
 });
 
-test('Admin PIN doğrulamasında duplicate members + full state fan-out yok', () => {
+test('Admin PIN gate UI kaldırıldı', () => {
   const source = readFileSync(join(root, 'src/App.jsx'), 'utf8');
-  const start = source.indexOf('function handleAdminVerified()');
-  const end = source.indexOf('function handleAdminSkip()', start);
-  const body = source.slice(start, end);
-  assert.ok(start !== -1, 'handleAdminVerified bulunamadı');
-  // Tek kanal: bu fonksiyon artık doğrudan members/state çağrısı yapmamalı
-  assert.doesNotMatch(body, /refreshAdminMembers\(/);
-  assert.doesNotMatch(body, /refreshRemote\(/);
+  assert.doesNotMatch(source, /AdminPinGate/);
+  assert.doesNotMatch(source, /handleAdminVerified/);
 });
 
 test('Logout sonrası admin hidrasyonu tekrar çalışabilir (ref sıfırlanır)', () => {

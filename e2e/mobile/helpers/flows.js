@@ -6,7 +6,6 @@ import { switchToAppWebView, waitForTestId, isDisplayed, safeClick } from './web
 const ADMIN_MEMBERS_TIMEOUT_MS = 45_000;
 const LOGIN_TIMEOUT_MS = 90_000;
 const ADMIN_PANEL_TIMEOUT_MS = 45_000;
-const ADMIN_PIN_TIMEOUT_MS = 30_000;
 
 /** Splash sonrasi login veya ana ekran */
 export async function assertAppLaunch(browser, meta) {
@@ -46,47 +45,8 @@ async function setPinInputValue(browser, selector, value) {
   }, selector, value);
 }
 
-/** Yonetici PIN ekranini doldurur */
-async function submitAdminPinIfVisible(browser) {
-  if (!(await isDisplayed(browser, SELECTORS.adminPinInput, 3_000))) {
-    return false;
-  }
-  const { adminPin } = getMobileTestCredentials();
-  if (!adminPin) {
-    if (await isDisplayed(browser, SELECTORS.adminPinSkip, 2_000)) {
-      await safeClick(browser, SELECTORS.adminPinSkip);
-    }
-    return false;
-  }
-  await setPinInputValue(browser, SELECTORS.adminPinInput, adminPin);
-  await safeClick(browser, SELECTORS.adminPinSubmit);
-  const deadline = Date.now() + ADMIN_PIN_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    if (await isDisplayed(browser, '.adminPinError', 1_000)) {
-      throw new Error('Admin PIN dogrulanamadi');
-    }
-    if (!(await isDisplayed(browser, SELECTORS.adminPinInput, 1_000))) {
-      await browser.pause(500);
-      return true;
-    }
-    await browser.pause(500);
-  }
-  throw new Error('Admin PIN gate kapanmadi');
-}
-
-/** Musteri akisinda admin PIN tam ekranini atla */
-async function dismissAdminPinGateForCustomer(browser) {
-  if (!(await isDisplayed(browser, SELECTORS.adminPinInput, 3_000))) {
-    return;
-  }
-  if (await isDisplayed(browser, SELECTORS.adminPinSkip, 2_000)) {
-    await safeClick(browser, SELECTORS.adminPinSkip);
-  }
-}
-
 /** Login sonrasi engelleyici overlay'leri temizler */
 async function dismissPostLoginBlockers(browser) {
-  await dismissAdminPinGateForCustomer(browser);
   await dismissOnboardingIfVisible(browser);
 }
 
@@ -100,7 +60,6 @@ async function waitForHomeAfterLogin(browser) {
     if (await isDisplayed(browser, '.loginError', 1_000)) {
       throw new Error('Login hata mesaji gorundu');
     }
-    await dismissAdminPinGateForCustomer(browser);
     await dismissOnboardingIfVisible(browser);
     await browser.pause(800);
   }
@@ -125,7 +84,7 @@ export async function loginWithPin(browser, meta) {
   await waitForHomeAfterLogin(browser);
   await dismissPostLoginBlockers(browser);
 
-  const errorVisible = await isDisplayed(browser, '.loginError, .adminPinError', 2_000);
+  const errorVisible = await isDisplayed(browser, '.loginError', 2_000);
   if (errorVisible) {
     throw new Error('Login sonrasi hata mesaji gorundu');
   }
@@ -172,14 +131,9 @@ export async function relaunchAndAssertSession(browser, meta) {
   logSafe('session-restore', { ...meta, step: 'session-restore', status: 'ok' });
 }
 
-/** Admin PIN ve uye listesi */
+/** Admin uye listesi */
 export async function verifyAdminMembers(browser, meta) {
   await dismissPostLoginBlockers(browser);
-  const { adminPin } = getMobileTestCredentials();
-  if (!adminPin) {
-    logSafe('admin-skip', { ...meta, step: 'admin-pin', status: 'skipped', code: 'NO_ADMIN_PIN' });
-    return;
-  }
 
   await switchToAppWebView(browser);
   await safeClick(browser, SELECTORS.navProfile);
@@ -189,7 +143,6 @@ export async function verifyAdminMembers(browser, meta) {
     return;
   }
   await safeClick(browser, SELECTORS.openAdminPanel);
-  await submitAdminPinIfVisible(browser);
 
   await waitForTestId(browser, SELECTORS.adminMembersPanel, ADMIN_PANEL_TIMEOUT_MS);
 

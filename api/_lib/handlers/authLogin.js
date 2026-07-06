@@ -53,7 +53,7 @@ function loginBodyCore(trace, customer, sessionMeta, existing, loyalty) {
     customerId: customer.id,
     role: sessionMeta.role,
     isAdmin: Boolean(customer.isAdmin),
-    adminVerified: Boolean(existing?.adminVerified),
+    adminVerified: Boolean(customer.isAdmin) || Boolean(existing?.adminVerified),
     sessionToken: sessionMeta.token || undefined,
     next: 'home',
     customer: toCustomerSnapshot(customer),
@@ -68,7 +68,7 @@ function buildPlainLoginBody(trace, customer, sessionMeta, existing = null) {
     return withRealtimeToken(core, {
       customerId: customer.id,
       isAdmin: Boolean(customer.isAdmin),
-      adminVerified: Boolean(existing?.adminVerified)
+      adminVerified: Boolean(customer.isAdmin) || Boolean(existing?.adminVerified)
     });
   } catch {
     return core;
@@ -93,7 +93,7 @@ async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = nu
       {
         customerId: customer.id,
         isAdmin: Boolean(customer.isAdmin),
-        adminVerified: Boolean(existing?.adminVerified)
+        adminVerified: Boolean(customer.isAdmin) || Boolean(existing?.adminVerified)
       }
     );
   } catch {

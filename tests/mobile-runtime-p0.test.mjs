@@ -105,12 +105,11 @@ test('mobil e2e: smoke build webview debug bayragi', () => {
   assert.match(main, /BuildConfig\.DEBUG/);
 });
 
-test('mobil e2e: admin pin gate dismiss helper', () => {
+test('mobil e2e: post-login blocker helper', () => {
   const flows = read('e2e/mobile/helpers/flows.js');
-  assert.match(flows, /dismissAdminPinGateForCustomer/);
+  assert.match(flows, /dismissPostLoginBlockers/);
   assert.match(flows, /dismissOnboardingIfVisible/);
   assert.match(flows, /startActivity/);
-  assert.match(read('e2e/mobile/helpers/selectors.js'), /adminPinSkip/);
   assert.match(read('e2e/mobile/helpers/selectors.js'), /onboardingSkip/);
 });
 
@@ -126,8 +125,6 @@ test('mobil e2e: app url alias cozumleme', () => {
 test('mobil e2e: UI testid secicileri', () => {
   assert.match(read('src/pages/LoginPage.jsx'), /data-testid="login-pin"/);
   assert.match(read('src/pages/ProfilePage.jsx'), /data-testid="logout-button"/);
-  assert.match(read('src/components/AdminPinGate.jsx'), /data-testid="admin-pin-input"/);
-  assert.match(read('src/components/AdminPinGate.jsx'), /data-testid="admin-pin-skip"/);
   assert.match(read('src/components/OnboardingOverlay.jsx'), /data-testid="onboarding-skip"/);
   assert.match(read('src/pages/AdminPage.jsx'), /data-testid="admin-members-panel"/);
 });

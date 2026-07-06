@@ -10,7 +10,7 @@ import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
 import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
-import { getMemorySession, patchMemorySession, logoutSession, markAdminPinVerifiedLocally, getAuthEpoch } from './lib/session.js';
+import { getMemorySession, logoutSession, getAuthEpoch } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { setGuardianRole } from './lib/guardianTelemetry.js';
@@ -27,7 +27,6 @@ import { useCommit } from './hooks/useCommit.js';
 import { isRealtimeDisabledByFlag } from './lib/safeMode.js';
 import AppSplash from './components/AppSplash.jsx';
 import Nav from './components/Nav.jsx';
-import AdminPinGate from './components/AdminPinGate.jsx';
 import { OfflineNotice } from './components/Cards.jsx';
 import ErrorToastHost from './components/ErrorToastHost.jsx';
 import SyncStatusBanner from './components/SyncStatusBanner.jsx';
@@ -68,7 +67,6 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
   const [splashImageReady, setSplashImageReady] = useState(false);
-  const [adminGateSkipped, setAdminGateSkipped] = useState(false);
   const [hydratingCustomer, setHydratingCustomer] = useState(false);
   const [authNotice, setAuthNotice] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -216,7 +214,7 @@ export default function App() {
     : null;
 
   const isAdmin = Boolean(session?.isAdmin);
-  const adminVerified = Boolean(session?.adminVerified);
+  const adminVerified = isAdmin || Boolean(session?.adminVerified);
 
   // Guardian telemetrisi için aktif kullanıcı rolünü bildir (anonymous/customer/admin)
   useEffect(() => {
@@ -379,29 +377,6 @@ export default function App() {
     setHydratingCustomer(false);
   }, [awaitingCustomer, customer]);
 
-  function handleAdminVerified() {
-    // PIN doğrulandı. Üye listesi + tam state çekimi tek kanaldan, yani
-    // adminHydrated effect'i üzerinden yapılır. Burada ayrıca refreshAdminMembers
-    // + refreshRemote çağırmıyoruz; aksi halde aynı anda iki kez members + full
-    // state fan-out olurdu.
-    patchMemorySession({ adminVerified: true });
-    markAdminPinVerifiedLocally();
-    setSession(getMemorySession());
-    setAdminGateSkipped(false);
-  }
-
-  function handleAdminSkip() {
-    setAdminGateSkipped(true);
-    setTab('home');
-  }
-
-  // Yönetim paneline gidince PIN ekranını yeniden göster
-  useEffect(() => {
-    if (tab === 'admin' && isAdmin && !adminVerified) {
-      setAdminGateSkipped(false);
-    }
-  }, [tab, isAdmin, adminVerified]);
-
   useEffect(() => {
     if (!customer?.id) {
       setShowOnboarding(false);
@@ -538,10 +513,6 @@ export default function App() {
             commit={commit}
             onDone={() => setShowOnboarding(false)}
           />
-        )}
-
-        {isAdmin && !adminVerified && !adminGateSkipped && (
-          <AdminPinGate fullscreen onVerified={handleAdminVerified} onSkip={handleAdminSkip} />
         )}
 
         <SyncStatusBanner syncState={syncState} onRetry={retrySave} />

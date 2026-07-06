@@ -6,7 +6,7 @@ import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullS
 import { mergeAdminRemoteIntoDb } from '../lib/adminMemberSync.js';
 import { reportError } from '../lib/errorHub.js';
 import { isLocalAuth } from '../lib/devAuth.js';
-import { patchMemorySession, hasAdminPinVerifiedLocally, getAuthEpoch } from '../lib/session.js';
+import { patchMemorySession, getAuthEpoch } from '../lib/session.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
 import { shouldReduceFullStatePull, shouldReducePolling, subscribeSafeMode } from '../lib/safeMode.js';
 import { subscribeRemoteSyncRequest } from '../lib/syncBus.js';
@@ -220,16 +220,14 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
         && session
         && Boolean(session.adminVerified) !== Boolean(remote.adminVerified)
       ) {
-        const downgradingPin = Boolean(session.adminVerified)
-          && !Boolean(remote.adminVerified)
-          && hasAdminPinVerifiedLocally();
+        const nextVerified = session.isAdmin
+          ? true
+          : Boolean(remote.adminVerified);
 
-        if (!downgradingPin) {
-          patchMemorySession({
-            adminVerified: Boolean(remote.adminVerified),
-            isAdmin: Boolean(remote.isAdmin)
-          });
-        }
+        patchMemorySession({
+          adminVerified: nextVerified,
+          isAdmin: Boolean(remote.isAdmin)
+        });
       }
 
       setMode('cloud');

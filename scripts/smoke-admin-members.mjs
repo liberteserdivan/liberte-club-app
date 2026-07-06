@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Canlı admin üye listesi smoke testi — giriş + admin PIN + admin-customers
+ * Canlı admin üye listesi smoke testi — giriş + admin üye listesi
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -68,10 +68,9 @@ loadEnv();
 
 const phone = process.env.SMOKE_ADMIN_PHONE || '5058665406';
 const customerPin = process.env.SMOKE_ADMIN_CUSTOMER_PIN || process.env.SMOKE_CUSTOMER_PIN || '';
-const adminPin = process.env.ADMIN_PIN || process.env.SMOKE_ADMIN_PIN || '';
 
-if (!customerPin || !adminPin) {
-  console.error('[smoke-admin-members] SMOKE_ADMIN_CUSTOMER_PIN ve ADMIN_PIN gerekli (.env)');
+if (!customerPin) {
+  console.error('[smoke-admin-members] SMOKE_ADMIN_CUSTOMER_PIN veya SMOKE_CUSTOMER_PIN gerekli (.env)');
   process.exit(1);
 }
 
@@ -91,22 +90,7 @@ if (!login.response.ok || !login.data?.sessionToken) {
 }
 
 const token = login.data.sessionToken;
-
-const pinAttempt = await api('/api/auth/admin-pin', {
-  method: 'POST',
-  token,
-  body: { pin: adminPin }
-});
-
-if (!pinAttempt.response.ok) {
-  console.log(JSON.stringify({
-    ok: false,
-    step: 'admin-pin',
-    status: pinAttempt.response.status,
-    error: pinAttempt.data?.error || pinAttempt.data?.message || 'Admin PIN başarısız'
-  }, null, 2));
-  process.exit(1);
-}
+const authOk = Boolean(login.data?.adminVerified ?? login.data?.isAdmin);
 
 const members = await api('/api/realtime?resource=admin-customers', { token, timeoutMs: 60000 });
 const adminMembers = await api('/api/admin/members', { token, timeoutMs: 60000 });
@@ -124,9 +108,9 @@ const endpointsSlow = members.timedOut || adminMembers.timedOut
 
 console.log(JSON.stringify({
   ok: endpointsOk,
-  authOk: pinAttempt.data?.adminVerified === true,
+  authOk,
   origin: ORIGIN,
-  adminPin: pinAttempt.data?.adminVerified === true,
+  adminVerified: authOk,
   memberCount: endpointsOk ? memberCount : null,
   adminCustomers: {
     status: members.response.status,
@@ -148,8 +132,8 @@ console.log(JSON.stringify({
       adminVerified: state.data?.adminVerified === true,
       isAdmin: state.data?.isAdmin === true
     },
-  note: endpointsSlow && pinAttempt.data?.adminVerified
-    ? 'Giriş ve admin PIN doğru; üye listesi sunucuda yavaş kaldı (zaman aşımı). Tekrar dene veya uygulamadan kontrol et.'
+  note: endpointsSlow && authOk
+    ? 'Giriş başarılı; üye listesi sunucuda yavaş kaldı (zaman aşımı). Tekrar dene veya uygulamadan kontrol et.'
     : null
 }, null, 2));
 

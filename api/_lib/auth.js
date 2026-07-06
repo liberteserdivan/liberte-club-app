@@ -300,13 +300,14 @@ export async function syncSessionWithCustomer(req, session) {
   }
 
   const liveRole = customer.isAdmin ? 'admin' : 'user';
+  // Yönetici PIN kapısı kaldırıldı — admin rolü otomatik doğrulanır
+  const nextVerified = liveRole === 'admin';
   const needsUpdate = liveRole !== session.role
-    || (session.isAdmin && !customer.isAdmin)
-    || (session.adminVerified && liveRole !== 'admin');
+    || Boolean(session.isAdmin) !== (liveRole === 'admin')
+    || session.adminVerified !== nextVerified;
 
   if (needsUpdate) {
     const token = readAuthToken(req);
-    const nextVerified = liveRole === 'admin' ? session.adminVerified : false;
     await persistSessionRole(token, { role: liveRole, adminVerified: nextVerified });
     session.role = liveRole;
     session.isAdmin = liveRole === 'admin';
@@ -329,19 +330,22 @@ export async function createSessionOnce(res, { customerId, role = 'user', device
   const tokenHash = hashToken(token);
   const safeRole = role === 'admin' ? 'admin' : 'user';
 
+  const adminVerified = safeRole === 'admin';
+
   await sql`
-    INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at)
+    INSERT INTO auth_sessions (token_hash, customer_id, role, device_id, expires_at, admin_verified)
     VALUES (
       ${tokenHash},
       ${customerId},
       ${safeRole},
       ${deviceId || null},
-      now() + interval '30 days'
+      now() + interval '30 days',
+      ${adminVerified}
     )
   `;
 
   setSessionCookie(res, token);
-  return { token, customerId, role: safeRole, isAdmin: safeRole === 'admin' };
+  return { token, customerId, role: safeRole, isAdmin: adminVerified, adminVerified };
 }
 
 // Yeni oturum oluştur
@@ -530,15 +534,13 @@ export async function requireSession(req, res) {
 }
 
 // Admin oturumu zorunlu — light: push gibi hızlı uçlar için müşteri sync atlanır
-export async function requireAdminSession(req, res, { pinRequired = true, light = false } = {}) {
+export async function requireAdminSession(req, res, { pinRequired = false, light = false } = {}) {
+  void pinRequired;
+
   if (light) {
     const identity = await getSessionForQr(req);
     if (!identity) {
       res.status(401).json({ error: 'Oturum gerekli' });
-      return null;
-    }
-    if (pinRequired && !identity.adminVerified) {
-      res.status(403).json({ error: 'Yönetici PIN doğrulaması gerekli', needsAdminPin: true });
       return null;
     }
 
@@ -569,10 +571,6 @@ export async function requireAdminSession(req, res, { pinRequired = true, light 
   if (!session) return null;
   if (!session.isAdmin) {
     res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
-    return null;
-  }
-  if (pinRequired && !session.adminVerified) {
-    res.status(403).json({ error: 'Yönetici PIN doğrulaması gerekli', needsAdminPin: true });
     return null;
   }
   return session;

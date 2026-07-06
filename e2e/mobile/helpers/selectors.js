@@ -1,5 +1,4 @@
-// Appium / WebView secicileri — tek kaynak
-
+/** Appium / WebView secicileri — testid anahtarlari */
 export const SELECTORS = {
   loginPhone: '[data-testid="login-phone"]',
   loginPin: '[data-testid="login-pin"]',
@@ -8,9 +7,6 @@ export const SELECTORS = {
   navHome: '[data-testid="nav-home"]',
   navProfile: '[data-testid="nav-profile"]',
   openAdminPanel: '[data-testid="open-admin-panel"]',
-  adminPinInput: '[data-testid="admin-pin-input"]',
-  adminPinSubmit: '[data-testid="admin-pin-submit"]',
-  adminPinSkip: '[data-testid="admin-pin-skip"]',
   adminMembersPanel: '[data-testid="admin-members-panel"]',
   adminMembersStatus: '[data-testid="admin-members-status"]',
   onboardingOverlay: '.onboardingOverlay',
