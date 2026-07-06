@@ -82,7 +82,7 @@ export default function OnboardingOverlay({ customerId, customer, db, commit, on
   return (
     <div className="onboardingOverlay" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
       <div className="onboardingCard">
-        <button type="button" className="onboardingSkip" onClick={finish} aria-label="Tanıtımı atla">
+        <button type="button" className="onboardingSkip" data-testid="onboarding-skip" onClick={finish} aria-label="Tanıtımı atla">
           <X size={18} />
         </button>
         <div className="onboardingIcon"><Icon size={28} aria-hidden="true" /></div>
@@ -109,7 +109,7 @@ export default function OnboardingOverlay({ customerId, customer, db, commit, on
             />
           </div>
         ) : (
-          <button type="button" className="goldBtn onboardingNext" onClick={next}>
+          <button type="button" className="goldBtn onboardingNext" data-testid="onboarding-next" onClick={next}>
             {isLast ? 'Başla' : 'Devam'}
           </button>
         )}

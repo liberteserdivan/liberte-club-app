@@ -34,3 +34,16 @@ export async function isDisplayed(browser, selector, timeoutMs = 4_000) {
     return false;
   }
 }
+
+/** Alt nav ile cakismayi onlemek icin guvenli tikla */
+export async function safeClick(browser, selector, timeoutMs = 30_000) {
+  const el = await browser.$(selector);
+  await el.waitForDisplayed({ timeout: timeoutMs });
+  await el.scrollIntoView({ block: 'center', inline: 'nearest' });
+  await browser.pause(400);
+  try {
+    await el.click();
+  } catch {
+    await browser.execute((css) => document.querySelector(css)?.click(), selector);
+  }
+}

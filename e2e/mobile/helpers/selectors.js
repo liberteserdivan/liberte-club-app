@@ -12,5 +12,8 @@ export const SELECTORS = {
   adminPinSubmit: '[data-testid="admin-pin-submit"]',
   adminPinSkip: '[data-testid="admin-pin-skip"]',
   adminMembersPanel: '[data-testid="admin-members-panel"]',
-  adminMembersStatus: '[data-testid="admin-members-status"]'
+  adminMembersStatus: '[data-testid="admin-members-status"]',
+  onboardingOverlay: '.onboardingOverlay',
+  onboardingSkip: '[data-testid="onboarding-skip"]',
+  onboardingNext: '[data-testid="onboarding-next"]'
 };
