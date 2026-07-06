@@ -389,7 +389,6 @@ workflows:
         BROWSERSTACK_ACCESS_KEY: $BROWSERSTACK_ACCESS_KEY
         MOBILE_TEST_PHONE: $MOBILE_TEST_PHONE
         MOBILE_TEST_PIN: $MOBILE_TEST_PIN
-        MOBILE_TEST_ADMIN_PIN: $MOBILE_TEST_ADMIN_PIN
         MOBILE_SMOKE_QUICK: "true"
         MOBILE_SMOKE_P0_ONLY: "true"
       node: 22
@@ -427,12 +426,14 @@ workflows:
       - name: BrowserStack gercek cihaz smoke testleri
         script: |
           export MOBILE_ANDROID_APK_PATH="$CM_BUILD_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
+          export CM_COMMIT="${CM_COMMIT:-$FCI_COMMIT}"
           test -f "$MOBILE_ANDROID_APK_PATH" || (echo "HATA: APK bulunamadi: $MOBILE_ANDROID_APK_PATH" && exit 1)
           node scripts/verify-mobile-test-env.mjs
           node scripts/run-browserstack-mobile-tests.mjs
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
       - e2e/mobile/reports/*.json
+      - e2e/mobile/reports/*.log
     publishing:
       email:
         recipients:
@@ -457,7 +458,6 @@ workflows:
         BROWSERSTACK_ACCESS_KEY: $BROWSERSTACK_ACCESS_KEY
         MOBILE_TEST_PHONE: $MOBILE_TEST_PHONE
         MOBILE_TEST_PIN: $MOBILE_TEST_PIN
-        MOBILE_TEST_ADMIN_PIN: $MOBILE_TEST_ADMIN_PIN
         MOBILE_ANDROID_APK_PATH: $MOBILE_ANDROID_APK_PATH
         BROWSERSTACK_APP_ANDROID_URL: $BROWSERSTACK_APP_ANDROID_URL
         BROWSERSTACK_ANDROID_APP_URL: $BROWSERSTACK_ANDROID_APP_URL
@@ -479,6 +479,7 @@ workflows:
           node scripts/run-browserstack-mobile-tests.mjs
     artifacts:
       - e2e/mobile/reports/*.json
+      - e2e/mobile/reports/*.log
     publishing:
       email:
         recipients:

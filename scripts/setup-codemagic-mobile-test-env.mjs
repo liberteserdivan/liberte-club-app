@@ -12,9 +12,9 @@ const SECRET_KEYS = [
   'BROWSERSTACK_USERNAME',
   'BROWSERSTACK_ACCESS_KEY',
   'MOBILE_TEST_PHONE',
-  'MOBILE_TEST_PIN',
-  'MOBILE_TEST_ADMIN_PIN'
+  'MOBILE_TEST_PIN'
 ];
+const OPTIONAL_SECRET_KEYS = ['MOBILE_TEST_ADMIN_PIN'];
 const GROUP_NAME = 'liberte_android';
 const WORKFLOW_ID = 'android-mobile-smoke';
 
@@ -42,6 +42,10 @@ function readSecrets() {
     const value = String(process.env[key] || '').trim();
     if (!value) missing.push(key);
     else out[key] = value;
+  }
+  for (const key of OPTIONAL_SECRET_KEYS) {
+    const value = String(process.env[key] || '').trim();
+    if (value) out[key] = value;
   }
   return { out, missing };
 }

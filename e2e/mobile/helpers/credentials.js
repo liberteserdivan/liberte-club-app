@@ -1,4 +1,4 @@
-// CI ortamindan test kimlik bilgilerini okur — kodda sabit deger yok.
+// CI ortamindan test kimlik bilgilerini okur - kodda sabit deger yok.
 
 const REQUIRED = ['MOBILE_TEST_PHONE', 'MOBILE_TEST_PIN'];
 
@@ -10,13 +10,12 @@ export function assertMobileTestEnv() {
   }
 }
 
-/** Telefon ve PIN — loglanmaz */
+/** Telefon ve PIN - loglanmaz */
 export function getMobileTestCredentials() {
   assertMobileTestEnv();
   return {
     phone: String(process.env.MOBILE_TEST_PHONE).trim(),
-    pin: String(process.env.MOBILE_TEST_PIN).trim(),
-    adminPin: String(process.env.MOBILE_TEST_ADMIN_PIN || '').trim()
+    pin: String(process.env.MOBILE_TEST_PIN).trim()
   };
 }
 

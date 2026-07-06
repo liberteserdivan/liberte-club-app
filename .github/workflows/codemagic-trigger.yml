@@ -19,6 +19,7 @@ on:
         options:
           - ios-release
           - android-release
+          - android-mobile-smoke
           - both
       branch:
         description: Git branch
@@ -43,6 +44,7 @@ on:
 
 jobs:
   trigger:
+    if: github.event_name != 'workflow_dispatch' || inputs.workflow_id != 'android-mobile-smoke'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -88,3 +90,31 @@ jobs:
           fi
 
           echo "Codemagic build kuyruga alindi: ${WORKFLOW_ID}"
+
+  trigger-mobile-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.workflow_id == 'android-mobile-smoke'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Codemagic android-mobile-smoke tetikle
+        env:
+          CODEMAGIC_API_TOKEN: ${{ secrets.CODEMAGIC_API_TOKEN }}
+          CODEMAGIC_APP_ID: ${{ secrets.CODEMAGIC_APP_ID }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CODEMAGIC_API_TOKEN:-}" ]; then
+            echo "::error::CODEMAGIC_API_TOKEN yok"
+            exit 1
+          fi
+          APP_ID="${CODEMAGIC_APP_ID:-6a27103ffb57938b06e2c701}"
+          HTTP_CODE=$(curl -sS -o /tmp/codemagic-response.json -w "%{http_code}" \
+            -X POST "https://api.codemagic.io/builds" \
+            -H "Content-Type: application/json" \
+            -H "x-auth-token: ${CODEMAGIC_API_TOKEN}" \
+            -d "{\"appId\":\"${APP_ID}\",\"workflowId\":\"android-mobile-smoke\",\"branch\":\"${BRANCH}\"}")
+          cat /tmp/codemagic-response.json
+          echo ""
+          echo "HTTP ${HTTP_CODE}"
+          if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
+            exit 1
+          fi

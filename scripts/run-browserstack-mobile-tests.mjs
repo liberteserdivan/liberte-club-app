@@ -36,7 +36,6 @@ const PRESENCE_LOG_KEYS = [
   'BROWSERSTACK_ACCESS_KEY',
   'MOBILE_TEST_PHONE',
   'MOBILE_TEST_PIN',
-  'MOBILE_TEST_ADMIN_PIN',
   'MOBILE_SMOKE_P0_ONLY'
 ];
 
@@ -82,16 +81,25 @@ async function resolveAppUrl(platform) {
 
 function runWdio(configRelativePath, envExtra) {
   const configPath = path.join(ROOT, configRelativePath);
+  const logDir = path.join(ROOT, 'e2e/mobile/reports');
+  fs.mkdirSync(logDir, { recursive: true });
+  const logFile = path.join(logDir, wdio--.log);
   const result = spawnSync(
     process.platform === 'win32' ? 'npx.cmd' : 'npx',
     ['wdio', 'run', configPath],
     {
       cwd: path.join(ROOT, 'e2e/mobile'),
       env: { ...process.env, ...envExtra },
-      stdio: 'inherit',
+      encoding: 'utf8',
       shell: process.platform === 'win32'
     }
   );
+  const output = ${result.stdout || ''}\n.trim();
+  if (output) fs.writeFileSync(logFile, output.slice(-12000), 'utf8');
+  if (result.status !== 0) {
+    console.error([mobile-e2e] wdio failed () log=);
+    if (output) console.error(output.slice(-2000));
+  }
   return result.status === 0;
 }
 
