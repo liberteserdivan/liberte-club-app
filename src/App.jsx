@@ -14,7 +14,7 @@ import { getMemorySession, logoutSession, getAuthEpoch } from './lib/session.js'
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { setGuardianRole } from './lib/guardianTelemetry.js';
-import { getFirebaseSwUrl, refreshPushTokenIfSubscribed, startPushForegroundListener, ensureNativePushRegistered, bindNativeTokenRefresh } from './lib/firebasePush.js';
+import { getFirebaseSwUrl, ensurePushRegisteredIfPermitted, startPushForegroundListener, bindNativeTokenRefresh } from './lib/firebasePush.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
 import { mergeAdminSnapshotIntoDb } from './lib/adminFullSnapshot.js';
@@ -394,22 +394,19 @@ export default function App() {
 
     // Push kaydı giriş/state sync'ten SONRA — açılışta DB bağlantısı yarışmasın
     const pushDelayMs = isNativeApp() ? 4000 : 2000;
-    const pushTimer = setTimeout(() => {
-      refreshPushTokenIfSubscribed(customer, db, commit).catch(() => {});
-    }, pushDelayMs);
+    function syncPushRegistration() {
+      ensurePushRegisteredIfPermitted(customer, db, commit).catch(() => {});
+    }
+
+    const pushTimer = setTimeout(syncPushRegistration, pushDelayMs);
 
     if (!isNativeApp()) return () => clearTimeout(pushTimer);
 
     const unbindTokenRefresh = bindNativeTokenRefresh(customer, db, commit);
-
-    function registerNativePush() {
-      ensureNativePushRegistered(customer, db, commit).catch(() => {});
-    }
-
-    const registerTimer = setTimeout(registerNativePush, pushDelayMs);
+    const registerTimer = setTimeout(syncPushRegistration, pushDelayMs);
 
     const unsubscribeResume = subscribeForegroundResume(() => {
-      registerNativePush();
+      syncPushRegistration();
       refreshRealtimeSessionFromServer().catch(() => {});
     });
 

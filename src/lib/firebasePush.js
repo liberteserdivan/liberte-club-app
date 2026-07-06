@@ -1,7 +1,7 @@
 import { firebaseConfig as defaultConfig, firebaseVapidKey as defaultVapidKey, NOTIFICATION_BADGE, NOTIFICATION_ICON } from './constants.js';
 import { apiFetch, getNativeApiOrigin, DEFAULT_PUBLIC_SITE_ORIGIN } from './apiClient.js';
 import { patchFirebaseReferrer } from './firebaseReferrerPatch.js';
-import { markPushEnabledOnDevice, getLocalPushToken } from './pushPrompt.js';
+import { markPushEnabledOnDevice, getLocalPushToken, hasActivePushOnThisDevice } from './pushPrompt.js';
 import { resolvePushChannel } from './pushAudience.js';
 import { formatPushNotification } from './pushNotificationText.js';
 import { isAndroid, isIos, isNativeApp } from './platform.js';
@@ -504,6 +504,30 @@ export async function refreshNativePushIfSubscribed(customer, db, commit) {
     });
   } catch {
     // Arka planda sessizce dene
+  }
+}
+
+// Kayıtlı üyede izin verilmiş ama token eksikse otomatik sunucu kaydı
+export async function ensurePushRegisteredIfPermitted(customer, db, commit) {
+  if (!customer?.id || typeof commit !== 'function') return;
+
+  await refreshPushTokenIfSubscribed(customer, db, commit);
+  if (hasActivePushOnThisDevice(customer, db)) return;
+
+  if (isNativeApp()) {
+    if (await hasNativePushPermission()) {
+      await ensureNativePushRegistered(customer, db, commit);
+    }
+    return;
+  }
+
+  if (!import.meta.env.PROD) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  try {
+    await enablePush(customer, db, commit);
+  } catch {
+    // Sessiz — ana sayfa/profil banner ile manuel deneme açık kalır
   }
 }
 

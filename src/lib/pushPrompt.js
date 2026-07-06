@@ -78,9 +78,33 @@ export async function deactivateDevicePushToken(customerId) {
   await revokePushTokenOnServer(customerId);
 }
 
+// Bu cihazda aktif push kaydı var mı (yerel token + sunucu eşleşmesi)
+export function hasActivePushOnThisDevice(customer, db) {
+  if (!customer?.id) return false;
+
+  const customerId = Number(customer.id);
+  const localToken = getLocalPushToken(customer.id);
+  if (!localToken) return false;
+
+  return (db.pushSubscriptions || []).some((row) => {
+    if (Number(row.customerId) !== customerId) return false;
+    if (row.active === false || !row.token) return false;
+    if (row.token !== localToken) return false;
+    const status = String(row.permissionStatus || 'granted').toLowerCase();
+    return status === 'granted' || status === 'unknown';
+  });
+}
+
 // Bu cihazda bildirim isteği gösterilmeli mi?
 export function shouldShowPushPrompt(customer, db) {
   if (!customer?.id) return false;
+  if (hasActivePushOnThisDevice(customer, db)) return false;
+
+  // Eski üyeler: izin verilmiş ama token sunucuya düşmemiş — "Sonra" bayrağını yok say
+  if (!isNativeApp() && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    return true;
+  }
+
   if (localStorage.getItem(dismissKey(customer.id)) === '1') return false;
 
   const localToken = getLocalPushToken(customer.id);
@@ -96,7 +120,6 @@ export function shouldShowPushPrompt(customer, db) {
   if (isNativeApp()) return true;
 
   if (!('Notification' in window)) return false;
-  if (hasLocalToken && Notification.permission === 'granted') return false;
 
   return true;
 }

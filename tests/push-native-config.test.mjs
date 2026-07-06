@@ -192,3 +192,22 @@ test('keystore.properties gitignore ile korunur', () => {
   assert.match(gitignore, /google-services\.json/);
   assert.match(gitignore, /GoogleService-Info\.plist/);
 });
+
+test('pushPrompt: eski uye icin izin verilmis ama kayit eksikse banner acilir', () => {
+  const prompt = readFileSync(join(root, 'src', 'lib', 'pushPrompt.js'), 'utf8');
+  assert.match(prompt, /hasActivePushOnThisDevice/);
+  assert.match(prompt, /Notification\.permission === 'granted'/);
+  assert.match(prompt, /Eski üyeler.*Sonra/s);
+});
+
+test('firebasePush: giris sonrasi otomatik push kaydi fonksiyonu var', () => {
+  const push = readFileSync(join(root, 'src', 'lib', 'firebasePush.js'), 'utf8');
+  assert.match(push, /ensurePushRegisteredIfPermitted/);
+  assert.match(push, /hasActivePushOnThisDevice/);
+});
+
+test('App: giris sonrasi ensurePushRegisteredIfPermitted cagrilir', () => {
+  const app = readFileSync(join(root, 'src', 'App.jsx'), 'utf8');
+  assert.match(app, /ensurePushRegisteredIfPermitted/);
+  assert.match(app, /syncPushRegistration/);
+});
