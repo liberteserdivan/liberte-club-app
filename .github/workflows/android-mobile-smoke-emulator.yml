@@ -93,9 +93,9 @@ jobs:
           script: |
             set -euo pipefail
             set -x
-            npm install -g appium@2.11.5
-            appium driver install uiautomator2
-            appium --address 127.0.0.1 --port 4723 --allow-insecure chromedriver_autodownload --log appium.log &
+            npm install --no-save appium@2.11.5 appium-uiautomator2-driver@3.9.0
+            npx appium driver install --source=npm appium-uiautomator2-driver
+            npx appium --address 127.0.0.1 --port 4723 --log appium.log --log-level info &
             APPIUM_PID=$!
             trap 'kill "$APPIUM_PID" 2>/dev/null || true' EXIT
             for i in $(seq 1 90); do
@@ -104,10 +104,13 @@ jobs:
             done
             curl -sf http://127.0.0.1:4723/status
             adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+            mkdir -p ci-logs
             node scripts/verify-local-mobile-test-env.mjs
             node scripts/run-local-android-smoke.mjs || {
               echo '--- appium.log tail ---'
-              tail -n 80 appium.log || true
+              tail -n 120 appium.log || true
+              cp appium.log ci-logs/ 2>/dev/null || true
+              cp e2e/mobile/reports/*.log ci-logs/ 2>/dev/null || true
               exit 1
             }
 
@@ -119,5 +122,6 @@ jobs:
           path: |
             e2e/mobile/reports/*.json
             e2e/mobile/reports/*.log
+            ci-logs/
             appium.log
           if-no-files-found: ignore
