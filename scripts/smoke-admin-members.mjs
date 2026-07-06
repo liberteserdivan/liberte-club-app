@@ -138,5 +138,5 @@ console.log(JSON.stringify({
 }, null, 2));
 
 if (!endpointsOk) {
-  process.exit(endpointsSlow && pinAttempt.data?.adminVerified ? 3 : 2);
+  process.exit(endpointsSlow && authOk ? 3 : 2);
 }

@@ -87,7 +87,7 @@ export function useAdminMembers({ enabled = false, commit, session = null, db = 
     pullMembers();
     const timer = setInterval(pullMembers, 60_000);
     return () => clearInterval(timer);
-  }, [enabled, active, commit, pullMembers, session?.adminVerified, session?.customerId]);
+  }, [enabled, active, commit, pullMembers, session?.isAdmin, session?.customerId]);
 
   // Tam state sync sonrası db'deki üyeleri de yansıt
   useEffect(() => {

@@ -6,7 +6,7 @@ import { saveAdminSnapshot, isPartialAdminCustomerList } from '../lib/adminFullS
 import { mergeAdminRemoteIntoDb } from '../lib/adminMemberSync.js';
 import { reportError } from '../lib/errorHub.js';
 import { isLocalAuth } from '../lib/devAuth.js';
-import { patchMemorySession, getAuthEpoch } from '../lib/session.js';
+import { patchMemorySession, getAuthEpoch, isAdminSessionVerified } from '../lib/session.js';
 import { resolveSyncIntervalMs } from '../lib/syncPolicy.js';
 import { shouldReduceFullStatePull, shouldReducePolling, subscribeSafeMode } from '../lib/safeMode.js';
 import { subscribeRemoteSyncRequest } from '../lib/syncBus.js';
@@ -205,7 +205,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       setDb((current) => {
         const next = mergeAdminRemoteIntoDb(current, remote.data, session);
         persistLocal(next);
-        if (session?.isAdmin && session?.adminVerified) {
+        if (isAdminSessionVerified(session)) {
           saveAdminSnapshot(next);
         }
         return next;

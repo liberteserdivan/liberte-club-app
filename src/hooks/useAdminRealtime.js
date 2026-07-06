@@ -6,15 +6,14 @@ import {
 } from '../lib/realtimeManager.js';
 import { fetchAdminFeed } from '../lib/realtimeFetch.js';
 import { isSupabaseRealtimeEnabled } from '../lib/supabaseClient.js';
-import { getMemorySession } from '../lib/session.js';
+import { getMemorySession, isAdminSessionVerified } from '../lib/session.js';
 
 // Yönetici oturumu hâlâ geçerli mi — logout sonrası commit engeli
 function canCommitAsAdmin() {
-  const session = getMemorySession();
-  return Boolean(session?.isAdmin && session?.adminVerified);
+  return isAdminSessionVerified(getMemorySession());
 }
 
-// Admin panel — yalnızca admin PIN doğrulandığında açılır
+// Admin panel realtime — yalnızca doğrulanmış yönetici oturumunda
 export function useAdminRealtime({
   enabled = false,
   db,

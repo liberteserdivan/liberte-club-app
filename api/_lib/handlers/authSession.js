@@ -84,7 +84,7 @@ export async function handleAuthSession(req, res) {
       customerId: session.customerId,
       role: session.role,
       isAdmin: session.isAdmin,
-      adminVerified: session.adminVerified,
+      adminVerified: session.isAdmin || Boolean(session.adminVerified),
       customer: session.customer,
       loyalty: session.loyalty || null,
       sessionToken

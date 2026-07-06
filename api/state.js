@@ -69,12 +69,12 @@ export default withSqlRequest(async function handler(req, res) {
             mode: 'cloud',
             role: session.role,
             isAdmin: session.isAdmin,
-            adminVerified: session.adminVerified
+            adminVerified: Boolean(session.isAdmin) || Boolean(session.adminVerified)
           });
         }
       }
 
-      const isFullAdmin = session.isAdmin && session.adminVerified;
+      const isFullAdmin = Boolean(session.isAdmin);
       // GET salt-okuma: yazma yan etkisi olmasın. skipPersist ile seed ve
       // menu/loyalty migration kalıcılaştırması GET içinde yapılmaz; yalnızca
       // hesaplanan state döner (fail-fast read altında saveAppState çağrılmaz).
@@ -99,7 +99,7 @@ export default withSqlRequest(async function handler(req, res) {
         mode: 'cloud',
         role: session.role,
         isAdmin: session.isAdmin,
-        adminVerified: session.adminVerified
+        adminVerified: Boolean(session.isAdmin) || Boolean(session.adminVerified)
       });
     }
 
@@ -116,7 +116,7 @@ export default withSqlRequest(async function handler(req, res) {
 
       const clientBaseAt = String(body?.updated_at || body?.baseUpdatedAt || '').trim();
       const remote = await runSqlReadFast(async () => {
-        if (session.isAdmin && session.adminVerified) {
+        if (session.isAdmin) {
           return loadAppState();
         }
         return loadAppStateForCustomer(session.customerId);

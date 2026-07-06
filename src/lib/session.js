@@ -31,6 +31,11 @@ export function getMemorySession() {
   return memorySession;
 }
 
+// Yönetici PIN kapısı kaldırıldı — admin rolü otomatik doğrulanmış sayılır
+export function isAdminSessionVerified(session) {
+  return Boolean(session?.isAdmin) || Boolean(session?.adminVerified);
+}
+
 export function setMemorySession(session) {
   memorySession = session;
   // Oturum kimliği değişti — eski uçuştaki yanıtlar geçersiz olsun

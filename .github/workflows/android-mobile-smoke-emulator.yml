@@ -91,6 +91,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: |
+            bash <<'SMOKE_SCRIPT'
             set -euo pipefail
             set -x
             npm install --no-save appium@2.11.5 appium-uiautomator2-driver@3.9.0
@@ -113,6 +114,7 @@ jobs:
               cp e2e/mobile/reports/*.log ci-logs/ 2>/dev/null || true
               exit 1
             }
+            SMOKE_SCRIPT
 
       - name: Rapor artifact
         if: always()

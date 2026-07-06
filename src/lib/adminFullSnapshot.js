@@ -1,3 +1,5 @@
+import { isAdminSessionVerified } from './session.js';
+
 // Yönetici tam veri anlık görüntüsü — sunucu kapalıyken yedek için
 const ADMIN_SNAPSHOT_KEY = 'liberteAdminSnapshot';
 
@@ -72,7 +74,7 @@ export function clearAdminSnapshot() {
 
 // Yönetici cihazında eksik üye listesi mi?
 export function isPartialAdminCustomerList(db, session) {
-  if (!session?.isAdmin || !session?.adminVerified) return false;
+  if (!isAdminSessionVerified(session)) return false;
   const snap = loadAdminSnapshot();
   const snapCount = snap?.data?.customers?.length || 0;
   const currentCount = (db?.customers || []).length;
@@ -81,7 +83,7 @@ export function isPartialAdminCustomerList(db, session) {
 
 // Soğuk başlangıçta admin snapshot ile db birleştir
 export function mergeAdminSnapshotIntoDb(db, session) {
-  if (!db || !session?.isAdmin || !session?.adminVerified) return db;
+  if (!db || !isAdminSessionVerified(session)) return db;
   const snap = loadAdminSnapshot();
   const snapData = snap?.data;
   if (!snapData?.customers?.length) return db;

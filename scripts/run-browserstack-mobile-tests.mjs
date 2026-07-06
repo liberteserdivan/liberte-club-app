@@ -75,7 +75,7 @@ async function resolveAppUrl(platform) {
     return { appUrl: uploaded.appUrl, artifactName: uploaded.fileName, sourceKey: key };
   }
 
-  console.log(`[mobile-e2e] ${platform} env ${key} present but path invalid — skipping`);
+  console.log(`[mobile-e2e] ${platform} env ${key} present but path invalid ??? skipping`);
   return null;
 }
 
@@ -83,7 +83,7 @@ function runWdio(configRelativePath, envExtra) {
   const configPath = path.join(ROOT, configRelativePath);
   const logDir = path.join(ROOT, 'e2e/mobile/reports');
   fs.mkdirSync(logDir, { recursive: true });
-  const logFile = path.join(logDir, wdio--.log);
+  const logFile = path.join(logDir, `wdio-${Date.now()}.log`);
   const result = spawnSync(
     process.platform === 'win32' ? 'npx.cmd' : 'npx',
     ['wdio', 'run', configPath],
@@ -94,10 +94,10 @@ function runWdio(configRelativePath, envExtra) {
       shell: process.platform === 'win32'
     }
   );
-  const output = ${result.stdout || ''}\n.trim();
+  const output = `${result.stdout || ''}\n${result.stderr || ''}`.trim();
   if (output) fs.writeFileSync(logFile, output.slice(-12000), 'utf8');
   if (result.status !== 0) {
-    console.error([mobile-e2e] wdio failed () log=);
+    console.error(`[mobile-e2e] wdio failed (${result.status}) log=${logFile}`);
     if (output) console.error(output.slice(-2000));
   }
   return result.status === 0;
@@ -156,10 +156,10 @@ async function main() {
   const iosResolved = await resolveAppUrl('ios');
 
   if (!androidResolved) {
-    console.log('[mobile-e2e] Android app URL missing — skipping Android');
+    console.log('[mobile-e2e] Android app URL missing ??? skipping Android');
   }
   if (!iosResolved) {
-    console.log('[mobile-e2e] iOS app URL missing — skipping iOS');
+    console.log('[mobile-e2e] iOS app URL missing ??? skipping iOS');
   }
   if (!androidResolved && !iosResolved) {
     throw new Error(

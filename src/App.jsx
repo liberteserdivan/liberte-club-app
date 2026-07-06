@@ -182,7 +182,6 @@ export default function App() {
       logoutSession();
       resetDb();
       setSession(null);
-      setAdminGateSkipped(false);
       adminHydratedRef.current = false;
 
       // 2) Temizlik arka planda — logout sonrası commit/state yazımı YOK
@@ -205,7 +204,6 @@ export default function App() {
       return;
     }
     setSession(next);
-    setAdminGateSkipped(false);
     setAuthNotice('');
   }
 
@@ -281,13 +279,13 @@ export default function App() {
   // STABİLİTE: useAdminMembers zaten üye listesini çeker — burada tekrar tetikleme.
   // refreshRemote + admin-members + guardian aynı anda DB bağlantısı açmasın.
   useEffect(() => {
-    if (!authReady || !session?.isAdmin || !session?.adminVerified || adminHydratedRef.current) return;
+    if (!authReady || !isAdmin || !adminVerified || adminHydratedRef.current) return;
     adminHydratedRef.current = true;
     const merged = mergeAdminSnapshotIntoDb(db, session);
     if (merged !== db) commit(merged, { skipRemote: true });
     const syncTimer = setTimeout(() => refreshRemote(true), 2500);
     return () => clearTimeout(syncTimer);
-  }, [authReady, session?.isAdmin, session?.adminVerified, session?.customerId, db, commit, refreshRemote]);
+  }, [authReady, isAdmin, adminVerified, session?.customerId, db, commit, refreshRemote]);
 
   // Yönetim sekmesine geçince listeyi yenile — ilk açılışta useAdminMembers zaten çeker,
   // burada kısa gecikme ile tekrar (çift istek fırtınasını önler).
@@ -483,10 +481,7 @@ export default function App() {
               setSession={handleSetSession}
               setTab={setTab}
               isAdmin={isAdmin}
-              onOpenAdmin={() => {
-                setAdminGateSkipped(false);
-                setTab('admin');
-              }}
+              onOpenAdmin={() => setTab('admin')}
             />
           )}
           {tab === 'admin' && isAdmin && adminVerified && (

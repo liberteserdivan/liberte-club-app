@@ -22,6 +22,11 @@ export function hashToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 
+// Oturum satırından admin doğrulama — PIN kapısı kaldırıldı, admin rolü yeterli
+function adminVerifiedFromRow(row) {
+  return row.role === 'admin' || Boolean(row.admin_verified);
+}
+
 // Oturum tablosunu hazırla
 async function ensureSessionTable(sql) {
   await ensureSchemaReady(sql);
@@ -108,7 +113,7 @@ export async function getSession(req) {
       customerId: Number(row.customer_id),
       role: row.role,
       isAdmin: row.role === 'admin',
-      adminVerified: Boolean(row.admin_verified),
+      adminVerified: adminVerifiedFromRow(row),
       expiresAt: row.expires_at
     };
 
@@ -142,7 +147,7 @@ export async function getSessionForQr(req) {
       customerId: Number(row.customer_id),
       role: row.role,
       isAdmin: row.role === 'admin',
-      adminVerified: Boolean(row.admin_verified)
+      adminVerified: adminVerifiedFromRow(row)
     };
   });
 }
@@ -172,7 +177,7 @@ export async function getSessionIdentityForLogin(req) {
       customerId: Number(row.customer_id),
       role: row.role,
       isAdmin: row.role === 'admin',
-      adminVerified: Boolean(row.admin_verified)
+      adminVerified: adminVerifiedFromRow(row)
     };
   });
 }
@@ -204,7 +209,7 @@ export async function getSessionForBootstrap(req) {
       customerId: Number(row.customer_id),
       role: row.role,
       isAdmin: row.role === 'admin',
-      adminVerified: Boolean(row.admin_verified)
+      adminVerified: adminVerifiedFromRow(row)
     };
 
     const {
@@ -562,7 +567,7 @@ export async function requireAdminSession(req, res, { pinRequired = false, light
     return {
       customerId: identity.customerId,
       isAdmin: true,
-      adminVerified: identity.adminVerified,
+      adminVerified: true,
       role: 'admin'
     };
   }

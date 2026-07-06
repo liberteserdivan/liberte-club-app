@@ -1,3 +1,4 @@
+import { isAdminSessionVerified } from './session.js';
 import { fetchAdminCustomers, fetchAdminCustomersStrict } from './realtimeFetch.js';
 import { fetchAdminMembersList } from './adminMemberClient.js';
 import { loadRemote } from './db.js';
@@ -91,7 +92,7 @@ export function resolveAdminCustomers(db, ...extraLists) {
 
 // Sunucu dilimi boş veya eksikse snapshot ile geri yükle
 export function restoreAdminMembersFromSnapshot(db, session) {
-  if (!session?.isAdmin || !session?.adminVerified) return db;
+  if (!isAdminSessionVerified(session)) return db;
   return mergeAdminSnapshotIntoDb(db, session);
 }
 
@@ -109,7 +110,7 @@ export function applyAdminMemberSlice(db, slice) {
 // Eski /api/state yanıtı tek üyelikse tam listeyi ezme
 export function mergeAdminRemoteIntoDb(currentDb, remoteData, session) {
   if (!remoteData) return currentDb;
-  if (!session?.isAdmin || !session?.adminVerified) return remoteData;
+  if (!isAdminSessionVerified(session)) return remoteData;
 
   const bestCustomers = resolveAdminCustomers(currentDb, remoteData.customers || []);
 
@@ -160,7 +161,7 @@ export function pickAdminMemberList({ adminMembers = [], adminMembersStatus = 'i
 // Tam admin state yanıtından üye dilimini çıkar
 async function fetchMembersFromFullState() {
   const remote = await loadRemote();
-  if (!remote?.adminVerified || !remote?.data?.customers?.length) {
+  if (!remote?.data?.customers?.length) {
     return null;
   }
 

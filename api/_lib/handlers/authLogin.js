@@ -270,7 +270,7 @@ async function resolveLoginOutcome(req, trace, phases, body) {
         customerId: Number(row.customer_id),
         role: row.role,
         isAdmin: row.role === 'admin',
-        adminVerified: Boolean(row.admin_verified)
+        adminVerified: row.role === 'admin' || Boolean(row.admin_verified)
       };
     }
   }
