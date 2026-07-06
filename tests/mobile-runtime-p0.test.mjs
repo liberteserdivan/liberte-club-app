@@ -97,6 +97,13 @@ test('mobil e2e: smoke build webview debug bayragi', () => {
   assert.match(main, /BuildConfig\.DEBUG/);
 });
 
+test('mobil e2e: admin pin gate dismiss helper', () => {
+  const flows = read('e2e/mobile/helpers/flows.js');
+  assert.match(flows, /dismissAdminPinGateIfVisible/);
+  assert.match(flows, /pressKeyCode\(3\)/);
+  assert.match(read('e2e/mobile/helpers/selectors.js'), /adminPinSkip/);
+});
+
 test('mobil e2e: app url alias cozumleme', () => {
   const src = read('scripts/run-browserstack-mobile-tests.mjs');
   assert.match(src, /BROWSERSTACK_ANDROID_APP_URL/);
@@ -110,6 +117,7 @@ test('mobil e2e: UI testid secicileri', () => {
   assert.match(read('src/pages/LoginPage.jsx'), /data-testid="login-pin"/);
   assert.match(read('src/pages/ProfilePage.jsx'), /data-testid="logout-button"/);
   assert.match(read('src/components/AdminPinGate.jsx'), /data-testid="admin-pin-input"/);
+  assert.match(read('src/components/AdminPinGate.jsx'), /data-testid="admin-pin-skip"/);
   assert.match(read('src/pages/AdminPage.jsx'), /data-testid="admin-members-panel"/);
 });
 

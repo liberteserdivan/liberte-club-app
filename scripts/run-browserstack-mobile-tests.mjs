@@ -81,7 +81,7 @@ function runWdio(configRelativePath, envExtra) {
     process.platform === 'win32' ? 'npx.cmd' : 'npx',
     ['wdio', 'run', configPath],
     {
-      cwd: ROOT,
+      cwd: path.join(ROOT, 'e2e/mobile'),
       env: { ...process.env, ...envExtra },
       stdio: 'inherit',
       shell: process.platform === 'win32'

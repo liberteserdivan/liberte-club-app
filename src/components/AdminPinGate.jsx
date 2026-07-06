@@ -77,7 +77,7 @@ export default function AdminPinGate({ onVerified, onSkip, fullscreen = false })
         </form>
         {error && <p className="adminPinError">{error}</p>}
         {onSkip && (
-          <button type="button" className="ghost adminPinSkip" onClick={onSkip}>
+          <button type="button" data-testid="admin-pin-skip" className="ghost adminPinSkip" onClick={onSkip}>
             Müşteri modunda devam et
           </button>
         )}

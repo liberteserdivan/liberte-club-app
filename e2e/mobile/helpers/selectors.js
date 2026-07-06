@@ -10,6 +10,7 @@ export const SELECTORS = {
   openAdminPanel: '[data-testid="open-admin-panel"]',
   adminPinInput: '[data-testid="admin-pin-input"]',
   adminPinSubmit: '[data-testid="admin-pin-submit"]',
+  adminPinSkip: '[data-testid="admin-pin-skip"]',
   adminMembersPanel: '[data-testid="admin-members-panel"]',
   adminMembersStatus: '[data-testid="admin-members-status"]'
 };

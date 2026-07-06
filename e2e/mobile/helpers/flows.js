@@ -38,6 +38,7 @@ export async function loginWithPin(browser, meta) {
   await submit.click();
 
   await waitForTestId(browser, SELECTORS.navHome, LOGIN_TIMEOUT_MS);
+  await dismissAdminPinGateIfVisible(browser);
 
   const errorVisible = await isDisplayed(browser, '.loginError, .adminPinError', 2_000);
   if (errorVisible) {
@@ -47,9 +48,27 @@ export async function loginWithPin(browser, meta) {
   logSafe('login', { ...meta, step: 'login', status: 'ok' });
 }
 
+
+/** Admin PIN tam ekran kapisini kapatir — profil navigasyonu icin */
+async function dismissAdminPinGateIfVisible(browser) {
+  if (!(await isDisplayed(browser, SELECTORS.adminPinInput, 3_000))) {
+    return;
+  }
+  if (await isDisplayed(browser, SELECTORS.adminPinSkip, 2_000)) {
+    await browser.$(SELECTORS.adminPinSkip).click();
+    return;
+  }
+  const { adminPin } = getMobileTestCredentials();
+  if (!adminPin) return;
+  const pinInput = await waitForTestId(browser, SELECTORS.adminPinInput);
+  await pinInput.setValue(adminPin);
+  await browser.$(SELECTORS.adminPinSubmit).click();
+}
+
 /** Profilden Ã«Â¿Â¯Ã‚Â½Ã„Â±kÃ„Â±Ã…Å¸ */
 export async function logoutFromProfile(browser, meta) {
   await switchToAppWebView(browser);
+  await dismissAdminPinGateIfVisible(browser);
   const profileNav = await waitForTestId(browser, SELECTORS.navProfile);
   await profileNav.click();
   const logoutBtn = await waitForTestId(browser, SELECTORS.logoutButton);
@@ -63,10 +82,7 @@ export async function relaunchAndAssertSession(browser, meta) {
   const appPackage = browser.capabilities['appium:appPackage'] || browser.capabilities.appPackage;
   const appActivity = browser.capabilities['appium:appActivity'] || browser.capabilities.appActivity;
   if (appPackage && appActivity) {
-    await browser.execute('mobile: shell', {
-      command: 'am',
-      args: ['force-stop', appPackage]
-    });
+    await browser.pressKeyCode(3);
     await browser.pause(1_500);
     await browser.execute('mobile: activateApp', { appId: appPackage });
   } else {
@@ -83,6 +99,7 @@ export async function relaunchAndAssertSession(browser, meta) {
 
 /** Admin PIN ve Ã«Â¿Â¯Ã‚Â½ye listesi */
 export async function verifyAdminMembers(browser, meta) {
+  await dismissAdminPinGateIfVisible(browser);
   const { adminPin } = getMobileTestCredentials();
   if (!adminPin) {
     logSafe('admin-skip', { ...meta, step: 'admin-pin', status: 'skipped', code: 'NO_ADMIN_PIN' });
