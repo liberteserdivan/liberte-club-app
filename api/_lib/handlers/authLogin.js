@@ -15,10 +15,11 @@ import { isValidPinFormat, normalizePin, verifyCustomerPin } from '../pinAuth.js
 import { findCustomerForLogin, findLoyaltyByCustomerId, loyaltyRowToCard } from '../customersStore.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 import { publicDbErrorCode, publicDbErrorMessage, isTransientDbError } from '../dbTransient.js';
-import { runSqlLoginRead, getLoginReadAttemptTimeoutMs } from '../runSql.js';
+import { runSqlReadFast, getLoginReadAttemptTimeoutMs } from '../runSql.js';
 import { ROUTE_TIMING } from '../routeTiming.js';
 import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 import { createLoginPhaseTracker } from '../loginPhase.js';
+import { primeSqlConnection } from '../sql.js';
 
 // Rate-limit — DB gecikirse fail-open (login bloklanmaz)
 async function isLoginRateLimited(req, action, options) {
@@ -152,7 +153,9 @@ export async function handleAuthLogin(req, res) {
       }
 
       phases.setPhase('credential_lookup');
-      return runSqlLoginRead(() => resolveLoginOutcome(req, trace, phases, body));
+      // Soğuk lambda: bağlantı kurulumu credential_lookup zaman aşımına yansımasın
+      await primeSqlConnection(3000).catch(() => false);
+      return resolveLoginOutcome(req, trace, phases, body);
     }, ROUTE_TIMING.LOGIN_CREDENTIAL_MS, 'auth-login-credential', {
       getPhase: () => phases.getPhase()
     });
@@ -253,31 +256,37 @@ async function resolveLoginOutcome(req, trace, phases, body) {
 
   phases.setPhase('credential_lookup');
 
-  // Token varsa hafif oturum satırı — tam getSession/bootstrap yok
-  let existing = null;
   const token = readAuthToken(req);
-  if (token) {
-    const rows = await sql`
-      SELECT customer_id, role, admin_verified
-      FROM auth_sessions
-      WHERE token_hash = ${hashToken(token)}
-        AND expires_at > now()
-      LIMIT 1
-    `;
-    const row = rows[0];
-    if (row) {
-      existing = {
+
+  // Oturum satırı ile müşteri aramasını paralel yap — toplam süreyi kısalt
+  const sessionPromise = token
+    ? runSqlReadFast(async () => {
+      const rows = await sql`
+        SELECT customer_id, role, admin_verified
+        FROM auth_sessions
+        WHERE token_hash = ${hashToken(token)}
+          AND expires_at > now()
+        LIMIT 1
+      `;
+      const row = rows[0];
+      if (!row) return null;
+      return {
         customerId: Number(row.customer_id),
         role: row.role,
         isAdmin: row.role === 'admin',
         adminVerified: row.role === 'admin' || Boolean(row.admin_verified)
       };
-    }
-  }
+    })
+    : Promise.resolve(null);
+
+  const customerPromise = runSqlReadFast(() => findCustomerForLogin(sql, phone));
+
+  const [existing, customer] = await Promise.all([sessionPromise, customerPromise]);
   trace.markStep('session_read');
 
-  const customer = await findCustomerForLogin(sql, phone);
-  const hasPinAuth = customer ? false : await hasCustomerPinAuth(sql, phone);
+  const hasPinAuth = customer
+    ? false
+    : await runSqlReadFast(() => hasCustomerPinAuth(sql, phone));
 
   trace.log('lookup', {
     phoneLen: phone.length,
@@ -319,7 +328,7 @@ async function resolveLoginOutcome(req, trace, phases, body) {
   phases.setPhase('credential_verify');
   trace.markStep('pin_lookup');
 
-  const verified = await verifyCustomerPin(sql, phone, pin);
+  const verified = await runSqlReadFast(() => verifyCustomerPin(sql, phone, pin));
   trace.markStep('pin_verify');
 
   if (!verified.ok) {

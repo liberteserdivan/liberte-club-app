@@ -23,14 +23,15 @@ test('authLogin: createSessionOnce tek deneme', () => {
 
 test('authLogin: LOGIN_CREDENTIAL_MS bounded', () => {
   assert.match(read('api/_lib/handlers/authLogin.js'), /LOGIN_CREDENTIAL_MS/);
-  assert.match(read('api/_lib/routeTiming.js'), /LOGIN_CREDENTIAL_MS:\s*6000/);
+  assert.match(read('api/_lib/routeTiming.js'), /LOGIN_CREDENTIAL_MS:\s*18000/);
 });
 
-test('LoginPage: 503 tek deneme loading kapanir', () => {
+test('LoginPage: 503 gecici hatada bir kez daha dener', () => {
   const fn = read('src/pages/LoginPage.jsx').slice(
     read('src/pages/LoginPage.jsx').indexOf('async function loginWithPin'),
     read('src/pages/LoginPage.jsx').indexOf('function readRegisterFields')
   );
-  assert.doesNotMatch(fn, /for \(let attempt/);
+  assert.match(fn, /LOGIN_TEMPORARILY_UNAVAILABLE/);
+  assert.match(fn, /postLoginWithRetry/);
   assert.match(fn, /setLoading\(false\)/);
 });

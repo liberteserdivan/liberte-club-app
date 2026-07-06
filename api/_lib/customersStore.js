@@ -121,20 +121,28 @@ async function resolveCustomerRowByPhone(sql, phone) {
   return row;
 }
 
-// Login için salt-okunur müşteri arama — UPDATE/repair/state yok
+// Login için salt-okunur müşteri arama — indeksli iki adım (OR taraması yok)
 export async function findCustomerForLogin(sql, phone) {
   const normalized = cleanPhone(phone);
   if (!sql || normalized.length < 10) return null;
 
-  const variants = phoneLookupVariants(phone);
-  const rows = await sql`
+  let rows = await sql`
     SELECT id, phone, name, email, birth_date, referral_code, is_admin
     FROM customers
     WHERE normalized_phone = ${normalized}
-       OR phone IN ${inList(sql, variants)}
-    ORDER BY is_admin DESC, id ASC
     LIMIT 1
   `;
+
+  if (!rows[0]) {
+    const variants = phoneLookupVariants(phone);
+    rows = await sql`
+      SELECT id, phone, name, email, birth_date, referral_code, is_admin
+      FROM customers
+      WHERE phone IN ${inList(sql, variants)}
+      ORDER BY is_admin DESC, id ASC
+      LIMIT 1
+    `;
+  }
 
   const row = rows[0];
   if (!row) return null;

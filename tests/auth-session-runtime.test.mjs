@@ -137,7 +137,7 @@ test('authLogin: transient/deadline 503 LOGIN_TEMPORARILY_UNAVAILABLE', () => {
   assert.doesNotMatch(handler, /step:\s*'login_unavailable'/);
   assert.doesNotMatch(phaseLib, /step:\s*'login_unavailable'/);
   const timing = read('api/_lib/routeTiming.js');
-  assert.match(timing, /LOGIN_CREDENTIAL_MS:\s*6000/);
+  assert.match(timing, /LOGIN_CREDENTIAL_MS:\s*18000/);
 });
 
 test('App: musteri hydrate timeout logout yapmaz degraded mod', () => {

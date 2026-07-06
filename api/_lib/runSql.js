@@ -57,7 +57,7 @@ export function getLoginReadAttemptTimeoutMs() {
 
 export function runSqlLoginRead(task) {
   return withSqlRetry(task, {
-    retries: 0,
+    retries: 1,
     resetClient: resetSqlClient,
     attemptTimeoutMs: getLoginReadAttemptTimeoutMs()
   });

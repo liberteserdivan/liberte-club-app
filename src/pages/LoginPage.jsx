@@ -226,6 +226,30 @@ export default function Login({ db, commit, setSession }) {
     finishSession({ customerId: customer.id, role: 'user', isAdmin: false, adminVerified: false });
   }
 
+  function sleep(ms) {
+    return new Promise((resolve) => { setTimeout(resolve, ms); });
+  }
+
+  // Gecici 503/timeout — bir kez daha dene (soğuk DB / pooler)
+  async function postLoginWithRetry(ph, pinValue) {
+    const body = JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() });
+    const opts = {
+      ...AUTH_REQUEST_OPTIONS,
+      skipUnauthorized: true,
+      omitAuth: true,
+      method: 'POST',
+      body
+    };
+    let result = await apiJson('/api/auth/login', opts);
+    const transient = result.response.status === 503
+      || result.data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE';
+    if (transient) {
+      await sleep(900);
+      result = await apiJson('/api/auth/login', opts);
+    }
+    return result;
+  }
+
   async function loginWithPin() {
     const ph = readPhone();
     const pinValue = readPins(false);
@@ -261,13 +285,7 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
 
-      const { response, data } = await apiJson('/api/auth/login', {
-        ...AUTH_REQUEST_OPTIONS,
-        skipUnauthorized: true,
-        omitAuth: true,
-        method: 'POST',
-        body: JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() })
-      });
+      const { response, data } = await postLoginWithRetry(ph, pinValue);
 
       if (response.status === 503 || data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE') {
         notify(readApiError(data, 'Giriş şu an tamamlanamıyor. Lütfen birkaç saniye sonra tekrar deneyin.'), 'info');

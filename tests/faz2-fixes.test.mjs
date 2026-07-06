@@ -59,14 +59,12 @@ test('B-4: rateLimit tek atomik INSERT ON CONFLICT RETURNING kullanir', () => {
   assert.match(src, /hit_count \|\| 0\) > maxHits/);
 });
 
-// B-2: login rate-limit retry disinda
+// B-2: login rate-limit credential deadline icinde, SQL retry disinda
 test('B-2: handleAuthLogin rate-limit kontrolu retry disinda', () => {
   const src = read('api/_lib/handlers/authLogin.js');
-  // runSqlLoginRead'dan ONCE enforceAuthRateLimit cagrilmali
   const rlIdx = src.indexOf("isLoginRateLimited(req, 'auth_login'");
-  const retryIdx = src.indexOf('runSqlLoginRead(');
-  assert.ok(rlIdx > 0 && retryIdx > 0 && rlIdx < retryIdx, 'rate-limit retry oncesi olmali');
-  // resolveLoginOutcome icinde artik enforceAuthRateLimit cagrisi olmamali
+  const resolveIdx = src.indexOf('resolveLoginOutcome(');
+  assert.ok(rlIdx > 0 && resolveIdx > 0 && rlIdx < resolveIdx, 'rate-limit credential lookup oncesi olmali');
   const resolveStart = src.indexOf('async function resolveLoginOutcome');
   assert.ok(src.indexOf('enforceAuthRateLimit', resolveStart) === -1);
 });

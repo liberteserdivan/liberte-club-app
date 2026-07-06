@@ -48,9 +48,15 @@ test('authLogin: credential lookup minimal findCustomerForLogin', () => {
   assert.doesNotMatch(src, /getSessionIdentityForLogin/);
 });
 
-test('authLogin: LOGIN_READ_ATTEMPT_MS 4000ms', () => {
-  assert.match(read('api/_lib/routeTiming.js'), /LOGIN_READ_ATTEMPT_MS:\s*4000/);
-  assert.match(read('api/_lib/handlers/authLogin.js'), /getLoginReadAttemptTimeoutMs/);
+test('authLogin: primeSqlConnection credential oncesi', () => {
+  const src = read('api/_lib/handlers/authLogin.js');
+  assert.match(src, /primeSqlConnection/);
+  assert.match(src, /resolveLoginOutcome/);
+  assert.doesNotMatch(src, /runSqlLoginRead/);
+});
+
+test('authLogin: LOGIN_READ_ATTEMPT_MS 10000ms', () => {
+  assert.match(read('api/_lib/routeTiming.js'), /LOGIN_READ_ATTEMPT_MS:\s*10000/);
 });
 
 test('authLogin: rate limit paralel Promise.all', () => {
@@ -73,6 +79,13 @@ test('authLogin: credential_lookup 503 db_error_type query_timeout', async () =>
   assert.equal(body.timings.db_error_type, 'query_timeout');
   assert.equal(body.timings.query_timeout_ms, 4000);
   assert.doesNotMatch(JSON.stringify(body), /login_unavailable/);
+});
+
+test('findCustomerForLogin: OR yerine indeksli iki adim', () => {
+  const src = read('api/_lib/customersStore.js');
+  const fn = src.slice(src.indexOf('export async function findCustomerForLogin'), src.indexOf('export async function findCustomerByPhone'));
+  assert.match(fn, /normalized_phone = \$\{normalized\}/);
+  assert.doesNotMatch(fn, /OR phone IN/);
 });
 
 test('classifyLoginDbError: guvenli siniflar', async () => {
