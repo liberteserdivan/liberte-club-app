@@ -1,23 +1,23 @@
 import { handlePushRegisterDevice } from './_lib/handlers/pushRegisterDevice.js';
 import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
-import { withSqlRequest } from './_lib/sqlRequest.js';
+import { withSqlRequest, withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
 
-const PUSH_ACTIONS = {
-  'register-device': handlePushRegisterDevice,
-  send: handleAdminPushSend
-};
+// Cihaz kaydı — Guardian hydrate yok; login/ana ekranı bloklanmamalı
+const registerSqlHandler = withSqlRequestNoGuardian(handlePushRegisterDevice);
 
-export default withSqlRequest(async function handler(req, res) {
+// Admin push gönderimi — tam Guardian gözlemi
+const sendSqlHandler = withSqlRequest(handleAdminPushSend);
+
+export default async function pushRouter(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
 
   if (action === 'send') {
-    return handleAdminPushSend(req, res);
+    return sendSqlHandler(req, res);
   }
 
-  const route = PUSH_ACTIONS[action];
-  if (!route) {
-    return res.status(400).json({ error: 'Geçersiz push action' });
+  if (action === 'register-device') {
+    return registerSqlHandler(req, res);
   }
 
-  return route(req, res);
-});
+  return res.status(400).json({ error: 'Geçersiz push action' });
+}

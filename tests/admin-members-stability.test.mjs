@@ -8,6 +8,52 @@ import { deriveClientHealth } from '../src/lib/clientHealthSeverity.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(root, rel), 'utf8');
 
+// --- Merkezi hata katmani ve rota izolasyonu ---
+
+test('sendApiError transient DB hatasinda 503 DATABASE_TRANSIENT doner', async () => {
+  const { sendApiError } = await import('../api/_lib/http.js');
+  const res = {
+    headersSent: false,
+    statusCode: 200,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  };
+
+  sendApiError(res, {
+    status: 500,
+    code: 'SESSION_RESTORE_FAILED',
+    message: 'Oturum okunamadi',
+    error: new Error('connection terminated unexpectedly')
+  });
+
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body.code, 'DATABASE_TRANSIENT');
+});
+
+test('auth.js: admin-members withSqlRequestNoGuardian kullanir', () => {
+  const src = read('api/auth.js');
+  assert.match(src, /adminMembersSqlHandler/);
+  assert.match(src, /return adminMembersSqlHandler\(req, res\)/);
+});
+
+test('push.js: register-device withSqlRequestNoGuardian kullanir', () => {
+  const src = read('api/push.js');
+  assert.match(src, /registerSqlHandler/);
+  assert.match(src, /withSqlRequestNoGuardian\(handlePushRegisterDevice\)/);
+});
+
+test('pushRegisterDevice: requireSessionLight kullanir', () => {
+  const src = read('api/_lib/handlers/pushRegisterDevice.js');
+  assert.match(src, /requireSessionLight/);
+  assert.doesNotMatch(src, /requireSession\(/);
+});
+
+test('getSessionForBootstrap: musteri yoksa null doner', () => {
+  const src = read('api/_lib/auth.js');
+  const fn = src.slice(src.indexOf('export async function getSessionForBootstrap'), src.indexOf('export async function invalidateCurrentSession'));
+  assert.match(fn, /if \(!customer\) return null/);
+});
+
 // --- Server handler (kaynak-metin: ESM mock yerine yapı doğrulaması) ---
 
 test('adminMembers: veri okumaları runSqlReadFast ile fail-fast', () => {
@@ -17,11 +63,11 @@ test('adminMembers: veri okumaları runSqlReadFast ile fail-fast', () => {
   assert.match(src, /runSqlReadFast\(\(\) => loadLoyaltyMapFromSql\(getSql\(\)\)\)/, 'loyalty okuma fail-fast olmalı');
 });
 
-test('adminMembers: geçici DB hatasında 503 ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE', () => {
+test('adminMembers: geçici DB hatasında sendApiError ile 503', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
-  assert.match(src, /isTransientDbError/);
-  assert.match(src, /if \(isTransientDbError\(error\)\)/, 'transient kontrolü olmalı');
-  assert.match(src, /status\(503\)[\s\S]*ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE/, '503 + özel kod dönmeli');
+  assert.match(src, /sendApiError/);
+  assert.match(src, /ADMIN_MEMBERS_FAILED/);
+  assert.match(src, /Promise\.all/);
 });
 
 test('adminMembers: auth/PIN kontrolü veri okumasından ÖNCE (hızlı 401/403)', () => {
@@ -34,10 +80,9 @@ test('adminMembers: auth/PIN kontrolü veri okumasından ÖNCE (hızlı 401/403)
   assert.match(src, /if \(!admin\) return;/);
 });
 
-test('adminMembers: 500 raw DB error sızdırmaz (publicErrorMessage)', () => {
+test('adminMembers: merkezi hata modulu kullanir', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
-  assert.match(src, /status\(500\)[\s\S]*publicErrorMessage\(error, 'Üye listesi alınamadı'\)/);
-  // Ham error.message doğrudan JSON'a yazılmamalı
+  assert.match(src, /sendApiError/);
   assert.doesNotMatch(src, /error:\s*error\.message/);
 });
 
@@ -74,6 +119,12 @@ test('Guardian: temiz telemetride healthy kalır (regresyon koruması)', () => {
 });
 
 // --- İstemci gating (kaynak-metin) ---
+
+test('adminMemberClient: 503 transient icin retry var', () => {
+  const src = read('src/lib/adminMemberClient.js');
+  assert.match(src, /ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE/);
+  assert.match(src, /await sleep\(2000\)/);
+});
 
 test('App: admin members yalnızca adminVerified sonrası çağrılır (login ekranında yok)', () => {
   const src = read('src/App.jsx');

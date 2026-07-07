@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS guardian_incidents (
 CREATE INDEX IF NOT EXISTS idx_guardian_incidents_status
   ON guardian_incidents (status, last_seen_at DESC);
 
+-- Backend-only: policy yok = anon/authenticated erişimi kapalı (API postgres BYPASSRLS)
+ALTER TABLE guardian_safe_mode ENABLE ROW LEVEL SECURITY;
+ALTER TABLE guardian_incidents ENABLE ROW LEVEL SECURITY;
+
 -- (Opsiyonel) Metrik olay arşivi — yüksek hacimli olabilir; v2'de değerlendirilir.
 -- CREATE TABLE IF NOT EXISTS guardian_events (
 --   id bigserial PRIMARY KEY,

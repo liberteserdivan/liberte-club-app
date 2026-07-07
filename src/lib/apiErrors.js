@@ -132,3 +132,21 @@ export function formatClientApiError({ response = null, data = {}, error = null,
     abort: false
   };
 }
+
+// Tekrar denenebilir API kodu mu?
+export function isRetryableApiCode(code) {
+  return [
+    'DATABASE_TRANSIENT',
+    'SESSION_TEMPORARILY_UNAVAILABLE',
+    'ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE',
+    'PUSH_TEMPORARILY_UNAVAILABLE',
+    'SERVICE_UNAVAILABLE'
+  ].includes(String(code || ''));
+}
+
+// Oturum bootstrap için kullanıcıya bilgi gösterilmeli mi?
+export function shouldShowAuthNotice(status, code) {
+  if (Number(status) === 503) return true;
+  if (Number(status) >= 500) return true;
+  return ['SESSION_RESTORE_FAILED', 'SESSION_TEMPORARILY_UNAVAILABLE'].includes(String(code || ''));
+}

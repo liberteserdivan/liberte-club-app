@@ -131,13 +131,13 @@ export async function handleRealtimeFetch(req, res) {
     }
 
     if (resource === 'admin-feed') {
-      const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
+      const admin = await requireAdminSession(req, res, { light: true });
       if (!admin) return;
       return handleAdminFeed(req, res);
     }
 
     if (resource === 'admin-customers') {
-      const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
+      const admin = await requireAdminSession(req, res, { light: true });
       if (!admin) return;
       return handleAdminCustomers(req, res);
     }

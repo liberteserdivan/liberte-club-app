@@ -41,7 +41,7 @@ export async function handleAdminBackup(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const session = await requireAdminSession(req, res, { pinRequired: true });
+  const session = await requireAdminSession(req, res);
   if (!session) return;
 
   try {

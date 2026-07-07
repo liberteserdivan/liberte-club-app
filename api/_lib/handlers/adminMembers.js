@@ -1,11 +1,10 @@
-import { applyCors, publicErrorMessage } from '../http.js';
+import { applyCors, sendApiError } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { listAllCustomers } from '../customersStore.js';
 import { loadLoyaltyMapFromSql } from '../loyaltyStore.js';
 import { getSql } from '../sql.js';
 import { runSqlReadFast } from '../runSql.js';
-import { classifyLoginDbError, isTransientDbError } from '../dbTransient.js';
-
+import { classifyLoginDbError } from '../dbTransient.js';
 // Güvenli zamanlama özeti — PII/token içermez
 function buildTimings({ t0, authMs, queryMs, totalMs, dbErrorType = null, queryTimeoutMs = null }) {
   return {
@@ -25,15 +24,15 @@ export async function handleAdminMembers(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const tAuthStart = Date.now();
-  const admin = await requireAdminSession(req, res, { pinRequired: true, light: true });
+  const admin = await requireAdminSession(req, res, { light: true });
   const authMs = Date.now() - tAuthStart;
   if (!admin) return;
 
   if (!getSql()) {
-    return res.status(503).json({
-      ok: false,
+    return sendApiError(res, {
+      status: 503,
       code: 'ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE',
-      error: 'Üye listesi şu an alınamıyor. Lütfen tekrar deneyin.',
+      message: 'Üye listesi şu an alınamıyor. Lütfen tekrar deneyin.',
       step: 'admin_members_no_sql',
       requestId: req.requestId || null,
       timings: buildTimings({ t0, authMs, queryMs: 0 })
@@ -42,8 +41,10 @@ export async function handleAdminMembers(req, res) {
 
   const tQueryStart = Date.now();
   try {
-    const customers = await runSqlReadFast(() => listAllCustomers(getSql()));
-    const loyalty = await runSqlReadFast(() => loadLoyaltyMapFromSql(getSql()));
+    const [customers, loyalty] = await Promise.all([
+      runSqlReadFast(() => listAllCustomers(getSql())),
+      runSqlReadFast(() => loadLoyaltyMapFromSql(getSql()))
+    ]);
     const queryMs = Date.now() - tQueryStart;
 
     return res.status(200).json({
@@ -64,24 +65,14 @@ export async function handleAdminMembers(req, res) {
       dbErrorType: dbErrorType || null
     });
 
-    if (isTransientDbError(error)) {
-      return res.status(503).json({
-        ok: false,
-        code: 'ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE',
-        error: 'Üye listesi şu an alınamıyor. Lütfen tekrar deneyin.',
-        step: 'admin_members_transient',
-        requestId: req.requestId || null,
-        timings
-      });
-    }
-
-    return res.status(500).json({
-      ok: false,
+    return sendApiError(res, {
+      status: 500,
       code: 'ADMIN_MEMBERS_FAILED',
-      error: publicErrorMessage(error, 'Üye listesi alınamadı'),
+      message: 'Üye listesi alınamadı',
       step: 'admin_members_failed',
       requestId: req.requestId || null,
-      timings
+      timings,
+      error
     });
   }
 }

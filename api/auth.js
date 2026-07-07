@@ -65,6 +65,12 @@ const loginSqlHandler = withSqlRequestNoGuardian(async function handler(req, res
   return route(req, res);
 });
 
+// Üye listesi — Guardian hydrate yok; admin panel hızlı yanıt
+const adminMembersSqlHandler = withSqlRequestNoGuardian(async function handler(req, res) {
+  const route = await AUTH_ACTIONS['admin-members']();
+  return route(req, res);
+});
+
 export default async function authRouter(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
 
@@ -87,6 +93,15 @@ export default async function authRouter(req, res) {
       return res.status(200).end();
     }
     return loginSqlHandler(req, res);
+  }
+
+  // /api/admin/members — Guardian hydrate yok; üye listesi hızlı yanıt
+  if (action === 'admin-members') {
+    if (req.method === 'OPTIONS') {
+      applyCors(req, res, 'GET,OPTIONS');
+      return res.status(200).end();
+    }
+    return adminMembersSqlHandler(req, res);
   }
 
   return sqlHandler(req, res);

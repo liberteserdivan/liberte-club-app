@@ -110,8 +110,8 @@ export function deriveClientHealth(samples = []) {
       && (Number(s.status) === 504 || s.timeout || Number(s.status) >= 500)
   );
   if (pushBad) {
-    severity = worse(severity, 'degraded');
-    incidents.push(makeIncident('degraded', 'Bildirim kaydı yanıt vermiyor (push)', 'push'));
+    severity = worse(severity, 'incident');
+    incidents.push(makeIncident('incident', 'Bildirim kaydı yanıt vermiyor (push)', 'push'));
   }
 
   // Çok yüksek hata yoğunluğu → critical

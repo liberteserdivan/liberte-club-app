@@ -1,5 +1,5 @@
 import { STATUS, SERVICE, THRESHOLDS } from './guardianConstants.js';
-import { summarizeService, recentDurations } from './guardianMetrics.js';
+import { summarizeService, summarizeEndpoint, recentDurations } from './guardianMetrics.js';
 import { readSafeModeSync, enableSafeMode } from './guardianSafeMode.js';
 import { recordIncident } from './guardianIncidents.js';
 import { raiseAlert } from './guardianAlerts.js';
@@ -113,6 +113,30 @@ async function ruleDbLatency() {
   });
 }
 
+// 7.2b — Oturum doğrulama yavaş/hatalı
+async function ruleAuthSessionSlow() {
+  const summary = summarizeService(SERVICE.AUTH);
+  const slowStreak = consecutiveSlow(SERVICE.AUTH, THRESHOLDS.AUTH_SESSION_SLOW_MS, THRESHOLDS.CONSECUTIVE_SLOW_FOR_ACTION);
+  const highErrorRate = summary.sampleCount >= 5 && summary.errorRate >= THRESHOLDS.API_ERROR_RATE_DEGRADED;
+  if (!slowStreak && !highErrorRate) return null;
+
+  return applyIntervention({
+    reason: 'Auth session slow',
+    level: STATUS.INCIDENT,
+    features: { polling: 'reduced' },
+    incident: {
+      level: STATUS.INCIDENT,
+      title: 'Oturum doğrulama yavaş/hatalı',
+      affectedArea: SERVICE.AUTH,
+      symptoms: [`auth p95 ${summary.p95Ms}ms`, `errorRate ${Math.round(summary.errorRate * 100)}%`],
+      safeActionsTaken: ['polling_reduced', 'minimal_bootstrap'],
+      suspectedRootCauses: ['Stale DB connection', 'Session bootstrap latency', 'Cold start'],
+      relatedFiles: ['api/_lib/handlers/authSession.js', 'src/lib/session.js'],
+      recommendedAction: 'Cursor fix prompt üretildi. Session bootstrap ve DB timeout gözden geçirilmeli.'
+    }
+  });
+}
+
 // 7.2 — Login yavaş
 async function ruleLoginSlow() {
   const summary = summarizeService(SERVICE.LOGIN);
@@ -208,11 +232,60 @@ async function ruleRealtime() {
   });
 }
 
+// 7.6 — Admin üye listesi yavaş/hatalı
+async function ruleAdminApiSlow() {
+  const summary = summarizeEndpoint('admin-members', { service: SERVICE.API });
+  const highErrorRate = summary.sampleCount >= 3 && summary.errorRate >= THRESHOLDS.API_ERROR_RATE_DEGRADED;
+  const highP95 = summary.p95Ms != null && summary.p95Ms >= THRESHOLDS.ADMIN_MEMBERS_SLOW_MS;
+  if (!highErrorRate && !highP95) return null;
+
+  return applyIntervention({
+    reason: 'Admin members slow',
+    level: STATUS.INCIDENT,
+    features: { polling: 'reduced', adminDashboardRefresh: 'reduced' },
+    incident: {
+      level: STATUS.INCIDENT,
+      title: 'Üye listesi yavaş/hatalı',
+      affectedArea: SERVICE.CONFIG,
+      symptoms: [`admin-members p95 ${summary.p95Ms}ms`, `errorRate ${Math.round(summary.errorRate * 100)}%`],
+      safeActionsTaken: ['admin_refresh_reduced', 'polling_reduced'],
+      suspectedRootCauses: ['Guardian hydrate overhead', 'Large customer list query', 'Stale DB connection'],
+      relatedFiles: ['api/_lib/handlers/adminMembers.js', 'api/auth.js'],
+      recommendedAction: 'Cursor fix prompt üretildi. Admin members NoGuardian ve paralel okuma kontrol edilmeli.'
+    }
+  });
+}
+
+// 7.7 — Push kaydı yavaş/hatalı
+async function rulePushRegisterSlow() {
+  const summary = summarizeService(SERVICE.PUSH);
+  const highErrorRate = summary.sampleCount >= 3 && summary.errorRate >= THRESHOLDS.API_ERROR_RATE_DEGRADED;
+  const highP95 = summary.p95Ms != null && summary.p95Ms >= THRESHOLDS.PUSH_SLOW_MS;
+  const tooManyTimeouts = summary.timeoutCount >= 2;
+  if (!highErrorRate && !highP95 && !tooManyTimeouts) return null;
+
+  return applyIntervention({
+    reason: 'Push register slow',
+    level: STATUS.DEGRADED,
+    features: { polling: 'reduced' },
+    incident: {
+      level: STATUS.DEGRADED,
+      title: 'Bildirim kaydı yavaş/hatalı',
+      affectedArea: SERVICE.PUSH,
+      symptoms: [`push p95 ${summary.p95Ms}ms`, `errorRate ${Math.round(summary.errorRate * 100)}%`, `timeout x${summary.timeoutCount}`],
+      safeActionsTaken: ['polling_reduced'],
+      suspectedRootCauses: ['Heavy session sync', 'Guardian hydrate', 'Client 5s timeout mismatch'],
+      relatedFiles: ['api/_lib/handlers/pushRegisterDevice.js', 'src/lib/firebasePush.js'],
+      recommendedAction: 'Cursor fix prompt üretildi. Push light session ve NoGuardian kontrol edilmeli.'
+    }
+  });
+}
+
 // Tüm kuralları değerlendir ve tetiklenenleri uygula.
 // Döndürür: { actionsTaken: [...], safeMode }
 export async function evaluateAndIntervene() {
   const results = [];
-  for (const rule of [ruleDbLatency, ruleLoginSlow, ruleLoyaltySlow, ruleQrSlow, ruleRealtime]) {
+  for (const rule of [ruleDbLatency, ruleAuthSessionSlow, ruleLoginSlow, ruleLoyaltySlow, ruleQrSlow, ruleRealtime, ruleAdminApiSlow, rulePushRegisterSlow]) {
     try {
       const outcome = await rule();
       if (outcome) results.push(outcome);

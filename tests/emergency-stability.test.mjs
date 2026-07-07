@@ -71,7 +71,7 @@ test('deriveClientHealth gerçek telemetry örneğinde healthy demez', async () 
   assert.ok(areas.includes('auth'), 'auth incident üretilmeli');
   assert.ok(areas.includes('realtime'), 'realtime incident üretilmeli');
   assert.ok(areas.includes('config'), 'guardian/config incident üretilmeli');
-  assert.ok(areas.includes('push'), 'push degraded üretilmeli');
+  assert.ok(areas.includes('push'), 'push incident üretilmeli');
 });
 
 test('deriveClientHealth 65 hata/30 timeout yoğunluğunda yeşil kalmaz', async () => {
@@ -94,18 +94,17 @@ test('deriveClientHealth temiz telemetride healthy döner', async () => {
   assert.equal(deriveClientHealth(samples).severity, 'healthy', 'temiz telemetri healthy');
 });
 
-test('deriveClientHealth push 504 auth/login severity\'sini incident yapmaz (sadece degraded)', async () => {
+test('deriveClientHealth push 504 auth/login severity\'sini incident yapmaz', async () => {
   const { deriveClientHealth } = await import('../src/lib/clientHealthSeverity.js');
-  // Yalnızca push 504, gerisi sağlıklı
   const samples = [
     sample('/api/push/register-device', { status: 504, durationMs: 60000 }),
     sample('/api/state', { status: 200, durationMs: 200 }),
     sample('/api/auth/session', { status: 200, durationMs: 300 })
   ];
   const result = deriveClientHealth(samples);
-  // push degraded yapar; ama auth incident'ı OLMAMALI
   const areas = result.incidents.map((i) => i.affectedArea);
-  assert.ok(areas.includes('push'), 'push degraded üretilir');
+  assert.ok(areas.includes('push'), 'push incident üretilir');
+  assert.equal(result.incidents.find((i) => i.affectedArea === 'push')?.level, 'incident');
   assert.ok(!areas.includes('auth'), 'push hatası auth incident üretmemeli');
 });
 

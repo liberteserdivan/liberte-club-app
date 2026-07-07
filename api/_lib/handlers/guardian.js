@@ -76,7 +76,7 @@ function resolveRoute(req) {
 
 // Admin + PIN doğrulaması (light: ağır müşteri sync atlanır)
 async function requireAdmin(req, res) {
-  return requireAdminSession(req, res, { pinRequired: true, light: true });
+  return requireAdminSession(req, res, { light: true });
 }
 
 // Guardian kendi yavaşlığında bile UI'yı bloklamasın — degraded fallback özeti

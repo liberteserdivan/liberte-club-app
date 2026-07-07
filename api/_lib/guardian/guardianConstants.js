@@ -38,7 +38,10 @@ export const THRESHOLDS = Object.freeze({
   DB_PING_CRITICAL_MS: 3000,
   // DB ping kısa tutulur — guardian health hiçbir zaman Vercel 504'üne (90sn) düşmemeli
   DB_HEALTH_TIMEOUT_MS: 2500,
+  AUTH_SESSION_SLOW_MS: 4000,
   LOGIN_SLOW_MS: 8000,
+  PUSH_SLOW_MS: 5000,
+  ADMIN_MEMBERS_SLOW_MS: 8000,
   LP_SLOW_MS: 10000,
   QR_SLOW_MS: 5000,
   // p95 latency degraded eşiği — genel API

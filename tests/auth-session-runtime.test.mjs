@@ -27,11 +27,10 @@ test('authSession: gecersiz oturum 401', () => {
   assert.match(src, /if \(!session\?\.customerId\)[\s\S]*status\(401\)/);
 });
 
-test('authSession: transient 503 SESSION_TEMPORARILY_UNAVAILABLE session_unavailable', () => {
+test('authSession: merkezi sendApiError kullanir', () => {
   const src = read('api/_lib/handlers/authSession.js');
-  assert.match(src, /session_unavailable/);
-  assert.match(src, /SESSION_TEMPORARILY_UNAVAILABLE/);
-  assert.match(src, /status\(503\)/);
+  assert.match(src, /sendApiError/);
+  assert.match(src, /SESSION_RESTORE_FAILED/);
 });
 
 test('authSession: loadAppState veya syncSessionWithCustomer cagirmaz', () => {
@@ -67,8 +66,15 @@ test('bootstrapSession: 401 normal null (modal yok)', () => {
 
 test('bootstrapSession: 503 sessionUnavailable doner', () => {
   const src = read('src/lib/session.js');
+  assert.match(src, /response\.status === 503/);
   assert.match(src, /sessionUnavailable:\s*true/);
-  assert.match(src, /SESSION_TEMPORARILY_UNAVAILABLE/);
+});
+
+test('bootstrapSession: 500 sessionUnavailable doner', () => {
+  const src = read('src/lib/session.js');
+  assert.match(src, /response\.status >= 500/);
+  assert.match(src, /SESSION_RESTORE_FAILED/);
+  assert.match(src, /sessionUnavailable:\s*true/);
 });
 
 test('App: sessionUnavailable authNotice ile giris formu acik kalir', () => {
@@ -104,7 +110,6 @@ test('authSession: rota deadline guard var (platform timeout onleme, 4sn)', () =
   const src = read('api/_lib/handlers/authSession.js');
   assert.match(src, /ROUTE_TIMING\.SESSION_WITH_TOKEN_MS/);
   assert.match(src, /withRouteDeadline/);
-  assert.match(src, /isRouteDeadlineError/);
   const timing = read('api/_lib/routeTiming.js');
   assert.match(timing, /SESSION_WITH_TOKEN_MS:\s*4000/);
 });

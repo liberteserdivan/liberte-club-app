@@ -27,7 +27,7 @@ export async function handleAdminQrVerify(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const session = await requireAdminSession(req, res, { pinRequired: true, light: true });
+  const session = await requireAdminSession(req, res, { light: true });
   if (!session) return;
 
   try {
@@ -66,7 +66,7 @@ export async function handleAdminLoyaltyAction(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const session = await requireAdminSession(req, res, { pinRequired: true, light: true });
+  const session = await requireAdminSession(req, res, { light: true });
   if (!session) return;
 
   try {

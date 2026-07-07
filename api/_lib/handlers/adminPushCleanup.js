@@ -45,7 +45,7 @@ export async function handleAdminPushCleanup(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const adminSession = await requireAdminSession(req, res, { pinRequired: true });
+    const adminSession = await requireAdminSession(req, res);
     if (!adminSession) return;
 
     const body = readBodySafe(req);

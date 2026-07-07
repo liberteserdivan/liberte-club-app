@@ -38,7 +38,7 @@ test('register-device endpoint tanımlı', () => {
   const vercel = readFileSync(join(root, 'vercel.json'), 'utf8');
   assert.match(vercel, /register-device/);
   const handler = readFileSync(join(root, 'api/_lib/handlers/pushRegisterDevice.js'), 'utf8');
-  assert.match(handler, /requireSession/);
+  assert.match(handler, /requireSessionLight/);
   assert.match(handler, /upsertPushDevice/);
 });
 

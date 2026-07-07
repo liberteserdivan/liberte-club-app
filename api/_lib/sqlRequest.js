@@ -1,5 +1,5 @@
 import { runHandlerWithSql } from './sql.js';
-import { isTransientDbError } from './dbTransient.js';
+import { sendApiError } from './http.js';
 import { resolveRequestId as resolveGuardianRequestId } from './guardian/requestId.js';
 import { safeModeHeaderValue } from './guardian/guardianSafeMode.js';
 import { recordApiSample } from './guardian/guardianMetrics.js';
@@ -12,10 +12,12 @@ function resolveRequestId(req) {
   return resolveGuardianRequestId(req.headers?.['x-request-id']);
 }
 
-// URL yolundan handler adı çıkar (sorgu parametreleri hariç)
+// URL yolundan handler adı çıkar (action varsa ekle)
 function resolveHandlerName(req) {
   const url = String(req.url || '').split('?')[0];
-  return url || 'api';
+  const action = String(req.query?.action || '').trim().toLowerCase();
+  if (!url) return action ? `api:${action}` : 'api';
+  return action ? `${url}:${action}` : url;
 }
 
 // Yanıt başlıklarına observability bilgisi ekle. x-duration-ms yanıt
@@ -96,13 +98,12 @@ function buildSqlRequestHandler(handler, { hydrateGuardian }) {
       console.error('[api.sql]', req.url || '', error?.message || error);
       if (res.headersSent) return;
 
-      // Geçici DB hatasında 503 + tekrar denenebilir kod döndür
-      const transient = isTransientDbError(error);
-      res.status(transient ? 503 : 500).json({
-        ok: false,
-        code: transient ? 'DATABASE_TRANSIENT' : 'SERVER_ERROR',
+      sendApiError(res, {
+        status: 500,
+        code: 'SERVER_ERROR',
         message: 'Sunucu geçici olarak yanıt veremedi. Lütfen tekrar deneyin.',
-        requestId
+        requestId,
+        error
       });
     }
   };

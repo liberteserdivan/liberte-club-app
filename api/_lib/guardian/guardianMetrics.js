@@ -71,6 +71,36 @@ export function percentile(values, p) {
   return list[idx];
 }
 
+// Bir endpoint parçasına göre son durum özeti
+export function summarizeEndpoint(endpointFragment, { windowMs = THRESHOLDS.WINDOW_MS, service = null } = {}) {
+  const s = store();
+  const needle = String(endpointFragment || '').toLowerCase();
+  const all = s.events.filter((e) => {
+    if (service && e.service !== service) return false;
+    return String(e.endpoint || '').toLowerCase().includes(needle);
+  });
+  const windowed = eventsInWindow(all, windowMs);
+  const durations = windowed.map((e) => e.durationMs).filter((v) => Number.isFinite(v));
+  const errors = windowed.filter((e) => !e.ok);
+  const timeouts = windowed.filter((e) => e.timeout);
+  const last = all[all.length - 1] || null;
+
+  return {
+    endpoint: endpointFragment,
+    service: service || null,
+    sampleCount: windowed.length,
+    errorCount: errors.length,
+    errorRate: windowed.length ? errors.length / windowed.length : 0,
+    timeoutCount: timeouts.length,
+    p95Ms: percentile(durations, 95),
+    avgMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null,
+    lastStatus: last?.status ?? null,
+    lastRequestId: last?.requestId ?? null,
+    lastDurationMs: last?.durationMs ?? null,
+    lastSeenAt: last ? new Date(last.ts).toISOString() : null
+  };
+}
+
 // Bir servisin son durum özetini çıkar
 export function summarizeService(service, { windowMs = THRESHOLDS.WINDOW_MS } = {}) {
   const s = store();

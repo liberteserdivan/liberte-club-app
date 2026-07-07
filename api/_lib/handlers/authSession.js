@@ -1,10 +1,9 @@
-import { applyCors } from '../http.js';
+import { applyCors, sendApiError } from '../http.js';
 import { destroySession, getSessionForBootstrap, readAuthToken } from '../auth.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
-import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage } from '../dbTransient.js';
 import { ROUTE_TIMING } from '../routeTiming.js';
-import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
+import { withRouteDeadline } from '../routeDeadline.js';
 
 // Oturum okuma ve çıkış — yalnızca session doğrulama + minimal müşteri/loyalty
 export async function handleAuthSession(req, res) {
@@ -19,18 +18,15 @@ export async function handleAuthSession(req, res) {
       return res.status(200).json({ ok: true, requestId: trace.requestId });
     } catch (e) {
       trace.log('logout_error', { step: 'logout', error: e?.message || String(e) });
-      if (isTransientDbError(e) || isRouteDeadlineError(e)) {
-        return res.status(503).json(trace.failBody(
-          'session_unavailable',
-          'SESSION_TEMPORARILY_UNAVAILABLE',
-          'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
-        ));
-      }
-      return res.status(500).json(trace.failBody(
-        'logout',
-        publicDbErrorCode(e, 'LOGOUT_FAILED'),
-        publicDbErrorMessage(e, 'Çıkış yapılamadı. Lütfen tekrar deneyin.')
-      ));
+      return sendApiError(res, {
+        status: 500,
+        code: 'LOGOUT_FAILED',
+        message: 'Çıkış yapılamadı. Lütfen tekrar deneyin.',
+        step: 'logout',
+        requestId: trace.requestId,
+        timings: trace.successTimings(),
+        error: e
+      });
     }
   }
 
@@ -53,7 +49,6 @@ export async function handleAuthSession(req, res) {
   try {
     trace.log('start', { step: 'start', hasSessionToken: true });
 
-    // Tek katman: getSessionForBootstrap içinde runSqlSessionBootstrap (~3.6sn üst sınır).
     const session = await withRouteDeadline(
       () => getSessionForBootstrap(req),
       ROUTE_TIMING.SESSION_WITH_TOKEN_MS,
@@ -96,18 +91,14 @@ export async function handleAuthSession(req, res) {
       durationMs: Date.now() - startedAt
     });
 
-    if (isTransientDbError(e) || isRouteDeadlineError(e)) {
-      return res.status(503).json(trace.failBody(
-        'session_unavailable',
-        'SESSION_TEMPORARILY_UNAVAILABLE',
-        'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
-      ));
-    }
-
-    return res.status(500).json(trace.failBody(
-      'catch_error',
-      publicDbErrorCode(e, 'SESSION_RESTORE_FAILED'),
-      publicDbErrorMessage(e, 'Oturum okunamadı. Lütfen tekrar giriş yap.')
-    ));
+    return sendApiError(res, {
+      status: 500,
+      code: 'SESSION_RESTORE_FAILED',
+      message: 'Oturum okunamadı. Lütfen tekrar giriş yap.',
+      step: 'catch_error',
+      requestId: trace.requestId,
+      timings: trace.successTimings(),
+      error: e
+    });
   }
 }

@@ -36,9 +36,15 @@ const SERVICE_META = {
   qr: { label: 'QR', Icon: QrCode },
   loyalty: { label: 'LP / Sadakat', Icon: Gift },
   realtime: { label: 'Realtime', Icon: Radio },
-  config: { label: 'Yapılandırma', Icon: Server },
+  config: { label: 'Yapılandırma / Admin', Icon: Server },
+  push: { label: 'Bildirim', Icon: Bell },
   api: { label: 'API', Icon: Server }
 };
+
+// Incident alan etiketi — sunucu + istemci telemetrisi birleşimi
+function formatAffectedArea(area) {
+  return SERVICE_META[area]?.label || area;
+}
 
 function statusMeta(status) {
   return STATUS_META[status] || STATUS_META.healthy;
@@ -441,7 +447,7 @@ export default function SystemHealthPanel() {
               {inc.requiresHuman && <span className="guardianHuman">İnsan müdahalesi gerekiyor</span>}
             </div>
             <div className="guardianCardMeta">
-              <span>Alan: {inc.affectedArea}</span>
+              <span>Alan: {formatAffectedArea(inc.affectedArea)}</span>
               <span>Başlangıç: {new Date(inc.startedAt).toLocaleString('tr-TR')}</span>
               <span>Tekrar: {inc.occurrences || 1}</span>
             </div>

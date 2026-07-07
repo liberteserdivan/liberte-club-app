@@ -1,5 +1,7 @@
 // API CORS ve cookie yardımcıları
 
+import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage } from './dbTransient.js';
+import { isRouteDeadlineError } from './routeDeadline.js';
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((v) => v.trim())
@@ -83,4 +85,57 @@ export function publicErrorMessage(error, fallback = 'Bir hata oluştu. Lütfen 
     return error?.message || fallback;
   }
   return fallback;
+}
+
+// Gecici hata mi? (DB veya rota deadline)
+function isTransientError(error) {
+  return isTransientDbError(error) || isRouteDeadlineError(error);
+}
+
+// Merkezi API hata govdesi uret
+export function buildApiErrorBody({
+  code,
+  message,
+  step = null,
+  requestId = null,
+  timings = null,
+  error = null
+} = {}) {
+  const transient = error ? isTransientError(error) : false;
+  const resolvedCode = error
+    ? publicDbErrorCode(error, code || 'SERVER_ERROR')
+    : (code || 'SERVER_ERROR');
+  const fallback = 'Islem tamamlanamadi. Lutfen tekrar deneyin.';
+  const resolvedMessage = error
+    ? publicDbErrorMessage(error, message || fallback)
+    : (message || fallback);
+
+  return {
+    ok: false,
+    code: transient ? 'DATABASE_TRANSIENT' : resolvedCode,
+    message: resolvedMessage,
+    error: resolvedMessage,
+    ...(step ? { step } : {}),
+    ...(requestId ? { requestId } : {}),
+    ...(timings ? { timings } : {})
+  };
+}
+
+// Merkezi API hata yaniti gonder
+export function sendApiError(res, {
+  status,
+  code,
+  message,
+  step = null,
+  requestId = null,
+  timings = null,
+  error = null
+} = {}) {
+  const transient = error ? isTransientError(error) : false;
+  const httpStatus = transient ? 503 : (status || 500);
+  const body = buildApiErrorBody({ code, message, step, requestId, timings, error });
+
+  if (res.headersSent) return null;
+  res.status(httpStatus).json(body);
+  return body;
 }

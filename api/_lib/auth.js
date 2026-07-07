@@ -151,6 +151,45 @@ export async function getSessionForQr(req) {
   });
 }
 
+// Push kaydı için hafif oturum — syncSessionWithCustomer / loadAppState YOK
+export async function getSessionLight(req) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  return runSqlReadFast(async () => {
+    const sql = getSql();
+    if (!sql) return null;
+
+    await ensureSessionTable(sql);
+    const rows = await sql`
+      SELECT customer_id, role, admin_verified
+      FROM auth_sessions
+      WHERE token_hash = ${hashToken(token)}
+        AND expires_at > now()
+      LIMIT 1
+    `;
+
+    const row = rows[0];
+    if (!row) return null;
+
+    const identity = {
+      customerId: Number(row.customer_id),
+      role: row.role,
+      isAdmin: row.role === 'admin',
+      adminVerified: adminVerifiedFromRow(row)
+    };
+
+    const { findCustomerById } = await import('./customersStore.js');
+    const customer = await findCustomerById(sql, identity.customerId);
+    if (!customer) return null;
+
+    return {
+      ...identity,
+      customer: toCustomerSnapshot(customer)
+    };
+  });
+}
+
 // Login için hafif oturum kimliği — syncSessionWithCustomer / loadAppState YOK
 export async function getSessionIdentityForLogin(req) {
   const token = readAuthToken(req);
@@ -217,15 +256,15 @@ export async function getSessionForBootstrap(req) {
       loyaltyRowToCard
     } = await import('./customersStore.js');
     const customer = await findCustomerById(sql, identity.customerId);
+    if (!customer) return null;
+
     let loyalty = null;
-    if (customer) {
-      const loyaltyRow = await findLoyaltyByCustomerId(sql, identity.customerId);
-      loyalty = loyaltyRowToCard(loyaltyRow, identity.customerId);
-    }
+    const loyaltyRow = await findLoyaltyByCustomerId(sql, identity.customerId);
+    loyalty = loyaltyRowToCard(loyaltyRow, identity.customerId);
 
     return {
       ...identity,
-      customer: customer ? toCustomerSnapshot(customer) : null,
+      customer: toCustomerSnapshot(customer),
       loyalty
     };
   });
@@ -527,10 +566,18 @@ export async function requireSession(req, res) {
   return session;
 }
 
-// Admin oturumu zorunlu — light: push gibi hızlı uçlar için müşteri sync atlanır
-export async function requireAdminSession(req, res, { pinRequired = false, light = false } = {}) {
-  void pinRequired;
+// Hafif oturum zorunlu — push gibi hızlı uçlar için
+export async function requireSessionLight(req, res) {
+  const session = await getSessionLight(req);
+  if (!session) {
+    res.status(401).json({ error: 'Oturum gerekli' });
+    return null;
+  }
+  return session;
+}
 
+// Admin oturumu zorunlu — light: push gibi hızlı uçlar için müşteri sync atlanır
+export async function requireAdminSession(req, res, { light = false } = {}) {
   if (light) {
     const identity = await getSessionForQr(req);
     if (!identity) {

@@ -92,6 +92,16 @@ export async function bootstrapSession() {
       };
     }
 
+    // 500 — oturum doğrulama hatası; giriş formu açık kalsın
+    if (response.status >= 500 || data?.code === 'SESSION_RESTORE_FAILED') {
+      memorySession = null;
+      return {
+        sessionUnavailable: true,
+        code: data?.code || 'SESSION_RESTORE_FAILED',
+        message: data?.error || data?.message || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
+      };
+    }
+
     if (!response.ok || !data?.ok) {
       memorySession = null;
       return null;

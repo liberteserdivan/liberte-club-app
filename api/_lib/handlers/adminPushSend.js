@@ -200,7 +200,7 @@ export async function handleAdminPushSend(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const adminSession = await requireAdminSession(req, res, { pinRequired: true, light: true });
+    const adminSession = await requireAdminSession(req, res, { light: true });
     if (!adminSession) return;
 
     if (await enforceAuthRateLimit(req, 'admin_push_send', { maxHits: 20 })) {

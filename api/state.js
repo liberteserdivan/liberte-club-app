@@ -134,7 +134,7 @@ export default withSqlRequest(async function handler(req, res) {
 
       // Admin yalnızca PIN doğrulamasıyla tam state yazabilir
       if (session.isAdmin) {
-        const adminSession = await requireAdminSession(req, res, { pinRequired: true });
+        const adminSession = await requireAdminSession(req, res);
         if (!adminSession) return;
         await runSql(() => saveAppState(mergeAdminState(canonical, data)));
         const saved = await runSqlReadFast(() => loadAppStateRevision());
@@ -185,7 +185,7 @@ export default withSqlRequest(async function handler(req, res) {
 
 // Yönetici — hata log listesi
 async function handleErrorLogList(req, res) {
-  const session = await requireAdminSession(req, res, { pinRequired: true });
+  const session = await requireAdminSession(req, res);
   if (!session) return;
 
   const limit = Number(req.query?.limit || 200);
@@ -240,7 +240,7 @@ async function handleErrorLogCreate(req, res, payload) {
 
 // Yönetici — tüm hata loglarını sil
 async function handleErrorLogClear(req, res) {
-  const session = await requireAdminSession(req, res, { pinRequired: true });
+  const session = await requireAdminSession(req, res);
   if (!session) return;
 
   const removed = await clearAllErrorLogs();
