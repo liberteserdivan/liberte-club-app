@@ -12,6 +12,7 @@ import ErrorLogsAdmin from '../components/ErrorLogsAdmin.jsx';
 import SystemHealthPanel from '../components/SystemHealthPanel.jsx';
 import{ReviewApprovalAdmin}from'../components/Cards.jsx';
 import CashierProductPickModal from '../components/CashierProductPickModal.jsx';
+import BulkLpAdmin from '../components/BulkLpAdmin.jsx';
 import {
   assertMenuItemCanEarnLp,
   requiresProductPickForLpCategory
@@ -1360,6 +1361,14 @@ function UsersAdmin({
         </p>
       )}
       {message&&<p className="info">{message}</p>}
+
+      <BulkLpAdmin
+        db={db}
+        commit={commit}
+        customers={customers}
+        onMessage={setMessage}
+      />
+
       <input
         className="adminCategorySearch"
         placeholder="İsim, telefon veya e-posta ara…"

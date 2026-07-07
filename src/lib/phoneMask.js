@@ -20,3 +20,27 @@ export function formatPhoneInput(raw) {
 export function formatPinInput(raw, max = 6) {
   return String(raw || '').replace(/\D/g, '').slice(0, max);
 }
+
+// Metinden benzersiz TR cep telefonu listesi (satır, virgül, noktalı virgül)
+export function parsePhoneList(raw = '') {
+  const chunks = String(raw || '')
+    .split(/[\n,;]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const seen = new Set();
+  const phones = [];
+
+  for (const chunk of chunks) {
+    let digits = chunk.replace(/\D/g, '');
+    if (digits.startsWith('90') && digits.length >= 12) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.length > 10) digits = digits.slice(-10);
+    if (digits.length !== 10 || !digits.startsWith('5')) continue;
+    if (seen.has(digits)) continue;
+    seen.add(digits);
+    phones.push(digits);
+  }
+
+  return phones;
+}

@@ -136,14 +136,14 @@ test('Patates Tabağı burger LP eklemez', () => {
   assert.equal(next.loyalty[20].lpBalance, 3);
 });
 
-test('burger LP ürün seçmeden eklenmez', () => {
+test('burger LP ürün seçmeden doğrudan +3 eklenir', () => {
   const db = mergeDb({
     customers: [{ id: 21, phone: '562', name: 'Test', email: 't@t.com' }],
     loyalty: { 21: { customerId: 21, schemaVersion: 2, lpBalance: 0, lpLifetime: 0, level: 'Bronze' } },
     history: []
   });
-  const blocked = addCategoryStampToCustomer(db, 21, 'burger', 1, 'test');
-  assert.equal(blocked, db);
+  const next = addCategoryStampToCustomer(db, 21, 'burger', 1, 'test');
+  assert.equal(next.loyalty[21].lpBalance, 3);
 });
 
 test('burger ikram 25 LP gerektirir', () => {

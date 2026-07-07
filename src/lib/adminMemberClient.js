@@ -70,6 +70,29 @@ export async function applyAdminMemberLoyalty({
   return data;
 }
 
+// Yönetici — toplu LP ekleme (telefon listesi)
+export async function applyBulkAdminMemberLoyalty({
+  phonesText = '',
+  phones = null,
+  category = 'coffee'
+}) {
+  const { response, data } = await apiJson('/api/admin?resource=member-loyalty-bulk', {
+    method: 'POST',
+    body: JSON.stringify({
+      phonesText,
+      phones,
+      category
+    }),
+    timeoutMs: 120000
+  });
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || data?.message || 'Toplu LP işlemi yapılamadı');
+  }
+
+  return data;
+}
+
 // Yönetici — üyeyi sunucudan sil
 export async function deleteAdminMember(customerId) {
   const { response, data } = await apiJson('/api/admin?resource=member-delete', {

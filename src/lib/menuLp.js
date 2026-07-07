@@ -37,8 +37,9 @@ export function getMenuItemsForLpCategory(lpCategory, menuItems = []) {
   return (menuItems || []).filter((item) => categoryIds.has(Number(item.categoryId)));
 }
 
-// Kasiyer — karışık LP durumu olan kategorilerde ürün seçimi gerekir
+// Kasiyer — karışık LP durumu olan kategorilerde ürün seçimi gerekir (burger hariç: doğrudan +3 LP)
 export function requiresProductPickForLpCategory(lpCategory, menuItems = []) {
+  if (lpCategory === 'burger') return false;
   const items = getMenuItemsForLpCategory(lpCategory, menuItems);
   if (!items.length) return false;
   return items.some(isMenuItemLpExcluded);

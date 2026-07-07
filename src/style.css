@@ -8568,6 +8568,59 @@ body.menuDetailOpen{
   display:grid;
   gap:12px;
 }
+.bulkLpCard{
+  display:grid;
+  gap:10px;
+}
+.bulkLpLabel{
+  font-size:13px;
+  font-weight:700;
+  color:var(--forest);
+}
+.bulkLpTextarea{
+  width:100%;
+  min-height:120px;
+  border-radius:16px;
+  border:1px solid rgba(15,61,46,.12);
+  padding:12px 14px;
+  font:inherit;
+  resize:vertical;
+}
+.bulkLpCategoryRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.bulkLpCatBtn{
+  border-radius:999px;
+  border:1px solid rgba(15,61,46,.14);
+  background:#fff;
+  padding:8px 12px;
+  font-size:13px;
+  font-weight:700;
+}
+.bulkLpCatBtn.active{
+  background:var(--forest);
+  color:#fff;
+  border-color:var(--forest);
+}
+.bulkLpSubmit{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+.bulkLpResults ul{
+  margin:8px 0 0;
+  padding-left:18px;
+  font-size:13px;
+}
+.bulkLpResults li.ok{
+  color:var(--forest);
+}
+.bulkLpResults li.fail{
+  color:#b45309;
+}
 .adminMemberCard{
   border-radius:24px!important;
   padding:16px!important;

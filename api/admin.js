@@ -5,6 +5,7 @@ const ADMIN_RESOURCE_LOADERS = {
   backup: () => import('./_lib/handlers/adminBackup.js').then((m) => m.handleAdminBackup),
   members: () => import('./_lib/handlers/adminMembers.js').then((m) => m.handleAdminMembers),
   'member-loyalty': () => import('./_lib/handlers/adminMemberLoyalty.js').then((m) => m.handleAdminMemberLoyalty),
+  'member-loyalty-bulk': () => import('./_lib/handlers/adminMemberLoyaltyBulk.js').then((m) => m.handleAdminMemberLoyaltyBulk),
   'push-send': () => import('./_lib/handlers/adminPushSend.js').then((m) => m.handleAdminPushSend),
   'push-cleanup': () => import('./_lib/handlers/adminPushCleanup.js').then((m) => m.handleAdminPushCleanup),
   'account-delete': () => import('./_lib/handlers/adminAccountDelete.js').then((m) => m.handleAdminAccountDelete),

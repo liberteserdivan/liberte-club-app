@@ -123,6 +123,14 @@ test('Guardian: admin/members 503 geçici hata incident üretmez', () => {
   assert.equal(health.incidents.length, 0, '503 retry geçici — incident olmamalı');
 });
 
+test('Guardian: auth/session 503 geçici hata incident üretmez', () => {
+  const samples = [
+    { endpoint: '/api/auth/session', status: 503, durationMs: 3200, method: 'GET' }
+  ];
+  const health = deriveClientHealth(samples);
+  assert.equal(health.incidents.length, 0, '503 oturum geçici — incident olmamalı');
+});
+
 test('Guardian: temiz telemetride healthy kalır (regresyon koruması)', () => {
   const samples = [
     { endpoint: '/api/admin/members', status: 200, durationMs: 400, method: 'GET' },

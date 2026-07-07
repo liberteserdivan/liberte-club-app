@@ -78,19 +78,21 @@ export function deriveClientHealth(samples = []) {
     severity = worse(severity, 'incident');
   }
 
-  // 3) auth/session 500 → auth incident (login döngüsü riski)
+  // 3) auth/session kalıcı 5xx → auth incident (503/429 geçici — sayılmaz)
   const sessionBad = recent.some(
-    (s) => isEndpoint(s, '/api/auth/session') && Number(s.status) >= 500
+    (s) => isEndpoint(s, '/api/auth/session') && isHardServerError(s.status)
   );
   if (sessionBad) {
     severity = worse(severity, 'incident');
-    incidents.push(makeIncident('incident', 'Oturum doğrulama hata veriyor (auth/session 500)', 'auth'));
+    incidents.push(makeIncident('incident', 'Oturum doğrulama hata veriyor (auth/session)', 'auth'));
   }
 
-  // 4) realtime 10sn+ veya ERR → realtime incident
+  // 4) realtime 10sn+ yavaşlık, ağ hatası veya kalıcı 5xx → incident (kısa 503 hariç)
   const realtimeBad = recent.some(
     (s) => isEndpoint(s, '/api/realtime')
-      && (s.timeout || s.networkError || Number(s.status) === 0 || Number(s.durationMs) >= 10_000)
+      && (s.timeout || s.networkError || Number(s.status) === 0
+        || isHardServerError(s.status)
+        || Number(s.durationMs) >= 10_000)
   );
   if (realtimeBad) {
     severity = worse(severity, 'incident');
