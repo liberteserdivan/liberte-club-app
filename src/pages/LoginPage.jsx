@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { KeyRound, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
@@ -16,7 +16,7 @@ import {
   verifyDevPin
 } from '../lib/devAuth.js';
 import { getDeviceId } from '../lib/deviceId.js';
-import { applyAuthResult, getAuthEpoch, waitForPendingLogout } from '../lib/session.js';
+import { applyAuthResult, getAuthEpoch, waitForPendingLogout, hasQuickLogin, readSavedPhone, readSavedPin, saveQuickLogin } from '../lib/session.js';
 import {
   STORE_APP_NAME,
   BRAND_SLOGAN,
@@ -55,6 +55,8 @@ export default function Login({ db, commit, setSession }) {
   // Duplicate login submit koruması — uçuştaki giriş varken ikinci POST başlatma
   const loginInFlightRef = useRef(false);
   const loginAttemptRef = useRef(0);
+  const autoLoginStartedRef = useRef(false);
+  const [autoLoginPending, setAutoLoginPending] = useState(() => hasQuickLogin());
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
 
@@ -171,12 +173,13 @@ export default function Login({ db, commit, setSession }) {
     return p;
   }
 
-  function finishSession(result, epochAtLogin = null) {
+  function finishSession(result, epochAtLogin = null, pinUsed = null) {
     // Hızlı çıkış: uçuştaki login yanıtı oturumu geri açmasın
     if (epochAtLogin != null && getAuthEpoch() !== epochAtLogin) {
       notify('Oturum açılamadı. Lütfen tekrar deneyin.');
       return;
     }
+    const pinToStore = pinUsed || String(pin).replace(/\D/g, '');
     setPin('');
     setPinConfirm('');
     if (result.customer) {
@@ -186,9 +189,10 @@ export default function Login({ db, commit, setSession }) {
       }), { skipRemote: true });
     }
     const session = applyAuthResult(result);
-    localStorage.setItem('liberteLastPhone', phone || '');
+    saveQuickLogin(phone || readSavedPhone(), pinToStore);
     if (email) localStorage.setItem('liberteLastEmail', email);
     setSession(session);
+    setAutoLoginPending(false);
   }
 
   async function createCustomerLocal(fields, pinValue) {
@@ -250,10 +254,13 @@ export default function Login({ db, commit, setSession }) {
     return result;
   }
 
-  async function loginWithPin() {
-    const ph = readPhone();
-    const pinValue = readPins(false);
-    if (!ph || !pinValue) return;
+  async function loginWithPin(explicitPhone = null, explicitPin = null) {
+    const ph = explicitPhone || readPhone();
+    const pinValue = explicitPin || readPins(false);
+    if (!ph || !pinValue) {
+      setAutoLoginPending(false);
+      return;
+    }
 
     // Uçuşta bir giriş varsa ikinci submit'i yok say — duplicate /api/auth/login
     // (çift tıklama, hızlı tekrar) tek request'e düşer.
@@ -281,7 +288,7 @@ export default function Login({ db, commit, setSession }) {
           role: customer.isAdmin ? 'admin' : 'user',
           isAdmin: Boolean(customer.isAdmin),
           adminVerified: false
-        }, epochAtLogin);
+        }, epochAtLogin, pinValue);
         return;
       }
 
@@ -313,9 +320,10 @@ export default function Login({ db, commit, setSession }) {
       }
 
       logLoginDiag('success', { status: response.status, requestId: data?.requestId, step: data?.step });
-      finishSession(data, epochAtLogin);
+      finishSession(data, epochAtLogin, pinValue);
     } catch (e) {
       notifyRequestError(e, 'Giriş yapılamadı');
+      setAutoLoginPending(false);
     } finally {
       setLoading(false);
       loginInFlightRef.current = false;
@@ -444,7 +452,7 @@ export default function Login({ db, commit, setSession }) {
         }
         throw new Error(readApiError(data, 'Kayıt tamamlanamadı'));
       }
-      finishSession(data);
+      finishSession(data, null, pinValue);
     } catch (e) {
       notifyRequestError(e, 'Kayıt tamamlanamadı');
     } finally {
@@ -585,7 +593,24 @@ export default function Login({ db, commit, setSession }) {
     setResetCode('');
     setRegisterCode('');
     setInfo('');
+    setAutoLoginPending(false);
   }
+
+  // Kayıtlı telefon + PIN varsa giriş ekranını atla
+  useEffect(() => {
+    if (autoLoginStartedRef.current || authMode !== 'login' || !hasQuickLogin()) return;
+    autoLoginStartedRef.current = true;
+    const ph = norm(readSavedPhone());
+    const pinValue = readSavedPin();
+    if (ph.length < 10 || !pinValue) {
+      setAutoLoginPending(false);
+      return;
+    }
+    setPhone(formatPhoneInput(ph));
+    setPin(pinValue);
+    setAutoLoginPending(true);
+    void loginWithPin(ph, pinValue);
+  }, [authMode]);
 
   function onPhoneChange(value) {
     setPhone(formatPhoneInput(value));
@@ -601,25 +626,32 @@ export default function Login({ db, commit, setSession }) {
           <Brand db={db} login />
 
           <h1>
-            {authMode === 'login' && 'Giriş Yap'}
+            {authMode === 'login' && (autoLoginPending ? 'Hoş geldiniz' : 'Giriş Yap')}
             {authMode === 'register' && 'Kayıt Ol'}
             {authMode === 'forgot' && 'PIN Sıfırla'}
           </h1>
           <p>
-            {authMode === 'login' && 'Telefon numaranız ve kişisel PIN ile giriş yapın.'}
+            {authMode === 'login' && autoLoginPending && 'Kayıtlı hesabınızla giriş yapılıyor…'}
+            {authMode === 'login' && !autoLoginPending && 'Telefon numaranız ve kişisel PIN ile giriş yapın.'}
             {authMode === 'register' && registerStep === 'form' && 'Bilgilerinizi girin; e-postanıza doğrulama kodu gönderilir.'}
             {authMode === 'register' && registerStep === 'verify' && 'E-postanızdaki kodu girin ve kaydı tamamlayın.'}
             {authMode === 'forgot' && 'E-posta veya telefonunuzu girin; kod kayıtlı e-postanıza gider.'}
           </p>
 
-          {authMode !== 'forgot' && (
+          {authMode !== 'forgot' && !autoLoginPending && (
             <div className="authSwitch">
               <button type="button" className={authMode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>Giriş Yap</button>
               <button type="button" className={authMode === 'register' ? 'active' : ''} onClick={() => switchMode('register')}>Kayıt Ol</button>
             </div>
           )}
 
-          {authMode === 'login' && (
+          {authMode === 'login' && autoLoginPending && (
+            <div className="loginAutoRestore" data-testid="login-auto-restore">
+              <p>Giriş yapılıyor…</p>
+            </div>
+          )}
+
+          {authMode === 'login' && !autoLoginPending && (
             <>
               <label>Telefon numaranız</label>
               <input data-testid="login-phone" value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
@@ -635,7 +667,7 @@ export default function Login({ db, commit, setSession }) {
                 autoComplete="current-password"
               />
 
-              <button data-testid="login-submit" disabled={loading} onClick={loginWithPin}>
+              <button data-testid="login-submit" disabled={loading} onClick={() => loginWithPin()}>
                 <LogIn /> {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
               </button>
 

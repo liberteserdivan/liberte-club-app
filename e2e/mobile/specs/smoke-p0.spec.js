@@ -1,4 +1,4 @@
-import { assertAppLaunch, loginWithPin, logoutFromProfile } from '../helpers/flows.js';
+import { assertAppLaunch, loginWithPin, relaunchAndAssertSession } from '../helpers/flows.js';
 
 function sessionMeta() {
   return {
@@ -8,7 +8,7 @@ function sessionMeta() {
   };
 }
 
-// P0: launch + login + logout/relogin — tam suite oncesi CI kapisi
+// P0: launch + login + oturum korunumu — tam suite oncesi CI kapisi
 describe('Liberte Club mobil smoke P0', () => {
   it('1 — uygulama acilisi (splash sonrasi login veya home)', async () => {
     await assertAppLaunch(browser, sessionMeta());
@@ -18,8 +18,7 @@ describe('Liberte Club mobil smoke P0', () => {
     await loginWithPin(browser, sessionMeta());
   });
 
-  it('3 — logout ve tekrar login', async () => {
-    await logoutFromProfile(browser, sessionMeta());
-    await loginWithPin(browser, sessionMeta());
+  it('3 — oturum korunumu (relaunch)', async () => {
+    await relaunchAndAssertSession(browser, sessionMeta());
   });
 });

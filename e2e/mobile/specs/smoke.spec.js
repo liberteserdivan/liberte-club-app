@@ -1,10 +1,9 @@
 import {
   assertAppLaunch,
   loginWithPin,
-  logoutFromProfile,
   relaunchAndAssertSession,
   verifyAdminMembers,
-  repeatLoginLogout
+  repeatSessionRestore
 } from '../helpers/flows.js';
 
 function sessionMeta() {
@@ -24,12 +23,11 @@ describe('Liberte Club mobil smoke', () => {
     await loginWithPin(browser, sessionMeta());
   });
 
-  it('3 — logout ve tekrar login', async () => {
-    await logoutFromProfile(browser, sessionMeta());
-    await loginWithPin(browser, sessionMeta());
+  it('3 — oturum korunumu (relaunch)', async () => {
+    await relaunchAndAssertSession(browser, sessionMeta());
   });
 
-  it('4 — oturum restore (relaunch)', async () => {
+  it('4 — oturum restore (ikinci relaunch)', async () => {
     await relaunchAndAssertSession(browser, sessionMeta());
   });
 
@@ -41,7 +39,7 @@ describe('Liberte Club mobil smoke', () => {
     await verifyAdminMembers(browser, { ...sessionMeta(), step: 'admin-members-recheck' });
   });
 
-  it('7 — login/logout stabilite (3 dongu)', async () => {
-    await repeatLoginLogout(browser, sessionMeta(), 3);
+  it('7 — oturum restore stabilite (3 dongu)', async () => {
+    await repeatSessionRestore(browser, sessionMeta(), 3);
   });
 });

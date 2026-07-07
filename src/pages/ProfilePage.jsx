@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, LogOut, Mail, Phone, ShieldCheck, Trash2, User, ExternalLink } from 'lucide-react';
+import { Crown, Mail, Phone, ShieldCheck, Trash2, User, ExternalLink } from 'lucide-react';
 import PageShell from '../components/PageShell.jsx';
 import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
@@ -11,6 +11,7 @@ import { TIER_TONE } from '../lib/membershipTier.js';
 import { apiJson } from '../lib/apiClient.js';
 import { isLocalAuth } from '../lib/devAuth.js';
 import { clearLocalCustomerSession, deleteCustomerAccount } from '../lib/customerAccount.js';
+import { clearQuickLoginPin } from '../lib/session.js';
 import { formatPhoneInput } from '../lib/phoneMask.js';
 import { supportEmail, supportUrl, CLUB_APP_NAME } from '../lib/constants.js';
 
@@ -19,7 +20,7 @@ function formatDisplayPhone(phone = '') {
   return formatPhoneInput(phone) || phone;
 }
 
-// Profil — çıkış, hesap silme, yasal linkler
+// Profil — hesap silme, yasal linkler (cikis kaldirildi; oturum cihazda korunur)
 export default function ProfilePage({
   db, customer, card, commit, setSession, setTab, isAdmin = false, onOpenAdmin
 }) {
@@ -28,10 +29,6 @@ export default function ProfilePage({
   const lp = getLpCardView(card);
   const level = lp.level;
   const tierTone = TIER_TONE[level] || 'bronze';
-
-  async function logout() {
-    await setSession(null);
-  }
 
   async function removeAccount() {
     const ok = confirm(
@@ -44,6 +41,7 @@ export default function ProfilePage({
         const next = deleteCustomerAccount(db, customer.id);
         commit(next);
         clearLocalCustomerSession(customer.id);
+        clearQuickLoginPin();
         setSession(null);
         return;
       }
@@ -52,6 +50,7 @@ export default function ProfilePage({
       if (!response.ok) throw new Error(data.error || 'Hesap silinemedi');
 
       clearLocalCustomerSession(customer.id);
+      clearQuickLoginPin();
       setSession(null);
     } catch (error) {
       setMessage(error.message || 'Hesap silinemedi.');
@@ -92,9 +91,6 @@ export default function ProfilePage({
 
       <PageSection label="Hesap">
         <div className="profileActionStack">
-          <button type="button" data-testid="logout-button" className="profileAction" onClick={logout}>
-            <LogOut size={18} /> Çıkış Yap
-          </button>
           {isAdmin && (
             <button type="button" data-testid="open-admin-panel" className="profileAction" onClick={() => (onOpenAdmin ? onOpenAdmin() : setTab('admin'))}>
               <ShieldCheck size={18} /> Yönetim Paneli

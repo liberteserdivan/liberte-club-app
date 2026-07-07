@@ -152,7 +152,8 @@ test('mobil e2e: app url alias cozumleme', () => {
 
 test('mobil e2e: UI testid secicileri', () => {
   assert.match(read('src/pages/LoginPage.jsx'), /data-testid="login-pin"/);
-  assert.match(read('src/pages/ProfilePage.jsx'), /data-testid="logout-button"/);
+  assert.match(read('src/pages/LoginPage.jsx'), /data-testid="login-auto-restore"/);
+  assert.doesNotMatch(read('src/pages/ProfilePage.jsx'), /data-testid="logout-button"/);
   assert.match(read('src/components/OnboardingOverlay.jsx'), /data-testid="onboarding-skip"/);
   assert.match(read('src/pages/AdminPage.jsx'), /data-testid="admin-members-panel"/);
 });

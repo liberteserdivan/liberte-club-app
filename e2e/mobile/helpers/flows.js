@@ -92,14 +92,15 @@ export async function loginWithPin(browser, meta) {
   logSafe('login', { ...meta, step: 'login', status: 'ok' });
 }
 
-/** Profilden cikis */
+/** Profilden cikis kaldirildi — geriye uyumluluk */
 export async function logoutFromProfile(browser, meta) {
   await switchToAppWebView(browser);
   await dismissPostLoginBlockers(browser);
-  await safeClick(browser, SELECTORS.navProfile);
-  await safeClick(browser, SELECTORS.logoutButton);
-  await waitForTestId(browser, SELECTORS.loginPhone, LOGIN_TIMEOUT_MS);
-  logSafe('logout', { ...meta, step: 'logout', status: 'ok' });
+  const stillLoggedIn = await isDisplayed(browser, SELECTORS.navHome, 5_000);
+  if (!stillLoggedIn) {
+    throw new Error('Oturum korunmuyor');
+  }
+  logSafe('logout-removed', { ...meta, step: 'logout-removed', status: 'ok' });
 }
 
 /** Uygulamayi yeniden ac — oturum korunmali */
@@ -193,11 +194,15 @@ export async function verifyAdminMembers(browser, meta) {
   }));
 }
 
-/** Login/logout dongusu */
-export async function repeatLoginLogout(browser, meta, cycles = 3) {
+/** Uygulama yeniden acilisi dongusu — oturum korunmali */
+export async function repeatSessionRestore(browser, meta, cycles = 3) {
   for (let i = 0; i < cycles; i += 1) {
-    await loginWithPin(browser, { ...meta, step: `login-cycle-${i + 1}` });
-    await logoutFromProfile(browser, { ...meta, step: `logout-cycle-${i + 1}` });
+    await relaunchAndAssertSession(browser, { ...meta, step: `relaunch-cycle-${i + 1}` });
   }
   logSafe('stability-cycles', { ...meta, step: 'stability', status: 'ok', code: String(cycles) });
+}
+
+/** @deprecated repeatSessionRestore kullan */
+export async function repeatLoginLogout(browser, meta, cycles = 3) {
+  return repeatSessionRestore(browser, meta, cycles);
 }

@@ -236,3 +236,52 @@ export function logoutSession() {
 export function readSession() {
   return memorySession;
 }
+
+const LAST_PHONE_KEY = 'liberteLastPhone';
+const LAST_PIN_KEY = 'liberteDevicePin';
+
+// Kayıtlı telefonu oku
+export function readSavedPhone() {
+  try {
+    return localStorage.getItem(LAST_PHONE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+// Kayıtlı PIN'i oku (cihazda hızlı açılış)
+export function readSavedPin() {
+  try {
+    return localStorage.getItem(LAST_PIN_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+// Hızlı giriş bilgisi var mı?
+export function hasQuickLogin() {
+  const phone = String(readSavedPhone()).replace(/\D/g, '');
+  const pin = String(readSavedPin()).replace(/\D/g, '');
+  return phone.length >= 10 && (pin.length === 4 || pin.length === 6);
+}
+
+// Başarılı girişten sonra cihaza kaydet
+export function saveQuickLogin(phone, pin) {
+  try {
+    const ph = String(phone || '').replace(/\D/g, '');
+    const p = String(pin || '').replace(/\D/g, '');
+    if (ph.length >= 10) localStorage.setItem(LAST_PHONE_KEY, ph);
+    if (p.length === 4 || p.length === 6) localStorage.setItem(LAST_PIN_KEY, p);
+  } catch {
+    // Depolama kapalıysa sessizce geç
+  }
+}
+
+// Hesap silme — PIN'i temizle
+export function clearQuickLoginPin() {
+  try {
+    localStorage.removeItem(LAST_PIN_KEY);
+  } catch {
+    // yoksay
+  }
+}
