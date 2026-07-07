@@ -10,7 +10,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = process.env.SMOKE_ORIGIN || 'https://app.liberte.cafe';
 
 function loadEnv() {
-  for (const name of ['.env', '.env.local']) {
+  for (const name of ['.env', '.env.local', '.env.mobile-test.local']) {
     const envPath = join(root, name);
     if (!existsSync(envPath)) continue;
     for (const line of readFileSync(envPath, 'utf8').split('\n')) {
@@ -72,6 +72,8 @@ const phone = process.env.SMOKE_ADMIN_PHONE || '5058665406';
 const customerPin = process.env.SMOKE_ADMIN_CUSTOMER_PIN
   || process.env.SMOKE_CUSTOMER_PIN
   || process.env.ADMIN_PIN
+  || process.env.MOBILE_TEST_PIN
+  || process.env.MOBILE_TEST_ADMIN_PIN
   || '';
 
 if (!customerPin) {

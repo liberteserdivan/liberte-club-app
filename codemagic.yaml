@@ -130,9 +130,8 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        # Yalnizca IPA yukle; TestFlight beta review Apple islemesi bitince ASC'den manuel acilir.
-        # submit_to_testflight: true post-processing'de Apple "Processing" beklerken build kirmizi gorunebilir.
-        submit_to_testflight: false
+        # IPA yuklendikten sonra TestFlight beta incelemesine gonder
+        submit_to_testflight: true
 
   android-release:
     name: android-release
