@@ -62,18 +62,19 @@ test('getSessionForBootstrap: musteri yoksa null doner', () => {
 
 // --- Server handler (kaynak-metin: ESM mock yerine yapı doğrulaması) ---
 
-test('adminMembers: veri okumaları runSqlReadFast ile fail-fast', () => {
+test('adminMembers: veri okumaları runSqlAdminMembersRead ile fail-fast', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
-  assert.match(src, /import \{ runSqlReadFast \} from '\.\.\/runSql\.js'/);
-  assert.match(src, /runSqlReadFast\(\(\) => listAllCustomers\(getSql\(\)\)\)/, 'müşteri listesi fail-fast olmalı');
-  assert.match(src, /runSqlReadFast\(\(\) => loadLoyaltyMapFromSql\(getSql\(\)\)\)/, 'loyalty okuma fail-fast olmalı');
+  assert.match(src, /import \{ runSqlAdminMembersRead \} from '\.\.\/runSql\.js'/);
+  assert.match(src, /runSqlAdminMembersRead\(\(\) => listAllCustomers\(getSql\(\)\)\)/, 'müşteri listesi fail-fast olmalı');
+  assert.match(src, /loadLoyaltyMapLightFromSql/, 'loyalty hafif okuma olmalı');
+  assert.match(src, /loyaltyDegraded/, 'loyalty hatasında kısmi yanıt olmalı');
 });
 
 test('adminMembers: geçici DB hatasında sendApiError ile 503', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
   assert.match(src, /sendApiError/);
   assert.match(src, /ADMIN_MEMBERS_FAILED/);
-  assert.match(src, /Promise\.all/);
+  assert.match(src, /members:\s*true/);
 });
 
 test('adminMembers: auth/PIN kontrolü veri okumasından ÖNCE (hızlı 401/403)', () => {
@@ -106,12 +107,20 @@ test('Guardian: telemetride /api/admin/members 500 varsa healthy göstermez', ()
   assert.ok(incident, 'config (admin) alanında client incident üretilmeli');
 });
 
-test('Guardian: admin/members yavaş (10sn+) ise de incident üretir', () => {
+test('Guardian: admin/members yavaş (15sn+) ise incident üretir', () => {
   const samples = [
-    { endpoint: '/api/admin/members', status: 200, durationMs: 12000, method: 'GET' }
+    { endpoint: '/api/admin/members', status: 200, durationMs: 16000, method: 'GET' }
   ];
   const health = deriveClientHealth(samples);
   assert.notEqual(health.severity, 'healthy');
+});
+
+test('Guardian: admin/members 503 geçici hata incident üretmez', () => {
+  const samples = [
+    { endpoint: '/api/admin/members', status: 503, durationMs: 1200, method: 'GET' }
+  ];
+  const health = deriveClientHealth(samples);
+  assert.equal(health.incidents.length, 0, '503 retry geçici — incident olmamalı');
 });
 
 test('Guardian: temiz telemetride healthy kalır (regresyon koruması)', () => {

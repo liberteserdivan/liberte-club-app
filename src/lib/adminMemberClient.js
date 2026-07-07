@@ -10,7 +10,7 @@ function sleep(ms) {
 export async function fetchAdminMembersList() {
   let lastError = null;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const { response, data } = await apiJson('/api/admin/members', {
       ...ADMIN_MEMBERS_REQUEST_OPTIONS,
       skipUnauthorized: true
@@ -33,7 +33,7 @@ export async function fetchAdminMembersList() {
     const retryable = response.status === 503
       || data?.code === 'ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE'
       || data?.code === 'DATABASE_TRANSIENT';
-    if (attempt === 0 && retryable) {
+    if (attempt < 2 && retryable) {
       await sleep(2000);
       continue;
     }

@@ -1,10 +1,10 @@
 import { applyCors } from '../http.js';
 import { requireSession, requireAdminSession, getSessionForBootstrap } from '../auth.js';
-import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapFromSql } from '../loyaltyStore.js';
+import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapLightFromSql } from '../loyaltyStore.js';
 import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
-import { runSqlRead, runSqlReadFast } from '../runSql.js';
+import { runSqlRead, runSqlAdminMembersRead } from '../runSql.js';
 import { isTransientDbError, publicDbErrorMessage, publicDbErrorCode } from '../dbTransient.js';
 
 // Kampanya/kupon dilimini state'ten oku
@@ -72,8 +72,8 @@ async function handleAdminCustomers(req, res) {
   if (!sql) return res.status(503).json({ ok: false, error: 'Veritabanı yapılandırması eksik' });
 
   const [customers, loyalty] = await Promise.all([
-    runSqlReadFast(() => listAllCustomers(sql)),
-    runSqlReadFast(() => loadLoyaltyMapFromSql(sql))
+    runSqlAdminMembersRead(() => listAllCustomers(sql)),
+    runSqlAdminMembersRead(() => loadLoyaltyMapLightFromSql(sql)).catch(() => ({}))
   ]);
 
   return res.status(200).json({

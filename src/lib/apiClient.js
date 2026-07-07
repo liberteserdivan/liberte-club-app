@@ -466,7 +466,7 @@ export const REGISTER_REQUEST_OPTIONS = { timeoutMs: 90_000 };
 export const SYNC_REQUEST_OPTIONS = { timeoutMs: 25000 };
 export const ADMIN_REQUEST_OPTIONS = { timeoutMs: 60_000 };
 export const ADMIN_MEMBERS_REQUEST_OPTIONS = {
-  timeoutMs: isNativeApp() ? 45_000 : 12_000
+  timeoutMs: isNativeApp() ? 45_000 : 20_000
 };
 // Kasiyer LP işlemi — kullanıcı işlemin başında bekler; 60sn'lik genel admin
 // zaman aşımı paneli çok uzun süre kilitli/donmuş gösterir. Bu yüzden LP

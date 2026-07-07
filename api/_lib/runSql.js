@@ -50,6 +50,16 @@ export function runSqlReadFast(task) {
   });
 }
 
+// Admin üye listesi — daha uzun okuma penceresi; loyalty map büyük olabilir
+export function runSqlAdminMembersRead(task) {
+  const retries = isSqlRequestActive() ? 2 : 3;
+  return withSqlRetry(task, {
+    retries,
+    resetClient: resetSqlClient,
+    attemptTimeoutMs: ROUTE_TIMING.ADMIN_MEMBERS_READ_MS
+  });
+}
+
 // Login kimlik doğrulama okumaları — tek deneme, route deadline içinde kontrollü timeout
 export function getLoginReadAttemptTimeoutMs() {
   return ROUTE_TIMING.LOGIN_READ_ATTEMPT_MS;

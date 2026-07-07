@@ -576,13 +576,51 @@ export async function requireSessionLight(req, res) {
   return session;
 }
 
+// Admin üye listesi için tek sorguda oturum + yetki doğrulama
+export async function getAdminMembersSession(req) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  return runSqlReadFast(async () => {
+    const sql = getSql();
+    if (!sql) return null;
+
+    await ensureSessionTable(sql);
+    const rows = await sql`
+      SELECT s.customer_id, s.role, s.admin_verified, c.is_admin
+      FROM auth_sessions s
+      INNER JOIN customers c ON c.id = s.customer_id
+      WHERE s.token_hash = ${hashToken(token)}
+        AND s.expires_at > now()
+      LIMIT 1
+    `;
+
+    const row = rows[0];
+    if (!row) return null;
+    if (row.role !== 'admin' && !row.is_admin) return null;
+
+    return {
+      customerId: Number(row.customer_id),
+      isAdmin: true,
+      adminVerified: adminVerifiedFromRow(row),
+      role: 'admin'
+    };
+  });
+}
+
 // Admin oturumu zorunlu — light: push gibi hızlı uçlar için müşteri sync atlanır
-export async function requireAdminSession(req, res, { light = false } = {}) {
+export async function requireAdminSession(req, res, { light = false, members = false } = {}) {
   if (light) {
-    const identity = await getSessionForQr(req);
+    const identity = members
+      ? await getAdminMembersSession(req)
+      : await getSessionForQr(req);
     if (!identity) {
       res.status(401).json({ error: 'Oturum gerekli' });
       return null;
+    }
+
+    if (members) {
+      return identity;
     }
 
     const sql = getSql();

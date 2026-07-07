@@ -1,18 +1,19 @@
 import { applyCors, sendApiError } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { listAllCustomers } from '../customersStore.js';
-import { loadLoyaltyMapFromSql } from '../loyaltyStore.js';
+import { loadLoyaltyMapLightFromSql } from '../loyaltyStore.js';
 import { getSql } from '../sql.js';
-import { runSqlReadFast } from '../runSql.js';
+import { runSqlAdminMembersRead } from '../runSql.js';
 import { classifyLoginDbError } from '../dbTransient.js';
+
 // Güvenli zamanlama özeti — PII/token içermez
-function buildTimings({ t0, authMs, queryMs, totalMs, dbErrorType = null, queryTimeoutMs = null }) {
+function buildTimings({ t0, authMs, queryMs, totalMs, dbErrorType = null, loyaltyMs = null }) {
   return {
     auth_ms: authMs,
     members_query_ms: queryMs,
+    ...(loyaltyMs != null ? { loyalty_query_ms: loyaltyMs } : {}),
     total_ms: totalMs ?? (Date.now() - t0),
-    ...(dbErrorType ? { db_error_type: dbErrorType } : {}),
-    ...(queryTimeoutMs != null ? { query_timeout_ms: queryTimeoutMs } : {})
+    ...(dbErrorType ? { db_error_type: dbErrorType } : {})
   };
 }
 
@@ -24,7 +25,7 @@ export async function handleAdminMembers(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const tAuthStart = Date.now();
-  const admin = await requireAdminSession(req, res, { light: true });
+  const admin = await requireAdminSession(req, res, { light: true, members: true });
   const authMs = Date.now() - tAuthStart;
   if (!admin) return;
 
@@ -40,39 +41,44 @@ export async function handleAdminMembers(req, res) {
   }
 
   const tQueryStart = Date.now();
+  let customers = [];
   try {
-    const [customers, loyalty] = await Promise.all([
-      runSqlReadFast(() => listAllCustomers(getSql())),
-      runSqlReadFast(() => loadLoyaltyMapFromSql(getSql()))
-    ]);
-    const queryMs = Date.now() - tQueryStart;
-
-    return res.status(200).json({
-      ok: true,
-      customers,
-      loyalty,
-      count: customers.length,
-      requestId: req.requestId || null,
-      timings: buildTimings({ t0, authMs, queryMs })
-    });
+    customers = await runSqlAdminMembersRead(() => listAllCustomers(getSql()));
   } catch (error) {
     const queryMs = Date.now() - tQueryStart;
     const dbErrorType = classifyLoginDbError(error);
-    const timings = buildTimings({
-      t0,
-      authMs,
-      queryMs,
-      dbErrorType: dbErrorType || null
-    });
-
     return sendApiError(res, {
       status: 500,
       code: 'ADMIN_MEMBERS_FAILED',
       message: 'Üye listesi alınamadı',
-      step: 'admin_members_failed',
+      step: 'admin_members_query_failed',
       requestId: req.requestId || null,
-      timings,
+      timings: buildTimings({ t0, authMs, queryMs, dbErrorType: dbErrorType || null }),
       error
     });
   }
+
+  const queryMs = Date.now() - tQueryStart;
+  const tLoyaltyStart = Date.now();
+  let loyalty = {};
+  let loyaltyDegraded = false;
+
+  try {
+    loyalty = await runSqlAdminMembersRead(() => loadLoyaltyMapLightFromSql(getSql()));
+  } catch (error) {
+    loyaltyDegraded = true;
+    console.warn('[admin.members] loyalty map skipped:', error?.message || error);
+  }
+
+  const loyaltyMs = Date.now() - tLoyaltyStart;
+
+  return res.status(200).json({
+    ok: true,
+    customers,
+    loyalty,
+    count: customers.length,
+    loyaltyDegraded,
+    requestId: req.requestId || null,
+    timings: buildTimings({ t0, authMs, queryMs, loyaltyMs })
+  });
 }

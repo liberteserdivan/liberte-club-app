@@ -25,6 +25,12 @@ function isEndpoint(sample, path) {
   return String(sample.endpoint || '').startsWith(path);
 }
 
+// Bir örnek kalıcı sunucu hatası mı? (503/429 geçici — incident sayılmaz)
+function isHardServerError(status) {
+  const code = Number(status);
+  return code >= 500 && code !== 503 && code !== 429;
+}
+
 // Bir örnek "kötü" sayılır mı? (4xx/5xx, timeout, network)
 function isBadSample(sample) {
   if (sample.timeout || sample.networkError) return true;
@@ -106,7 +112,7 @@ export function deriveClientHealth(samples = []) {
   // Guardian admin/config kartını ve overall durumu yeşil göstermez.
   const adminMembersBad = recent.some(
     (s) => isEndpoint(s, '/api/admin/members')
-      && (Number(s.status) >= 500 || s.timeout || s.networkError || Number(s.durationMs) >= 10_000)
+      && (isHardServerError(s.status) || s.timeout || s.networkError || Number(s.durationMs) >= 15_000)
   );
   if (adminMembersBad) {
     severity = worse(severity, 'incident');

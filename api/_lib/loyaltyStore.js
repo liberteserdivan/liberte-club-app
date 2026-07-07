@@ -75,6 +75,25 @@ export async function loadLoyaltyMapFromSql(externalSql = null) {
   return map;
 }
 
+// Üye listesi için hafif sadakat map — legacy_json atlanır (payload ve süre düşer)
+export async function loadLoyaltyMapLightFromSql(externalSql = null) {
+  const sql = externalSql || getSql();
+  if (!sql) return {};
+
+  await ensureCustomersTables(sql);
+  const rows = await sql`
+    SELECT customer_id, total_stamps, lifetime_stamps, available_rewards, used_rewards,
+           level, category_stamps, category_rewards, lp_balance, lp_lifetime, lp_schema_version
+    FROM customer_loyalty
+  `;
+  const map = {};
+  for (const row of rows) {
+    const id = Number(row.customer_id);
+    map[id] = loyaltyRowToCard(row, id);
+  }
+  return map;
+}
+
 // Tek müşteri sadakat kartını oku
 export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
   const sql = externalSql || getSql();
