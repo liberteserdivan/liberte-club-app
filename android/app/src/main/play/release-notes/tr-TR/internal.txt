@@ -1,1 +1,1 @@
-Liberte Club 1.1.1 — sandviç LP (+2 kazanç, 18 LP ikram), menüde LP rozetleri, kasiyer ürün seçimi (Patates Tabağı LP dışı), menü sipariş butonları ve push iyileştirmeleri.
+Liberte Club 1.1.30 — Dahili test: hızlı giriş, admin üye listesi, QR ve push stabilite düzeltmeleri.

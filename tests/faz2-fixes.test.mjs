@@ -72,7 +72,8 @@ test('B-2: handleAuthLogin rate-limit kontrolu retry disinda', () => {
 // O-3: ham hata maskeleme
 test('O-3: push/realtime handler ham error.message dondurmuyor', () => {
   const push = read('api/_lib/handlers/pushRegisterDevice.js');
-  assert.match(push, /publicDbErrorMessage\(error/);
+  assert.match(push, /sendApiError\(res,/);
+  assert.match(push, /message: 'Cihaz kaydı tamamlanamadı'/);
   assert.doesNotMatch(push, /error\?\.message \|\| 'Cihaz kaydı tamamlanamadı'/);
 
   const realtime = read('api/_lib/handlers/realtimeFetch.js');

@@ -3,8 +3,36 @@
  * Production-grade smoke test — deploy sonrasi guvenli kontrol
  * Kullanim: node scripts/smoke-production-grade.mjs
  * Ortam: SMOKE_BASE_URL (varsayilan https://app.liberte.cafe)
+ * Opsiyonel: SMOKE_ADMIN_CUSTOMER_PIN veya SMOKE_CUSTOMER_PIN (.env) — oturumlu admin üye listesi
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const base = (process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe').replace(/\/$/, '');
+
+function loadEnv() {
+  const envPath = join(root, '.env');
+  if (!existsSync(envPath)) return;
+  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"'))
+      || (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+loadEnv();
 
 async function probe(name, url, options = {}) {
   const started = Date.now();
@@ -65,7 +93,82 @@ function evaluate(row) {
     row.ok = row.pass;
     return row;
   }
+  if (row.name === 'admin-members-auth') {
+    row.pass = row.status === 200 && row.body?.ok === true;
+    row.note = row.pass
+      ? `uye sayisi=${row.body?.count ?? row.body?.customers?.length ?? '?'}`
+      : (row.status === 503 ? 'gecici DB — tekrar dene' : `status=${row.status}`);
+    row.ok = row.pass;
+    return row;
+  }
   return row;
+}
+
+async function probeAdminMembers() {
+  const pin = process.env.SMOKE_ADMIN_CUSTOMER_PIN || process.env.SMOKE_CUSTOMER_PIN || '';
+  if (!pin) {
+    return {
+      name: 'admin-members-auth',
+      ok: true,
+      status: 0,
+      durationMs: 0,
+      body: null,
+      pass: true,
+      note: 'atlandi (SMOKE_ADMIN_CUSTOMER_PIN yok)'
+    };
+  }
+  const phone = process.env.SMOKE_ADMIN_PHONE || '5058665406';
+  const login = await probe('admin-login', `${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, pin }),
+    maxMs: 20000
+  });
+  if (!login.body?.sessionToken) {
+    return {
+      name: 'admin-members-auth',
+      ok: false,
+      status: login.status,
+      durationMs: login.durationMs,
+      body: login.body,
+      pass: false,
+      note: 'giris basarisiz'
+    };
+  }
+  const token = login.body.sessionToken;
+  const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  try {
+    const res = await fetch(`${base}/api/admin/members`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      signal: controller.signal
+    });
+    const text = await res.text();
+    let body = {};
+    try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 200) }; }
+    return evaluate({
+      name: 'admin-members-auth',
+      ok: false,
+      status: res.status,
+      durationMs: Date.now() - started,
+      body,
+      pass: false,
+      note: ''
+    });
+  } catch (error) {
+    return evaluate({
+      name: 'admin-members-auth',
+      ok: false,
+      status: 0,
+      durationMs: Date.now() - started,
+      body: null,
+      pass: false,
+      note: error?.name === 'AbortError' ? 'timeout' : (error?.message || String(error))
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const rows = [];
@@ -78,6 +181,7 @@ rows.push(evaluate(await probe('loyalty-daily-unauth', `${base}/api/loyalty/dail
   body: '{}',
   maxMs: 8000
 })));
+rows.push(await probeAdminMembers());
 
 console.log('\n=== PRODUCTION GRADE SMOKE ===\n');
 console.log('base:', base, '\n');

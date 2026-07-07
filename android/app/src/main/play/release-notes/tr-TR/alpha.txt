@@ -1,1 +1,1 @@
-Surum 1.1.22 — bildirim duzeltmeleri, sunucu baglantisi iyilestirmeleri ve guvenlik guncellemeleri.
+Liberte Club 1.1.30 — Alpha: kayıtlı telefonla otomatik giriş, performans ve admin panel düzeltmeleri.

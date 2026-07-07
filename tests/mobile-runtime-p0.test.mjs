@@ -78,8 +78,11 @@ test('adminMembers handler: safe timings ve step', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
   assert.match(src, /auth_ms/);
   assert.match(src, /members_query_ms/);
-  assert.match(src, /step: 'admin_members_transient'/);
-  assert.match(src, /requireAdminSession/);
+  assert.match(src, /loyalty_query_ms/);
+  assert.match(src, /step: 'admin_members_query_failed'/);
+  assert.match(src, /members:\s*true/);
+  assert.match(src, /runSqlAdminMembersRead/);
+  assert.match(src, /loyaltyDegraded/);
 });
 
 test('auth readAuthToken Bearer destekler', () => {
