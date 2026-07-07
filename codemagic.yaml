@@ -151,6 +151,7 @@ workflows:
       vars:
         ANDROID_RELEASE: "true"
         PLAY_TRACK: alpha
+        ENABLE_PLAY_UPLOAD: "true"
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.30"
         ANDROID_MIN_VERSION_CODE: "59"

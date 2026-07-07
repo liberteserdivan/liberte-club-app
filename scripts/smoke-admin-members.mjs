@@ -10,22 +10,24 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = process.env.SMOKE_ORIGIN || 'https://app.liberte.cafe';
 
 function loadEnv() {
-  const envPath = join(root, '.env');
-  if (!existsSync(envPath)) return;
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
-    if (eq <= 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"'))
-      || (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
+  for (const name of ['.env', '.env.local']) {
+    const envPath = join(root, name);
+    if (!existsSync(envPath)) continue;
+    for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq <= 0) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"'))
+        || (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (!process.env[key] && value) process.env[key] = value;
     }
-    if (!process.env[key]) process.env[key] = value;
   }
 }
 
@@ -67,10 +69,13 @@ async function api(path, { method = 'GET', token = null, body = null, timeoutMs 
 loadEnv();
 
 const phone = process.env.SMOKE_ADMIN_PHONE || '5058665406';
-const customerPin = process.env.SMOKE_ADMIN_CUSTOMER_PIN || process.env.SMOKE_CUSTOMER_PIN || '';
+const customerPin = process.env.SMOKE_ADMIN_CUSTOMER_PIN
+  || process.env.SMOKE_CUSTOMER_PIN
+  || process.env.ADMIN_PIN
+  || '';
 
 if (!customerPin) {
-  console.error('[smoke-admin-members] SMOKE_ADMIN_CUSTOMER_PIN veya SMOKE_CUSTOMER_PIN gerekli (.env)');
+  console.error('[smoke-admin-members] SMOKE_ADMIN_CUSTOMER_PIN, SMOKE_CUSTOMER_PIN veya ADMIN_PIN gerekli (.env)');
   process.exit(1);
 }
 
