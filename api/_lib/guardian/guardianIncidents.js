@@ -1,4 +1,4 @@
-import { STATUS, statusRequiresHuman } from './guardianConstants.js';
+import { STATUS, SERVICE, statusRequiresHuman } from './guardianConstants.js';
 import { redactText } from './mask.js';
 import { persistIncidentToDb } from './guardianStore.js';
 import { attachAutoReportToIncident } from './guardianAutoReport.js';
@@ -92,6 +92,35 @@ export function recordIncident({
   if (s.list.length > MAX_INCIDENTS) s.list.splice(0, s.list.length - MAX_INCIDENTS);
   void persistIncidentToDb(incident);
   return incident;
+}
+
+// Incident alanı → sağlık raporu servis anahtarı
+const AREA_TO_SERVICE = Object.freeze({
+  [SERVICE.LOGIN]: SERVICE.LOGIN,
+  [SERVICE.AUTH]: SERVICE.LOGIN,
+  [SERVICE.QR]: SERVICE.QR,
+  [SERVICE.REALTIME]: SERVICE.REALTIME,
+  [SERVICE.CONFIG]: SERVICE.CONFIG,
+  [SERVICE.PUSH]: SERVICE.PUSH,
+  [SERVICE.DB]: SERVICE.DB,
+  [SERVICE.LOYALTY]: SERVICE.LOYALTY
+});
+
+// Servis artık sağlıklıysa açık incident'ları otomatik kapat (manuel "Çözüldü" gereksinimini azaltır)
+export function autoResolveRecoveredIncidents(serviceReports = {}) {
+  const s = store();
+  const resolved = [];
+
+  for (const inc of s.list) {
+    if (inc.status !== 'open') continue;
+    const svcKey = AREA_TO_SERVICE[inc.affectedArea] || inc.affectedArea;
+    const report = serviceReports[svcKey];
+    if (!report || report.status !== STATUS.HEALTHY) continue;
+    const closed = resolveIncident(inc.id);
+    if (closed) resolved.push(closed);
+  }
+
+  return resolved;
 }
 
 // Açık incident'ı çözüldü olarak işaretle

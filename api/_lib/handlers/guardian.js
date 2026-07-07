@@ -6,7 +6,7 @@ import {
   readSafeModeSync, enableSafeMode, disableSafeMode
 } from '../guardian/guardianSafeMode.js';
 import {
-  listIncidents, recordIncident, resolveIncident
+  listIncidents, recordIncident, resolveIncident, autoResolveRecoveredIncidents
 } from '../guardian/guardianIncidents.js';
 import { raiseAlert, raiseResolvedAlert, sendTestAlert, listAlerts } from '../guardian/guardianAlerts.js';
 import { shouldAutoAlertForIncident } from '../guardian/guardianAutoReport.js';
@@ -114,6 +114,9 @@ async function handleDetailedHealth(req, res, service) {
   }
 
   const overall = await withHealthDeadline(checkOverall(), DEGRADED_OVERALL_FALLBACK);
+  // Metrikler düzelince açık sunucu incident'larını otomatik kapat
+  autoResolveRecoveredIncidents(overall.services || {});
+
   return envelope(res, overall.ok ? 200 : 503, {
     ok: overall.ok,
     status: overall.status,

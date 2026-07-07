@@ -42,6 +42,12 @@ test('push.js: register-device withSqlRequestNoGuardian kullanir', () => {
   assert.match(src, /withSqlRequestNoGuardian\(handlePushRegisterDevice\)/);
 });
 
+test('realtime.js: withSqlRequestNoGuardian kullanir (hydrate gecikmesi yok)', () => {
+  const src = read('api/realtime.js');
+  assert.match(src, /withSqlRequestNoGuardian/);
+  assert.doesNotMatch(src, /withSqlRequest\(/);
+});
+
 test('pushRegisterDevice: requireSessionLight kullanir', () => {
   const src = read('api/_lib/handlers/pushRegisterDevice.js');
   assert.match(src, /requireSessionLight/);
@@ -115,6 +121,17 @@ test('Guardian: temiz telemetride healthy kalır (regresyon koruması)', () => {
   ];
   const health = deriveClientHealth(samples);
   assert.equal(health.severity, 'healthy');
+  assert.equal(health.incidents.length, 0);
+});
+
+test('Guardian: 5 dakikadan eski client hataları incident üretmez', () => {
+  const staleTs = Date.now() - 6 * 60 * 1000;
+  const samples = [
+    { ts: staleTs, endpoint: '/api/admin/members', status: 500, durationMs: 15000, method: 'GET' },
+    { ts: Date.now(), endpoint: '/api/state', status: 200, durationMs: 200, method: 'GET' }
+  ];
+  const health = deriveClientHealth(samples);
+  assert.equal(health.severity, 'healthy', 'eski hata penceresi dışında kalmalı');
   assert.equal(health.incidents.length, 0);
 });
 

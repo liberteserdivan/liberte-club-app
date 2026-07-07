@@ -1,6 +1,7 @@
 import { handleRealtimeFetch } from './_lib/handlers/realtimeFetch.js';
-import { withSqlRequest } from './_lib/sqlRequest.js';
+import { withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
 
-export default withSqlRequest(async function handler(req, res) {
+// Realtime fetch — Guardian hydrate yok (oturum/DB okuma hızlı kalmalı)
+export default withSqlRequestNoGuardian(async function handler(req, res) {
   return handleRealtimeFetch(req, res);
 });

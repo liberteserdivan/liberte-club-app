@@ -6,6 +6,15 @@
 // Seviye sıralaması — en kötü durumu seçmek için
 const RANK = { healthy: 0, degraded: 1, incident: 2, critical: 3 };
 
+// Yalnızca bu penceredeki istekler incident üretir — eski hatalar paneli sonsuza kadar kırmızı bırakmaz
+export const CLIENT_SAMPLE_WINDOW_MS = 5 * 60 * 1000;
+
+// Zaman damgası olmayan örnekler (test) güncel kabul edilir
+function filterFreshSamples(samples) {
+  const cutoff = Date.now() - CLIENT_SAMPLE_WINDOW_MS;
+  return samples.filter((s) => !s.ts || Number(s.ts) >= cutoff);
+}
+
 // İki seviyeden kötü olanı döndür
 function worse(a, b) {
   return (RANK[b] ?? 0) > (RANK[a] ?? 0) ? b : a;
@@ -43,7 +52,7 @@ function makeIncident(level, title, affectedArea) {
 // Son istekleri inceleyip overall severity + client incident listesi üret.
 // samples: getRecentRequests(20) çıktısı (en yeni önce). Pure fonksiyon.
 export function deriveClientHealth(samples = []) {
-  const recent = Array.isArray(samples) ? samples.slice(0, 20) : [];
+  const recent = filterFreshSamples(Array.isArray(samples) ? samples.slice(0, 20) : []);
   const incidents = [];
   let severity = 'healthy';
 
