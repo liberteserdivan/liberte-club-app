@@ -109,19 +109,8 @@ function run(command, commandArgs, cwd) {
 
 if (codemagicBuildId) {
   await downloadCodemagicAab(codemagicBuildId);
-  const aabPath = path.join(androidDir, 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
-  const credArg = existsSync(credFile) ? `@file:${credFile}` : process.env.ANDROID_PUBLISHER_CREDENTIALS;
-  console.log(`> Play Console'a dogrudan yukleniyor (kanal: ${track})...`);
-  run('npx', [
-    '--yes',
-    'google-play',
-    'upload-bundle',
-    '--package-name', process.env.PACKAGE_NAME || 'cafe.liberte.app',
-    '--track', track,
-    '--bundle', aabPath,
-    '--credentials', credArg
-  ], root);
-  console.log('> Yukleme tamamlandi.');
+  console.error('Codemagic AAB indirildi. Play yuklemesi icin ENABLE_PLAY_UPLOAD=true ile yeni build tetikleyin');
+  console.error('  node scripts/trigger-codemagic.mjs android-release main');
   process.exit(0);
 }
 
