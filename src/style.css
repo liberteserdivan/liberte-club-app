@@ -3935,6 +3935,40 @@ body{
   color:var(--forest);
   font-size:18px;
 }
+/* Kasiyer — QR sonrası hızlı LP seçimi */
+.cashierQuickLpPanel{
+  display:grid;
+  gap:10px;
+}
+.cashierQuickLpHint{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  line-height:1.4;
+}
+.cashierQuickLpGrid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+}
+.cashierQuickLpBtn{
+  min-height:44px;
+  border:1px solid rgba(29,106,85,.18);
+  border-radius:14px;
+  background:linear-gradient(180deg,#fff 0%,#f4fbf8 100%);
+  color:#1d6a55;
+  font-size:15px;
+  font-weight:900;
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.cashierQuickLpBtn:not(:disabled):active{
+  transform:scale(.97);
+  background:#e8f7f1;
+}
+.cashierQuickLpBtn:disabled{
+  opacity:.55;
+}
 .scanResultFooter{
   display:flex;
   justify-content:center;

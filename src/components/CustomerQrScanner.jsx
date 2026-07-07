@@ -3,6 +3,7 @@ import { Flashlight, Loader2, ScanLine } from 'lucide-react';
 import PageShell from './PageShell.jsx';
 import PageSection from './PageSection.jsx';
 import StampCategoryPanel from './StampCategoryPanel.jsx';
+import CashierQuickLpPanel from './CashierQuickLpPanel.jsx';
 import CashierMembershipPanel from './CashierMembershipPanel.jsx';
 import CashierProductPickModal from './CashierProductPickModal.jsx';
 import {
@@ -279,7 +280,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }
 
   // Sunucu veya yerel state üzerinde sadakat işlemi — başarılıysa true
-  async function runLoyaltyAction(action, category, menuItem = null) {
+  async function runLoyaltyAction(action, category, menuItem = null, count = 1) {
     if (!found || busy) return false;
     decodeLockRef.current = true;
 
@@ -295,7 +296,8 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
           token: scannedToken,
           action,
           category,
-          menuItemId: menuItem?.id ?? null
+          menuItemId: menuItem?.id ?? null,
+          count
         });
         // Sunucu işlemi onayladı ve güncel customer/loyalty döndürdü; sonucu
         // doğrudan local state'e işliyoruz. Bu yüzden tam /api/state pull'una
@@ -320,7 +322,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     let nextDb = dbRef.current;
 
     if (action === 'stamp') {
-      nextDb = addCategoryStampToCustomer(dbRef.current, found.id, category, 1, 'QR kamera', menuItem);
+      nextDb = addCategoryStampToCustomer(dbRef.current, found.id, category, count, 'QR kamera', menuItem);
     } else if (action === 'remove') {
       nextDb = addCategoryStampToCustomer(dbRef.current, found.id, category, -1, 'QR düzeltme');
     } else if (action === 'redeem') {
@@ -343,7 +345,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
   }
 
   async function confirmAddCategory(category, menuItem = null) {
-    const ok = await runLoyaltyAction('stamp', category, menuItem);
+    const ok = await runLoyaltyAction('stamp', category, menuItem, 1);
     if (!ok) return;
     const cat = STAMP_CATEGORIES.find((c) => c.id === category);
     const itemNote = menuItem?.name ? ` (${menuItem.name})` : '';
@@ -367,6 +369,14 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     }
     setProductPickCategory(null);
     await confirmAddCategory(check.category, item);
+  }
+
+  async function confirmQuickLp(amount) {
+    const steps = Math.trunc(amount);
+    if (steps < 1 || steps > 10) return;
+    const ok = await runLoyaltyAction('stamp', 'coffee', null, steps);
+    if (!ok) return;
+    setMsg(`+${steps} LP eklendi.`);
   }
 
   async function removeCategory(category) {
@@ -520,6 +530,8 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
               <div><span>İkram</span><b>{redeemableCount}</b></div>
             </div>
           </PageSection>
+
+          <CashierQuickLpPanel busy={busy} onAddLp={confirmQuickLp} />
 
           <CashierMembershipPanel
             card={loyalty}

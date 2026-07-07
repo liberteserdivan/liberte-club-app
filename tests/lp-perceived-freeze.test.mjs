@@ -44,3 +44,20 @@ test('LP işlenirken görünür ilerleme göstergesi var', () => {
   assert.match(source, /actionBusy &&/);
   assert.match(source, /LP işleniyor/);
 });
+
+test('QR sonrası hızlı LP paneli 1-10 buton sunar', () => {
+  const scanner = readFileSync(join(root, 'src/components/CustomerQrScanner.jsx'), 'utf8');
+  const panel = readFileSync(join(root, 'src/components/CashierQuickLpPanel.jsx'), 'utf8');
+  assert.match(scanner, /CashierQuickLpPanel/);
+  assert.match(scanner, /confirmQuickLp/);
+  assert.match(panel, /QUICK_LP_AMOUNTS = \[1, 2, 3, 4, 5, 6, 7, 8, 9, 10\]/);
+});
+
+test('loyalty-action stamp isteği count parametresini iletir', () => {
+  const qrClient = readFileSync(join(root, 'src/lib/qrClient.js'), 'utf8');
+  const adminLoyalty = readFileSync(join(root, 'api/_lib/handlers/adminLoyalty.js'), 'utf8');
+  const loyaltyStore = readFileSync(join(root, 'api/_lib/loyaltyStore.js'), 'utf8');
+  assert.match(qrClient, /count/);
+  assert.match(adminLoyalty, /body\.count/);
+  assert.match(loyaltyStore, /count = 1/);
+});

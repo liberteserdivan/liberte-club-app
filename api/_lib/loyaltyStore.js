@@ -146,10 +146,11 @@ export async function insertLoyaltyEvent(sql, customerId, historyEntry) {
 }
 
 // Tek işlem için sadakat değişimini hesapla — saf alan (transaction içinde çağrılır)
-function computeLoyaltyMutation(miniState, { customerId, action, category, menuItem, note }) {
+function computeLoyaltyMutation(miniState, { customerId, action, category, menuItem, note, count = 1 }) {
+  const steps = Math.max(1, Math.min(10, Math.trunc(Number(count) || 1)));
   let result;
   if (action === 'stamp') {
-    result = applyCategoryStamp(miniState, customerId, category, 1, note, { menuItem });
+    result = applyCategoryStamp(miniState, customerId, category, steps, note, { menuItem });
   } else if (action === 'remove') {
     result = applyCategoryStamp(miniState, customerId, category, -1, 'QR düzeltme');
   } else if (action === 'redeem') {
@@ -184,6 +185,7 @@ export async function applyLoyaltyActionRelational({
   category = 'coffee',
   menuItem = null,
   note = 'QR kamera',
+  count = 1,
   nonce = null
 }) {
   const sql = getSql();
@@ -235,7 +237,7 @@ export async function applyLoyaltyActionRelational({
       miniState.history = await loadBirthdayHistory(tx, id);
     }
 
-    const result = computeLoyaltyMutation(miniState, { customerId: id, action, category, menuItem, note });
+    const result = computeLoyaltyMutation(miniState, { customerId: id, action, category, menuItem, note, count });
     if (!result.ok) {
       return result;
     }

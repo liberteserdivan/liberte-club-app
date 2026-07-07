@@ -78,6 +78,7 @@ export async function handleAdminLoyaltyAction(req, res) {
 
     const action = String(body.action || '').trim();
     const category = String(body.category || 'coffee').trim();
+    const count = Math.max(1, Math.min(10, Math.trunc(Number(body.count ?? 1) || 1)));
     const menuItemId = body.menuItemId != null ? Number(body.menuItemId) : null;
     const menuItem = menuItemId
       ? menuItems.find((item) => Number(item.id) === menuItemId) || null
@@ -92,6 +93,7 @@ export async function handleAdminLoyaltyAction(req, res) {
         action,
         category,
         menuItem,
+        count,
         nonce: verified.nonce
       }));
 
@@ -138,7 +140,7 @@ export async function handleAdminLoyaltyAction(req, res) {
     let result;
 
     if (action === 'stamp') {
-      result = applyCategoryStamp(nextState, verified.customerId, category, 1, 'QR kamera', { menuItem });
+      result = applyCategoryStamp(nextState, verified.customerId, category, count, 'QR kamera', { menuItem });
     } else if (action === 'remove') {
       result = applyCategoryStamp(nextState, verified.customerId, category, -1, 'QR düzeltme');
     } else if (action === 'redeem') {
