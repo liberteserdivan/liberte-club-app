@@ -80,7 +80,7 @@ export function getFirebaseSwUrl() {
 
 export const FIREBASE_SW_URL = '/firebase-messaging-sw.js';
 
-// Push bildirim ikon/deeplink kökü — liberte.cafe bağımlılığı yok
+// Push bildirim ikon/deeplink kökü — native API ile aynı site
 export const PUSH_SITE_ORIGIN = DEFAULT_PUBLIC_SITE_ORIGIN;
 
 // Firebase API key referrer — native uygulama için yapılandırılmış site kökü

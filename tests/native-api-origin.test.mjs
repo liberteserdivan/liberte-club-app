@@ -13,11 +13,12 @@ test('Web/PWA: resolveApiUrl relative path döner (same-origin)', () => {
   assert.equal(resolveApiUrl('/api/auth/login', false), '/api/auth/login');
 });
 
-// 2) Native + env yok — kalıcı Vercel fallback kullanılır (liberte.cafe değil)
-test('Native: env yoksa kalıcı Vercel API kökü kullanılır', () => {
+// 2) Native + env yok — kalıcı özel domain fallback kullanılır
+test('Native: env yoksa kalıcı app.liberte.cafe API kökü kullanılır', () => {
   const origin = normalizeApiOrigin(undefined) || FALLBACK;
   assert.equal(origin, FALLBACK);
-  assert.doesNotMatch(origin, /liberte\.cafe/);
+  assert.match(origin, /app\.liberte\.cafe/);
+  assert.doesNotMatch(origin, /vercel\.app/);
   assert.equal(resolveApiUrl('/api/auth/login', true, origin), `${FALLBACK}/api/auth/login`);
 });
 

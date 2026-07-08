@@ -12,10 +12,11 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(root, rel), 'utf8');
 
-test('native API base absolute ve liberte.cafe degil', () => {
+test('native API base absolute ve ozel domain', () => {
   const origin = getNativeApiOrigin();
   assert.match(origin, /^https:\/\//);
-  assert.doesNotMatch(origin, /liberte\.cafe/);
+  assert.match(origin, /app\.liberte\.cafe/);
+  assert.doesNotMatch(origin, /vercel\.app/);
   assert.equal(origin, DEFAULT_NATIVE_API_ORIGIN);
   assert.match(resolveApiUrl('/api/auth/login', true), /^https:\/\/.+\/api\/auth\/login$/);
 });
