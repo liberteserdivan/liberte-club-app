@@ -234,7 +234,7 @@ export default function Login({ db, commit, setSession }) {
     return new Promise((resolve) => { setTimeout(resolve, ms); });
   }
 
-  // Gecici 503/timeout — bir kez daha dene (soğuk DB / pooler)
+  // Geçici 503/timeout — artan gecikmeyle birkaç kez daha dene (pooler/soğuk lambda)
   async function postLoginWithRetry(ph, pinValue) {
     const body = JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() });
     const opts = {
@@ -244,14 +244,16 @@ export default function Login({ db, commit, setSession }) {
       method: 'POST',
       body
     };
-    let result = await apiJson('/api/auth/login', opts);
-    const transient = result.response.status === 503
-      || result.data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE';
-    if (transient) {
-      await sleep(900);
-      result = await apiJson('/api/auth/login', opts);
+    const backoffMs = [0, 900, 1800, 2800];
+    let last = null;
+    for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
+      if (backoffMs[attempt] > 0) await sleep(backoffMs[attempt]);
+      last = await apiJson('/api/auth/login', opts);
+      const transient = last.response.status === 503
+        || last.data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE';
+      if (!transient) return last;
     }
-    return result;
+    return last;
   }
 
   async function loginWithPin(explicitPhone = null, explicitPin = null) {

@@ -19,14 +19,14 @@ import {
   mergeUserState
 } from './_lib/stateAccess.js';
 import { enforceAuthRateLimit } from './_lib/rateLimit.js';
-import { withSqlRequest } from './_lib/sqlRequest.js';
+import { withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
 import { clampString, oneOfOrDefault, isBodyTooLarge } from './_lib/validateInput.js';
 
 // Hata kaydı için izinli enum değerleri
 const ERROR_LOG_LEVELS = ['error', 'warn', 'info', 'debug'];
 const ERROR_LOG_PLATFORMS = ['web', 'ios', 'android', 'unknown'];
 
-export default withSqlRequest(async function handler(req, res) {
+export default withSqlRequestNoGuardian(async function handler(req, res) {
   applyCors(req, res, 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 

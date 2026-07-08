@@ -22,7 +22,7 @@ function canPullRemote(sessionRef) {
 // açılır. Bu yüzden zorunlu ilk tam /api/state pull'u ertelenir (login akışını
 // soğuk başlangıçta kilitlememek için). Foreground/visibility ya da periyodik
 // timer daha erken senkron tetikleyebilir.
-const INITIAL_REMOTE_SYNC_DELAY_MS = 6_000;
+const INITIAL_REMOTE_SYNC_DELAY_MS = 10_000;
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
 export function useCommit(initial, sessionRef, syncContext = {}) {

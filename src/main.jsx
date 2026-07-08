@@ -12,7 +12,7 @@ import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { handlePushOpenPayload } from './lib/pushNavigation.js';
 import { isNativeApp } from './lib/platform.js';
 import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
-import { warmServer } from './lib/serverWarmup.js';
+import { warmServer, warmDatabasePool } from './lib/serverWarmup.js';
 import { load } from './lib/db.js';
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import './style.css';
@@ -28,9 +28,12 @@ if (isNativeApp()) {
 // Yasal sayfalar API kullanmaz; orada ısınmaya gerek yok.
 if (!legalRoute) {
   warmServer({ force: true });
-  // Uygulama uzun süre arka planda kalıp ön plana dönünce lambda'lar yeniden
-  // soğumuş olabilir; dönüşte tekrar ısıt (debounce kendi içinde korur).
-  subscribeForegroundResume(() => warmServer());
+  // DB havuzunu sırayla ısıt — giriş/state istekleri soğuk bağlantı beklemesin
+  setTimeout(() => warmDatabasePool({ force: true }), 400);
+  subscribeForegroundResume(() => {
+    warmServer();
+    warmDatabasePool();
+  });
 }
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) {

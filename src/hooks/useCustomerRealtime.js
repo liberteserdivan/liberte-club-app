@@ -20,6 +20,8 @@ function canCommitForCustomer(customerId) {
   return session && Number(session.customerId) === Number(customerId);
 }
 
+const REALTIME_STARTUP_DELAY_MS = 3_500;
+
 // Müşteri ekranı — filtreli postgres dinleyicileri
 export function useCustomerRealtime({
   enabled = false,
@@ -41,6 +43,14 @@ export function useCustomerRealtime({
 
     let cancelled = false;
     const channelKey = `customer:${customerId}`;
+    let startupTimer = null;
+
+    startupTimer = setTimeout(() => {
+      if (cancelled) return;
+      start().catch((error) => {
+        console.warn('[realtime.customer]', error?.message || error);
+      });
+    }, REALTIME_STARTUP_DELAY_MS);
 
     async function start() {
       const ready = await isSupabaseRealtimeEnabled();
@@ -126,16 +136,13 @@ export function useCustomerRealtime({
       }
     }
 
-    start().catch((error) => {
-      console.warn('[realtime.customer]', error?.message || error);
-    });
-
     const unsubscribeResume = subscribeForegroundResume(() => {
       refreshRealtimeSessionFromServer().catch(() => {});
     });
 
     return () => {
       cancelled = true;
+      if (startupTimer) clearTimeout(startupTimer);
       unsubscribeResume();
       closeRealtimeChannel(channelKey).catch(() => {});
     };

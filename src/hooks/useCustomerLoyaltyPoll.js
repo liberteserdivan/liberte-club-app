@@ -6,7 +6,7 @@ import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForegrou
 import { isCustomerRealtimeDisabled, shouldReducePolling } from '../lib/safeMode.js';
 import { getMemorySession } from '../lib/session.js';
 
-// Anlık güncelleme realtime (websocket) ile gelir; bu yoklama yalnızca yedektir.
+const LP_POLL_STARTUP_DELAY_MS = 5_000;
 // Bu yüzden seyrek tutulur — boşa giden egress (giden trafik) ~%90 azalır.
 // Ekran ilk açıldığında kısa bir "hızlı kontrol" penceresi bırakılır ki
 // kasada yapılan işlem realtime gecikirse bile birkaç saniyede yansısın.
@@ -86,6 +86,7 @@ export function useCustomerLoyaltyPoll({
     }
 
     let timer = null;
+    let startupTimer = null;
 
     function scheduleNextPoll() {
       if (timer) clearTimeout(timer);
@@ -94,8 +95,11 @@ export function useCustomerLoyaltyPoll({
       }, resolvePollInterval());
     }
 
-    pollLoyalty();
-    scheduleNextPoll();
+    // Giriş sonrası ilk saniyede realtime/state ile yarışmasın
+    startupTimer = setTimeout(() => {
+      pollLoyalty();
+      scheduleNextPoll();
+    }, LP_POLL_STARTUP_DELAY_MS);
 
     function onVisible() {
       if (canPollNow()) pollLoyalty();
@@ -113,6 +117,7 @@ export function useCustomerLoyaltyPoll({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      if (startupTimer) clearTimeout(startupTimer);
       document.removeEventListener('visibilitychange', onVisible);
       if (isIosNative()) {
         window.removeEventListener('pageshow', onPageShow);

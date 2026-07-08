@@ -33,6 +33,22 @@ test('state: auth yoksa DB state okumasi yapmadan 401 doner', () => {
   assert.ok(guardIdx < loadIdx, '401 guard state okumasindan once olmali');
 });
 
+test('state: Guardian hydrate yok (kritik okuma yolu)', () => {
+  const src = read('api/state.js');
+  assert.match(src, /withSqlRequestNoGuardian/);
+  assert.doesNotMatch(src, /withSqlRequest\(/);
+});
+
+test('qr: Guardian hydrate yok (musteri QR yolu)', () => {
+  const src = read('api/qr.js');
+  assert.match(src, /withSqlRequestNoGuardian/);
+});
+
+test('guardian: cift hydrate yok', () => {
+  const src = read('api/guardian.js');
+  assert.match(src, /withSqlRequestNoGuardian/);
+});
+
 test('state: customer yolu admin tam state degil, customer slice yukler', () => {
   const src = read('api/state.js');
   // GET salt-okuma: isFullAdmin degilse loadAppStateForCustomer kullanilir.

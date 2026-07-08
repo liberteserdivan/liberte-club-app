@@ -129,6 +129,24 @@ test('Guardian: auth/session 503 geçici hata incident üretmez', () => {
   ];
   const health = deriveClientHealth(samples);
   assert.equal(health.incidents.length, 0, '503 oturum geçici — incident olmamalı');
+  assert.equal(health.serviceStatuses.login, 'degraded', 'tek 503 login kartını yavaş göstermeli');
+});
+
+test('Guardian: 503 dalgasında servis kartları yeşil kalmaz', () => {
+  const samples = [
+    { endpoint: '/api/guardian/health', status: 503, durationMs: 7498, method: 'GET' },
+    { endpoint: '/api/state', status: 503, durationMs: 33735, method: 'GET' },
+    { endpoint: '/api/realtime', status: 503, durationMs: 3840, method: 'GET' },
+    { endpoint: '/api/realtime', status: 503, durationMs: 3813, method: 'GET' },
+    { endpoint: '/api/guardian/health', status: 503, durationMs: 8741, method: 'GET' },
+    { endpoint: '/api/realtime', status: 503, durationMs: 3758, method: 'GET' },
+    { endpoint: '/api/admin/members', status: 200, durationMs: 7187, method: 'GET' },
+    { endpoint: '/api/realtime', status: 200, durationMs: 3249, method: 'GET' }
+  ];
+  const health = deriveClientHealth(samples);
+  assert.notEqual(health.severity, 'healthy');
+  assert.equal(health.serviceStatuses.db, 'incident');
+  assert.equal(health.serviceStatuses.realtime, 'incident');
 });
 
 test('Guardian: temiz telemetride healthy kalır (regresyon koruması)', () => {

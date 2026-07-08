@@ -55,6 +55,33 @@ function makeIncident(level, title, affectedArea) {
   return { level, title, affectedArea, source: 'client' };
 }
 
+// Endpoint grupları — 503 yoğunluğunda servis kartı rengi
+const SERVICE_503_PREFIXES = {
+  db: ['/api/state', '/api/guardian/health'],
+  realtime: ['/api/realtime'],
+  login: ['/api/auth/session', '/api/auth/login'],
+  qr: ['/api/qr/generate'],
+  loyalty: ['/api/loyalty', '/api/customer/loyalty'],
+  config: ['/api/admin/members', '/api/admin']
+};
+
+// Belirli servis için 503 sayısı
+function count503ForService(samples, prefixes) {
+  return samples.filter(
+    (s) => Number(s.status) === 503 && prefixes.some((p) => isEndpoint(s, p))
+  ).length;
+}
+
+// 503 dalgası — geçici DB; incident listesine yazılmaz ama kartlar yeşil kalmaz
+function apply503ServiceStatuses(recent, serviceStatuses) {
+  for (const [key, prefixes] of Object.entries(SERVICE_503_PREFIXES)) {
+    const count = count503ForService(recent, prefixes);
+    if (count >= 1) serviceStatuses[key] = 'degraded';
+    if (count >= 3) serviceStatuses[key] = 'incident';
+  }
+}
+
+
 // Son istekleri inceleyip overall severity + client incident listesi üret.
 // samples: getRecentRequests(20) çıktısı (en yeni önce). Pure fonksiyon.
 export function deriveClientHealth(samples = []) {
@@ -63,7 +90,7 @@ export function deriveClientHealth(samples = []) {
   let severity = 'healthy';
 
   if (recent.length === 0) {
-    return { severity, incidents, summary: summarize(recent) };
+    return { severity, incidents, summary: summarize(recent), serviceStatuses: {} };
   }
 
   const summary = summarize(recent);
@@ -136,12 +163,22 @@ export function deriveClientHealth(samples = []) {
     severity = worse(severity, 'critical');
   }
 
-  return { severity, incidents, summary };
+  const serviceStatuses = {};
+  apply503ServiceStatuses(recent, serviceStatuses);
+
+  const total503 = recent.filter((s) => Number(s.status) === 503).length;
+  if (total503 >= 3) severity = worse(severity, 'degraded');
+  if (total503 >= 5) severity = worse(severity, 'incident');
+
+  return { severity, incidents, summary, serviceStatuses };
 }
 
-// Bir servis için client incident var mı? (kart rengini düzeltmek için)
+// Bir servis için client incident veya 503 dalgası var mı? (kart rengini düzeltmek için)
 export function clientStatusForService(serviceKey, clientHealth) {
+  const from503 = clientHealth?.serviceStatuses?.[serviceKey];
   const inc = (clientHealth?.incidents || []).find((i) => i.affectedArea === serviceKey);
+  if (from503 && inc) return worse(from503, inc.level);
+  if (from503) return from503;
   if (inc) return inc.level;
   return null;
 }

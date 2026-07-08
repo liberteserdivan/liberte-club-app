@@ -9,7 +9,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 test('useCommit ilk zorunlu tam pull\'u erteler (login anında /api/state pull yok)', () => {
   const source = readFileSync(join(root, 'src/hooks/useCommit.js'), 'utf8');
   // Erteleme sabiti 5-10sn aralığında olmalı
-  assert.match(source, /INITIAL_REMOTE_SYNC_DELAY_MS = 6_000/);
+  assert.match(source, /INITIAL_REMOTE_SYNC_DELAY_MS = 10_000/);
   // Zorunlu pull artık 120ms'de değil, ertelenmiş gecikme (setTimeout) ile yapılmalı.
   // Gövdede Safe Mode guard'ı bulunabilir; bu yüzden setTimeout + INITIAL_REMOTE_SYNC_DELAY_MS
   // ve içeride pullRemote(true) çağrısı ayrı ayrı doğrulanır.
