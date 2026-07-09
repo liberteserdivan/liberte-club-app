@@ -154,6 +154,11 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
       return;
     }
 
+    if (preview.deviceCount <= 0) {
+      setFormError('Kayıtlı bildirim cihazı yok. Önce telefonda Profil → Bildirimler bölümünden izin verin.');
+      return;
+    }
+
     setFormError('');
 
     const ok = confirm('Bu bildirim seçilen hedef kitleye gönderilecek. Devam etmek istiyor musunuz?');

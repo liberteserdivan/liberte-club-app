@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { tryEnablePush } from '../lib/firebasePush.js';
+import { tryEnablePush, resetPushCircuit } from '../lib/firebasePush.js';
 import { openNotificationSettings } from '../lib/openNotificationSettings.js';
 import { getPushSettingsHint } from '../lib/nativePush.js';
 import { canRequestPushOnThisDevice } from '../lib/pushPrompt.js';
@@ -25,6 +25,7 @@ export function usePushEnableFlow(customer, db, commit) {
 
     setBusy(true);
     setStatusMessage('');
+    resetPushCircuit();
 
     const result = await tryEnablePush(customer, db, commit);
     setBusy(false);

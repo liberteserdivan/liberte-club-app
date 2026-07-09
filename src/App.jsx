@@ -51,8 +51,8 @@ const SPLASH_MIN_MS = 200;
 const SPLASH_FADE_MS = 240;
 const SPLASH_TOTAL_MS = 660;
 const SPLASH_FORCE_MS = 4500;
-const CUSTOMER_HYDRATE_MS = 28_000;
-const CUSTOMER_HYDRATE_RETRY_MS = 12_000;
+const CUSTOMER_HYDRATE_MS = 18_000;
+const CUSTOMER_HYDRATE_RETRY_MS = 3_500;
 
 export default function App() {
   const sessionRef = useRef(null);
@@ -413,7 +413,7 @@ export default function App() {
     if (!customer?.id) return undefined;
 
     // Push kaydı giriş/state sync'ten SONRA — açılışta DB bağlantısı yarışmasın
-    const pushDelayMs = isNativeApp() ? 4000 : 2000;
+    const pushDelayMs = isNativeApp() ? 1200 : 800;
     function syncPushRegistration() {
       ensurePushRegisteredIfPermitted(customer, db, commit).catch(() => {});
     }

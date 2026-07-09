@@ -29,8 +29,8 @@
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth;background:#0B2F26}
-body{margin:0;min-height:100vh;background:var(--cream);color:var(--text);font-family:var(--font-body);font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth;background:#0B2F26;touch-action:pan-y}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--cream);color:var(--text);font-family:var(--font-body);font-optical-sizing:auto;-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 body.app-ui-ready{background:var(--cream)}
 h1,h2,h3,.pageHero h2,.homeWelcome h1,.loginCard h1,.v4MemberCard h2,.walletTop h2{font-family:var(--font-display);font-optical-sizing:auto;letter-spacing:-.02em}
 button,input,textarea,select{font:inherit}
@@ -121,7 +121,7 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   from{opacity:0;transform:scale(.94) translateY(8px)}
   to{opacity:1;transform:scale(1) translateY(0)}
 }
-.app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;padding:0 0 calc(116px + env(safe-area-inset-bottom));background:var(--cream);position:relative;overflow-x:hidden}
+.app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;min-height:100dvh;padding:0 0 var(--page-scroll-bottom, calc(80px + env(safe-area-inset-bottom)));background:var(--cream);position:relative;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y}
 .appBoot{width:100%;max-width:430px;margin:0 auto;min-height:100vh;background:var(--cream)}
 .appBoot--hydrate{
   display:grid;
@@ -7136,7 +7136,7 @@ body.menuDetailOpen{
 
 .profileHeroCard{
   display:grid;
-  grid-template-columns:auto 1fr auto;
+  grid-template-columns:auto minmax(0, 1fr) auto;
   gap:14px;
   align-items:center;
   margin-top:8px;
@@ -7146,6 +7146,10 @@ body.menuDetailOpen{
   border:1px solid rgba(216,194,157,.28);
   backdrop-filter:blur(12px);
   -webkit-backdrop-filter:blur(12px);
+}
+
+.profileHeroInfo{
+  min-width:0;
 }
 
 .profileHeroInfo strong{
@@ -7212,6 +7216,48 @@ body.menuDetailOpen{
   background:#fff;
   border:1px solid rgba(11,47,38,.07);
   box-shadow:0 10px 24px rgba(11,47,38,.06);
+}
+
+.pagePro--profile .pageProBody{
+  padding-bottom:calc(var(--page-scroll-bottom) + 28px);
+}
+
+.profileLegalSection{
+  scroll-margin-bottom:calc(var(--page-scroll-bottom) + 24px);
+  padding-bottom:8px;
+}
+
+@media (max-width: 390px){
+  .profileHeroCard{
+    grid-template-columns:auto minmax(0, 1fr);
+    grid-template-areas:
+      "avatar info"
+      "badge badge";
+  }
+
+  .profileHeroCard .profileAvatar{
+    grid-area:avatar;
+  }
+
+  .profileHeroCard .profileHeroInfo{
+    grid-area:info;
+  }
+
+  .profileHeroCard .profileLevelBadge{
+    grid-area:badge;
+    justify-self:flex-start;
+    margin-top:2px;
+  }
+
+  .profileHeroInfo strong{
+    font-size:19px;
+    word-break:break-word;
+  }
+
+  .profileHeroInfo p{
+    font-size:12px;
+    flex-wrap:wrap;
+  }
 }
 
 /* Ana sayfa hub — 2x2 grid */

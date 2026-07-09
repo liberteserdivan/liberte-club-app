@@ -255,12 +255,15 @@ export async function getSessionForBootstrap(req) {
       findLoyaltyByCustomerId,
       loyaltyRowToCard
     } = await import('./customersStore.js');
-    const customer = await findCustomerById(sql, identity.customerId);
+
+    // Müşteri ve loyalty okumalarını paralel çalıştır — giriş/bootstrap hızlanır
+    const [customer, loyaltyRow] = await Promise.all([
+      findCustomerById(sql, identity.customerId),
+      findLoyaltyByCustomerId(sql, identity.customerId)
+    ]);
     if (!customer) return null;
 
-    let loyalty = null;
-    const loyaltyRow = await findLoyaltyByCustomerId(sql, identity.customerId);
-    loyalty = loyaltyRowToCard(loyaltyRow, identity.customerId);
+    const loyalty = loyaltyRowToCard(loyaltyRow, identity.customerId);
 
     return {
       ...identity,

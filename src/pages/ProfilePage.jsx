@@ -108,7 +108,7 @@ export default function ProfilePage({
         </div>
       </PageSection>
 
-      <PageSection label="Yasal">
+      <PageSection label="Yasal" className="profileLegalSection">
         <div className="profileActionStack">
           <button type="button" className="profileAction ghost" onClick={() => setLegalType('privacy')}>
             Gizlilik Politikası

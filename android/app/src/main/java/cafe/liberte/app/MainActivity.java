@@ -55,6 +55,9 @@ public class MainActivity extends BridgeActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
+        webView.setNestedScrollingEnabled(true);
+        webView.setVerticalScrollBarEnabled(false);
 
         // Debug/smoke APK — Appium WebView baglami (Play release etkilenmez)
         if (BuildConfig.DEBUG) {

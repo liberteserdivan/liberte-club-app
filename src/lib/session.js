@@ -145,7 +145,9 @@ export async function bootstrapSession() {
     return getAuthEpoch() !== epochAtStart;
   }
 
-  const backoffMs = [0, 700, 1400, 2200];
+  const backoffMs = (hasStoredAuthToken() && isNativeApp())
+    ? [0, 450, 900]
+    : [0, 700, 1400, 2200];
   let lastNetworkError = null;
 
   try {

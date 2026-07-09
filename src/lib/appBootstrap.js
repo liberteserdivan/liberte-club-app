@@ -1,8 +1,8 @@
 import { bootstrapSession } from './session.js';
 import { isNativeApp } from './platform.js';
 
-const WEB_SESSION_TIMEOUT_MS = 20_000;
-const NATIVE_SESSION_TIMEOUT_MS = 35_000;
+const WEB_SESSION_TIMEOUT_MS = 12_000;
+const NATIVE_SESSION_TIMEOUT_MS = 14_000;
 
 // Oturum bootstrap — ağ takılırsa uygulama boş ekranda kalmasın
 export function bootstrapSessionWithTimeout(timeoutMs) {

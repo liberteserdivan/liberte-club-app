@@ -194,6 +194,18 @@ export default function Login({ db, commit, setSession }) {
         customer: result.customer,
         loyalty: result.loyalty
       }), { skipRemote: true });
+    } else if (result.customerId) {
+      // Sunucu yanıtında müşteri snapshot yoksa bile giriş ekranını bekletme
+      commit((current) => mergeAuthSnapshot(current, {
+        customer: {
+          id: result.customerId,
+          name: result.customer?.name || 'Üye',
+          phone: norm(phone) || '',
+          email: result.customer?.email || '',
+          isAdmin: Boolean(result.isAdmin)
+        },
+        loyalty: result.loyalty || null
+      }), { skipRemote: true });
     }
     const session = applyAuthResult(result);
     saveQuickLogin(phone || readSavedPhone(), pinToStore);
@@ -251,7 +263,7 @@ export default function Login({ db, commit, setSession }) {
       method: 'POST',
       body
     };
-    const backoffMs = [0, 900, 1800, 2800];
+    const backoffMs = [0, 500, 1000, 1800];
     let last = null;
     for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
       if (backoffMs[attempt] > 0) await sleep(backoffMs[attempt]);
