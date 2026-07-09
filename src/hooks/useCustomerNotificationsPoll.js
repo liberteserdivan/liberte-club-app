@@ -7,7 +7,7 @@ import { getMemorySession } from '../lib/session.js';
 const STARTUP_DELAY_MS = 6_000;
 const POLL_MS = 45_000;
 
-// Bildirim listesi degisti mi?
+// Bildirim listesi değişti mi?
 function notificationsChanged(prev = [], next = []) {
   if (prev.length !== next.length) return true;
   const prevHead = prev[0];
@@ -22,7 +22,7 @@ function canPollNow() {
   return typeof document === 'undefined' || document.visibilityState === 'visible';
 }
 
-// Musteri uygulama ici bildirimlerini periyodik cek
+// Müşteri uygulama içi bildirimlerini periyodik çek
 export function useCustomerNotificationsPoll({
   enabled = false,
   customerId = null,
