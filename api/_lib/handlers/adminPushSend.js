@@ -8,6 +8,7 @@ import { loadAppState, saveAppState } from '../appState.js';
 import { useRelationalState } from '../relationalConfig.js';
 import { composeStateFromRelational } from '../relationalState.js';
 import { loadPushSubscriptionsFromSql, deactivatePushTokens, insertPushSendLog } from '../pushStore.js';
+import { insertInAppNotificationsForAudience } from '../inAppNotificationStore.js';
 import { getSql } from '../sql.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
@@ -87,12 +88,15 @@ function explainPushFailure(codes = '', platformCounts = null) {
 }
 
 // Platforma göre FCM mesajı oluştur
-function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl) {
+function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, messageMeta = {}) {
   const normalized = String(platform || 'web').toLowerCase();
   const nativeData = {
     title: pushText.title,
     body: pushText.body || '',
-    route: 'home'
+    route: 'message',
+    openMessage: '1',
+    messageId: String(messageMeta.id || ''),
+    audience: String(messageMeta.audience || '')
   };
   const webData = {
     ...nativeData,
@@ -323,12 +327,15 @@ export async function handleAdminPushSend(req, res) {
     const iconUrl = `${SITE_ORIGIN}/icon-192.png?v=8`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
     const tokenPlatforms = mapTokenPlatforms(resolved.subscriptions);
+    const messageId = Date.now();
+    const messageMeta = { id: messageId, audience };
     const messages = clean.map((token) => buildPlatformMessage(
       token,
       tokenPlatforms.get(token) || 'web',
       pushText,
       iconUrl,
-      badgeUrl
+      badgeUrl,
+      messageMeta
     ));
 
     const result = await fb.messaging().sendEach(messages);
@@ -379,6 +386,15 @@ export async function handleAdminPushSend(req, res) {
       const sql = getSql();
       if (sql) {
         void insertPushSendLog(sql, logEntry);
+        if (result.successCount > 0) {
+          void insertInAppNotificationsForAudience(sql, {
+            customerIds: resolved.targetCustomerIds || [],
+            title: pushText.title,
+            body: pushText.body || '',
+            audience,
+            payload: { messageId, audience, pushSendId: logEntry.id }
+          }).catch(() => {});
+        }
       }
     }
 

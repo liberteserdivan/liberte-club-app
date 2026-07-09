@@ -23,7 +23,7 @@ function activeCampaigns(db) {
 }
 
 // Kampanyalar — Liberte Puan odaklı premium düzen
-export default function CampaignPage({ db, customer, commit, setTab }) {
+export default function CampaignPage({ db, customer, commit, setTab, onOpenMessage = null }) {
   const card = db.loyalty[customer.id] || loyaltyTemplate(customer.id);
   const lp = getLpCardView(card);
   const level = lp.level || levelByStamps(lp.lpLifetime);
@@ -93,7 +93,7 @@ export default function CampaignPage({ db, customer, commit, setTab }) {
 
       <PremiumSection title="Geçmiş & bildirimler" subtitle="LP hareketleri ve duyurular" icon={Bell}>
         <FullHistoryCard db={db} customer={customer} />
-        <NotificationCenterCard db={db} customer={customer} />
+        <NotificationCenterCard db={db} customer={customer} onOpenMessage={onOpenMessage} />
       </PremiumSection>
     </PageShell>
   );

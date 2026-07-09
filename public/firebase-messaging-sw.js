@@ -101,20 +101,34 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.preventDefault();
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || 'https://app.liberte.cafe';
+  const data = event.notification?.data || {};
+  const payload = {
+    type: 'liberte-push-open',
+    data: {
+      ...data,
+      title: data.title || event.notification?.title || '',
+      body: data.body || event.notification?.body || '',
+      route: data.route || 'message',
+      openMessage: data.openMessage || '1'
+    }
+  };
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      const open = list.find((item) => {
-        if (!item.url) return false;
-        return item.url.includes('app.liberte.cafe') || item.url.includes('localhost');
-      });
+      const open = list.find((item) => item.url && (item.url.includes('app.liberte.cafe') || item.url.includes('localhost')));
       if (open) {
-        if (typeof open.navigate === 'function') {
-          open.navigate(targetUrl);
-        }
+        open.postMessage(payload);
         return open.focus();
       }
-      return clients.openWindow(targetUrl);
+      const targetUrl = data.url || 'https://app.liberte.cafe';
+      return clients.openWindow(targetUrl).then((client) => {
+        if (!client) return null;
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            client.postMessage(payload);
+            resolve(client.focus());
+          }, 800);
+        });
+      });
     })
   );
 });

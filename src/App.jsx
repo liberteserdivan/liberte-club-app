@@ -10,13 +10,14 @@ import { useAdminRealtime } from './hooks/useAdminRealtime.js';
 import { useAdminMembers } from './hooks/useAdminMembers.js';
 import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
+import { useCustomerNotificationsPoll } from './hooks/useCustomerNotificationsPoll.js';
 import { getMemorySession, logoutSession, getAuthEpoch } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler } from './lib/apiClient.js';
 import { setGuardianRole } from './lib/guardianTelemetry.js';
 import { getFirebaseSwUrl, ensurePushRegisteredIfPermitted, startPushForegroundListener, bindNativeTokenRefresh } from './lib/firebasePush.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
-import { subscribePushNavigation, handlePushOpenPayload } from './lib/pushNavigation.js';
+import { subscribePushNavigation, subscribePushMessageOpen, handlePushOpenPayload } from './lib/pushNavigation.js';
 import { mergeAdminSnapshotIntoDb } from './lib/adminFullSnapshot.js';
 import { App as CapApp } from '@capacitor/app';
 import { getInitialSplashPhase } from './lib/appSplash.js';
@@ -39,6 +40,7 @@ import CampaignPage from './pages/CampaignPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 // Admin paneli büyük; sadece yönetici açınca yüklensin (müşteri açılışını hızlandırır)
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
+import PushMessageSheet from './components/PushMessageSheet.jsx';
 import OnboardingOverlay, { shouldShowOnboarding } from './components/OnboardingOverlay.jsx';
 
 // PERF: Backend artık hızlı (fra1 + paralel sorgular) olduğundan splash'i soğuk
@@ -70,6 +72,7 @@ export default function App() {
   const [hydratingCustomer, setHydratingCustomer] = useState(false);
   const [authNotice, setAuthNotice] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [pushMessage, setPushMessage] = useState(null);
   const splashStartRef = useRef(Date.now());
   const hydrateStartedRef = useRef(0);
   const adminHydratedRef = useRef(false);
@@ -238,6 +241,13 @@ export default function App() {
     commit
   });
 
+  useCustomerNotificationsPoll({
+    enabled: realtimeEnabled,
+    customerId: customer?.id,
+    db,
+    commit
+  });
+
   const {
     members: adminMembers,
     status: adminMembersStatus,
@@ -300,6 +310,14 @@ export default function App() {
     return subscribePushNavigation((route) => {
       const allowed = new Set(['home', 'menu', 'qr', 'campaign', 'profile', 'admin']);
       setTab(allowed.has(route) ? route : 'home');
+    });
+  }, []);
+
+  // Push mesajını uygulama içinde tam metin olarak göster
+  useEffect(() => {
+    return subscribePushMessageOpen((message) => {
+      if (!message?.title && !message?.body) return;
+      setPushMessage(message);
     });
   }, []);
 
@@ -468,7 +486,15 @@ export default function App() {
               adminVerified={adminVerified}
             />
           )}
-          {tab === 'campaign' && <CampaignPage db={db} customer={customer} commit={commit} setTab={setTab} />}
+          {tab === 'campaign' && (
+            <CampaignPage
+              db={db}
+              customer={customer}
+              commit={commit}
+              setTab={setTab}
+              onOpenMessage={setPushMessage}
+            />
+          )}
           {tab === 'profile' && (
             <ProfilePage
               db={db}
@@ -522,6 +548,9 @@ export default function App() {
         <div className="guardianMaintBanner" role="status">{maintenanceNotice}</div>
       )}
       <div className={shellClass}>{mainContent}</div>
+      {pushMessage && (
+        <PushMessageSheet message={pushMessage} onClose={() => setPushMessage(null)} />
+      )}
     </>
   );
 }

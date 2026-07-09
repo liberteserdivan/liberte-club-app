@@ -397,13 +397,31 @@ export function FullHistoryCard({db,customer}){
   </div>;
 }
 
-export function NotificationCenterCard({db,customer}){
-  const rows=(db.notifications||[]).filter(n=>!n.customerId||n.customerId===customer.id).slice(0,20);
+export function NotificationCenterCard({ db, customer, onOpenMessage = null }) {
+  const rows = (db.notifications || []).filter((n) => !n.customerId || n.customerId === customer.id).slice(0, 20);
+
+  function openMessage(row) {
+    if (typeof onOpenMessage !== 'function') return;
+    onOpenMessage({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      createdAt: row.createdAt
+    });
+  }
+
   return <div className="notificationCenter card">
     <div className="centerHead"><div><span>BİLDİRİM MERKEZİ</span><h3>Duyurular ve Hatırlatmalar</h3></div><Bell/></div>
-    {rows.length?rows.map(n=><div className="notifyLine" key={n.id}>
-      <b>{n.title}</b><p>{n.body}</p><small>{n.createdAt}</small>
-    </div>):<p className="emptySmall">Henüz bildirim yok.</p>}
+    {rows.length ? rows.map((n) => (
+      <button
+        type="button"
+        className="notifyLine notifyLineBtn"
+        key={n.id}
+        onClick={() => openMessage(n)}
+      >
+        <b>{n.title}</b><p>{n.body}</p><small>{n.createdAt}</small>
+      </button>
+    )) : <p className="emptySmall">Henüz bildirim yok.</p>}
   </div>;
 }
 

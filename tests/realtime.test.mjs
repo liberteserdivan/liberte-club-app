@@ -51,10 +51,10 @@ test('realtimeManager debounce tek çağrı yapar', async () => {
   assert.equal(count, 1);
 });
 
-test('adminPushSend uygulama içi bildirim tablosuna yazmaz', () => {
+test('adminPushSend uygulama içi bildirim tablosuna yazar', () => {
   const handler = readFileSync(join(root, 'api/_lib/handlers/adminPushSend.js'), 'utf8');
-  assert.doesNotMatch(handler, /insertInAppNotificationsForAudience/);
-  assert.doesNotMatch(handler, /queueInAppNotificationSave/);
+  assert.match(handler, /insertInAppNotificationsForAudience/);
+  assert.match(handler, /route: 'message'/);
 });
 
 test('realtime API route ve config kayıtlı', () => {
