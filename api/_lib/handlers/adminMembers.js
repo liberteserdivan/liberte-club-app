@@ -2,7 +2,7 @@ import { applyCors, sendApiError } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { listAllCustomers } from '../customersStore.js';
 import { loadLoyaltyMapLightFromSql } from '../loyaltyStore.js';
-import { getSql } from '../sql.js';
+import { getSql, primeSqlConnection } from '../sql.js';
 import { runSqlAdminMembersRead } from '../runSql.js';
 import { classifyLoginDbError } from '../dbTransient.js';
 
@@ -28,6 +28,8 @@ export async function handleAdminMembers(req, res) {
   const admin = await requireAdminSession(req, res, { light: true, members: true });
   const authMs = Date.now() - tAuthStart;
   if (!admin) return;
+
+  await primeSqlConnection(2000);
 
   if (!getSql()) {
     return sendApiError(res, {

@@ -226,23 +226,25 @@ export default function App() {
 
   const awaitingCustomer = Boolean(session?.customerId && !customer);
   const realtimeEnabled = Boolean(session?.customerId && customer && !isLocalAuth());
+  // Admin sekmesinde musteri arka plan sync'i kapat — DB/API yukunu azaltir
+  const customerBackgroundSyncEnabled = realtimeEnabled && tab !== 'admin';
 
   useCustomerRealtime({
-    enabled: realtimeEnabled,
+    enabled: customerBackgroundSyncEnabled,
     customerId: customer?.id,
     db,
     commit
   });
 
   useCustomerLoyaltyPoll({
-    enabled: realtimeEnabled,
+    enabled: customerBackgroundSyncEnabled,
     customerId: customer?.id,
     db,
     commit
   });
 
   useCustomerNotificationsPoll({
-    enabled: realtimeEnabled,
+    enabled: customerBackgroundSyncEnabled,
     customerId: customer?.id,
     db,
     commit

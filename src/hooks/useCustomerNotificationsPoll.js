@@ -3,11 +3,14 @@ import { fetchCustomerNotifications } from '../lib/realtimeFetch.js';
 import { isNativeAppActive } from '../lib/appForeground.js';
 import { isNativeApp } from '../lib/platform.js';
 import { getMemorySession } from '../lib/session.js';
+import { isCustomerRealtimeDisabled, shouldReducePolling } from '../lib/safeMode.js';
 
-const STARTUP_DELAY_MS = 6_000;
-const POLL_MS = 45_000;
+const STARTUP_DELAY_MS = 8_000;
+const POLL_MS_NATIVE = 60_000;
+const POLL_MS_WEB = 75_000;
+const POLL_MS_SAFE = 180_000;
 
-// Bildirim listesi değişti mi?
+// Bildirim listesi degisti mi?
 function notificationsChanged(prev = [], next = []) {
   if (prev.length !== next.length) return true;
   const prevHead = prev[0];
@@ -22,7 +25,12 @@ function canPollNow() {
   return typeof document === 'undefined' || document.visibilityState === 'visible';
 }
 
-// Müşteri uygulama içi bildirimlerini periyodik çek
+function resolvePollIntervalMs() {
+  if (isCustomerRealtimeDisabled() || shouldReducePolling()) return POLL_MS_SAFE;
+  return isNativeApp() ? POLL_MS_NATIVE : POLL_MS_WEB;
+}
+
+// Musteri uygulama ici bildirimlerini periyodik cek
 export function useCustomerNotificationsPoll({
   enabled = false,
   customerId = null,
@@ -37,9 +45,11 @@ export function useCustomerNotificationsPoll({
 
     let cancelled = false;
     let inFlight = false;
+    let intervalId = null;
 
     async function pollNotifications() {
       if (cancelled || inFlight || !canPollNow()) return;
+      if (isCustomerRealtimeDisabled()) return;
 
       inFlight = true;
       let rows = [];
@@ -67,18 +77,22 @@ export function useCustomerNotificationsPoll({
       }, { skipRemote: true });
     }
 
-    const startTimer = setTimeout(() => {
-      void pollNotifications();
-    }, STARTUP_DELAY_MS);
+    function scheduleNextPoll() {
+      if (cancelled) return;
+      clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        void pollNotifications();
+      }, resolvePollIntervalMs());
+    }
 
-    const interval = setInterval(() => {
-      void pollNotifications();
-    }, POLL_MS);
+    const startTimer = setTimeout(() => {
+      void pollNotifications().finally(scheduleNextPoll);
+    }, STARTUP_DELAY_MS);
 
     return () => {
       cancelled = true;
       clearTimeout(startTimer);
-      clearInterval(interval);
+      clearInterval(intervalId);
     };
   }, [enabled, customerId, commit]);
 }

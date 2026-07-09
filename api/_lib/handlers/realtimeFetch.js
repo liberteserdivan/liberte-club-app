@@ -3,7 +3,7 @@ import { requireSession, requireAdminSession, getSessionForBootstrap } from '../
 import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapLightFromSql } from '../loyaltyStore.js';
 import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
-import { getSql } from '../sql.js';
+import { getSql, primeSqlConnection } from '../sql.js';
 import { runSqlRead, runSqlAdminMembersRead } from '../runSql.js';
 import { isTransientDbError, publicDbErrorMessage, publicDbErrorCode } from '../dbTransient.js';
 
@@ -126,6 +126,9 @@ export async function handleRealtimeFetch(req, res) {
   const resource = String(req.query?.resource || '').trim().toLowerCase();
 
   try {
+    // Bayat baglantiyi onceden tazele — 6sn read timeout firtinasini azaltir
+    await primeSqlConnection(2000);
+
     if (resource === 'promos') {
       const session = await requireSession(req, res);
       if (!session) return;
