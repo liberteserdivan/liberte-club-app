@@ -1,6 +1,6 @@
 // Liberte Club push service worker (v18)
-const SITE_ORIGIN = 'https://app.liberte.cafe';
-const SITE_HOST = 'app.liberte.cafe';
+const SITE_ORIGIN = 'https://libertegastrocafe.com';
+const SITE_HOST = 'libertegastrocafe.com';
 const PUSH_ICON = SITE_ORIGIN + '/icon-192.png?v=8';
 const PUSH_BADGE = SITE_ORIGIN + '/notification-badge.png';
 

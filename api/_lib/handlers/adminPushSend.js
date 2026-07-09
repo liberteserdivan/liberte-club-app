@@ -14,8 +14,9 @@ import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
 import { sanitizePushSubscriptions } from '../../../src/lib/pushSubscriptionSanitize.js';
 import { collectFailedPushTokens, pruneInvalidPushTokens } from '../../../src/lib/pushTokens.js';
 import { isValidPrivateKeyPem } from '../fcmProbe.js';
+import { resolvePublicSiteOrigin } from '../siteOrigins.js';
 
-const SITE_ORIGIN = 'https://app.liberte.cafe';
+const SITE_ORIGIN = resolvePublicSiteOrigin();
 
 // State içindeki push kayıtlarını güncelle
 async function persistPushSubscriptions(state, subscriptions) {

@@ -1,7 +1,7 @@
 // Web ve API kök adreslerini build-time env ile çöz
 
 export const DEFAULT_API_ORIGIN = 'https://app.liberte.cafe';
-export const DEFAULT_PUBLIC_SITE_ORIGIN = DEFAULT_API_ORIGIN;
+export const DEFAULT_PUBLIC_SITE_ORIGIN = 'https://libertegastrocafe.com';
 
 function isDevEnv() {
   try {
@@ -48,9 +48,9 @@ export function resolveConfiguredPublicSiteOrigin() {
   try {
     return normalizeSiteOrigin(import.meta.env?.VITE_PUBLIC_SITE_ORIGIN, {
       allowInsecure: isDevEnv()
-    }) || resolveConfiguredApiOrigin();
+    }) || DEFAULT_PUBLIC_SITE_ORIGIN;
   } catch {
-    return DEFAULT_API_ORIGIN;
+    return DEFAULT_PUBLIC_SITE_ORIGIN;
   }
 }
 

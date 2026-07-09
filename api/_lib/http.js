@@ -2,6 +2,8 @@
 
 import { isTransientDbError, publicDbErrorCode, publicDbErrorMessage } from './dbTransient.js';
 import { isRouteDeadlineError } from './routeDeadline.js';
+import { resolveAllowedOrigins } from './siteOrigins.js';
+
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((v) => v.trim())
@@ -45,7 +47,8 @@ export function resolveOrigin(req) {
   // Production'da boş whitelist ile tüm origin'lere izin verme
   if (ALLOWED_ORIGINS.length === 0) {
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
-      return '';
+      const defaults = resolveAllowedOrigins();
+      return defaults.includes(origin) ? origin : '';
     }
     return origin;
   }
