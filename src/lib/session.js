@@ -6,6 +6,7 @@ import {
   hasStoredAuthToken,
   saveNativeAuthToken
 } from './apiClient.js';
+import { humanizeNetworkFailure } from './networkErrors.js';
 import { isLocalAuth } from './devAuth.js';
 import { clearAdminSnapshot } from './adminFullSnapshot.js';
 import { clearLocalDb } from './db.js';
@@ -53,6 +54,84 @@ export function patchMemorySession(patch) {
   return memorySession;
 }
 
+// Kısa gecikme — pooler/soğuk lambda için
+function sleep(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
+
+// Oturum bootstrap tek deneme
+async function fetchBootstrapSession() {
+  return apiJson('/api/auth/session', {
+    ...AUTH_REQUEST_OPTIONS,
+    skipUnauthorized: true
+  });
+}
+
+// Geçici bootstrap yanıtı mı?
+function isTransientBootstrapResponse(response, data) {
+  return response.status === 503
+    || data?.code === 'SESSION_TEMPORARILY_UNAVAILABLE'
+    || data?.code === 'DATABASE_TRANSIENT';
+}
+
+// Oturum bootstrap tek tur sonucunu işle
+function resolveBootstrapAttempt(response, data, authChangedDuringBootstrap) {
+  if (authChangedDuringBootstrap()) {
+    return memorySession ? { session: memorySession } : null;
+  }
+
+  // 401 — oturum yok/geçersiz; giriş ekranı için normal, modal yok
+  if (response.status === 401) {
+    memorySession = null;
+    return null;
+  }
+
+  // 503 — geçici DB; giriş formu kullanılabilir kalsın
+  if (response.status === 503) {
+    memorySession = null;
+    return {
+      sessionUnavailable: true,
+      code: data?.code || 'SESSION_TEMPORARILY_UNAVAILABLE',
+      message: data?.error || data?.clientMessage || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.',
+      retryable: true
+    };
+  }
+
+  // 500 — oturum doğrulama hatası; giriş formu açık kalsın
+  if (response.status >= 500 || data?.code === 'SESSION_RESTORE_FAILED') {
+    memorySession = null;
+    return {
+      sessionUnavailable: true,
+      code: data?.code || 'SESSION_RESTORE_FAILED',
+      message: data?.error || data?.message || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.',
+      retryable: isTransientBootstrapResponse(response, data)
+    };
+  }
+
+  if (!response.ok || !data?.ok) {
+    memorySession = null;
+    return null;
+  }
+
+  memorySession = {
+    customerId: data.customerId,
+    role: data.role,
+    isAdmin: Boolean(data.isAdmin),
+    adminVerified: Boolean(data.isAdmin) || Boolean(data.adminVerified),
+    realtimeToken: data.realtimeToken || null
+  };
+
+  if (data.sessionToken) {
+    saveNativeAuthToken(data.sessionToken);
+  }
+
+  return {
+    session: memorySession,
+    customer: data.customer || null,
+    loyalty: data.loyalty || null
+  };
+}
+
 // Sunucudan oturumu doğrula (açılış bootstrap)
 export async function bootstrapSession() {
   if (isLocalAuth()) {
@@ -66,72 +145,58 @@ export async function bootstrapSession() {
     return getAuthEpoch() !== epochAtStart;
   }
 
+  const backoffMs = [0, 700, 1400, 2200];
+  let lastNetworkError = null;
+
   try {
-    const { response, data } = await apiJson('/api/auth/session', {
-      ...AUTH_REQUEST_OPTIONS,
-      skipUnauthorized: true
-    });
+    for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
+      if (backoffMs[attempt] > 0) await sleep(backoffMs[attempt]);
+      if (authChangedDuringBootstrap()) {
+        return memorySession ? { session: memorySession } : null;
+      }
 
-    if (authChangedDuringBootstrap()) {
-      return memorySession ? { session: memorySession } : null;
+      let response;
+      let data;
+      try {
+        ({ response, data } = await fetchBootstrapSession());
+      } catch (error) {
+        lastNetworkError = error;
+        const retryable = error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR';
+        if (retryable && attempt < backoffMs.length - 1) continue;
+        throw error;
+      }
+
+      if (isTransientBootstrapResponse(response, data) && attempt < backoffMs.length - 1) {
+        continue;
+      }
+
+      return resolveBootstrapAttempt(response, data, authChangedDuringBootstrap);
     }
-
-    // 401 — oturum yok/geçersiz; giriş ekranı için normal, modal yok
-    if (response.status === 401) {
-      memorySession = null;
-      return null;
-    }
-
-    // 503 — geçici DB; giriş formu kullanılabilir kalsın
-    if (response.status === 503) {
-      memorySession = null;
-      return {
-        sessionUnavailable: true,
-        code: data?.code || 'SESSION_TEMPORARILY_UNAVAILABLE',
-        message: data?.error || data?.clientMessage || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
-      };
-    }
-
-    // 500 — oturum doğrulama hatası; giriş formu açık kalsın
-    if (response.status >= 500 || data?.code === 'SESSION_RESTORE_FAILED') {
-      memorySession = null;
-      return {
-        sessionUnavailable: true,
-        code: data?.code || 'SESSION_RESTORE_FAILED',
-        message: data?.error || data?.message || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.'
-      };
-    }
-
-    if (!response.ok || !data?.ok) {
-      memorySession = null;
-      return null;
-    }
-
-    memorySession = {
-      customerId: data.customerId,
-      role: data.role,
-      isAdmin: Boolean(data.isAdmin),
-      adminVerified: Boolean(data.isAdmin) || Boolean(data.adminVerified),
-      realtimeToken: data.realtimeToken || null
-    };
-    // Bootstrap restore epoch artırmaz — yalnızca login/logout geçersiz kılır
-
-    if (data.sessionToken) {
-      saveNativeAuthToken(data.sessionToken);
-    }
-
-    return {
-      session: memorySession,
-      customer: data.customer || null,
-      loyalty: data.loyalty || null
-    };
-  } catch {
+  } catch (error) {
     if (authChangedDuringBootstrap()) {
       return memorySession ? { session: memorySession } : null;
     }
     memorySession = null;
+    if (error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR') {
+      return {
+        sessionUnavailable: true,
+        code: error?.code || 'NETWORK_ERROR',
+        message: humanizeNetworkFailure(error, { forLogin: true })
+      };
+    }
     return null;
   }
+
+  if (lastNetworkError) {
+    memorySession = null;
+    return {
+      sessionUnavailable: true,
+      code: lastNetworkError?.code || 'NETWORK_ERROR',
+      message: humanizeNetworkFailure(lastNetworkError, { forLogin: true })
+    };
+  }
+
+  return null;
 }
 
 // Cookie oturumu varsa Bearer tokenı storage'a yaz — QR/native için

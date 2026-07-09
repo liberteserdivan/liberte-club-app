@@ -1,5 +1,11 @@
 // API hata mesajlarını kullanıcıya uygun ve Ref'li metne çevir
 
+import {
+  humanizeNetworkFailure,
+  isResolvableNetworkFailure,
+  isStaleNativeHostError
+} from './networkErrors.js';
+
 function withRef(message, requestId) {
   const base = String(message || '').trim();
   if (!requestId) return base;
@@ -117,12 +123,26 @@ export function formatClientApiError({ response = null, data = {}, error = null,
   }
 
   const raw = String(error?.message || '');
+  if (isStaleNativeHostError(raw)) {
+    return {
+      message: humanizeNetworkFailure(raw),
+      code: 'STALE_APP_BUILD',
+      requestId,
+      abort: false
+    };
+  }
+
   if (
-    raw.includes('Failed to fetch')
-    || raw.includes('Load failed')
+    error?.code === 'NETWORK_ERROR'
+    || isResolvableNetworkFailure(raw)
     || raw.includes('bağlan')
   ) {
-    return { message: withRef('Sunucuya ulaşılamadı.', requestId), code: 'NETWORK_ERROR', requestId, abort: false };
+    return {
+      message: withRef(humanizeNetworkFailure(raw), requestId),
+      code: 'NETWORK_ERROR',
+      requestId,
+      abort: false
+    };
   }
 
   return {

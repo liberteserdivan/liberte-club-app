@@ -30,7 +30,7 @@ test('LoginPage timeout modal Sunucuya ulasilamadi kullanmaz', () => {
   const src = read('src/pages/LoginPage.jsx');
   const block = src.slice(src.indexOf('function notifyRequestError'), src.indexOf('function readApiError'));
   assert.match(block, /FETCH_TIMEOUT/);
-  assert.match(block, /Giriş şu an tamamlanamadı/);
+  assert.match(block, /humanizeNetworkFailure/);
   assert.doesNotMatch(block, /Sunucuya ulaşılamadı/);
 });
 
@@ -41,8 +41,8 @@ test('LoginPage auth istekleri skipUnauthorized kullanir', () => {
 
 test('bootstrapSession 401 sessiz null (modal yok)', () => {
   const src = read('src/lib/session.js');
-  const fn = src.slice(src.indexOf('export async function bootstrapSession'), src.indexOf('export async function hydrateSessionTokenFromServer'));
-  assert.match(fn, /skipUnauthorized:\s*true/);
+  const fn = src.slice(src.indexOf('function resolveBootstrapAttempt'), src.indexOf('export async function bootstrapSession'));
+  assert.match(fn, /response\.status === 401/);
   assert.doesNotMatch(fn, /Sunucuya ulaşılamadı/);
   assert.doesNotMatch(fn, /reportError/);
 });

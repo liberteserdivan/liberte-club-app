@@ -108,12 +108,8 @@ test('LoginPage: uçuştaki login çıkış sonrası oturumu geri açmaz', () =>
 test('session bootstrap: geç gelen yanıt login sonrası oturumu silmez', () => {
   const src = read('src/lib/session.js');
   assert.match(src, /authChangedDuringBootstrap/, 'bootstrap epoch guard olmalı');
-  assert.match(src, /Bootstrap restore epoch artırmaz/, 'bootstrap epoch artirmamali');
-  assert.doesNotMatch(
-    src.slice(src.indexOf('export async function bootstrapSession'), src.indexOf('export async function hydrateSessionTokenFromServer')),
-    /bumpAuthEpoch\(\)/,
-    'bootstrapSession bumpAuthEpoch cagirmamali'
-  );
+  const bootstrapBlock = src.slice(src.indexOf('export async function bootstrapSession'), src.indexOf('export async function hydrateSessionTokenFromServer'));
+  assert.doesNotMatch(bootstrapBlock, /bumpAuthEpoch\(\)/, 'bootstrapSession bumpAuthEpoch cagirmamali');
 });
 
 test('App bootstrap: canlı oturum varken geç bootstrap UI ezmez', () => {

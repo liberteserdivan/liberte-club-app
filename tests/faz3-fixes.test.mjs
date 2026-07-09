@@ -69,12 +69,12 @@ test('B-5: cache TTL bayatlik penceresi dusuruldu (<= 10s)', () => {
 });
 
 // Platform: sürüm hizalama
-test('Platform: web/iOS/Android surumleri 1.1.30 hizali', () => {
+test('Platform: web/iOS/Android surumleri 1.1.31 hizali', () => {
   const pkg = JSON.parse(read('package.json'));
-  assert.equal(pkg.version, '1.1.30');
+  assert.equal(pkg.version, '1.1.31');
   const gradle = read('android/app/build.gradle');
-  assert.match(gradle, /versionName "1\.1\.30"/);
+  assert.match(gradle, /versionName "1\.1\.31"/);
   const pbx = read('ios/App/App.xcodeproj/project.pbxproj');
   assert.doesNotMatch(pbx, /MARKETING_VERSION = 1\.1\.22;/);
-  assert.match(pbx, /MARKETING_VERSION = 1\.1\.30;/);
+  assert.match(pbx, /MARKETING_VERSION = 1\.1\.31;/);
 });

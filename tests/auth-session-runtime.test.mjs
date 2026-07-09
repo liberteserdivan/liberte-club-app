@@ -58,7 +58,7 @@ test('runSqlSessionBootstrap: transient timeout 4sn altinda fail eder', async ()
 
 test('bootstrapSession: 401 normal null (modal yok)', () => {
   const src = read('src/lib/session.js');
-  const fn = src.slice(src.indexOf('export async function bootstrapSession'), src.indexOf('export async function hydrateSessionTokenFromServer'));
+  const fn = src.slice(src.indexOf('function resolveBootstrapAttempt'), src.indexOf('export async function bootstrapSession'));
   assert.match(fn, /response\.status === 401/);
   assert.match(fn, /return null/);
   assert.doesNotMatch(fn, /Sunucuya ulaşılamadı/);

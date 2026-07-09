@@ -1,4 +1,5 @@
 import { formatClientApiError } from './apiErrors.js';
+import { humanizeNetworkFailure, isResolvableNetworkFailure } from './networkErrors.js';
 import { isNativeApp, isIos, isAndroid } from './platform.js';
 import { recordRequest } from './guardianTelemetry.js';
 import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
@@ -222,12 +223,8 @@ function resolveFetchTimeout(timeoutMs) {
 
 function isNativeNetworkFailure(error) {
   if (!error) return false;
-  if (error?.code === 'FETCH_TIMEOUT') return true;
-  const message = String(error?.message || '').toLowerCase();
-  return message === 'failed to fetch'
-    || message === 'load failed'
-    || message.includes('network request failed')
-    || message.includes('the internet connection appears to be offline');
+  if (error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR') return true;
+  return isResolvableNetworkFailure(error);
 }
 
 // İstek süresini ölç — hata ayıklama için
@@ -335,7 +332,7 @@ async function performApiFetch(url, fetchOptions, headers, native, requestTimeou
   } catch (error) {
     if (error?.name === 'AbortError' || error?.code === 'FETCH_TIMEOUT') throw error;
     if (native && isNativeNetworkFailure(error)) {
-      const netErr = new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.');
+      const netErr = new Error(humanizeNetworkFailure(error));
       netErr.code = 'NETWORK_ERROR';
       throw netErr;
     }

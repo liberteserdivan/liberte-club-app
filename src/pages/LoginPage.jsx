@@ -4,8 +4,10 @@ import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
-import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS } from '../lib/apiClient.js';
+import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS, getNativeApiOrigin } from '../lib/apiClient.js';
 import { formatClientApiError } from '../lib/apiErrors.js';
+import { humanizeNetworkFailure } from '../lib/networkErrors.js';
+import { isNativeApp } from '../lib/platform.js';
 import {
   isValidDevPin,
   makeDevAuthCode,
@@ -72,14 +74,18 @@ export default function Login({ db, commit, setSession }) {
     }
   }
 
-  // Ağ/zaman aşımı — login modalında "Sunucuya ulaşılamadı" panic metni gösterme
+  // Ağ/zaman aşımı — kullanıcıya ham teknik metin gösterme
   function notifyRequestError(error, fallback) {
     const formatted = formatClientApiError({ error, fallback });
     if (formatted.abort) return;
 
     let message = formatted.message || fallback;
-    if (formatted.code === 'FETCH_TIMEOUT' || formatted.code === 'NETWORK_ERROR') {
-      message = 'Giriş şu an tamamlanamadı. Lütfen birkaç saniye sonra tekrar deneyin.';
+    if (
+      formatted.code === 'FETCH_TIMEOUT'
+      || formatted.code === 'NETWORK_ERROR'
+      || formatted.code === 'STALE_APP_BUILD'
+    ) {
+      message = humanizeNetworkFailure(error, { forLogin: true });
     }
 
     logLoginDiag('error', {
@@ -92,6 +98,7 @@ export default function Login({ db, commit, setSession }) {
     const soft = formatted.retryable
       || formatted.code === 'FETCH_TIMEOUT'
       || formatted.code === 'NETWORK_ERROR'
+      || formatted.code === 'STALE_APP_BUILD'
       || formatted.code === 'SERVICE_UNAVAILABLE';
     notify(message, soft ? 'info' : 'warning');
   }
@@ -234,7 +241,7 @@ export default function Login({ db, commit, setSession }) {
     return new Promise((resolve) => { setTimeout(resolve, ms); });
   }
 
-  // Geçici 503/timeout — artan gecikmeyle birkaç kez daha dene (pooler/soğuk lambda)
+  // Geçici 503/timeout/ağ — artan gecikmeyle birkaç kez daha dene
   async function postLoginWithRetry(ph, pinValue) {
     const body = JSON.stringify({ phone: ph, pin: pinValue, deviceId: getDeviceId() });
     const opts = {
@@ -248,9 +255,16 @@ export default function Login({ db, commit, setSession }) {
     let last = null;
     for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
       if (backoffMs[attempt] > 0) await sleep(backoffMs[attempt]);
-      last = await apiJson('/api/auth/login', opts);
+      try {
+        last = await apiJson('/api/auth/login', opts);
+      } catch (error) {
+        const retryable = error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR';
+        if (retryable && attempt < backoffMs.length - 1) continue;
+        throw error;
+      }
       const transient = last.response.status === 503
-        || last.data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE';
+        || last.data?.code === 'LOGIN_TEMPORARILY_UNAVAILABLE'
+        || last.data?.code === 'DATABASE_TRANSIENT';
       if (!transient) return last;
     }
     return last;
@@ -803,6 +817,11 @@ export default function Login({ db, commit, setSession }) {
           {import.meta.env.DEV && (
             <p className="loginFooterNote loginDevHint">
               Yerel test — Yönetici: 555 010 00 02 veya 505 866 54 06 · Giriş PIN: 1234 · Yönetici PIN: 5454
+            </p>
+          )}
+          {isNativeApp() && (
+            <p className="loginFooterNote loginBuildHint">
+              Sürüm {import.meta.env.VITE_APP_VERSION || '1.1.31'} · API {getNativeApiOrigin().replace(/^https?:\/\//, '')}
             </p>
           )}
           <CafeContactBar compact />
