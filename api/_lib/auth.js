@@ -65,20 +65,13 @@ function isSecureCookieEnv() {
     || process.env.VERCEL_ENV === 'preview';
 }
 
-// Oturum çerezi domain suffix — alt alan adları arasında paylaşım için
-function sessionCookieDomainSuffix() {
-  const domain = String(process.env.SESSION_COOKIE_DOMAIN || '').trim();
-  if (!domain) return '';
-  return `; Domain=${domain}`;
-}
-
 // Oturum çerezini ayarla
 export function setSessionCookie(res, token) {
   const secure = isSecureCookieEnv() ? '; Secure' : '';
   const maxAge = SESSION_DAYS * 24 * 60 * 60;
   res.setHeader(
     'Set-Cookie',
-    `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}${sessionCookieDomainSuffix()}`
+    `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`
   );
 }
 
@@ -87,7 +80,7 @@ export function clearSessionCookie(res) {
   const secure = isSecureCookieEnv() ? '; Secure' : '';
   res.setHeader(
     'Set-Cookie',
-    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}${sessionCookieDomainSuffix()}`
+    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
   );
 }
 

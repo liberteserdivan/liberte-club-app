@@ -6,12 +6,11 @@ import { join } from 'node:path';
 const root = process.cwd();
 const read = (p) => readFileSync(join(root, p), 'utf8');
 
-test('apiClient: Bearer istemcide credentials omit, same-origin webde include', () => {
+test('apiClient: native Bearer + credentials omit, web credentials include', () => {
   const src = read('src/lib/apiClient.js');
-  assert.match(src, /credentials: omitCookies \? 'omit' : 'include'/);
-  assert.match(src, /usesBearerApiClient/);
+  assert.match(src, /credentials: native \? 'omit' : 'include'/);
   assert.match(src, /headers\.Authorization = `Bearer \$\{token\}`/);
-  assert.match(src, /DEFAULT_API_ORIGIN/);
+  assert.match(src, /DEFAULT_NATIVE_API_ORIGIN = 'https:\/\/app\.liberte\.cafe'/);
   assert.doesNotMatch(src, /liberte-club-app\.vercel\.app/);
 });
 

@@ -1,7 +1,5 @@
 import { DEFAULT_PUBLIC_SITE_ORIGIN } from './apiClient.js';
 
-export { DEFAULT_PUBLIC_SITE_ORIGIN };
-
 export const firebaseConfig = {
   apiKey: 'AIzaSyCDWpSpPoEsMirO0Grbpbabaju7QALVERC',
   authDomain: 'liberte-club.firebaseapp.com',

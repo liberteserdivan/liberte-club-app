@@ -1,34 +1,22 @@
 import { formatClientApiError } from './apiErrors.js';
 import { humanizeNetworkFailure, isResolvableNetworkFailure } from './networkErrors.js';
 import { isNativeApp, isIos, isAndroid } from './platform.js';
-import {
-  DEFAULT_API_ORIGIN,
-  DEFAULT_PUBLIC_SITE_ORIGIN,
-  isCrossOriginWebClient,
-  normalizeSiteOrigin,
-  resolveConfiguredApiOrigin,
-  resolveConfiguredPublicSiteOrigin
-} from './siteOrigins.js';
 import { recordRequest } from './guardianTelemetry.js';
 import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
 import { getAuthEpoch } from './authEpoch.js';
 
-// Geriye uyumluluk — testler ve dokümantasyon bu isimleri kullanır
-export const DEFAULT_NATIVE_API_ORIGIN = DEFAULT_API_ORIGIN;
-export { normalizeSiteOrigin as normalizeApiOrigin };
-
-const API_ORIGIN = resolveConfiguredApiOrigin();
-const PUBLIC_SITE_ORIGIN = resolveConfiguredPublicSiteOrigin();
-
-export { PUBLIC_SITE_ORIGIN as DEFAULT_PUBLIC_SITE_ORIGIN };
+// Kalıcı native API kökü — özel domain (Vercel *.vercel.app bazı mobil DNS'lerde çözülmüyor)
+export const DEFAULT_NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+export const DEFAULT_PUBLIC_SITE_ORIGIN = DEFAULT_NATIVE_API_ORIGIN;
 
 const TOKEN_KEY = 'liberteAuthToken';
 // Temizlenmesi gereken eski/legacy token anahtarları — çıkışta hepsi silinir
 const LEGACY_TOKEN_KEYS = [TOKEN_KEY, 'liberteNativeAuthToken', 'liberteSessionToken'];
 
 // Native (Capacitor) build'in vuracağı API kökü. Build-time VITE_API_BASE_URL ile
-// yönetilir; geçersiz/boşsa kalıcı production fallback kullanılır.
-// Web/PWA same-origin ise relative path; ayrı web domaininde absolute API + Bearer.
+// yönetilir; geçersiz/boşsa kalıcı Vercel production fallback kullanılır.
+// Web/PWA bu sabiti KULLANMAZ (relative path → same-origin).
+const FALLBACK_NATIVE_API_ORIGIN = DEFAULT_NATIVE_API_ORIGIN;
 
 // Geliştirme ortamı mı — yalnızca dev'de http://localhost gibi güvensiz köke izin verilir
 function isDevEnv() {
@@ -39,24 +27,51 @@ function isDevEnv() {
   }
 }
 
-// API isteği cookie yerine Bearer ile mi gider? (native veya ayrı domaindeki web)
-function usesBearerApiClient() {
-  return isNativeApp() || isCrossOriginWebClient(API_ORIGIN);
+// API origin'ini normalize et:
+// - boş/geçersiz değeri yok say (null döner → fallback devreye girer)
+// - sadece origin (scheme://host[:port]) kabul edilir, trailing slash/path atılır
+// - production'da yalnızca https:// kabul edilir
+// - allowInsecure (yalnızca dev) ise http://localhost veya http://127.0.0.1 kabul edilir
+export function normalizeApiOrigin(value, { allowInsecure = false } = {}) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  const isHttps = url.protocol === 'https:';
+  const isLocalHttp = url.protocol === 'http:'
+    && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+
+  if (!isHttps && !(allowInsecure && isLocalHttp)) return null;
+
+  // url.origin trailing slash içermez ve path/query'i düşürür → temiz köken
+  return url.origin;
 }
 
-// Bearer token kalıcı depoya yazılsın mı?
-function usesBearerTokenStorage() {
-  return usesBearerApiClient();
+// Native build'in kullanacağı API kökü — env'den çözülür, geçersizse fallback
+function resolveNativeApiOrigin() {
+  let configured = null;
+  try {
+    configured = normalizeApiOrigin(import.meta.env?.VITE_API_BASE_URL, {
+      allowInsecure: isDevEnv()
+    });
+  } catch {
+    configured = null;
+  }
+  return configured || FALLBACK_NATIVE_API_ORIGIN;
 }
 
-// Native / API kökü — teşhis/test için (secret loglanmaz)
+const NATIVE_API_ORIGIN = resolveNativeApiOrigin();
+
+// Native build'in çözdüğü API kökü — teşhis/test için (secret loglanmaz)
 export function getNativeApiOrigin() {
-  return API_ORIGIN;
-}
-
-// Kamuya açık web kökü — paylaşım ve yasal linkler
-export function getPublicSiteOrigin() {
-  return PUBLIC_SITE_ORIGIN;
+  return NATIVE_API_ORIGIN;
 }
 
 // Debug-safe köken bilgisi — tam URL'yi açıkça loglamadan host'u maskeler
@@ -80,7 +95,7 @@ function logNativeApiDiag(path, response, data = {}) {
     console.info('[api]', {
       platform,
       webOrigin: typeof window !== 'undefined' ? (window.location?.origin || '') : '',
-      apiHost: maskApiOrigin(API_ORIGIN),
+      apiHost: maskApiOrigin(NATIVE_API_ORIGIN),
       path: String(path || '').split('?')[0],
       status: response?.status ?? 0,
       requestId: response?.headers?.get?.('x-request-id') || data?.requestId || null,
@@ -93,8 +108,8 @@ function logNativeApiDiag(path, response, data = {}) {
 }
 
 // Dev ortamda maskelenmiş köken bilgisini bir kez yaz
-if (isDevEnv() && usesBearerApiClient()) {
-  console.info('[apiClient] API origin:', maskApiOrigin(API_ORIGIN));
+if (isDevEnv() && isNativeApp()) {
+  console.info('[apiClient] native API origin:', maskApiOrigin(NATIVE_API_ORIGIN));
 }
 
 // Web'de token kalıcı depoya YAZILMAZ; yalnızca bellekte tutulur (httpOnly cookie
@@ -112,10 +127,10 @@ export function setUnauthorizedHandler(handler) {
 // - native ise yapılandırılmış köke göre tam URL
 // - web/PWA ise relative path (same-origin) korunur
 // native/origin parametreleri test edilebilirlik için enjekte edilebilir;
-// üretimde varsayılanlar (isNativeApp + API_ORIGIN) kullanılır.
-export function resolveApiUrl(path, absolute = usesBearerApiClient(), origin = API_ORIGIN) {
+// üretimde varsayılanlar (isNativeApp + NATIVE_API_ORIGIN) kullanılır.
+export function resolveApiUrl(path, native = isNativeApp(), origin = NATIVE_API_ORIGIN) {
   if (/^https?:\/\//i.test(path)) return path;
-  if (absolute) {
+  if (native) {
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${origin}${normalized}`;
   }
@@ -123,13 +138,15 @@ export function resolveApiUrl(path, absolute = usesBearerApiClient(), origin = A
 }
 
 // Oturum tokenını sakla.
-// - Native veya ayrı domaindeki web: cross-origin Bearer şart → kalıcı depo.
-// - Same-origin web: yalnızca bellek; httpOnly cookie kalıcılığı sağlar.
+// - Native (Capacitor): cross-origin istekte cookie gitmediği için Bearer şart →
+//   kalıcı depoya yazılır.
+// - Web: yalnızca bellekte tutulur; httpOnly cookie kalıcılığı sağlar, token
+//   localStorage/sessionStorage'a YAZILMAZ (XSS hırsızlık yüzeyini küçültür).
 export function saveAuthToken(token) {
   if (!token) return;
   memoryAuthToken = token;
 
-  if (!usesBearerTokenStorage()) return;
+  if (!isNativeApp()) return;
 
   try {
     sessionStorage.setItem(TOKEN_KEY, token);
@@ -175,8 +192,8 @@ export function getStoredAuthTokenMeta() {
 function readStoredAuthToken() {
   // Önce bellek (web + native her ikisinde de geçerli)
   if (memoryAuthToken) return memoryAuthToken;
-  // Same-origin web cookie kullanır — depodan okuma
-  if (!usesBearerTokenStorage()) return '';
+  // Web'de kalıcı depo OKUNMAZ — cookie tabanlı oturum kullanılır
+  if (!isNativeApp()) return '';
   try {
     return sessionStorage.getItem(TOKEN_KEY)
       || localStorage.getItem(TOKEN_KEY)
@@ -298,12 +315,12 @@ function sleep(ms) {
 }
 
 // Tek bir ağ isteğini gerçekleştir — token, header ve zaman aşımı uygular
-async function performApiFetch(url, fetchOptions, headers, omitCookies, requestTimeout, skipUnauthorized, epochAtStart) {
+async function performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized, epochAtStart) {
   try {
     const response = await fetchWithTimeout(url, {
       ...fetchOptions,
       headers,
-      credentials: omitCookies ? 'omit' : 'include'
+      credentials: native ? 'omit' : 'include'
     }, requestTimeout);
 
     // Bayat uçuş 401'i yeni login'i veya logout sonrası girişi bozmamalı
@@ -314,7 +331,7 @@ async function performApiFetch(url, fetchOptions, headers, omitCookies, requestT
     return response;
   } catch (error) {
     if (error?.name === 'AbortError' || error?.code === 'FETCH_TIMEOUT') throw error;
-    if (omitCookies && isNativeNetworkFailure(error)) {
+    if (native && isNativeNetworkFailure(error)) {
       const netErr = new Error(humanizeNetworkFailure(error));
       netErr.code = 'NETWORK_ERROR';
       throw netErr;
@@ -338,7 +355,7 @@ export async function apiFetch(path, options = {}) {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const omitCookies = usesBearerApiClient();
+  const native = isNativeApp();
   const url = resolveApiUrl(path);
   const requestTimeout = resolveFetchTimeout(timeoutMs);
 
@@ -350,7 +367,7 @@ export async function apiFetch(path, options = {}) {
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await performApiFetch(url, fetchOptions, headers, omitCookies, requestTimeout, skipUnauthorized, epochAtStart);
+      return await performApiFetch(url, fetchOptions, headers, native, requestTimeout, skipUnauthorized, epochAtStart);
     } catch (error) {
       lastError = error;
       // Son deneme veya tekrar denenemeyen hata ise yükselt
