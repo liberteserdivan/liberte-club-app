@@ -1,6 +1,8 @@
-// Liberte Club push service worker (v17)
-const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png?v=8';
-const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
+// Liberte Club push service worker (v18)
+const SITE_ORIGIN = 'https://app.liberte.cafe';
+const SITE_HOST = 'app.liberte.cafe';
+const PUSH_ICON = SITE_ORIGIN + '/icon-192.png?v=8';
+const PUSH_BADGE = SITE_ORIGIN + '/notification-badge.png';
 
 
 const IOS_TITLE_MAX = 30;
@@ -53,7 +55,7 @@ function formatPushNotification(title, body) {
 
 function parsePushPayload(event) {
   if (!event.data) {
-    return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+    return { data: { title: 'Yeni bildirim', body: '', url: SITE_ORIGIN } };
   }
 
   try {
@@ -65,9 +67,9 @@ function parsePushPayload(event) {
   } catch {
     try {
       const text = event.data.text();
-      return { data: { title: text || 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+      return { data: { title: text || 'Yeni bildirim', body: '', url: SITE_ORIGIN } };
     } catch {
-      return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+      return { data: { title: 'Yeni bildirim', body: '', url: SITE_ORIGIN } };
     }
   }
 }
@@ -82,7 +84,7 @@ function showLiberteNotification(payload) {
     ...data,
     title: formatted.title,
     body: formatted.body,
-    url: data.url || 'https://app.liberte.cafe'
+    url: data.url || SITE_ORIGIN
   };
   return self.registration.showNotification(formatted.title, {
     body: formatted.body || undefined,
@@ -101,12 +103,12 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.preventDefault();
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || 'https://app.liberte.cafe';
+  const targetUrl = event.notification?.data?.url || SITE_ORIGIN;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const open = list.find((item) => {
         if (!item.url) return false;
-        return item.url.includes('app.liberte.cafe') || item.url.includes('localhost');
+        return item.url.includes(SITE_HOST) || item.url.includes('localhost');
       });
       if (open) {
         if (typeof open.navigate === 'function') {

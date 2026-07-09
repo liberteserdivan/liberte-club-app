@@ -4,7 +4,8 @@ import {
   LOYALTY_PROMO,
   CLUB_APP_NAME,
   STORE_APP_NAME,
-  supportEmail
+  supportEmail,
+  supportUrl
 } from './constants.js';
 
 export const LEGAL_UPDATED = '7 Haziran 2026';
@@ -31,7 +32,7 @@ export const privacyPolicySections = [
   },
   {
     title: 'İletişim',
-    body: `Gizlilik talepleriniz için ${supportEmail} adresine yazabilir veya https://app.liberte.cafe üzerinden işletme iletişim bilgilerine ulaşabilirsiniz.`
+    body: `Gizlilik talepleriniz için ${supportEmail} adresine yazabilir veya ${supportUrl} üzerinden işletme iletişim bilgilerine ulaşabilirsiniz.`
   }
 ];
 

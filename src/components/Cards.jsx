@@ -1,6 +1,6 @@
 import React,{useEffect,useState}from'react';
 import{Bell,Coffee,Crown,Gift,Plus,QrCode,Send,ShieldCheck,Sparkles,Star}from'lucide-react';
-import{googleReviewUrl}from'../lib/constants.js';
+import{googleReviewUrl,DEFAULT_PUBLIC_SITE_ORIGIN}from'../lib/constants.js';
 import{usePushEnableFlow}from'../hooks/usePushEnableFlow.js';
 import{
   getPushPromptHint,
@@ -59,7 +59,7 @@ export function ReferralCard({db,customer}){
 
   async function share(){
     if(navigator.share){
-      try{await navigator.share({title:'Liberte Club Davet',text:shareText,url:'https://app.liberte.cafe'});return;}catch{}
+      try{await navigator.share({title:'Liberte Club Davet',text:shareText,url:DEFAULT_PUBLIC_SITE_ORIGIN});return;}catch{}
     }
     copy();
   }
