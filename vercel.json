@@ -3,11 +3,7 @@
   "outputDirectory": "dist",
   "regions": ["fra1"],
   "env": {
-    "USE_RELATIONAL_STATE": "1",
-    "VITE_PUBLIC_SITE_ORIGIN": "https://libertegastrocafe.com",
-    "PUBLIC_SITE_ORIGIN": "https://libertegastrocafe.com",
-    "VITE_API_BASE_URL": "https://app.liberte.cafe",
-    "ALLOWED_ORIGINS": "https://libertegastrocafe.com,https://www.libertegastrocafe.com,https://app.liberte.cafe"
+    "USE_RELATIONAL_STATE": "1"
   },
   "functions": {
     "api/admin.js": {
@@ -31,9 +27,6 @@
     "api/qr.js": {
       "maxDuration": 30
     },
-    "api/menu.js": {
-      "maxDuration": 30
-    },
     "api/guardian.js": {
       "maxDuration": 30
     }
@@ -43,25 +36,7 @@
   ],
   "redirects": [
     { "source": "/gizlilik", "destination": "/privacy", "permanent": true },
-    { "source": "/kullanim-sartlari", "destination": "/terms", "permanent": true },
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "app.liberte.cafe" }],
-      "destination": "https://libertegastrocafe.com/",
-      "permanent": false
-    },
-    {
-      "source": "/((?!api/).*)",
-      "has": [{ "type": "host", "value": "app.liberte.cafe" }],
-      "destination": "https://libertegastrocafe.com/$1",
-      "permanent": false
-    },
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.libertegastrocafe.com" }],
-      "destination": "https://libertegastrocafe.com/:path*",
-      "permanent": true
-    }
+    { "source": "/kullanim-sartlari", "destination": "/terms", "permanent": true }
   ],
   "headers": [
     {
@@ -88,7 +63,6 @@
     { "source": "/api/push/send", "destination": "/api/admin?resource=push-send" },
     { "source": "/api/push/register-device", "destination": "/api/push?action=register-device" },
     { "source": "/api/qr/generate", "destination": "/api/qr?action=generate" },
-    { "source": "/api/menu/public", "destination": "/api/menu" },
     { "source": "/api/push/cleanup", "destination": "/api/admin?resource=push-cleanup" },
     { "source": "/api/realtime", "destination": "/api/realtime" },
     { "source": "/api/account/delete", "destination": "/api/admin?resource=account-delete" },

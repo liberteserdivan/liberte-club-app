@@ -8,7 +8,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const siteOrigin = String(
   process.env.PUBLIC_SITE_ORIGIN
   || process.env.VITE_PUBLIC_SITE_ORIGIN
-  || 'https://libertegastrocafe.com'
+  || 'https://app.liberte.cafe'
 ).replace(/\/$/, '');
 const siteHost = new URL(siteOrigin).hostname;
 

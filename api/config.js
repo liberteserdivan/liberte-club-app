@@ -6,7 +6,7 @@ import { readSupabasePublicConfig } from './_lib/supabasePublicConfig.js';
 import { createCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from './_lib/qrToken.js';
 import { requireConfigDiagAccess } from './_lib/configAccess.js';
 import { isProductionRuntime } from './_lib/schemaReady.js';
-import { resolvePublicSiteOrigin } from './_lib/siteOrigins.js';
+import { withSqlRequest } from './_lib/sqlRequest.js';
 
 function applyPublicCors(res, methods = 'GET,OPTIONS') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -81,7 +81,7 @@ async function handlePushStatus(res) {
     iosWebPushHint: 'iPhone için: Firebase Console → Cloud Messaging → Apple → APNs Authentication Key (.p8) yükleyin.',
     androidHint: 'Android için: Google Cloud Console → Firebase Cloud Messaging API etkin olmalı.',
     webHint: 'Web token varsa: Firebase Console → Cloud Messaging → Web Push sertifikası VAPID ile aynı olmalı.',
-    site: resolvePublicSiteOrigin()
+    site: process.env.PUBLIC_SITE_ORIGIN || 'https://app.liberte.cafe'
   });
 }
 
