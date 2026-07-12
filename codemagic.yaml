@@ -153,7 +153,8 @@ workflows:
         ENABLE_PLAY_UPLOAD: "true"
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.31"
-        ANDROID_MIN_VERSION_CODE: "59"
+        ANDROID_MIN_VERSION_CODE: "82"
+        PROMOTE_ALPHA_TO_INTERNAL: "true"
         # Native build'in vuracağı API kökü — domain/Vercel URL değişiminde burayı güncelle
         VITE_API_BASE_URL: "https://app.liberte.cafe"
       node: 22
@@ -259,7 +260,7 @@ workflows:
         ANDROID_RELEASE: "true"
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.31"
-        ANDROID_MIN_VERSION_CODE: "59"
+        ANDROID_MIN_VERSION_CODE: "82"
         VITE_API_BASE_URL: "https://app.liberte.cafe"
       node: 22
       java: 21
@@ -382,7 +383,7 @@ workflows:
         ANDROID_RELEASE: "true"
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.31"
-        ANDROID_MIN_VERSION_CODE: "59"
+        ANDROID_MIN_VERSION_CODE: "82"
         VITE_API_BASE_URL: "https://app.liberte.cafe"
         MOBILE_API_HOST: "https://app.liberte.cafe"
         BROWSERSTACK_USERNAME: $BROWSERSTACK_USERNAME
