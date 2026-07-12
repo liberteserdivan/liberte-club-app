@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { fetchCustomerLoyaltySnapshot } from '../lib/realtimeFetch.js';
-import { getLpBalance, getLpLifetime } from '../lib/loyaltyStamps.js';
+import { getLpBalance, getLpLifetime, pickLoyaltyCard } from '../lib/loyaltyStamps.js';
 import { isIosNative, isNativeApp } from '../lib/platform.js';
 import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForeground.js';
 import { isCustomerRealtimeDisabled, shouldReducePolling } from '../lib/safeMode.js';
@@ -66,7 +66,7 @@ export function useCustomerLoyaltyPoll({
       if (!session || Number(session.customerId) !== Number(customerId)) return;
 
       const current = dbRef.current;
-      const prev = current.loyalty?.[customerId];
+      const prev = pickLoyaltyCard(current.loyalty, customerId);
       if (!loyaltySnapshotChanged(prev, loyalty)) return;
 
       commit({

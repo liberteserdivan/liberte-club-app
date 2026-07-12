@@ -15,6 +15,7 @@ import {
   customerSummary,
   redeemCategoryReward
 } from './loyaltyOps.js';
+import { migrateLoyaltyCard } from './loyaltyPointsServer.js';
 import { bumpAppStateRevision } from './relationalState.js';
 import { claimQrNonce } from './qrNonceStore.js';
 
@@ -94,12 +95,94 @@ export async function loadLoyaltyMapLightFromSql(externalSql = null) {
   return map;
 }
 
-// Tek müşteri sadakat kartını oku
+// Tek müşteri sadakat kartını oku — satır yoksa şablon; olaylardan LP kurtar
 export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
   const sql = externalSql || getSql();
   if (!sql || !customerId) return null;
-  const row = await findLoyaltyByCustomerId(sql, customerId);
-  return loyaltyRowToCard(row, customerId);
+
+  const id = Number(customerId);
+  let row = await findLoyaltyByCustomerId(sql, id);
+  let card = loyaltyRowToCard(row, id);
+
+  // Satır yok veya LP 0 — loyalty_events üzerinden kurtarmayı dene
+  if ((card.lpBalance || 0) === 0 && (card.lpLifetime || 0) === 0) {
+    const recovered = await recoverLpFromEvents(sql, id);
+    if (recovered.lpBalance > 0 || recovered.lpLifetime > 0) {
+      card = migrateLoyaltyCard({
+        ...card,
+        schemaVersion: 2,
+        lpBalance: recovered.lpBalance,
+        lpLifetime: Math.max(recovered.lpLifetime, recovered.lpBalance)
+      });
+      await upsertLoyaltyRow(sql, id, card);
+      return card;
+    }
+  }
+
+  // Hiç satır yoksa şablonu yaz — sonraki okumalar boş map dönmesin
+  if (!row) {
+    await upsertLoyaltyRow(sql, id, card);
+  } else if (
+    (Number(row.lp_balance) || 0) === 0
+    && (card.lpBalance || 0) > 0
+  ) {
+    // Damga kurtarma kolonlara işlensin
+    await upsertLoyaltyRow(sql, id, card);
+  }
+
+  return card;
+}
+
+// Geçmiş olaylardan net LP bakiyesi tahmin et
+async function recoverLpFromEvents(sql, customerId) {
+  const rows = await sql`
+    SELECT event_type, delta, legacy_json
+    FROM loyalty_events
+    WHERE customer_id = ${Number(customerId)}
+    ORDER BY id ASC
+    LIMIT 500
+  `;
+
+  let balance = 0;
+  let lifetime = 0;
+
+  for (const row of rows) {
+    const type = String(row.event_type || '');
+    const legacy = row.legacy_json && typeof row.legacy_json === 'object' ? row.legacy_json : null;
+    const delta = Number(
+      row.delta != null
+        ? row.delta
+        : (legacy?.count ?? legacy?.delta ?? 0)
+    ) || 0;
+
+    if (!delta) continue;
+
+    if (
+      type.startsWith('earn_')
+      || type === 'lp_add'
+      || type === 'google_review_bonus'
+      || type === 'welcome'
+      || type === 'referral'
+    ) {
+      balance += Math.abs(delta);
+      lifetime += Math.abs(delta);
+    } else if (
+      type.startsWith('redeem_')
+      || type === 'lp_remove'
+    ) {
+      balance = Math.max(0, balance - Math.abs(delta));
+    } else if (legacy?.lpAfter != null) {
+      balance = Math.max(0, Math.trunc(Number(legacy.lpAfter) || 0));
+      if (legacy?.after?.lpLifetime != null) {
+        lifetime = Math.max(lifetime, Math.trunc(Number(legacy.after.lpLifetime) || 0));
+      }
+    }
+  }
+
+  return {
+    lpBalance: Math.max(0, Math.trunc(balance)),
+    lpLifetime: Math.max(0, Math.trunc(lifetime), Math.trunc(balance))
+  };
 }
 
 // Doğum günü kahvesi dedup'ı için geçmiş doğum günü olaylarını oku (tek iş).

@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loyaltyRowToCard } from '../api/_lib/customersStore.js';
 import { parseQrScanText } from '../src/lib/qrClient.js';
-import { createCustomerQrToken, verifyCustomerQrToken, formatQrPayload } from '../api/_lib/qrToken.js';
+import { createCustomerQrToken, verifyCustomerQrToken, formatQrPayload, resolveQrSigningSecret } from '../api/_lib/qrToken.js';
 import { dedupeCustomersByPhone } from '../src/lib/adminMemberSync.js';
-import { pickLoyaltyCard } from '../src/lib/loyaltyPoints.js';
+import { pickLoyaltyCard, migrateLoyaltyCard } from '../src/lib/loyaltyPoints.js';
+import { createHmac } from 'node:crypto';
 
 test('loyaltyRowToCard kolon LP tercih eder — bayat legacy_json ezmez', () => {
   const card = loyaltyRowToCard({
@@ -35,6 +36,19 @@ test('loyaltyRowToCard bos legacy_json kolonlari kullanir', () => {
   assert.equal(card.lpBalance, 5);
 });
 
+test('migrateLoyaltyCard sema2 sifir LP iken damgalardan kurtarir', () => {
+  const card = migrateLoyaltyCard({
+    schemaVersion: 2,
+    lpBalance: 0,
+    lpLifetime: 0,
+    categoryStamps: { coffee: 4, dessert: 1, sandwich: 0, burger: 0 },
+    categoryRewards: { coffee: 0, dessert: 0, sandwich: 0, burger: 0 },
+    lifetimeStamps: 6
+  });
+  assert.equal(card.lpBalance, 6);
+  assert.ok(card.lpLifetime >= 6);
+});
+
 test('parseQrScanText ham v1 token ve prefix kabul eder', () => {
   const { token } = createCustomerQrToken(1781893223931);
   assert.equal(parseQrScanText(token).type, 'signed');
@@ -42,11 +56,34 @@ test('parseQrScanText ham v1 token ve prefix kabul eder', () => {
   assert.equal(parseQrScanText(` \u200B${formatQrPayload(token)} `).token, token);
 });
 
+test('parseQrScanText LC ve uye no kabul eder', () => {
+  assert.equal(parseQrScanText('LC-1781893223931').type, 'memberId');
+  assert.equal(parseQrScanText('1781893223931').memberId, 1781893223931);
+});
+
 test('verifyCustomerQrToken liberte-qr prefix ile calisir', () => {
   const { token } = createCustomerQrToken(1781893223931);
   const verified = verifyCustomerQrToken(formatQrPayload(token));
   assert.equal(verified.ok, true);
   assert.equal(verified.customerId, 1781893223931);
+});
+
+test('verifyCustomerQrToken allowExpired ile suresi dolmus tokeni acar', () => {
+  const body = {
+    v: 1,
+    customerId: 1781893223931,
+    exp: Date.now() - 1000,
+    nonce: 'abc12345'
+  };
+  const newBody = Buffer.from(JSON.stringify(body), 'utf8').toString('base64url');
+  const sig = createHmac('sha256', resolveQrSigningSecret().secret).update(newBody).digest('base64url');
+  const expiredToken = `v1.${newBody}.${sig}`;
+  const denied = verifyCustomerQrToken(expiredToken);
+  assert.equal(denied.ok, false);
+  const allowed = verifyCustomerQrToken(expiredToken, { allowExpired: true });
+  assert.equal(allowed.ok, true);
+  assert.equal(allowed.expired, true);
+  assert.equal(allowed.customerId, 1781893223931);
 });
 
 test('dedupeCustomersByPhone kisa telefonlu uyeyi dusurmez', () => {

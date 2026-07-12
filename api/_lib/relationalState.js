@@ -10,8 +10,6 @@ import {
   ensureCustomersTables,
   customerRowToRecord,
   findCustomerById,
-  findLoyaltyByCustomerId,
-  loyaltyRowToCard,
   upsertCustomerRowsBulk,
   upsertLoyaltyRowsBulk
 } from './customersStore.js';
@@ -150,7 +148,9 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
   const { global, updatedAt, legacyFull } = await loadGlobalSliceFromDb(sql);
   const menu = await loadMenuFromSql(sql);
   const customer = await findCustomerById(sql, id);
-  const loyaltyRow = await findLoyaltyByCustomerId(sql, id);
+  // Döngüsel import yok — ihtiyaç anında yükle
+  const { loadLoyaltyForCustomer } = await import('./loyaltyStore.js');
+  const loyalty = await loadLoyaltyForCustomer(id, sql);
   const history = await loadHistoryFromSql(sql, id);
   const pushSubscriptions = await loadPushSubscriptionsForCustomer(sql, id);
   // Yalnızca bu müşterinin günlük claim'leri — tabloda satır bazlı
@@ -159,7 +159,7 @@ export async function composeStateForCustomer(customerId, externalSql = null) {
   const data = {
     ...global,
     customers: customer ? [customer] : [],
-    loyalty: loyaltyRow ? { [id]: loyaltyRowToCard(loyaltyRow, id) } : {},
+    loyalty: loyalty ? { [id]: loyalty } : {},
     categories: menu.categories.length ? menu.categories : (legacyFull?.categories || []),
     items: menu.items.length ? menu.items : (legacyFull?.items || []),
     history: history.length ? history : rowsForCustomer(legacyFull?.history, id),

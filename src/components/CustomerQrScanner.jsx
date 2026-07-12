@@ -22,6 +22,7 @@ import {
 } from '../lib/db.js';
 import {
   isSignedQrRequired,
+  lookupAdminMemberById,
   parseQrScanText,
   postLoyaltyAction,
   verifyCustomerQr
@@ -122,8 +123,21 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     const parsed = parseQrScanText(txt);
 
     if (parsed.type === 'signed') {
-      const customer = await verifyCustomerQr(parsed.token);
-      return { customer, token: parsed.token };
+      const result = await verifyCustomerQr(parsed.token);
+      return {
+        customer: result.customer,
+        token: result.expired ? '' : parsed.token,
+        warning: result.warning || null
+      };
+    }
+
+    if (parsed.type === 'memberId') {
+      const customer = await lookupAdminMemberById(parsed.memberId);
+      return {
+        customer,
+        token: '',
+        warning: 'Üye numarası ile açıldı. LP için müşteri QR kodunu okut.'
+      };
     }
 
     if (parsed.type === 'legacy') {
@@ -132,7 +146,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       }
       const customer = findCustomerFromLegacyQr(db, txt);
       if (!customer) throw new Error('Müşteri bulunamadı.');
-      return { customer, token: '' };
+      return { customer, token: '', warning: null };
     }
 
     throw new Error('Geçerli Liberte QR kodu okut.');
@@ -145,14 +159,14 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     let scanOk = false;
     try {
       setScanBusy(true);
-      const { customer, token } = await resolveCustomerFromScan(txt);
+      const { customer, token, warning } = await resolveCustomerFromScan(txt);
       if (!customer?.id) {
         throw new Error('Müşteri bilgisi alınamadı. Tekrar deneyin.');
       }
       syncScannedCustomer(customer);
       setScannedToken(token);
       setSuccess(true);
-      setMsg('QR okundu!');
+      setMsg(warning || 'QR okundu!');
       await stopScanner();
       scanOk = true;
     } catch (error) {

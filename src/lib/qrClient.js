@@ -139,6 +139,15 @@ function extractSignedQrToken(text) {
   return embedded ? embedded[0] : '';
 }
 
+// LC-1781… veya düz üye numarası
+function extractMemberIdFromText(text) {
+  const direct = text.match(/^(?:lc[-\s]?)?(\d{10,})$/i);
+  if (direct) return Number(direct[1]);
+  const embedded = text.match(/(?:lc[-\s]?)(\d{10,})/i);
+  if (embedded) return Number(embedded[1]);
+  return null;
+}
+
 // Okunan QR metnini ayrıştır
 export function parseQrScanText(rawText) {
   const text = cleanQrRawText(rawText);
@@ -156,6 +165,11 @@ export function parseQrScanText(rawText) {
     }
   } catch {
     // Geçersiz JSON
+  }
+
+  const memberId = extractMemberIdFromText(text);
+  if (memberId) {
+    return { type: 'memberId', memberId };
   }
 
   return { type: 'invalid' };
@@ -286,7 +300,7 @@ export async function fetchCustomerQrToken(options = {}) {
   }
 }
 
-// Kasiyer — imzalı QR doğrula
+// Kasiyer — imzalı QR doğrula (süresi dolmuşsa da üye kartı açılır)
 export async function verifyCustomerQr(token) {
   try {
     const { response, data } = await apiJson('/api/admin?resource=qr-verify', {
@@ -296,20 +310,39 @@ export async function verifyCustomerQr(token) {
     });
 
     if (!response.ok) {
-      const formatted = formatQrUserError(null, response, data);
-      throw new Error(formatted.message || 'QR doğrulanamadı');
+      throw new Error(data?.error || formatQrUserError(null, response, data).message || 'QR doğrulanamadı');
     }
 
     if (!data?.customer?.id) {
       throw new Error('Müşteri bilgisi alınamadı. Tekrar deneyin.');
     }
 
-    return data.customer;
+    return {
+      customer: data.customer,
+      expired: Boolean(data.expired),
+      warning: data.warning || null
+    };
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
-    const formatted = formatQrUserError(error);
-    throw new Error(formatted.message || error?.message || 'QR doğrulanamadı');
+    throw new Error(error?.message || formatQrUserError(error).message || 'QR doğrulanamadı');
   }
+}
+
+// Kasiyer — üye no / LC- ile üye özeti (imzalı QR yoksa)
+export async function lookupAdminMemberById(memberId) {
+  const { response, data } = await apiJson('/api/admin?resource=member-lookup', {
+    method: 'POST',
+    body: JSON.stringify({ memberId }),
+    ...ADMIN_REQUEST_OPTIONS
+  });
+
+  if (!response.ok) {
+    throw new Error(data?.error || 'Üye bulunamadı');
+  }
+  if (!data?.customer?.id) {
+    throw new Error('Üye bulunamadı');
+  }
+  return data.customer;
 }
 
 // Kasiyer — damga / ikram / check-in (sunucu doğrular)

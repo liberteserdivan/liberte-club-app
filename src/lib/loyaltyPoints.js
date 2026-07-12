@@ -147,8 +147,21 @@ export function migrateLoyaltyCard(card) {
   if (!card) return null;
 
   if (Number(card.schemaVersion) >= LP_SCHEMA_VERSION) {
-    const lpBalance = Math.max(0, Math.trunc(card.lpBalance || 0));
-    const lpLifetime = Math.max(lpBalance, Math.trunc(card.lpLifetime || 0));
+    let lpBalance = Math.max(0, Math.trunc(card.lpBalance || 0));
+    let lpLifetime = Math.max(lpBalance, Math.trunc(card.lpLifetime || 0));
+
+    // Şema 2 yazılmış ama LP kolonları boş — damga alanlarından kurtar
+    if (lpBalance === 0 && lpLifetime === 0) {
+      const legacyStamps = readLegacyStamps(card);
+      const legacyRewards = readLegacyRewards(card);
+      const recovered = convertLegacyToLp(legacyStamps, legacyRewards);
+      const stampLifetime = Math.max(0, Math.trunc(card.lifetimeStamps || 0));
+      if (recovered > 0 || stampLifetime > 0) {
+        lpBalance = Math.max(recovered, 0);
+        lpLifetime = Math.max(lpBalance, stampLifetime, recovered);
+      }
+    }
+
     return {
       ...card,
       schemaVersion: LP_SCHEMA_VERSION,

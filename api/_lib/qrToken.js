@@ -93,8 +93,8 @@ export function normalizeQrTokenInput(raw) {
   return text;
 }
 
-// QR token doğrula
-export function verifyCustomerQrToken(token) {
+// QR token doğrula — allowExpired: yalnızca üye kartı açmak için (LP işlemi değil)
+export function verifyCustomerQrToken(token, { allowExpired = false } = {}) {
   try {
     const normalized = normalizeQrTokenInput(token);
     const parts = String(normalized || '').split('.');
@@ -119,15 +119,17 @@ export function verifyCustomerQrToken(token) {
       return { ok: false, error: 'QR içeriği geçersiz' };
     }
 
-    if (Date.now() > Number(payload.exp)) {
-      return { ok: false, error: 'QR süresi doldu. Müşteri ekranı yenilesin.' };
+    const expired = Date.now() > Number(payload.exp);
+    if (expired && !allowExpired) {
+      return { ok: false, error: 'QR süresi doldu. Müşteri ekranı yenilesin.', expired: true };
     }
 
     return {
       ok: true,
       customerId: Number(payload.customerId),
       nonce: String(payload.nonce || ''),
-      expiresAt: Number(payload.exp)
+      expiresAt: Number(payload.exp),
+      expired
     };
   } catch {
     return { ok: false, error: 'QR okunamadı' };
