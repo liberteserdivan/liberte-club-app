@@ -55,6 +55,10 @@ public class MainActivity extends BridgeActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        // Yakınlaştırma kapalı — ekran sabit kalsın (Starbucks tarzı native his)
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
         webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
         webView.setNestedScrollingEnabled(true);
         webView.setVerticalScrollBarEnabled(false);

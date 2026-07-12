@@ -95,6 +95,8 @@ export default function CampaignPage({ db, customer, commit, setTab, onOpenMessa
         <FullHistoryCard db={db} customer={customer} />
         <NotificationCenterCard db={db} customer={customer} onOpenMessage={onOpenMessage} />
       </PremiumSection>
+
+      <div className="pageEndSpacer" aria-hidden="true" />
     </PageShell>
   );
 }

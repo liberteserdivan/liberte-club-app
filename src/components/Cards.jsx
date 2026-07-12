@@ -410,19 +410,41 @@ export function NotificationCenterCard({ db, customer, onOpenMessage = null }) {
     });
   }
 
-  return <div className="notificationCenter card">
-    <div className="centerHead"><div><span>BİLDİRİM MERKEZİ</span><h3>Duyurular ve Hatırlatmalar</h3></div><Bell/></div>
-    {rows.length ? rows.map((n) => (
-      <button
-        type="button"
-        className="notifyLine notifyLineBtn"
-        key={n.id}
-        onClick={() => openMessage(n)}
-      >
-        <b>{n.title}</b><p>{n.body}</p><small>{n.createdAt}</small>
-      </button>
-    )) : <p className="emptySmall">Henüz bildirim yok.</p>}
-  </div>;
+  return (
+    <div className="notifInbox">
+      <div className="notifInboxHead">
+        <div>
+          <span className="notifInboxEyebrow">Bildirim merkezi</span>
+          <h3>Mesajların</h3>
+        </div>
+        <div className="notifInboxIcon" aria-hidden="true"><Bell size={18} /></div>
+      </div>
+
+      {rows.length ? (
+        <ul className="notifInboxList">
+          {rows.map((n) => (
+            <li key={n.id}>
+              <button type="button" className="notifInboxItem" onClick={() => openMessage(n)}>
+                <span className="notifInboxDot" aria-hidden="true" />
+                <span className="notifInboxCopy">
+                  <strong>{n.title}</strong>
+                  {n.body ? <p>{n.body}</p> : null}
+                  {n.createdAt ? <small>{n.createdAt}</small> : null}
+                </span>
+                <span className="notifInboxChevron" aria-hidden="true">›</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="notifInboxEmpty">
+          <Bell size={22} aria-hidden="true" />
+          <p>Henüz bildirim yok.</p>
+          <span>Kampanya ve duyurular burada görünecek.</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ReviewApprovalAdmin({db,commit,refreshRemote}){

@@ -30,10 +30,12 @@
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* Tek scroll yüzeyi: html/body kilitli; yalnızca .app / .appBoot kayar (Android WebView) */
-html{height:100%;scroll-behavior:smooth;background:#0B2F26;overflow:hidden;touch-action:manipulation}
-body{margin:0;height:100%;min-height:100%;background:var(--cream);color:var(--text);font-family:var(--font-body);font-optical-sizing:auto;-webkit-font-smoothing:antialiased;overflow:hidden;touch-action:manipulation}
+html{height:100%;scroll-behavior:smooth;background:#0B2F26;overflow:hidden;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;height:100%;min-height:100%;background:var(--cream);color:var(--text);font-family:var(--font-body);font-optical-sizing:auto;-webkit-font-smoothing:antialiased;overflow:hidden;touch-action:manipulation;-webkit-text-size-adjust:100%}
 body.app-ui-ready{background:var(--cream)}
 #root{height:100%;overflow:hidden}
+/* iOS odak yakınlaştırmasını engelle — form alanları en az 16px */
+input,textarea,select{font-size:16px}
 h1,h2,h3,.pageHero h2,.homeWelcome h1,.loginCard h1,.v4MemberCard h2,.walletTop h2{font-family:var(--font-display);font-optical-sizing:auto;letter-spacing:-.02em}
 button,input,textarea,select{font:inherit}
 button{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:18px;padding:14px 18px;background:linear-gradient(135deg,var(--forest),var(--forest-3));color:#fff;font-weight:900;box-shadow:var(--soft-shadow);transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease}
@@ -366,6 +368,250 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   font-size:13px!important;
   font-weight:600!important;
 }
+
+/* Push bildirim sheet — alt çekmece, marka yeşili */
+.pushSheetBackdrop{
+  position:fixed;
+  inset:0;
+  z-index:10050;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding:0;
+  background:rgba(7,20,16,.55);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  animation:pushSheetFade .22s ease-out;
+}
+.pushSheet{
+  width:min(430px,100%);
+  max-height:min(82vh,640px);
+  display:flex;
+  flex-direction:column;
+  border-radius:28px 28px 0 0;
+  background:
+    radial-gradient(circle at 12% 0%,rgba(216,194,157,.22),transparent 42%),
+    linear-gradient(180deg,#fffdf8 0%,#f7efe2 100%);
+  border:1px solid rgba(216,194,157,.45);
+  border-bottom:none;
+  box-shadow:0 -18px 48px rgba(0,0,0,.28);
+  padding:10px 20px calc(18px + env(safe-area-inset-bottom,0px));
+  animation:pushSheetUp .28s cubic-bezier(.22,.9,.28,1);
+}
+.pushSheetHandle{
+  width:42px;
+  height:5px;
+  border-radius:999px;
+  background:rgba(11,47,38,.18);
+  margin:4px auto 14px;
+}
+.pushSheetHead{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:12px;
+  align-items:start;
+}
+.pushSheetBadge{
+  width:48px;
+  height:48px;
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  color:var(--gold);
+  background:linear-gradient(145deg,var(--forest),var(--forest-3));
+  box-shadow:0 10px 24px rgba(11,47,38,.22);
+}
+.pushSheetHeadText{min-width:0}
+.pushSheetEyebrow{
+  display:block;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--gold-2);
+  margin-bottom:4px;
+}
+.pushSheetHeadText h2{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:clamp(22px,5.6vw,28px);
+  line-height:1.15;
+  letter-spacing:-.02em;
+  color:var(--forest);
+  word-break:break-word;
+}
+.pushSheetWhen{
+  display:block;
+  margin-top:6px;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+}
+.pushSheetClose{
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:14px;
+  background:rgba(11,47,38,.08);
+  color:var(--forest);
+  display:grid;
+  place-items:center;
+  box-shadow:none;
+  padding:0;
+}
+.pushSheetBody{
+  margin-top:16px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-right:2px;
+}
+.pushSheetBody p{
+  margin:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-size:16px;
+  line-height:1.55;
+  font-weight:600;
+  color:#3d4a45;
+}
+.pushSheetFoot{margin-top:18px}
+.pushSheetCta{
+  width:100%;
+  height:54px;
+  border-radius:18px;
+  background:linear-gradient(135deg,var(--forest),var(--forest-3));
+  color:#fff;
+  font-weight:900;
+  box-shadow:0 14px 28px rgba(11,47,38,.22);
+}
+@keyframes pushSheetFade{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes pushSheetUp{
+  from{opacity:.6;transform:translateY(28px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* Bildirim merkezi — temiz inbox satırları */
+.notifInbox{
+  border-radius:24px;
+  background:#fff;
+  border:1px solid rgba(11,47,38,.08);
+  box-shadow:0 12px 28px rgba(11,47,38,.06);
+  overflow:hidden;
+}
+.notifInboxHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 16px 12px;
+  background:linear-gradient(180deg,rgba(251,246,238,.95),#fff);
+  border-bottom:1px solid rgba(11,47,38,.06);
+}
+.notifInboxEyebrow{
+  display:block;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--gold-2);
+  margin-bottom:4px;
+}
+.notifInboxHead h3{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:22px;
+  color:var(--forest);
+  letter-spacing:-.02em;
+}
+.notifInboxIcon{
+  width:40px;
+  height:40px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  color:var(--forest);
+  background:rgba(159,220,199,.22);
+}
+.notifInboxList{list-style:none;margin:0;padding:0}
+.notifInboxItem{
+  width:100%;
+  display:grid;
+  grid-template-columns:10px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:start;
+  text-align:left;
+  padding:14px 16px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:inherit;
+  box-shadow:none;
+  border-top:1px solid rgba(11,47,38,.06);
+}
+.notifInboxItem:first-child{border-top:0}
+.notifInboxItem:active{background:rgba(11,47,38,.04)}
+.notifInboxDot{
+  width:8px;
+  height:8px;
+  margin-top:7px;
+  border-radius:999px;
+  background:var(--forest-3);
+  box-shadow:0 0 0 4px rgba(31,93,79,.12);
+}
+.notifInboxCopy strong{
+  display:block;
+  font-size:15px;
+  color:var(--forest);
+  line-height:1.25;
+}
+.notifInboxCopy p{
+  margin:6px 0 0;
+  font-size:13px;
+  line-height:1.4;
+  color:#66736d;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.notifInboxCopy small{
+  display:block;
+  margin-top:8px;
+  font-size:11px;
+  font-weight:700;
+  color:#95a09a;
+}
+.notifInboxChevron{
+  font-size:22px;
+  line-height:1;
+  color:rgba(11,47,38,.35);
+  margin-top:2px;
+}
+.notifInboxEmpty{
+  display:grid;
+  place-items:center;
+  gap:6px;
+  padding:28px 20px;
+  text-align:center;
+  color:var(--muted);
+}
+.notifInboxEmpty p{
+  margin:4px 0 0;
+  font-weight:800;
+  color:var(--forest);
+}
+.notifInboxEmpty span{font-size:13px}
+
+.pageEndSpacer{
+  height:calc(var(--page-scroll-bottom) + 48px);
+  width:100%;
+  flex-shrink:0;
+  pointer-events:none;
+}
+
 .notifyLineBtn{
   width:100%;
   text-align:left;
@@ -6248,7 +6494,7 @@ body.menuDetailOpen{
   --nav-dock-total:calc(var(--nav-dock-height) + env(safe-area-inset-bottom, 0px));
   /* Sekme içerik boşlukları — ana sayfa, menü, kampanya, profil ortak */
   --page-edge-x:18px;
-  --page-scroll-bottom:calc(12px + var(--nav-dock-total));
+  --page-scroll-bottom:calc(28px + var(--nav-dock-total));
 }
 
 /* Alt menü — ekranın en altına sabit dock */
@@ -6896,7 +7142,7 @@ body.menuDetailOpen{
    ========================= */
 .pagePro{
   background:var(--cream);
-  min-height:100svh;
+  min-height:100%;
   margin:0;
   padding:0 0 var(--page-scroll-bottom);
 }
@@ -7227,12 +7473,12 @@ body.menuDetailOpen{
 }
 
 .pagePro--profile .pageProBody{
-  padding-bottom:calc(var(--page-scroll-bottom) + 28px);
+  padding-bottom:calc(var(--page-scroll-bottom) + 64px);
 }
 
 .profileLegalSection{
-  scroll-margin-bottom:calc(var(--page-scroll-bottom) + 24px);
-  padding-bottom:8px;
+  scroll-margin-bottom:calc(var(--page-scroll-bottom) + 64px);
+  padding-bottom:24px;
 }
 
 /* Dar ekran: rozet alt satıra — 430px kabuk genişliğine kadar taşmayı önle */

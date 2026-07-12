@@ -119,6 +119,8 @@ export default function ProfilePage({
         </div>
       </PageSection>
 
+      <div className="pageEndSpacer" aria-hidden="true" />
+
       {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
     </PageShell>
   );
