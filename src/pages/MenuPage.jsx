@@ -90,6 +90,8 @@ export default function MenuPage({ db, embedded = false }) {
       {selected && (
         <MenuProductDetailModal item={selected} onClose={() => setSelected(null)} />
       )}
+
+      {!embedded && <div className="pageEndSpacer" aria-hidden="true" />}
     </PageShell>
   );
 }

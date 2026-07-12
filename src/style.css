@@ -1704,6 +1704,15 @@ body{
   padding:0!important;
 }
 
+/* pagePro alt scroll boşluğu — sabit nav ürünleri örtmesin */
+.appTabView > section.pagePro{
+  padding-bottom:var(--page-scroll-bottom)!important;
+}
+
+.pagePro--menu .pageProBody{
+  padding-bottom:calc(var(--page-scroll-bottom) + 24px);
+}
+
 .menuHero{
   margin-top:0!important;
   padding-top:26px!important;

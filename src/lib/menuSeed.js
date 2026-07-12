@@ -1,5 +1,5 @@
-// Liberte menü verisi — Excel'den otomatik üretildi. Elle düzenlemeyin; scripts/import-menu-from-xlsx.mjs kullanın.
-export const MENU_REVISION = 1;
+// Liberte menu verisi — menu.libertegastrocafe.com ile senkron. Elle duzenlemeyin; scripts/sync-menu-from-qr-site.mjs kullanin.
+export const MENU_REVISION = 2;
 
 export const menuCategories = [
   {
@@ -285,7 +285,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13619324_1765884613990.png"
   },
   {
     "id": 21,
@@ -321,7 +321,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615781_1769078492144.jpg"
   },
   {
     "id": 24,
@@ -331,8 +331,8 @@ export const menuItems = [
     "price": 260,
     "featured": false,
     "best": false,
-    "image": "🍰",
-    "tone": "#d6ad70",
+    "image": "🍫",
+    "tone": "#8b5e3c",
     "imageUrl": ""
   },
   {
@@ -345,7 +345,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/19077235_1778335163079.png"
   },
   {
     "id": 26,
@@ -357,7 +357,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/19077374_1778335987990.png"
   },
   {
     "id": 27,
@@ -381,7 +381,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13619333_1778320497417.png"
   },
   {
     "id": 29,
@@ -393,7 +393,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/15272068_1762778750879.jpg"
   },
   {
     "id": 30,
@@ -405,7 +405,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13619329_1778320497589.png"
   },
   {
     "id": 31,
@@ -417,7 +417,7 @@ export const menuItems = [
     "best": false,
     "image": "🍰",
     "tone": "#d6ad70",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13619143_1778320419022.jpg"
   },
   {
     "id": 32,
@@ -439,8 +439,8 @@ export const menuItems = [
     "price": 210,
     "featured": false,
     "best": false,
-    "image": "🍰",
-    "tone": "#d6ad70",
+    "image": "🍮",
+    "tone": "#c4a484",
     "imageUrl": ""
   },
   {
@@ -451,8 +451,8 @@ export const menuItems = [
     "price": 260,
     "featured": false,
     "best": false,
-    "image": "🍰",
-    "tone": "#d6ad70",
+    "image": "🧇",
+    "tone": "#e0b27a",
     "imageUrl": ""
   },
   {
@@ -465,7 +465,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615566_1762795276251.jpg"
   },
   {
     "id": 36,
@@ -477,7 +477,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615603_1762795283660.jpg"
   },
   {
     "id": 37,
@@ -489,7 +489,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615611_1762795307389.jpg"
   },
   {
     "id": 38,
@@ -501,7 +501,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615636_1762795310077.png"
   },
   {
     "id": 39,
@@ -513,7 +513,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615638_1762795313151.jpg"
   },
   {
     "id": 40,
@@ -525,7 +525,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615647_1762795320613.jpg"
   },
   {
     "id": 41,
@@ -537,7 +537,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615669_1762795329057.jpg"
   },
   {
     "id": 42,
@@ -549,7 +549,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615575_1762795279749.jpg"
   },
   {
     "id": 43,
@@ -559,8 +559,8 @@ export const menuItems = [
     "price": 180,
     "featured": false,
     "best": false,
-    "image": "☕",
-    "tone": "#4b8aa8",
+    "image": "🧊",
+    "tone": "#8fb5c4",
     "imageUrl": ""
   },
   {
@@ -571,8 +571,8 @@ export const menuItems = [
     "price": 220,
     "featured": false,
     "best": false,
-    "image": "☕",
-    "tone": "#4b8aa8",
+    "image": "🍵",
+    "tone": "#7ea882",
     "imageUrl": ""
   },
   {
@@ -583,8 +583,8 @@ export const menuItems = [
     "price": 240,
     "featured": false,
     "best": false,
-    "image": "☕",
-    "tone": "#4b8aa8",
+    "image": "🍵",
+    "tone": "#7ea882",
     "imageUrl": ""
   },
   {
@@ -595,8 +595,8 @@ export const menuItems = [
     "price": 220,
     "featured": false,
     "best": false,
-    "image": "☕",
-    "tone": "#4b8aa8",
+    "image": "🍵",
+    "tone": "#7ea882",
     "imageUrl": ""
   },
   {
@@ -607,8 +607,8 @@ export const menuItems = [
     "price": 180,
     "featured": false,
     "best": false,
-    "image": "☕",
-    "tone": "#4b8aa8",
+    "image": "🧊",
+    "tone": "#8fb5c4",
     "imageUrl": ""
   },
   {
@@ -621,7 +621,7 @@ export const menuItems = [
     "best": false,
     "image": "☕",
     "tone": "#4b8aa8",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615653_1762795324415.jpg"
   },
   {
     "id": 49,
@@ -631,8 +631,8 @@ export const menuItems = [
     "price": 180,
     "featured": false,
     "best": false,
-    "image": "☕",
-    "tone": "#4b8aa8",
+    "image": "🧊",
+    "tone": "#8fb5c4",
     "imageUrl": ""
   },
   {
@@ -644,7 +644,7 @@ export const menuItems = [
     "featured": false,
     "best": false,
     "image": "🍵",
-    "tone": "#8b6914",
+    "tone": "#8f9e6e",
     "imageUrl": ""
   },
   {
@@ -657,7 +657,7 @@ export const menuItems = [
     "best": false,
     "image": "🍵",
     "tone": "#8b6914",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615741_1762795332478.jpg"
   },
   {
     "id": 52,
@@ -667,8 +667,8 @@ export const menuItems = [
     "price": 120,
     "featured": false,
     "best": false,
-    "image": "🍵",
-    "tone": "#8b6914",
+    "image": "☕",
+    "tone": "#6b4f3a",
     "imageUrl": ""
   },
   {
@@ -679,8 +679,8 @@ export const menuItems = [
     "price": 120,
     "featured": false,
     "best": false,
-    "image": "🍵",
-    "tone": "#8b6914",
+    "image": "☕",
+    "tone": "#6b4f3a",
     "imageUrl": ""
   },
   {
@@ -691,8 +691,8 @@ export const menuItems = [
     "price": 140,
     "featured": false,
     "best": false,
-    "image": "🍵",
-    "tone": "#8b6914",
+    "image": "☕",
+    "tone": "#6b4f3a",
     "imageUrl": ""
   },
   {
@@ -704,7 +704,7 @@ export const menuItems = [
     "featured": false,
     "best": false,
     "image": "🍵",
-    "tone": "#8b6914",
+    "tone": "#8f9e6e",
     "imageUrl": ""
   },
   {
@@ -717,7 +717,7 @@ export const menuItems = [
     "best": false,
     "image": "🍵",
     "tone": "#8b6914",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615775_1762795344843.jpg"
   },
   {
     "id": 57,
@@ -729,7 +729,7 @@ export const menuItems = [
     "best": false,
     "image": "🍵",
     "tone": "#8b6914",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615798_1762795348935.jpg"
   },
   {
     "id": 58,
@@ -741,7 +741,7 @@ export const menuItems = [
     "best": false,
     "image": "🍵",
     "tone": "#8b6914",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615818_1765961275171.png"
   },
   {
     "id": 59,
@@ -751,8 +751,8 @@ export const menuItems = [
     "price": 120,
     "featured": false,
     "best": false,
-    "image": "🍵",
-    "tone": "#8b6914",
+    "image": "☕",
+    "tone": "#6b4f3a",
     "imageUrl": ""
   },
   {
@@ -765,7 +765,7 @@ export const menuItems = [
     "best": false,
     "image": "🍵",
     "tone": "#8b6914",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615823_1762795366242.jpg"
   },
   {
     "id": 61,
@@ -777,7 +777,7 @@ export const menuItems = [
     "best": false,
     "image": "🍵",
     "tone": "#8b6914",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615827_1765793682945.png"
   },
   {
     "id": 62,
@@ -787,8 +787,8 @@ export const menuItems = [
     "price": 90,
     "featured": false,
     "best": false,
-    "image": "🍵",
-    "tone": "#8b6914",
+    "image": "☕",
+    "tone": "#6b4f3a",
     "imageUrl": ""
   },
   {
@@ -800,7 +800,7 @@ export const menuItems = [
     "featured": false,
     "best": false,
     "image": "🍵",
-    "tone": "#8b6914",
+    "tone": "#8f9e6e",
     "imageUrl": ""
   },
   {
@@ -812,7 +812,7 @@ export const menuItems = [
     "featured": false,
     "best": false,
     "image": "🥪",
-    "tone": "#c4a035",
+    "tone": "#c9a66b",
     "imageUrl": ""
   },
   {
@@ -824,7 +824,7 @@ export const menuItems = [
     "featured": false,
     "best": false,
     "image": "🥪",
-    "tone": "#c4a035",
+    "tone": "#c9a66b",
     "imageUrl": ""
   },
   {
@@ -837,7 +837,7 @@ export const menuItems = [
     "best": true,
     "image": "🍔",
     "tone": "#a0482d",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13666565_1769154314119.png"
   },
   {
     "id": 67,
@@ -849,6 +849,78 @@ export const menuItems = [
     "best": true,
     "image": "🍔",
     "tone": "#a0482d",
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13616032_1769154325554.png"
+  },
+  {
+    "id": 99,
+    "categoryId": 6,
+    "name": "Adige",
+    "description": "90gr dana brisket kıyma, isli Çerkez peyniri, isli et, soğan, Dejuna",
+    "price": 465,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
+    "imageUrl": ""
+  },
+  {
+    "id": 98,
+    "categoryId": 6,
+    "name": "Balkan",
+    "description": "90gr dana brisket kıyma, burger peyniri, isli et, soka",
+    "price": 465,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
+    "imageUrl": ""
+  },
+  {
+    "id": 97,
+    "categoryId": 6,
+    "name": "Cevabi",
+    "description": "90gr dana brisket kıyma, burger peyniri, soğan, tuzlu kaymak, ajvar",
+    "price": 445,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
+    "imageUrl": ""
+  },
+  {
+    "id": 93,
+    "categoryId": 6,
+    "name": "Çizburger",
+    "description": "90gr dana brisket kıyma, burger peyniri, Gewürzgurken (Alman turşusu), Liberte sos",
+    "price": 385,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
+    "imageUrl": ""
+  },
+  {
+    "id": 96,
+    "categoryId": 6,
+    "name": "Oklahoma",
+    "description": "90gr dana brisket kıyma, Oklahoma tarzı pişmiş soğan, burger peyniri, Gewürzgurken (Alman turşusu), Liberte sos",
+    "price": 415,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
+    "imageUrl": ""
+  },
+  {
+    "id": 94,
+    "categoryId": 6,
+    "name": "Old School",
+    "description": "90gr dana brisket kıyma, burger peyniri, marul, domates, Gewürzgurken (Alman turşusu), Liberte sos",
+    "price": 395,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
     "imageUrl": ""
   },
   {
@@ -860,7 +932,7 @@ export const menuItems = [
     "featured": false,
     "best": false,
     "image": "🍟",
-    "tone": "#a0482d",
+    "tone": "#e0b35c",
     "imageUrl": ""
   },
   {
@@ -873,6 +945,18 @@ export const menuItems = [
     "best": true,
     "image": "🍔",
     "tone": "#a0482d",
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13666565_1769154314119.png"
+  },
+  {
+    "id": 95,
+    "categoryId": 6,
+    "name": "Truffle",
+    "description": "90gr dana brisket kıyma, burger peyniri, Gewürzgurken (Alman turşusu), trüf mayo",
+    "price": 415,
+    "featured": false,
+    "best": false,
+    "image": "🍔",
+    "tone": "#f5d0b9",
     "imageUrl": ""
   },
   {
@@ -885,7 +969,7 @@ export const menuItems = [
     "best": true,
     "image": "🍔",
     "tone": "#a0482d",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615767_1769078905966.png"
   },
   {
     "id": 71,
@@ -895,8 +979,8 @@ export const menuItems = [
     "price": 20,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "💧",
+    "tone": "#8eb6c9",
     "imageUrl": ""
   },
   {
@@ -909,7 +993,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615894_1765788288641.png"
   },
   {
     "id": 73,
@@ -921,7 +1005,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615899_1758102436490.png"
   },
   {
     "id": 74,
@@ -933,7 +1017,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13619024_1766573230267.png"
   },
   {
     "id": 75,
@@ -943,8 +1027,8 @@ export const menuItems = [
     "price": 160,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍹",
+    "tone": "#c98a9a",
     "imageUrl": ""
   },
   {
@@ -957,7 +1041,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615914_1758538145170.png"
   },
   {
     "id": 77,
@@ -967,8 +1051,8 @@ export const menuItems = [
     "price": 180,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍧",
+    "tone": "#e8b4bc",
     "imageUrl": ""
   },
   {
@@ -979,8 +1063,8 @@ export const menuItems = [
     "price": 160,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍧",
+    "tone": "#e8b4bc",
     "imageUrl": ""
   },
   {
@@ -991,8 +1075,8 @@ export const menuItems = [
     "price": 160,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍧",
+    "tone": "#e8b4bc",
     "imageUrl": ""
   },
   {
@@ -1003,8 +1087,8 @@ export const menuItems = [
     "price": 70,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍵",
+    "tone": "#8f9e6e",
     "imageUrl": ""
   },
   {
@@ -1015,8 +1099,8 @@ export const menuItems = [
     "price": 180,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍵",
+    "tone": "#8f9e6e",
     "imageUrl": ""
   },
   {
@@ -1027,8 +1111,8 @@ export const menuItems = [
     "price": 200,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍹",
+    "tone": "#c98a9a",
     "imageUrl": ""
   },
   {
@@ -1041,7 +1125,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615922_1765803317263.png"
   },
   {
     "id": 84,
@@ -1053,7 +1137,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615835_1769159024844.jpg"
   },
   {
     "id": 85,
@@ -1063,8 +1147,8 @@ export const menuItems = [
     "price": 130,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍋",
+    "tone": "#e6d07a",
     "imageUrl": ""
   },
   {
@@ -1075,8 +1159,8 @@ export const menuItems = [
     "price": 70,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍵",
+    "tone": "#8f9e6e",
     "imageUrl": ""
   },
   {
@@ -1089,7 +1173,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13623771_1755764350816.png"
   },
   {
     "id": 88,
@@ -1101,7 +1185,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13615845_1765834104965.png"
   },
   {
     "id": 89,
@@ -1111,8 +1195,8 @@ export const menuItems = [
     "price": 180,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍹",
+    "tone": "#c98a9a",
     "imageUrl": ""
   },
   {
@@ -1125,7 +1209,7 @@ export const menuItems = [
     "best": false,
     "image": "🥤",
     "tone": "#5ba3c6",
-    "imageUrl": ""
+    "imageUrl": "https://cdn.tgoapps.com/mnresize/640/-/tgo2/spm/prod/meal/media/images/product/384578/13623771_1755764350816.png"
   },
   {
     "id": 91,
@@ -1135,8 +1219,8 @@ export const menuItems = [
     "price": 160,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍹",
+    "tone": "#c98a9a",
     "imageUrl": ""
   },
   {
@@ -1147,8 +1231,8 @@ export const menuItems = [
     "price": 130,
     "featured": false,
     "best": false,
-    "image": "🥤",
-    "tone": "#5ba3c6",
+    "image": "🍹",
+    "tone": "#c98a9a",
     "imageUrl": ""
   }
 ];
