@@ -15,12 +15,15 @@ import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/app
 import { warmServer } from './lib/serverWarmup.js';
 import { load } from './lib/db.js';
 import { bootstrapDevAuth } from './lib/devAuth.js';
+import { scheduleNativeSplashFailsafe, hideNativeSplash } from './lib/nativeSplash.js';
 import './style.css';
 
 // Herkese acik yasal sayfalar — giris ve splash olmadan
 const legalRoute = resolveLegalRoute(window.location.pathname);
 patchFirebaseReferrer(getFirebaseReferrerOrigin());
 if (isNativeApp()) {
+  // React mount etmeden önce fail-safe — JS çökerse bile splash kapanır
+  scheduleNativeSplashFailsafe(2800);
   ensureNativePushNavigation();
   initNativeForegroundBridge();
 }
@@ -105,6 +108,7 @@ function mountApp() {
       'boot.mount',
       'Uygulama başlatılamadı.'
     );
+    void hideNativeSplash();
     rootEl.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:system-ui,sans-serif;background:#FBF6EE;color:#0B2F26;text-align:center"><div><h1 style="margin:0 0 12px">Başlatılamadı</h1><p style="margin:0 0 16px;color:#75827C">Uygulamayı kapatıp tekrar açmayı dene.</p><button type="button" onclick="location.reload()" style="padding:12px 18px;border:0;border-radius:12px;background:#0B2F26;color:#fff;font-weight:700">Yeniden dene</button></div></main>';
   }
 }

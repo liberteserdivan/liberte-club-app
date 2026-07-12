@@ -34,7 +34,7 @@ export default function HomePage({
                 ? <LiberteMarkIcon size={18} className="homeGreetMark" />
                 : ` ${greeting.emoji}`}
             </p>
-            <h1>{customer.name.split(' ')[0] || DEVICE_APP_NAME}</h1>
+            <h1>{String(customer?.name || '').trim().split(/\s+/)[0] || DEVICE_APP_NAME}</h1>
             <div className="homeTimeBadge"><span>{greeting.time}</span><em>{greeting.tone}</em></div>
           </div>
           <div className={`homeLevelPill homeLevelPill--${tierTone}`}><Crown /><span>{level}</span></div>

@@ -50,7 +50,7 @@ import OnboardingOverlay, { shouldShowOnboarding } from './components/Onboarding
 const SPLASH_MIN_MS = 200;
 const SPLASH_FADE_MS = 240;
 const SPLASH_TOTAL_MS = 660;
-const SPLASH_FORCE_MS = 4500;
+const SPLASH_FORCE_MS = 2800;
 /* Snapshot yoksa kısa fail-soft; uzun hydrate ekranı login'i bloke etmesin */
 const CUSTOMER_HYDRATE_RETRY_MS = 1_800;
 

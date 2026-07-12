@@ -95,42 +95,45 @@ export async function loadLoyaltyMapLightFromSql(externalSql = null) {
   return map;
 }
 
-// Tek müşteri sadakat kartını oku — satır yoksa şablon; olaylardan LP kurtar
+// Tek müşteri sadakat kartını oku — salt okuma; yazma burada yapılmaz (login/state kilitlemesin)
 export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
   const sql = externalSql || getSql();
   if (!sql || !customerId) return null;
 
   const id = Number(customerId);
-  let row = await findLoyaltyByCustomerId(sql, id);
+  const row = await findLoyaltyByCustomerId(sql, id);
   let card = loyaltyRowToCard(row, id);
 
-  // Satır yok veya LP 0 — loyalty_events üzerinden kurtarmayı dene
+  // Bellekte kurtar — DB'ye yazma (upsert boot/login'i yavaşlatmasın)
   if ((card.lpBalance || 0) === 0 && (card.lpLifetime || 0) === 0) {
-    const recovered = await recoverLpFromEvents(sql, id);
-    if (recovered.lpBalance > 0 || recovered.lpLifetime > 0) {
-      card = migrateLoyaltyCard({
-        ...card,
-        schemaVersion: 2,
-        lpBalance: recovered.lpBalance,
-        lpLifetime: Math.max(recovered.lpLifetime, recovered.lpBalance)
-      });
-      await upsertLoyaltyRow(sql, id, card);
-      return card;
+    try {
+      const recovered = await recoverLpFromEvents(sql, id);
+      if (recovered.lpBalance > 0 || recovered.lpLifetime > 0) {
+        card = migrateLoyaltyCard({
+          ...card,
+          schemaVersion: 2,
+          lpBalance: recovered.lpBalance,
+          lpLifetime: Math.max(recovered.lpLifetime, recovered.lpBalance)
+        });
+      }
+    } catch {
+      // Event taraması başarısız olsa bile şablon/kolon kartı dön
     }
   }
 
-  // Hiç satır yoksa şablonu yaz — sonraki okumalar boş map dönmesin
-  if (!row) {
-    await upsertLoyaltyRow(sql, id, card);
-  } else if (
-    (Number(row.lp_balance) || 0) === 0
-    && (card.lpBalance || 0) > 0
-  ) {
-    // Damga kurtarma kolonlara işlensin
-    await upsertLoyaltyRow(sql, id, card);
-  }
-
   return card;
+}
+
+// Eksik loyalty satırını yaz — yalnızca kasiyer/admin yazma yollarında
+export async function ensureLoyaltyRowPersisted(customerId, card = null, externalSql = null) {
+  const sql = externalSql || getSql();
+  if (!sql || !customerId) return null;
+  const id = Number(customerId);
+  const existing = await findLoyaltyByCustomerId(sql, id);
+  if (existing) return loyaltyRowToCard(existing, id);
+  const next = card || loyaltyRowToCard(null, id);
+  await upsertLoyaltyRow(sql, id, next);
+  return next;
 }
 
 // Geçmiş olaylardan net LP bakiyesi tahmin et
@@ -304,9 +307,12 @@ export async function applyLoyaltyActionRelational({
     }
 
     const customer = customerRowToRecord(lockedRows[0]);
-    // Kilit altındaki güncel sadakat kartını oku (transaction'da)
+    // Kilit altındaki güncel sadakat kartını oku (transaction'da) — yazma yok
     const loyaltyRow = await findLoyaltyByCustomerId(tx, id);
-    const loyaltyCard = loyaltyRowToCard(loyaltyRow, id);
+    let loyaltyCard = loyaltyRowToCard(loyaltyRow, id);
+    if (!loyaltyRow) {
+      await upsertLoyaltyRow(tx, id, loyaltyCard);
+    }
 
     const miniState = {
       customers: [customer],

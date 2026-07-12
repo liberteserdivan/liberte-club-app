@@ -352,10 +352,11 @@ export default function Login({ db, commit, setSession }) {
       finishSession(data, epochAtLogin, pinValue);
     } catch (e) {
       notifyRequestError(e, 'Giriş yapılamadı');
-      setAutoLoginPending(false);
     } finally {
       setLoading(false);
       loginInFlightRef.current = false;
+      // 503 / erken return dahil her çıkışta otomatik giriş kilidini aç
+      setAutoLoginPending(false);
     }
   }
 

@@ -303,7 +303,7 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
         <div className="qrPassHead">
           <div>
             <span>LIBERTE PUAN</span>
-            <strong>{customer.name}</strong>
+            <strong>{customer?.name || 'Üye'}</strong>
           </div>
           <div className="qrPassLevel"><Crown aria-hidden="true" /> {level}</div>
         </div>

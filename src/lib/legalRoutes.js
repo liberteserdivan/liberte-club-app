@@ -6,3 +6,7 @@ export function resolveLegalRoute(pathname = '') {
   if (path === '/support') return 'support';
   return null;
 }
+
+export function isPublicRoute(pathname = '') {
+  return Boolean(resolveLegalRoute(pathname));
+}

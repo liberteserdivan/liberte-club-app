@@ -61,7 +61,7 @@ export default function ProfilePage({
     <div className="profileHeroCard">
       <div className="profileAvatar" aria-hidden="true"><User size={28} /></div>
       <div className="profileHeroInfo">
-        <strong>{customer.name}</strong>
+        <strong>{customer?.name || 'Üye'}</strong>
         <p><Phone size={14} aria-hidden="true" /> {formatDisplayPhone(customer.phone)}</p>
         {customer.email && <p><Mail size={14} aria-hidden="true" /> {customer.email}</p>}
       </div>
