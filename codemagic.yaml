@@ -211,8 +211,9 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease
-      - name: Play Console yukle (opsiyonel)
+      - name: Play Console yukle
         script: |
+          set -eo pipefail
           if [ "${ENABLE_PLAY_UPLOAD:-false}" != "true" ]; then
             echo "[play] Upload atlandi — ENABLE_PLAY_UPLOAD=true olmadan Play'e yuklenmez"
             exit 0
@@ -223,19 +224,18 @@ workflows:
             echo "[play] HATA: AAB bulunamadi — once bundleRelease basarili olmali"
             exit 1
           fi
+          TRACK="${PLAY_TRACK:-alpha}"
           echo "[play] AAB hazir: $AAB_PATH ($(du -h "$AAB_PATH" | cut -f1))"
-          echo "[play] track=$PLAY_TRACK version=$APP_VERSION"
-          if ./gradlew publishReleaseBundle --track="$PLAY_TRACK"; then
-            echo "[play] Otomatik yukleme tamamlandi: $PLAY_TRACK"
-          else
-            echo ""
-            echo "=============================================="
-            echo "[play] OTOMATIK YUKLEME BASARISIZ — BUILD BASARILI"
-            echo "[play] Codemagic Artifacts'tan AAB indirin:"
-            echo "[play]   app-release.aab"
-            echo "[play] Play Console → Kapali test → Uygulama paketleri yukle"
-            echo "=============================================="
+          echo "[play] track=$TRACK version=$APP_VERSION"
+          # Basarisiz yukleme build'i yesil gostermesin
+          ./gradlew publishReleaseBundle --track="$TRACK"
+          echo "[play] Otomatik yukleme tamamlandi: $TRACK"
+          # Dahili test kanalini da ayni surume cek (testerlar geride kalmasin)
+          if [ "$TRACK" = "alpha" ] && [ "${PROMOTE_ALPHA_TO_INTERNAL:-true}" = "true" ]; then
+            cd "$CM_BUILD_DIR"
+            node scripts/promote-play-alpha-to-internal.mjs
           fi
+          node scripts/verify-play-console.mjs
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
     publishing:

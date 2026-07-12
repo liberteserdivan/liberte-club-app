@@ -1,1 +1,1 @@
-Liberte Club 1.1.30 — Kayıtlı telefonla hızlı açılış, üye listesi ve realtime performans iyileştirmeleri, oturum/bildirim stabilitesi, sağlık paneli düzeltmeleri.
+Liberte Club 1.1.31 — Performans ve kararlılık güncellemesi.

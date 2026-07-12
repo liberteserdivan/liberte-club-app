@@ -56,7 +56,9 @@
     "import:menu": "node scripts/import-menu-from-xlsx.mjs",
     "dev:v2": "vite",
     "build:v2": "vite build",
-    "test:v2": "node --test tests/app-v2-rewrite.test.mjs"
+    "test:v2": "node --test tests/app-v2-rewrite.test.mjs",
+    "play:verify": "node scripts/verify-play-console.mjs",
+    "play:promote-internal": "node scripts/promote-play-alpha-to-internal.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.1.0",

@@ -1,1 +1,1 @@
-Liberte Club 1.1.30 — Alpha: kayıtlı telefonla otomatik giriş, performans ve admin panel düzeltmeleri.
+Liberte Club 1.1.31 — Kapalı test (alpha): yeni istemci mimarisi, giriş/oturum ve bildirim iyileştirmeleri.

@@ -64,7 +64,9 @@ play {
     if (playCredentialsFile.exists()) {
         serviceAccountCredentials.set(playCredentialsFile)
     }
-    track.set('alpha')
+    // Codemagic PLAY_TRACK ile override edilir; yerel varsayilan alpha
+    def playTrack = System.getenv('PLAY_TRACK') ?: 'alpha'
+    track.set(playTrack)
     defaultToAppBundles.set(true)
 }
 
