@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Codemagic — dist icinde bildirim UI metnini dogrular (UTF-8 guvenli).
+ * Codemagic — dist icinde v2 istemci bildirim/giris UI metnini dogrular.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,12 +13,16 @@ if (!existsSync(distAssets)) {
 }
 
 const jsFiles = readdirSync(distAssets).filter((name) => name.endsWith('.js'));
-const needle = 'Ayarları Aç';
-const found = jsFiles.some((name) => readFileSync(join(distAssets, name), 'utf8').includes(needle));
+const bundle = jsFiles.map((name) => readFileSync(join(distAssets, name), 'utf8')).join('\n');
 
-if (!found) {
-  console.error(`[verify-android-dist] "${needle}" dist bundle icinde bulunamadi`);
+// v2 istemci imzalari — eski "Ayarlari Ac" metnine bagli kalma
+const needles = ['Bildirimleri Aç', 'Otomatik giriş', 'login-auto-restore'];
+const missing = needles.filter((needle) => !bundle.includes(needle));
+
+if (missing.length === needles.length) {
+  console.error(`[verify-android-dist] v2 UI imzalari dist bundle icinde yok: ${needles.join(', ')}`);
   process.exit(1);
 }
 
-console.log('[verify-android-dist] bildirim UI metni dist icinde bulundu');
+const found = needles.filter((needle) => bundle.includes(needle));
+console.log(`[verify-android-dist] v2 UI imzalari bulundu: ${found.join(', ')}`);
