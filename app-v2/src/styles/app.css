@@ -1,0 +1,180 @@
+*{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+}
+h1,h2,h3 { font-family: var(--font-display); letter-spacing: -0.02em; margin: 0; }
+button, input { font: inherit; font-size: 16px; }
+.appShell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(216,194,157,0.25), transparent 55%),
+    linear-gradient(180deg, #0B2F26 0%, #0B2F26 120px, var(--cream) 280px);
+}
+.appScroll {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(var(--nav-h) + var(--safe-bottom) + 16px);
+}
+.bootScreen, .loginPage {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(90% 50% at 50% 0%, rgba(216,194,157,0.22), transparent),
+    linear-gradient(165deg, #0B2F26, #16473A 55%, #0B2F26);
+}
+.loginCard, .panelCard {
+  width: min(420px, 100%);
+  background: rgba(255,253,248,0.96);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 22px 20px;
+  box-shadow: var(--shadow);
+}
+.loginCard h1 { color: var(--forest); font-size: 1.6rem; margin-bottom: 6px; }
+.loginCard p, .muted { color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+.loginCard label { display: block; margin: 12px 0 6px; font-weight: 700; color: var(--forest); }
+.loginCard input, .field input, .field textarea, .field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff;
+}
+.btn, .loginCard button, .ghost {
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btnPrimary, .loginCard button:not(.ghost) {
+  width: 100%;
+  margin-top: 14px;
+  background: var(--forest);
+  color: #fff;
+}
+.ghost {
+  background: transparent;
+  color: var(--forest-2);
+  width: 100%;
+  margin-top: 8px;
+}
+.btnPrimary:disabled, .loginCard button:disabled { opacity: 0.6; cursor: wait; }
+.authSwitch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.authSwitch button {
+  background: rgba(11,47,38,0.06);
+  color: var(--forest);
+}
+.authSwitch button.active { background: var(--forest); color: #fff; }
+.autoLogin {
+  text-align: center;
+  padding: 12px 0 4px;
+}
+.autoLogin .spin {
+  width: 48px; height: 48px; margin: 0 auto 12px;
+  border-radius: 50%;
+  border: 3px solid rgba(11,47,38,0.15);
+  border-top-color: var(--gold-2);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.autoSteps { list-style: none; padding: 0; margin: 12px 0; text-align: left; }
+.autoSteps li {
+  padding: 10px 12px 10px 32px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  background: rgba(11,47,38,0.04);
+  position: relative;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+}
+.autoSteps li::before {
+  content: '';
+  position: absolute; left: 12px; top: 50%;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #c5cdc8; transform: translateY(-50%);
+}
+.autoSteps li.active { color: var(--forest); background: rgba(185,149,92,0.16); }
+.autoSteps li.active::before { background: var(--gold-2); }
+.autoSteps li.done { color: var(--forest); background: rgba(22,163,74,0.08); }
+.autoSteps li.done::before { background: var(--success); }
+.brandMark {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--forest);
+  margin-bottom: 8px;
+}
+.pageHero h2 { font-size: 1.55rem; color: var(--forest); }
+.pageHero p { color: var(--muted); margin: 6px 0 16px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card b { display: block; margin-bottom: 4px; }
+.lpBig { font-family: var(--font-display); font-size: 2rem; color: var(--forest); }
+.navBar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: rgba(255,253,248,0.96);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+}
+.navBar button {
+  border: 0; background: transparent; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; font-size: 11px; font-weight: 700;
+}
+.navBar button.active { color: var(--forest); }
+.menuList { display: grid; gap: 10px; }
+.menuItem {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px;
+  align-items: center; padding: 12px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.qrBox {
+  display: grid; place-items: center; padding: 20px;
+  background: #fff; border-radius: 20px; border: 1px solid var(--line);
+}
+.toast {
+  position: fixed; left: 16px; right: 16px; top: calc(12px + env(safe-area-inset-top));
+  z-index: 50; padding: 12px 14px; border-radius: 14px;
+  background: var(--forest); color: #fff; font-weight: 600;
+  box-shadow: var(--shadow);
+}
+.toast.err { background: #7f1d1d; }
+.adminTabs { display: flex; gap: 8px; overflow: auto; margin-bottom: 12px; }
+.adminTabs button {
+  flex: 0 0 auto; border: 0; border-radius: 999px; padding: 8px 12px;
+  background: rgba(11,47,38,0.06); font-weight: 700; color: var(--forest);
+}
+.adminTabs button.active { background: var(--forest); color: #fff; }
+.memberRow {
+  display: flex; justify-content: space-between; gap: 8px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.statusPill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+}
+.statusPill.on { background: rgba(22,163,74,0.12); color: var(--success); }
+.statusPill.off { background: rgba(185,149,92,0.18); color: var(--gold-2); }
+.rowActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rowActions .btn { width: auto; margin: 0; padding: 8px 12px; font-size: 13px; }
+.errorBox { color: var(--danger); font-weight: 600; margin: 8px 0; font-size: 14px; }
+.infoBox { color: var(--forest-2); font-weight: 600; margin: 8px 0; font-size: 14px; }

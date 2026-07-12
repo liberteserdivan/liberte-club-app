@@ -53,7 +53,10 @@
     "test:e2e:mobile:emulator": "node scripts/run-local-android-smoke.mjs",
     "test:e2e:mobile:android": "wdio run e2e/mobile/wdio.browserstack.android.conf.js",
     "test:e2e:mobile:ios": "wdio run e2e/mobile/wdio.browserstack.ios.conf.js",
-    "import:menu": "node scripts/import-menu-from-xlsx.mjs"
+    "import:menu": "node scripts/import-menu-from-xlsx.mjs",
+    "dev:v2": "vite",
+    "build:v2": "vite build",
+    "test:v2": "node --test tests/app-v2-rewrite.test.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.1.0",
