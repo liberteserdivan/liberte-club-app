@@ -369,132 +369,169 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   font-weight:600!important;
 }
 
-/* Push bildirim sheet — alt çekmece, marka yeşili */
-.pushSheetBackdrop{
+/* Push bildirim — ekran ortası marka kartı */
+.pushBannerBackdrop{
   position:fixed;
   inset:0;
   z-index:10050;
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  padding:0;
-  background:rgba(5,16,12,.58);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  animation:pushSheetFade .24s ease-out;
+  display:grid;
+  place-items:center;
+  padding:max(20px,env(safe-area-inset-top)) 22px max(24px,env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 42%,rgba(31,93,79,.35),transparent 70%),
+    rgba(4,14,11,.62);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  animation:pushBannerFade .28s ease-out;
 }
-.pushSheet{
+.pushBanner{
   position:relative;
-  width:min(440px,100%);
-  max-height:min(84vh,660px);
+  width:min(360px,100%);
+  max-height:min(78vh,560px);
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  border-radius:28px 28px 0 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%,rgba(216,194,157,.35),transparent 55%),
-    linear-gradient(180deg,#fffefb 0%,#f5ecdd 100%);
-  border:1px solid rgba(216,194,157,.5);
-  border-bottom:none;
-  box-shadow:0 -20px 56px rgba(0,0,0,.32);
-  padding:12px 22px calc(20px + env(safe-area-inset-bottom,0px));
-  animation:pushSheetUp .32s cubic-bezier(.22,.9,.28,1);
+  border-radius:32px;
+  background:#fffefb;
+  border:1px solid rgba(216,194,157,.55);
+  box-shadow:
+    0 28px 64px rgba(0,0,0,.38),
+    0 0 0 1px rgba(255,255,255,.08) inset;
+  animation:pushBannerIn .42s cubic-bezier(.22,1,.28,1);
 }
-.pushSheetAccent{
+.pushBannerGlow{
   position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  height:3px;
-  background:linear-gradient(90deg,var(--forest),var(--gold),var(--forest-3));
+  inset:auto -20% -30% -20%;
+  height:55%;
+  background:radial-gradient(circle at 50% 0%,rgba(216,194,157,.28),transparent 62%);
+  pointer-events:none;
 }
-.pushSheetHandle{
-  width:44px;
-  height:5px;
-  border-radius:999px;
-  background:rgba(11,47,38,.16);
-  margin:6px auto 16px;
-}
-.pushSheetHead{
-  display:grid;
-  grid-template-columns:auto minmax(0,1fr) auto;
-  gap:14px;
-  align-items:start;
-}
-.pushSheetBadge{
-  width:52px;
-  height:52px;
-  border-radius:18px;
-  display:grid;
-  place-items:center;
-  color:var(--gold);
-  background:linear-gradient(145deg,var(--forest),var(--forest-3));
-  box-shadow:0 12px 28px rgba(11,47,38,.26);
-  animation:pushSheetBadgeIn .45s cubic-bezier(.22,.9,.28,1) .08s both;
-}
-.pushSheetHeadText{min-width:0}
-.pushSheetEyebrow{
-  display:block;
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-  color:var(--gold-2);
-  margin-bottom:5px;
-}
-.pushSheetHeadText h2{
-  margin:0;
-  font-family:var(--font-display);
-  font-size:clamp(22px,5.6vw,28px);
-  line-height:1.15;
-  letter-spacing:-.02em;
-  color:var(--forest);
-  word-break:break-word;
-}
-.pushSheetWhen{
-  display:block;
-  margin-top:7px;
-  font-size:12px;
-  font-weight:700;
-  color:var(--muted);
-}
-.pushSheetClose{
-  width:40px;
-  height:40px;
+.pushBannerClose{
+  position:absolute;
+  top:14px;
+  right:14px;
+  z-index:3;
+  width:38px;
+  height:38px;
   border:0;
   border-radius:14px;
-  background:rgba(11,47,38,.08);
-  color:var(--forest);
+  padding:0;
+  background:rgba(255,255,255,.12);
+  color:rgba(255,255,255,.92);
   display:grid;
   place-items:center;
   box-shadow:none;
-  padding:0;
+  backdrop-filter:blur(8px);
 }
-.pushSheetClose:active{transform:scale(.96)}
-.pushSheetBody{
-  margin-top:18px;
+.pushBannerClose:active{transform:scale(.94)}
+.pushBannerHero{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  padding:36px 24px 28px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 88% 8%,rgba(216,194,157,.32),transparent 34%),
+    radial-gradient(circle at 12% 88%,rgba(159,220,199,.16),transparent 36%),
+    linear-gradient(155deg,#0a241e 0%,var(--forest) 48%,#174b3a 100%);
+}
+.pushBannerHero::after{
+  content:"";
+  position:absolute;
+  left:18%;
+  right:18%;
+  bottom:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(216,194,157,.55),transparent);
+}
+.pushBannerRing{
+  width:84px;
+  height:84px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  margin-bottom:16px;
+  background:rgba(216,194,157,.14);
+  border:1px solid rgba(216,194,157,.35);
+  animation:pushBannerPulse 2.4s ease-in-out infinite;
+}
+.pushBannerBadge{
+  width:62px;
+  height:62px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  color:var(--gold);
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  border:1px solid rgba(216,194,157,.5);
+  box-shadow:0 10px 28px rgba(0,0,0,.22);
+  animation:pushBannerBadgeIn .5s cubic-bezier(.22,1,.28,1) .1s both;
+}
+.pushBannerBrand{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-.03em;
+  color:#fff;
+}
+.pushBannerLabel{
+  margin-top:10px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--gold);
+}
+.pushBannerContent{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:12px;
+  padding:22px 22px 24px;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
+}
+.pushBannerContent h2{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:clamp(22px,5.4vw,26px);
+  line-height:1.2;
+  letter-spacing:-.02em;
+  color:var(--forest);
+  text-align:center;
+  word-break:break-word;
+}
+.pushBannerWhen{
+  display:block;
+  margin:-2px auto 0;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+  text-align:center;
+}
+.pushBannerBody{
+  margin:4px 0 0;
   padding:16px 16px;
   border-radius:18px;
-  background:rgba(255,255,255,.72);
+  background:linear-gradient(180deg,#f8f4ec,#f3ebe0);
   border:1px solid rgba(11,47,38,.06);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
-}
-.pushSheetBodyMuted{opacity:.88}
-.pushSheetBody p{
-  margin:0;
   white-space:pre-wrap;
   word-break:break-word;
-  font-size:16px;
-  line-height:1.6;
+  font-size:15.5px;
+  line-height:1.58;
   font-weight:600;
-  color:#2f3d37;
+  color:#2c3a34;
+  text-align:center;
 }
-.pushSheetFoot{margin-top:18px}
-.pushSheetCta{
+.pushBannerCta{
   width:100%;
-  height:54px;
+  height:52px;
+  margin-top:6px;
   border:0;
   border-radius:18px;
   background:linear-gradient(135deg,var(--forest),var(--forest-3));
@@ -502,20 +539,24 @@ textarea{min-height:100px;resize:vertical}label{display:block;font-size:13px;col
   font-size:16px;
   font-weight:900;
   letter-spacing:.01em;
-  box-shadow:0 14px 28px rgba(11,47,38,.24);
+  box-shadow:0 14px 28px rgba(11,47,38,.22);
 }
-.pushSheetCta:active{transform:translateY(1px)}
-@keyframes pushSheetFade{
+.pushBannerCta:active{transform:translateY(1px)}
+@keyframes pushBannerFade{
   from{opacity:0}
   to{opacity:1}
 }
-@keyframes pushSheetUp{
-  from{opacity:.55;transform:translateY(36px)}
-  to{opacity:1;transform:translateY(0)}
+@keyframes pushBannerIn{
+  from{opacity:0;transform:translateY(18px) scale(.92)}
+  to{opacity:1;transform:translateY(0) scale(1)}
 }
-@keyframes pushSheetBadgeIn{
-  from{opacity:0;transform:scale(.82)}
+@keyframes pushBannerBadgeIn{
+  from{opacity:0;transform:scale(.78)}
   to{opacity:1;transform:scale(1)}
+}
+@keyframes pushBannerPulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.04);opacity:.92}
 }
 
 /* Bildirim merkezi — temiz inbox satırları */

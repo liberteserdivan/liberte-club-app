@@ -19,10 +19,12 @@ function formatMessageWhen(value) {
   }
 }
 
-// Push tıklanınca açılan alt sheet — marka yeşili, okunaklı gövde
+// Push tıklanınca ortada açılan marka bildirimi
 export default function PushMessageSheet({ message, onClose }) {
   const open = Boolean(message?.title || message?.body);
   const when = formatMessageWhen(message?.createdAt);
+  const bodyText = message?.body
+    || 'Bu bildirimin ayrıntısı yok; ana ekrandan devam edebilirsin.';
 
   useEffect(() => {
     if (!open) return undefined;
@@ -41,45 +43,39 @@ export default function PushMessageSheet({ message, onClose }) {
   if (!open) return null;
 
   return (
-    <div className="pushSheetBackdrop" onClick={onClose} role="presentation">
+    <div className="pushBannerBackdrop" onClick={onClose} role="presentation">
       <div
-        className="pushSheet"
+        className="pushBanner"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-labelledby="push-message-title"
         aria-modal="true"
       >
-        <div className="pushSheetAccent" aria-hidden="true" />
-        <div className="pushSheetHandle" aria-hidden="true" />
-        <header className="pushSheetHead">
-          <div className="pushSheetBadge" aria-hidden="true">
-            <Bell size={20} strokeWidth={2.25} />
-          </div>
-          <div className="pushSheetHeadText">
-            <span className="pushSheetEyebrow">Yeni bildirim</span>
-            <h2 id="push-message-title">{message.title || 'Liberte Club'}</h2>
-            {when ? <time className="pushSheetWhen" dateTime={message.createdAt}>{when}</time> : null}
-          </div>
-          <button type="button" className="pushSheetClose" onClick={onClose} aria-label="Kapat">
-            <X size={18} />
-          </button>
-        </header>
+        <div className="pushBannerGlow" aria-hidden="true" />
+        <button type="button" className="pushBannerClose" onClick={onClose} aria-label="Kapat">
+          <X size={18} />
+        </button>
 
-        {message.body ? (
-          <div className="pushSheetBody">
-            <p>{message.body}</p>
+        <div className="pushBannerHero">
+          <div className="pushBannerRing" aria-hidden="true">
+            <div className="pushBannerBadge">
+              <Bell size={26} strokeWidth={2.1} />
+            </div>
           </div>
-        ) : (
-          <div className="pushSheetBody pushSheetBodyMuted">
-            <p>Bu bildirimin ayrıntısı yok; ana ekrandan devam edebilirsin.</p>
-          </div>
-        )}
+          <p className="pushBannerBrand">Liberte Club</p>
+          <span className="pushBannerLabel">Yeni bildirim</span>
+        </div>
 
-        <footer className="pushSheetFoot">
-          <button type="button" className="pushSheetCta" onClick={onClose}>
+        <div className="pushBannerContent">
+          <h2 id="push-message-title">{message.title || 'Liberte Club'}</h2>
+          {when ? (
+            <time className="pushBannerWhen" dateTime={message.createdAt}>{when}</time>
+          ) : null}
+          <p className="pushBannerBody">{bodyText}</p>
+          <button type="button" className="pushBannerCta" onClick={onClose}>
             Anladım
           </button>
-        </footer>
+        </div>
       </div>
     </div>
   );
