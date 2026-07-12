@@ -212,6 +212,18 @@ export function getLpLifetime(card) {
   return migrateLoyaltyCard(card)?.lpLifetime || 0;
 }
 
+// Loyalty map'ten kart oku — sayı/string anahtar uyumu
+export function pickLoyaltyCard(loyaltyMap, customerId, fallback = null) {
+  if (!loyaltyMap || customerId == null) return fallback;
+  const direct = loyaltyMap[customerId];
+  if (direct) return direct;
+  const asString = loyaltyMap[String(customerId)];
+  if (asString) return asString;
+  const asNumber = loyaltyMap[Number(customerId)];
+  if (asNumber) return asNumber;
+  return fallback;
+}
+
 export function getCategoryLpGain(categoryId) {
   return LP_WEIGHTS[categoryId] || 0;
 }

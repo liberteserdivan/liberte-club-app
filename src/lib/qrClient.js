@@ -116,12 +116,37 @@ export function formatSignedQrValue(token) {
   return `${QR_PREFIX}${token}`;
 }
 
+// Okunan QR metnini temizle (BOM, sıfır genişlik, boşluk)
+function cleanQrRawText(rawText) {
+  return String(rawText || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+}
+
+// Okunan QR metninden imzalı token ayıkla
+function extractSignedQrToken(text) {
+  const lower = text.toLowerCase();
+  const prefixAt = lower.indexOf(QR_PREFIX);
+  if (prefixAt >= 0) {
+    const rest = text.slice(prefixAt + QR_PREFIX.length).trim();
+    const match = rest.match(/^v\d+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+    return match ? match[0] : rest.split(/\s+/)[0] || '';
+  }
+
+  // Ham v1.body.sig veya metin içine gömülü token
+  const embedded = text.match(/v\d+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+  return embedded ? embedded[0] : '';
+}
+
 // Okunan QR metnini ayrıştır
 export function parseQrScanText(rawText) {
-  const text = String(rawText || '').trim();
+  const text = cleanQrRawText(rawText);
+  if (!text) return { type: 'invalid' };
 
-  if (text.startsWith(QR_PREFIX)) {
-    return { type: 'signed', token: text.slice(QR_PREFIX.length) };
+  const signedToken = extractSignedQrToken(text);
+  if (signedToken) {
+    return { type: 'signed', token: signedToken };
   }
 
   try {

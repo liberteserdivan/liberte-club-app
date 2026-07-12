@@ -17,6 +17,7 @@ import {
   canRedeemLpReward,
   getCategoryLpGain,
   getCategoryRewardCost,
+  pickLoyaltyCard,
   lpRewardStatusText,
   lpRemainingForReward,
   lpCategoryCardView
@@ -39,6 +40,7 @@ export {
   canRedeemLpReward,
   getCategoryLpGain,
   getCategoryRewardCost,
+  pickLoyaltyCard,
   lpRewardStatusText,
   lpRemainingForReward,
   lpCategoryCardView

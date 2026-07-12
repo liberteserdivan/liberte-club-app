@@ -1,6 +1,6 @@
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { cssVars, load, mergeAuthSnapshot, sameCustomerId } from './lib/db.js';
+import { cssVars, load, mergeAuthSnapshot, sameCustomerId, pickLoyaltyCard } from './lib/db.js';
 import { isLocalAuth } from './lib/devAuth.js';
 import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
 import { closeAllRealtimeChannels } from './lib/realtimeManager.js';
@@ -471,7 +471,7 @@ export default function App() {
       </main>
     );
   } else {
-    const card = db.loyalty[customer.id] || {};
+    const card = pickLoyaltyCard(db.loyalty, customer.id) || {};
 
     mainContent = (
       <main className="app" style={theme}>

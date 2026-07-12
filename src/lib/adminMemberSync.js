@@ -28,21 +28,44 @@ function preferAdminCustomerRecord(next, current) {
   return nextId > currentId;
 }
 
-// Üye listesini telefona göre tekilleştir — snapshot/seed çiftlerini temizler
+// Üye listesini tekilleştir — kısa/eksik telefonluları düşürme; çakışmada relational tercih
 export function dedupeCustomersByPhone(customers) {
-  const map = new Map();
+  const byId = new Map();
 
   for (const row of customers || []) {
-    const phone = normalizeMemberPhone(row?.phone);
-    if (phone.length < 10) continue;
-
-    const existing = map.get(phone);
+    const id = Number(row?.id);
+    if (!id) continue;
+    const existing = byId.get(id);
     if (!existing || preferAdminCustomerRecord(row, existing)) {
-      map.set(phone, row);
+      byId.set(id, row);
     }
   }
 
-  return [...map.values()].sort((a, b) => Number(a.id) - Number(b.id));
+  const byPhone = new Map();
+  const result = [];
+
+  for (const row of byId.values()) {
+    const phone = normalizeMemberPhone(row?.phone);
+    if (phone.length < 10) {
+      result.push(row);
+      continue;
+    }
+
+    const existing = byPhone.get(phone);
+    if (!existing) {
+      byPhone.set(phone, row);
+      result.push(row);
+      continue;
+    }
+
+    if (preferAdminCustomerRecord(row, existing)) {
+      const idx = result.indexOf(existing);
+      if (idx >= 0) result[idx] = row;
+      byPhone.set(phone, row);
+    }
+  }
+
+  return result.sort((a, b) => Number(a.id) - Number(b.id));
 }
 
 // Yerel demo kayıtlarını üretim listesinden çıkar
@@ -118,8 +141,8 @@ export function mergeAdminRemoteIntoDb(currentDb, remoteData, session) {
     ...remoteData,
     customers: bestCustomers,
     loyalty: {
-      ...(remoteData.loyalty || {}),
-      ...(currentDb?.loyalty || {})
+      ...(currentDb?.loyalty || {}),
+      ...(remoteData.loyalty || {})
     },
     customerNotes: {
       ...(remoteData.customerNotes || {}),

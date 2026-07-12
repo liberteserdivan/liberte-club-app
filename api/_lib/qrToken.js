@@ -71,10 +71,33 @@ export function formatQrPayload(token) {
   return `${QR_PREFIX}${token}`;
 }
 
+// Ham okumadan imza gövdesini ayıkla (prefix / BOM / gömülü metin)
+export function normalizeQrTokenInput(raw) {
+  let text = String(raw || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+
+  if (!text) return '';
+
+  const lower = text.toLowerCase();
+  const prefixAt = lower.indexOf(QR_PREFIX);
+  if (prefixAt >= 0) {
+    text = text.slice(prefixAt + QR_PREFIX.length).trim();
+  }
+
+  // URL veya ek metin içinde v1.body.sig yakala
+  const match = text.match(/v\d+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+  if (match) return match[0];
+
+  return text;
+}
+
 // QR token doğrula
 export function verifyCustomerQrToken(token) {
   try {
-    const parts = String(token || '').split('.');
+    const normalized = normalizeQrTokenInput(token);
+    const parts = String(normalized || '').split('.');
     if (parts.length !== 3) {
       return { ok: false, error: 'Geçersiz QR kodu' };
     }

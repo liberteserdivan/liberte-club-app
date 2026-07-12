@@ -17,7 +17,8 @@ import {
   getRedeemableRewards,
   loyaltyTemplate,
   norm,
-  redeemCategoryRewardForCustomer
+  redeemCategoryRewardForCustomer,
+  pickLoyaltyCard
 } from '../lib/db.js';
 import {
   isSignedQrRequired,
@@ -86,7 +87,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       ...current,
       loyalty: {
         ...(current.loyalty || {}),
-        [customer.id]: customer.loyalty || current.loyalty?.[customer.id] || loyaltyTemplate(customer.id)
+        [customer.id]: customer.loyalty
+          || pickLoyaltyCard(current.loyalty, customer.id)
+          || loyaltyTemplate(customer.id)
       }
     }, { skipRemote: true });
   }, [commit]);
@@ -415,7 +418,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     setMsg('Doğum günü kahve ikramı kaydedildi.');
   }
 
-  const loyaltySource = found ? (found.loyalty || db.loyalty?.[found.id]) : null;
+  const loyaltySource = found
+    ? (found.loyalty || pickLoyaltyCard(db.loyalty, found.id))
+    : null;
   const loyalty = loyaltySource || (found ? loyaltyTemplate(found.id) : null);
   const lpBalance = loyalty ? getLpBalance(loyalty) : 0;
   const lpLifetime = loyalty ? getLpLifetime(loyalty) : 0;

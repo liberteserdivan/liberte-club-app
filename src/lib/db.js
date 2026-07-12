@@ -20,7 +20,8 @@ import {
   getCategoryRewardCost,
   LP_HISTORY_EARN,
   LP_HISTORY_REDEEM,
-  levelByLp
+  levelByLp,
+  pickLoyaltyCard
 } from './loyaltyPoints.js';
 import {
   canUseMonthlyDiscount,
@@ -942,6 +943,7 @@ export {
   getRedeemableRewards,
   canRedeemLpReward,
   getLpLifetime,
+  pickLoyaltyCard,
   lpRewardStatusText
 } from './loyaltyStamps.js';
 

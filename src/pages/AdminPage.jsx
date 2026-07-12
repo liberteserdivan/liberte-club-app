@@ -3,7 +3,7 @@ import{Activity,Database,Download,Edit2,Gift,Image as ImageIcon,LayoutDashboard,
 import Brand from '../components/Brand.jsx';
 import StampCategoryPanel from '../components/StampCategoryPanel.jsx';
 import PushNotificationAdmin from '../components/PushNotificationAdmin.jsx';
-import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,getLpBalance,getRedeemableRewards,STAMP_CATEGORIES}from'../lib/db.js';
+import{addCategoryStampToCustomer,addStampToCustomer,applyCouponToCustomer,fileToDataUrl,levelByStamps,localDayKey,loyaltyTemplate,money,norm,redeemCategoryRewardForCustomer,seed,getReferralCode,getLpBalance,getRedeemableRewards,pickLoyaltyCard,STAMP_CATEGORIES}from'../lib/db.js';
 import{historyTypeLabel}from'../lib/loyaltyStamps.js';
 import{STORE_APP_NAME}from'../lib/constants.js';
 import{dispatchPush}from'../lib/pushDispatch.js';
@@ -328,7 +328,7 @@ function OverviewAdmin({db,commit,adminMembers=[],adminMembersStatus='idle',onMa
   const activeCampaigns=(db.campaigns||[]).filter(c=>c.active!==false).length+(db.dailyCampaign?.active!==false?1:0);
   const menuItemCount=(db.items||[]).length;
   const topCustomers=[...customers]
-    .map(c=>({c,l:loyalty[c.id]||loyaltyTemplate(c.id)}))
+    .map(c=>({c,l:pickLoyaltyCard(loyalty,c.id)||loyaltyTemplate(c.id)}))
     .sort((a,b)=>(getLpBalance(b.l)||0)-(getLpBalance(a.l)||0))
     .slice(0,5);
 
@@ -418,7 +418,7 @@ function UserManageOverview({ db, commit, adminMembers = [], adminMembersStatus 
       onChange={e=>setQuery(e.target.value)}
     />
     {filtered.length?filtered.map(c=>{
-      const l=loyalty[c.id]||loyaltyTemplate(c.id);
+      const l=pickLoyaltyCard(loyalty,c.id)||loyaltyTemplate(c.id);
       const lpBalance=getLpBalance(l);
       const rewards=getRedeemableRewards(l).length;
       return <div className="historyMini userManageRow" key={c.id}>
@@ -1103,9 +1103,15 @@ function UsersAdmin({
   const needle=query.trim().toLowerCase();
   const filtered=customers.filter(c=>{
     if(!needle)return true;
+    const id=String(c.id||'');
+    const idNeedle=needle.replace(/^lc-/,'').replace(/\s/g,'');
     return String(c.name||'').toLowerCase().includes(needle)
       ||String(c.phone||'').includes(needle)
-      ||String(c.email||'').toLowerCase().includes(needle);
+      ||String(c.email||'').toLowerCase().includes(needle)
+      ||id.includes(idNeedle)
+      ||id.slice(-6)===idNeedle
+      ||`lc-${id}`.includes(needle)
+      ||`lc-${id.slice(-6)}`===needle;
   });
 
   function beginEdit(c){
@@ -1123,7 +1129,7 @@ function UsersAdmin({
 
   useEffect(()=>{
     if(!focusUserId)return;
-    const target=customers.find(c=>c.id===focusUserId);
+    const target=customers.find(c=>Number(c.id)===Number(focusUserId));
     if(target){
       beginEdit(target);
       onFocusHandled?.();
@@ -1371,7 +1377,7 @@ function UsersAdmin({
 
       <input
         className="adminCategorySearch"
-        placeholder="İsim, telefon veya e-posta ara…"
+        placeholder="İsim, telefon, e-posta veya üye no (LC-…) ara…"
         value={query}
         onChange={e=>setQuery(e.target.value)}
       />
@@ -1382,7 +1388,7 @@ function UsersAdmin({
     )}
 
     {filtered.map(c=>{
-      const l=db.loyalty[c.id]||loyaltyTemplate(c.id);
+      const l=pickLoyaltyCard(db.loyalty,c.id)||loyaltyTemplate(c.id);
       const lpBalance=getLpBalance(l);
       const redeemableCount=getRedeemableRewards(l).length;
       const isEdit=editing===c.id;

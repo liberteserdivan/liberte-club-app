@@ -65,23 +65,56 @@ export function customerRowToRecord(row) {
   };
 }
 
-// Sadakat satırını API kartına çevir
+// Kolon değerini sayıya çevir — null kolonları null bırak
+function readNullableInt(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+// Sadakat satırını API kartına çevir — kolonlar kaynak; bayat legacy_json LP'yi ezmesin
 export function loyaltyRowToCard(row, customerId) {
   if (!row) return loyaltyTemplate(customerId);
-  const legacy = row.legacy_json && typeof row.legacy_json === 'object' ? row.legacy_json : null;
-  if (legacy) return migrateLoyaltyCard(legacy);
-  return migrateLoyaltyCard({
+
+  const columnBalance = readNullableInt(row.lp_balance);
+  const columnLifetime = readNullableInt(row.lp_lifetime);
+  const columnSchema = readNullableInt(row.lp_schema_version);
+  const hasColumnLp = columnBalance != null || columnLifetime != null || columnSchema != null;
+
+  const fromColumns = {
     customerId,
-    schemaVersion: row.lp_schema_version || 2,
-    lpBalance: row.lp_balance ?? 0,
-    lpLifetime: row.lp_lifetime ?? 0,
-    usedRewards: row.used_rewards ?? 0,
+    schemaVersion: columnSchema || 2,
+    lpBalance: columnBalance ?? 0,
+    lpLifetime: columnLifetime ?? 0,
+    usedRewards: readNullableInt(row.used_rewards) ?? 0,
     level: row.level || 'Bronze',
     categoryStamps: row.category_stamps || {},
     categoryRewards: row.category_rewards || {},
-    totalStamps: row.total_stamps ?? 0,
-    availableRewards: row.available_rewards ?? 0,
-    lifetimeStamps: row.lifetime_stamps ?? 0
+    totalStamps: readNullableInt(row.total_stamps) ?? 0,
+    availableRewards: readNullableInt(row.available_rewards) ?? 0,
+    lifetimeStamps: readNullableInt(row.lifetime_stamps) ?? 0
+  };
+
+  const legacy = row.legacy_json && typeof row.legacy_json === 'object' && !Array.isArray(row.legacy_json)
+    ? row.legacy_json
+    : null;
+  const legacyUsable = Boolean(legacy && Object.keys(legacy).length > 0);
+
+  // Eski satırlar: yalnızca legacy dolu, kolon LP yok
+  if (!hasColumnLp && legacyUsable) {
+    return migrateLoyaltyCard(legacy);
+  }
+
+  if (!legacyUsable) {
+    return migrateLoyaltyCard(fromColumns);
+  }
+
+  // Her iki kaynak varsa kolon öncelikli; LP için max ile kayıp önlenir
+  return migrateLoyaltyCard({
+    ...legacy,
+    ...fromColumns,
+    lpBalance: Math.max(fromColumns.lpBalance, readNullableInt(legacy.lpBalance) ?? 0),
+    lpLifetime: Math.max(fromColumns.lpLifetime, readNullableInt(legacy.lpLifetime) ?? 0)
   });
 }
 
