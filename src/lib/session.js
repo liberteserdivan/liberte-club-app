@@ -145,9 +145,10 @@ export async function bootstrapSession() {
     return getAuthEpoch() !== epochAtStart;
   }
 
+  // En fazla 2 deneme — uzun retry zinciri login ile pooler yarışmasın
   const backoffMs = (hasStoredAuthToken() && isNativeApp())
-    ? [0, 450, 900]
-    : [0, 700, 1400, 2200];
+    ? [0, 500]
+    : [0, 700];
   let lastNetworkError = null;
 
   try {
@@ -245,11 +246,14 @@ export function applyAuthResult(result) {
   return memorySession;
 }
 
-// Çıkış sunucuya yazılana kadar bekle — iOS'ta hemen ardından login yarışmasını önler
+// Çıkış sunucuya yazılana kadar bekle — en fazla 1.5sn; login'i dakikalarca kilitleme
 export async function waitForPendingLogout() {
   if (!pendingLogoutPromise) return;
   try {
-    await pendingLogoutPromise;
+    await Promise.race([
+      pendingLogoutPromise,
+      new Promise((resolve) => { setTimeout(resolve, 1500); })
+    ]);
   } catch {
     // Yerel çıkış zaten tamamlandı
   }

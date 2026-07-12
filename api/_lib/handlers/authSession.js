@@ -4,7 +4,6 @@ import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
 import { ROUTE_TIMING } from '../routeTiming.js';
 import { withRouteDeadline } from '../routeDeadline.js';
-import { primeSqlConnection } from '../sql.js';
 
 // Oturum okuma ve çıkış — yalnızca session doğrulama + minimal müşteri/loyalty
 export async function handleAuthSession(req, res) {
@@ -50,8 +49,7 @@ export async function handleAuthSession(req, res) {
   try {
     trace.log('start', { step: 'start', hasSessionToken: true });
 
-    await primeSqlConnection(2000);
-
+    // prime YOK — session restore bütçesini SELECT 1 yemesin
     const session = await withRouteDeadline(
       () => getSessionForBootstrap(req),
       ROUTE_TIMING.SESSION_WITH_TOKEN_MS,

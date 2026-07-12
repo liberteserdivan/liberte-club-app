@@ -51,8 +51,8 @@ const SPLASH_MIN_MS = 200;
 const SPLASH_FADE_MS = 240;
 const SPLASH_TOTAL_MS = 660;
 const SPLASH_FORCE_MS = 4500;
-const CUSTOMER_HYDRATE_MS = 18_000;
-const CUSTOMER_HYDRATE_RETRY_MS = 3_500;
+/* Snapshot yoksa kısa fail-soft; uzun hydrate ekranı login'i bloke etmesin */
+const CUSTOMER_HYDRATE_RETRY_MS = 1_800;
 
 export default function App() {
   const sessionRef = useRef(null);
@@ -295,7 +295,8 @@ export default function App() {
     adminHydratedRef.current = true;
     const merged = mergeAdminSnapshotIntoDb(db, session);
     if (merged !== db) commit(merged, { skipRemote: true });
-    const syncTimer = setTimeout(() => refreshRemote(true), 2500);
+    // Yönetici snapshot yeter; açılışta ağır /api/state yok
+    const syncTimer = setTimeout(() => refreshRemote(true), 12_000);
     return () => clearTimeout(syncTimer);
   }, [authReady, isAdmin, adminVerified, session?.customerId, db, commit, refreshRemote]);
 
@@ -346,28 +347,36 @@ export default function App() {
     };
   }, []);
 
-  // Oturum var ama müşteri henüz yüklenmediyse — giriş yanıtındaki snapshot öncelikli
+  // Oturum var ama müşteri henüz db'de yok — snapshot ile hemen aç, arka planda sync
   useEffect(() => {
     if (!awaitingCustomer) {
       setHydratingCustomer(false);
       return undefined;
     }
 
-    setHydratingCustomer(true);
+    const hydrateCustomerId = session?.customerId;
+    const snapshot = bootstrapSnapshotRef.current;
     hydrateStartedRef.current = Date.now();
 
-    const hydrateCustomerId = session?.customerId;
+    // Snapshot varsa hydrate ekranı gösterme — ana UI hemen açılsın
+    if (snapshot?.customer?.id === hydrateCustomerId) {
+      commit((current) => mergeAuthSnapshot(current, snapshot), { skipRemote: true });
+      setHydratingCustomer(false);
+    } else {
+      setHydratingCustomer(true);
+    }
+
     const hydrateTimer = setTimeout(() => {
       refreshRemote(true);
-    }, 400);
+    }, 600);
 
     const failTimer = setTimeout(() => {
       const active = getMemorySession();
       if (!active || active.customerId !== hydrateCustomerId) return;
 
-      const snapshot = bootstrapSnapshotRef.current;
-      if (snapshot?.customer?.id === hydrateCustomerId) {
-        commit((current) => mergeAuthSnapshot(current, snapshot), { skipRemote: true });
+      const liveSnapshot = bootstrapSnapshotRef.current;
+      if (liveSnapshot?.customer?.id === hydrateCustomerId) {
+        commit((current) => mergeAuthSnapshot(current, liveSnapshot), { skipRemote: true });
       } else {
         commit((current) => mergeAuthSnapshot(current, {
           customer: {
@@ -388,7 +397,7 @@ export default function App() {
       clearTimeout(hydrateTimer);
       clearTimeout(failTimer);
     };
-  }, [awaitingCustomer, session?.customerId, refreshRemote, resetDb]);
+  }, [awaitingCustomer, session?.customerId, refreshRemote, commit]);
 
   useEffect(() => {
     if (!awaitingCustomer || !customer) return;
@@ -412,18 +421,20 @@ export default function App() {
   useEffect(() => {
     if (!customer?.id) return undefined;
 
-    // Push kaydı giriş/state sync'ten SONRA — açılışta DB bağlantısı yarışmasın
-    const pushDelayMs = isNativeApp() ? 1200 : 800;
+    // Push kaydı arka planda — login/hydrate'i bloklamaz; db değişiminde yeniden planlanmaz
+    const pushDelayMs = isNativeApp() ? 1400 : 900;
+    const customerId = customer.id;
+
     function syncPushRegistration() {
-      ensurePushRegisteredIfPermitted(customer, db, commit).catch(() => {});
+      const liveCustomer = (dbRef.current.customers || []).find((c) => sameCustomerId(c.id, customerId)) || customer;
+      ensurePushRegisteredIfPermitted(liveCustomer, dbRef.current, commit).catch(() => {});
     }
 
     const pushTimer = setTimeout(syncPushRegistration, pushDelayMs);
 
     if (!isNativeApp()) return () => clearTimeout(pushTimer);
 
-    const unbindTokenRefresh = bindNativeTokenRefresh(customer, db, commit);
-    const registerTimer = setTimeout(syncPushRegistration, pushDelayMs);
+    const unbindTokenRefresh = bindNativeTokenRefresh(customer, dbRef.current, commit);
 
     const unsubscribeResume = subscribeForegroundResume(() => {
       syncPushRegistration();
@@ -432,11 +443,10 @@ export default function App() {
 
     return () => {
       clearTimeout(pushTimer);
-      clearTimeout(registerTimer);
       unsubscribeResume();
       unbindTokenRefresh();
     };
-  }, [customer?.id, db, commit]);
+  }, [customer?.id, commit]);
 
   const theme = cssVars(db.settings);
   const shellBooting = splashPhase !== 'hidden';

@@ -1,19 +1,28 @@
 import { bootstrapSession } from './session.js';
 import { isNativeApp } from './platform.js';
 
-const WEB_SESSION_TIMEOUT_MS = 12_000;
-const NATIVE_SESSION_TIMEOUT_MS = 14_000;
+const WEB_SESSION_TIMEOUT_MS = 8_000;
+const NATIVE_SESSION_TIMEOUT_MS = 10_000;
 
-// Oturum bootstrap — ağ takılırsa uygulama boş ekranda kalmasın
+// Oturum bootstrap — ağ takılırsa uygulama boş ekranda kalmasın; arka plan retry yok
 export function bootstrapSessionWithTimeout(timeoutMs) {
   const limit = Number(timeoutMs) > 0
     ? Number(timeoutMs)
     : (isNativeApp() ? NATIVE_SESSION_TIMEOUT_MS : WEB_SESSION_TIMEOUT_MS);
 
+  let settled = false;
   return Promise.race([
-    bootstrapSession().catch(() => null),
+    bootstrapSession().then((result) => {
+      if (settled) return null;
+      settled = true;
+      return result;
+    }).catch(() => null),
     new Promise((resolve) => {
-      setTimeout(() => resolve(null), limit);
+      setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve(null);
+      }, limit);
     })
   ]);
 }

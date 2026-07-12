@@ -22,7 +22,8 @@ function canPullRemote(sessionRef) {
 // açılır. Bu yüzden zorunlu ilk tam /api/state pull'u ertelenir (login akışını
 // soğuk başlangıçta kilitlememek için). Foreground/visibility ya da periyodik
 // timer daha erken senkron tetikleyebilir.
-const INITIAL_REMOTE_SYNC_DELAY_MS = 10_000;
+// Login yanıtı zaten customer/loyalty verir; tam /api/state login'i boğmasın
+const INITIAL_REMOTE_SYNC_DELAY_MS = 25_000;
 
 // Veritabani state'ini yerel ve bulut ile senkron tutar
 export function useCommit(initial, sessionRef, syncContext = {}) {
@@ -36,6 +37,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
   });
   const lastRemoteAt = useRef(null);
   const syncing = useRef(false);
+  const sessionStartedAt = useRef(Date.now());
   const savingCount = useRef(0);
   const saveSeq = useRef(0);
   const timerRef = useRef(null);
@@ -257,14 +259,14 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
   useEffect(() => {
     if (!canPullRemote(sessionRef)) return undefined;
 
+    sessionStartedAt.current = Date.now();
+    lastRemoteAt.current = null;
+
     // Periyodik artımlı sync hemen kurulur (since-tabanlı, hafif).
     scheduleSyncTimer();
 
-    // İlk zorunlu tam pull ertelenir; login response ile açılan ekranın
-    // üstüne gereksiz ağır /api/state çağrısı binmesin.
+    // İlk zorunlu tam pull uzun ertelenir; login/home açılışını boğmasın
     const deferTimer = setTimeout(() => {
-      // Safe Mode müşteri için tam state pull'u kısar; periyodik artımlı sync
-      // güncel veriyi getirmeye devam eder, ağır /api/state çağrısı atlanır.
       if (shouldReduceFullStatePull()) return;
       pullRemote(true);
     }, INITIAL_REMOTE_SYNC_DELAY_MS);
@@ -282,7 +284,7 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     return () => clearSyncTimer();
   }, [tab, scheduleSyncTimer, clearSyncTimer, sessionRef]);
 
-  // Sekme görünürlüğü — arka planda sync durdur
+  // Sekme görünürlüğü — login sonrası ilk 20sn full dump YOK
   useEffect(() => {
     if (!canPullRemote(sessionRef)) return undefined;
 
@@ -291,7 +293,8 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
       pageVisibleRef.current = visible;
 
       if (visible) {
-        pullRemote(false);
+        const settled = lastRemoteAt.current || (Date.now() - sessionStartedAt.current > 20_000);
+        if (settled) pullRemote(false);
         scheduleSyncTimer();
         return;
       }
@@ -303,13 +306,14 @@ export function useCommit(initial, sessionRef, syncContext = {}) {
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [pullRemote, scheduleSyncTimer, clearSyncTimer, sessionRef]);
 
-  // Native ön plan/arka plan — arka planda interval durdurulur, dönüşte yenilenir
+  // Native ön plan — login sonrası erken full dump yok
   useEffect(() => {
     if (!canPullRemote(sessionRef)) return undefined;
 
     return subscribeActiveChange((isActive) => {
       if (isActive) {
-        pullRemote(false);
+        const settled = lastRemoteAt.current || (Date.now() - sessionStartedAt.current > 20_000);
+        if (settled) pullRemote(false);
         scheduleSyncTimer();
         return;
       }

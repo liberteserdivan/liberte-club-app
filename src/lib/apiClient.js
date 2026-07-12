@@ -209,9 +209,9 @@ export function getStoredAuthToken() {
 }
 
 const FETCH_TIMEOUT_MS = 12000;
-const NATIVE_FETCH_TIMEOUT_MS = 25000;
-const AUTH_FETCH_TIMEOUT_MS = 25000;
-const NATIVE_AUTH_FETCH_TIMEOUT_MS = 40000;
+const NATIVE_FETCH_TIMEOUT_MS = 20000;
+const AUTH_FETCH_TIMEOUT_MS = 18000;
+const NATIVE_AUTH_FETCH_TIMEOUT_MS = 20000;
 
 function resolveFetchTimeout(timeoutMs) {
   if (Number(timeoutMs) > 0) return Number(timeoutMs);

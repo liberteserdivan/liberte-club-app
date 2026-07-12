@@ -263,7 +263,7 @@ export default function Login({ db, commit, setSession }) {
       method: 'POST',
       body
     };
-    const backoffMs = [0, 500, 1000, 1800];
+    const backoffMs = [0, 900];
     let last = null;
     for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
       if (backoffMs[attempt] > 0) await sleep(backoffMs[attempt]);

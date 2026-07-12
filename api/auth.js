@@ -104,5 +104,17 @@ export default async function authRouter(req, res) {
     return adminMembersSqlHandler(req, res);
   }
 
+  // Isınma — Guardian hydrate yok; yalnızca SELECT 1
+  if (action === 'warm') {
+    if (req.method === 'OPTIONS') {
+      applyCors(req, res, 'GET,OPTIONS');
+      return res.status(200).end();
+    }
+    return withSqlRequestNoGuardian(async function warmHandler(req2, res2) {
+      const route = await AUTH_ACTIONS.warm();
+      return route(req2, res2);
+    })(req, res);
+  }
+
   return sqlHandler(req, res);
 }

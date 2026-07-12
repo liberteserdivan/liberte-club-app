@@ -19,7 +19,6 @@ import { runSqlReadFast, getLoginReadAttemptTimeoutMs } from '../runSql.js';
 import { ROUTE_TIMING } from '../routeTiming.js';
 import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 import { createLoginPhaseTracker } from '../loginPhase.js';
-import { primeSqlConnection } from '../sql.js';
 
 // Rate-limit — DB gecikirse fail-open (login bloklanmaz)
 async function isLoginRateLimited(req, action, options) {
@@ -76,13 +75,17 @@ function buildPlainLoginBody(trace, customer, sessionMeta, existing = null) {
   }
 }
 
+// Loyalty okuması kısa süre içinde gelmezse düz gövde dön — login TTFB şişmesin
 async function buildLoginSuccessBody(trace, customer, sessionMeta, existing = null) {
   const sql = getSql();
   let loyalty = null;
   if (sql && customer?.id) {
     try {
-      const row = await findLoyaltyByCustomerId(sql, customer.id);
-      loyalty = row ? loyaltyRowToCard(row, customer.id) : null;
+      const rowPromise = findLoyaltyByCustomerId(sql, customer.id)
+        .then((row) => (row ? loyaltyRowToCard(row, customer.id) : null))
+        .catch(() => null);
+      const timeout = new Promise((resolve) => { setTimeout(() => resolve(null), 800); });
+      loyalty = await Promise.race([rowPromise, timeout]);
     } catch {
       loyalty = null;
     }
@@ -152,9 +155,8 @@ export async function handleAuthLogin(req, res) {
         return { kind: 'error', status: 429, body: trace.failBody('rate_limit', 'RATE_LIMITED', 'Çok fazla deneme. Lütfen bir süre sonra tekrar dene.') };
       }
 
+      // Credential yolu: SELECT 1 prime YOK — bütçeyi PIN/müşteri sorgusuna ayır
       phases.setPhase('credential_lookup');
-      // Soğuk lambda: bağlantı kurulumu credential_lookup zaman aşımına yansımasın
-      await primeSqlConnection(3000).catch(() => false);
       return resolveLoginOutcome(req, trace, phases, body);
     }, ROUTE_TIMING.LOGIN_CREDENTIAL_MS, 'auth-login-credential', {
       getPhase: () => phases.getPhase()

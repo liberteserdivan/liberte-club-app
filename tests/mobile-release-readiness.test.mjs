@@ -29,8 +29,9 @@ test('firebasePush: register-device login bloklamaz', () => {
 
 test('App: state hydrate timeout login ekranini kilitlemez', () => {
   const src = read('src/App.jsx');
-  assert.match(src, /CUSTOMER_HYDRATE_MS/);
+  assert.match(src, /CUSTOMER_HYDRATE_RETRY_MS/);
   assert.match(src, /bootstrapSnapshotRef/);
+  assert.match(src, /Snapshot varsa hydrate ekranı gösterme/);
 });
 
 test('migrateLoyaltyCard: double-encoded categoryStamps crash etmez', async () => {

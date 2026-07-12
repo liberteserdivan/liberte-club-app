@@ -48,9 +48,9 @@ test('authLogin: credential lookup minimal findCustomerForLogin', () => {
   assert.doesNotMatch(src, /getSessionIdentityForLogin/);
 });
 
-test('authLogin: primeSqlConnection credential oncesi', () => {
+test('authLogin: credential yolunda primeSqlConnection YOK', () => {
   const src = read('api/_lib/handlers/authLogin.js');
-  assert.match(src, /primeSqlConnection/);
+  assert.doesNotMatch(src, /primeSqlConnection/);
   assert.match(src, /resolveLoginOutcome/);
   assert.doesNotMatch(src, /runSqlLoginRead/);
 });
