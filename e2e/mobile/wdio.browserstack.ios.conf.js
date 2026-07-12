@@ -17,6 +17,9 @@ export const config = {
     platformName: 'iOS',
     'appium:app': process.env.BROWSERSTACK_APP_URL,
     'appium:autoAcceptAlerts': true,
+    'appium:includeSafariInWebviews': true,
+    'appium:webviewConnectTimeout': 120000,
+    'appium:nativeWebTap': true,
     'bstack:options': {
       deviceName,
       osVersion,

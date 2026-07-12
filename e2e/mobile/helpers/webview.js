@@ -1,18 +1,20 @@
 // Capacitor WebView baglamina gecis
 
-const WEBVIEW_TIMEOUT_MS = 90_000;
+const WEBVIEW_TIMEOUT_MS = 120_000;
 
-/** Aktif WebView baglamina gec */
+/** Aktif WebView baglamina gec — iOS WKWebView gec acilabilir */
 export async function switchToAppWebView(browser) {
   const deadline = Date.now() + WEBVIEW_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const contexts = await browser.getContexts();
-    const webview = contexts.find((ctx) => String(ctx).includes('WEBVIEW'));
+    const list = Array.isArray(contexts) ? contexts.map(String) : [];
+    const webview = list.find((ctx) => ctx.includes('WEBVIEW') && !ctx.includes('chrome'))
+      || list.find((ctx) => ctx.includes('WEBVIEW'));
     if (webview) {
       await browser.switchContext(webview);
       return webview;
     }
-    await browser.pause(800);
+    await browser.pause(1000);
   }
   throw new Error('WebView baglami bulunamadi');
 }

@@ -163,7 +163,8 @@ async function handleDbStatus(res) {
 // Isınma — Vercel soğuk başlatmasını azaltır. Harici pinger (~5 dk) çağırır;
 // varsayılan yalnızca lambda'yı uyandırır (DB/fan-out yok). ?db=1 ile tanılama ping'i.
 // Tanılama için DB ping zaman sınırı — yalnızca ?db=1 ile istenir
-const WARM_DB_PING_TIMEOUT_MS = 2500;
+// Tanılama için DB ping zaman sınırı — soğuk config lambda >2.5sn sürebilir
+const WARM_DB_PING_TIMEOUT_MS = 8000;
 
 async function handleWarm(req, res, headOnly = false) {
   // STABİLİTE: Varsayılan ısınma YALNIZCA lambda'yı uyandırır — DB ping ve
