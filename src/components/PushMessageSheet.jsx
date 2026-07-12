@@ -49,15 +49,16 @@ export default function PushMessageSheet({ message, onClose }) {
         aria-labelledby="push-message-title"
         aria-modal="true"
       >
+        <div className="pushSheetAccent" aria-hidden="true" />
         <div className="pushSheetHandle" aria-hidden="true" />
         <header className="pushSheetHead">
           <div className="pushSheetBadge" aria-hidden="true">
-            <Bell size={20} />
+            <Bell size={20} strokeWidth={2.25} />
           </div>
           <div className="pushSheetHeadText">
-            <span className="pushSheetEyebrow">Liberte Club</span>
-            <h2 id="push-message-title">{message.title || 'Bildirim'}</h2>
-            {when ? <time className="pushSheetWhen">{when}</time> : null}
+            <span className="pushSheetEyebrow">Yeni bildirim</span>
+            <h2 id="push-message-title">{message.title || 'Liberte Club'}</h2>
+            {when ? <time className="pushSheetWhen" dateTime={message.createdAt}>{when}</time> : null}
           </div>
           <button type="button" className="pushSheetClose" onClick={onClose} aria-label="Kapat">
             <X size={18} />
@@ -68,11 +69,15 @@ export default function PushMessageSheet({ message, onClose }) {
           <div className="pushSheetBody">
             <p>{message.body}</p>
           </div>
-        ) : null}
+        ) : (
+          <div className="pushSheetBody pushSheetBodyMuted">
+            <p>Bu bildirimin ayrıntısı yok; ana ekrandan devam edebilirsin.</p>
+          </div>
+        )}
 
         <footer className="pushSheetFoot">
           <button type="button" className="pushSheetCta" onClick={onClose}>
-            Tamam
+            Anladım
           </button>
         </footer>
       </div>

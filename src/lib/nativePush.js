@@ -2,9 +2,9 @@ import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from './platform.js';
 import { detectPushTokenType, isFcmRegistrationToken } from './pushTokenFormat.js';
-import { handlePushOpenPayload } from './pushNavigation.js';
 import { showAndroidForegroundNotification, ensureAndroidNotificationPermission, checkAndroidNotificationPermission } from './androidNotificationPermission.js';
 import { formatPushNotification } from './pushNotificationText.js';
+import { handlePushOpenPayload, extractPushOpenData } from './pushNavigation.js';
 
 let listenersAttached = false;
 const tokenRefreshHandlers = new Set();
@@ -45,8 +45,10 @@ function attachNativePushListeners() {
     void showAndroidForegroundNotification(formatted.title, formatted.body);
   });
 
+  // Tıklama: title/body data veya notification katmanından birleşik gelir
   FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
-    handlePushOpenPayload(action?.notification?.data || {});
+    const payload = extractPushOpenData(action || {});
+    handlePushOpenPayload(payload);
   });
 
   FirebaseMessaging.addListener('tokenReceived', (event) => {
