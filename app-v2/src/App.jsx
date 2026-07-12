@@ -14,6 +14,7 @@ import { useAppState } from './hooks/useAppState.js';
 import { useToast } from './hooks/useToast.js';
 import { ensurePushIfPermitted } from './services/pushService.js';
 import { CLUB_APP_NAME } from './lib/constants.js';
+import { hideNativeSplash } from './lib/nativeSplash.js';
 
 export default function App() {
   const { session, booting, setSession, logoutLocal } = useSessionBootstrap();
@@ -31,14 +32,13 @@ export default function App() {
   }, [session?.customerId]);
 
   useEffect(() => {
-    async function hideSplash() {
-      try {
-        if (!Capacitor.isNativePlatform?.()) return;
-        const { SplashScreen } = await import('@capacitor/splash-screen');
-        await SplashScreen.hide();
-      } catch { /* web */ }
-    }
-    if (!booting) hideSplash();
+    hideNativeSplash();
+    const t = setTimeout(() => hideNativeSplash(), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!booting) hideNativeSplash();
   }, [booting]);
 
   if (booting) {

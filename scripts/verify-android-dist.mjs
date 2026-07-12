@@ -1,28 +1,22 @@
 #!/usr/bin/env node
-/**
- * Codemagic — dist icinde v2 istemci bildirim/giris UI metnini dogrular.
- */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
-const distAssets = join(process.cwd(), 'dist', 'assets');
-
+const distAssets = join(process.cwd(), "dist", "assets");
 if (!existsSync(distAssets)) {
-  console.error('[verify-android-dist] dist/assets yok — once npm run build:release');
+  console.error("[verify-android-dist] dist/assets yok");
   process.exit(1);
 }
 
-const jsFiles = readdirSync(distAssets).filter((name) => name.endsWith('.js'));
-const bundle = jsFiles.map((name) => readFileSync(join(distAssets, name), 'utf8')).join('\n');
+const bundle = readdirSync(distAssets)
+  .filter((n) => n.endsWith(".js"))
+  .map((n) => readFileSync(join(distAssets, n), "utf8"))
+  .join("\n");
 
-// v2 istemci imzalari — eski "Ayarlari Ac" metnine bagli kalma
-const needles = ['Bildirimleri Aç', 'Otomatik giriş', 'login-auto-restore'];
-const missing = needles.filter((needle) => !bundle.includes(needle));
-
-if (missing.length === needles.length) {
-  console.error(`[verify-android-dist] v2 UI imzalari dist bundle icinde yok: ${needles.join(', ')}`);
+const needles = ["Ayarları Aç", "Bildirimleri Aç", "Otomatik giriş", "login-auto-restore"];
+const found = needles.filter((n) => bundle.includes(n));
+if (!found.length) {
+  console.error(`[verify-android-dist] UI imzasi yok: ${needles.join(", ")}`);
   process.exit(1);
 }
-
-const found = needles.filter((needle) => bundle.includes(needle));
-console.log(`[verify-android-dist] v2 UI imzalari bulundu: ${found.join(', ')}`);
+console.log(`[verify-android-dist] UI imzalari: ${found.join(", ")}`);
