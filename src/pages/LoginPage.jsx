@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyRound, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
+import { KeyRound, Loader2, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
@@ -59,6 +59,7 @@ export default function Login({ db, commit, setSession }) {
   const loginAttemptRef = useRef(0);
   const autoLoginStartedRef = useRef(false);
   const [autoLoginPending, setAutoLoginPending] = useState(() => hasQuickLogin());
+  const [autoLoginStep, setAutoLoginStep] = useState(0);
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
 
@@ -640,6 +641,30 @@ export default function Login({ db, commit, setSession }) {
     void loginWithPin(ph, pinValue);
   }, [authMode]);
 
+  // Otomatik giriş adımlarını görsel olarak ilerlet (uzun bekleyişte boş ekran olmasın)
+  useEffect(() => {
+    if (!autoLoginPending) {
+      setAutoLoginStep(0);
+      return undefined;
+    }
+    setAutoLoginStep(0);
+    const t1 = setTimeout(() => setAutoLoginStep(1), 1400);
+    const t2 = setTimeout(() => setAutoLoginStep(2), 3200);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [autoLoginPending]);
+
+  // Uçuştaki otomatik girişi iptal et — geç gelen yanıt oturum açmasın
+  function cancelAutoLogin() {
+    loginAttemptRef.current += 1;
+    loginInFlightRef.current = false;
+    setAutoLoginPending(false);
+    setLoading(false);
+    setPin('');
+  }
+
   function onPhoneChange(value) {
     setPhone(formatPhoneInput(value));
   }
@@ -654,12 +679,12 @@ export default function Login({ db, commit, setSession }) {
           <Brand db={db} login />
 
           <h1>
-            {authMode === 'login' && (autoLoginPending ? 'Hoş geldiniz' : 'Giriş Yap')}
+            {authMode === 'login' && (autoLoginPending ? 'Liberte Club' : 'Giriş Yap')}
             {authMode === 'register' && 'Kayıt Ol'}
             {authMode === 'forgot' && 'PIN Sıfırla'}
           </h1>
           <p>
-            {authMode === 'login' && autoLoginPending && 'Kayıtlı hesabınızla giriş yapılıyor…'}
+            {authMode === 'login' && autoLoginPending && 'Seni içeri alıyoruz — bir saniye…'}
             {authMode === 'login' && !autoLoginPending && 'Telefon numaranız ve kişisel PIN ile giriş yapın.'}
             {authMode === 'register' && registerStep === 'form' && 'Bilgilerinizi girin; e-postanıza doğrulama kodu gönderilir.'}
             {authMode === 'register' && registerStep === 'verify' && 'E-postanızdaki kodu girin ve kaydı tamamlayın.'}
@@ -675,7 +700,23 @@ export default function Login({ db, commit, setSession }) {
 
           {authMode === 'login' && autoLoginPending && (
             <div className="loginAutoRestore" data-testid="login-auto-restore">
-              <p>Giriş yapılıyor…</p>
+              <div className="loginAutoRestorePulse" aria-hidden="true">
+                <Loader2 className="loginAutoRestoreSpin" size={28} />
+              </div>
+              <strong>Otomatik giriş</strong>
+              <p>Kayıtlı hesabın doğrulanıyor. Bu ekran kısa sürer.</p>
+              <ul className="loginAutoRestoreSteps" aria-hidden="true">
+                <li className={autoLoginStep > 0 ? 'is-done' : 'is-active'}>Hesap kontrolü</li>
+                <li className={autoLoginStep > 1 ? 'is-done' : (autoLoginStep === 1 ? 'is-active' : '')}>Oturum açılışı</li>
+                <li className={autoLoginStep >= 2 ? 'is-active' : ''}>Ana sayfa</li>
+              </ul>
+              <button
+                type="button"
+                className="ghost loginAutoRestoreCancel"
+                onClick={cancelAutoLogin}
+              >
+                Manuel girişe geç
+              </button>
             </div>
           )}
 

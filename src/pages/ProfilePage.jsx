@@ -5,7 +5,7 @@ import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import MembershipTierCard from '../components/MembershipTierCard.jsx';
-import { PushWelcomeBanner } from '../components/Cards.jsx';
+import { PushWelcomeBanner, PushDeviceStatusCard } from '../components/Cards.jsx';
 import { getLpCardView } from '../lib/db.js';
 import { TIER_TONE } from '../lib/membershipTier.js';
 import { apiJson } from '../lib/apiClient.js';
@@ -87,6 +87,7 @@ export default function ProfilePage({
 
       <PageSection label="Bildirimler" tight>
         <PushWelcomeBanner db={db} customer={customer} commit={commit} />
+        <PushDeviceStatusCard db={db} customer={customer} commit={commit} />
       </PageSection>
 
       <PageSection label="Hesap">

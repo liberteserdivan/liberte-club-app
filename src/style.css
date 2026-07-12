@@ -8499,6 +8499,135 @@ body.menuDetailOpen{
   padding-right:max(26px, env(safe-area-inset-right))!important;
 }
 
+/* Otomatik giriş — uzun bekleyişte sakin, net ilerleme */
+.loginAutoRestore{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  margin:8px 0 4px;
+  padding:22px 18px 16px;
+  text-align:center;
+  border-radius:22px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(185,149,92,.18), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,.72), rgba(244,241,234,.35));
+  border:1px solid rgba(11,47,38,.08);
+}
+.loginAutoRestorePulse{
+  width:56px;
+  height:56px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:rgba(11,47,38,.08);
+  color:#0b2f26;
+}
+.loginAutoRestoreSpin{
+  animation:loginAutoSpin 1s linear infinite;
+}
+@keyframes loginAutoSpin{
+  to{ transform:rotate(360deg); }
+}
+.loginAutoRestore strong{
+  font-family:var(--font-display);
+  font-size:1.15rem;
+  color:#0b2f26;
+  letter-spacing:.01em;
+}
+.loginAutoRestore > p{
+  margin:0!important;
+  max-width:28ch;
+  color:#3f524b!important;
+  font-size:14px!important;
+  font-weight:600!important;
+  line-height:1.45!important;
+}
+.loginAutoRestoreSteps{
+  list-style:none;
+  margin:4px 0 0;
+  padding:0;
+  width:100%;
+  display:grid;
+  gap:8px;
+}
+.loginAutoRestoreSteps li{
+  position:relative;
+  padding:10px 12px 10px 36px;
+  border-radius:14px;
+  background:rgba(11,47,38,.04);
+  color:#6b7c74;
+  font-size:13px;
+  font-weight:700;
+  text-align:left;
+}
+.loginAutoRestoreSteps li::before{
+  content:'';
+  position:absolute;
+  left:14px;
+  top:50%;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#c5cdc8;
+  transform:translateY(-50%);
+}
+.loginAutoRestoreSteps li.is-done{
+  color:#0b2f26;
+  background:rgba(22,163,74,.08);
+}
+.loginAutoRestoreSteps li.is-done::before{
+  background:#16a34a;
+}
+.loginAutoRestoreSteps li.is-active{
+  color:#0b2f26;
+  background:rgba(185,149,92,.16);
+}
+.loginAutoRestoreSteps li.is-active::before{
+  background:#b9955c;
+  box-shadow:0 0 0 4px rgba(185,149,92,.22);
+  animation:loginAutoPulse 1.4s ease-in-out infinite;
+}
+@keyframes loginAutoPulse{
+  50%{ box-shadow:0 0 0 7px rgba(185,149,92,.08); }
+}
+.loginAutoRestoreCancel{
+  margin-top:4px;
+  width:100%;
+}
+
+.pushDeviceStatus{
+  padding:16px 18px;
+  border-radius:18px;
+  border:1px solid rgba(11,47,38,.1);
+  background:rgba(255,255,255,.7);
+}
+.pushDeviceStatus.is-on{
+  border-color:rgba(22,163,74,.28);
+  background:rgba(22,163,74,.06);
+}
+.pushDeviceStatus.is-off{
+  border-color:rgba(185,149,92,.35);
+  background:rgba(185,149,92,.08);
+}
+.pushDeviceStatus b{
+  display:block;
+  margin-bottom:4px;
+  color:#0b2f26;
+  font-size:15px;
+}
+.pushDeviceStatus p{
+  margin:0 0 12px!important;
+  color:#3f524b!important;
+  font-size:13px!important;
+  line-height:1.4!important;
+}
+.pushDeviceStatus .pushWelcomeActions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
 .loginPageStack,
 .loginCard{
   width:min(420px,100%)!important;

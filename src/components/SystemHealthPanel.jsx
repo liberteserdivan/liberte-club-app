@@ -119,7 +119,14 @@ export default function SystemHealthPanel() {
     occurrences: 1,
     clientOnly: true
   }));
-  const incidents = [...serverIncidents, ...clientIncidents];
+  // Eski "Oturum doğrulama" alarmlarını sakinleştir — beklenen 401 false positive'leri
+  const incidents = [...serverIncidents, ...clientIncidents].map((inc) => {
+    const area = inc.affectedArea === 'auth' ? 'login' : inc.affectedArea;
+    const title = String(inc.title || '').includes('Oturum doğrulama')
+      ? 'Oturum servisi geçici olarak yavaş'
+      : inc.title;
+    return { ...inc, affectedArea: area, title };
+  });
   const alerts = health?.alerts || [];
   const safeMode = health?.safeMode || { enabled: false };
 
@@ -230,8 +237,8 @@ export default function SystemHealthPanel() {
       <div className="guardianMemoryNote">
         <AlertTriangle size={14} />
         <span>
-          Guardian v1 memory mode&apos;da çalışıyor. Cold start veya çoklu instance durumunda
-          geçmiş metrikler ve Safe Mode durumu kalıcı olmayabilir.
+          Bu panel son birkaç dakikalık cihaz isteklerini de okur. Beklenen 401 (oturum yok)
+          veya tek seferlik yavaşlık &quot;sürekli sorun&quot; sayılmaz.
         </span>
       </div>
 
@@ -239,7 +246,7 @@ export default function SystemHealthPanel() {
       {actionMsg && <div className="guardianNotice">{actionMsg}</div>}
 
       <div className="guardianGrid">
-        {['db', 'login', 'qr', 'loyalty', 'realtime', 'config'].map((key) => (
+        {['db', 'login', 'qr', 'loyalty', 'realtime', 'push', 'config'].map((key) => (
           <ServiceCard
             key={key}
             serviceKey={key}

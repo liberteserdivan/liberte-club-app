@@ -68,10 +68,34 @@ test('deriveClientHealth gerçek telemetry örneğinde healthy demez', async () 
   assert.ok(['incident', 'critical'].includes(result.severity), 'incident/critical olmalı');
 
   const areas = result.incidents.map((i) => i.affectedArea);
-  assert.ok(areas.includes('auth'), 'auth incident üretilmeli');
+  assert.ok(areas.includes('login'), 'login/session incident üretilmeli');
   assert.ok(areas.includes('realtime'), 'realtime incident üretilmeli');
   assert.ok(areas.includes('config'), 'guardian/config incident üretilmeli');
   assert.ok(areas.includes('push'), 'push incident üretilmeli');
+});
+
+test('deriveClientHealth beklenen session 401 ile panik üretmez', async () => {
+  const { deriveClientHealth } = await import('../src/lib/clientHealthSeverity.js');
+  const samples = [
+    sample('/api/auth/session', { status: 401, durationMs: 200 }),
+    sample('/api/auth/session', { status: 401, durationMs: 180 }),
+    sample('/api/state', { status: 200, durationMs: 300 })
+  ];
+  const result = deriveClientHealth(samples);
+  assert.equal(result.severity, 'healthy');
+  assert.equal(result.incidents.length, 0);
+});
+
+test('deriveClientHealth tek session 500 ile incident üretmez', async () => {
+  const { deriveClientHealth } = await import('../src/lib/clientHealthSeverity.js');
+  const samples = [
+    sample('/api/auth/session', { status: 500, durationMs: 4000 }),
+    sample('/api/state', { status: 200, durationMs: 300 }),
+    sample('/api/state', { status: 200, durationMs: 280 })
+  ];
+  const result = deriveClientHealth(samples);
+  assert.ok(!result.incidents.some((i) => i.affectedArea === 'login'));
+  assert.notEqual(result.severity, 'incident');
 });
 
 test('deriveClientHealth 65 hata/30 timeout yoğunluğunda yeşil kalmaz', async () => {

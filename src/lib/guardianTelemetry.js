@@ -24,6 +24,22 @@ function detectPlatform() {
   return 'native';
 }
 
+// Beklenen auth yanıtı — sayaç ve panelde "hata" sayılmasın
+function isExpectedAuthStatus(endpoint, status) {
+  const code = Number(status);
+  const path = String(endpoint || '');
+  if (code === 401 && (
+    path.startsWith('/api/auth/session')
+    || path.startsWith('/api/auth/login')
+  )) {
+    return true;
+  }
+  if ((code === 401 || code === 403) && path.startsWith('/api/guardian/')) {
+    return true;
+  }
+  return false;
+}
+
 // Tek bir API çağrısını kaydet
 export function recordRequest({
   endpoint,
@@ -36,13 +52,16 @@ export function recordRequest({
   userRole = null,
   safeMode = false
 }) {
+  const normalizedEndpoint = String(endpoint || '').split('?')[0].slice(0, 120);
+  const statusCode = Number(status) || 0;
+  const expectedAuth = isExpectedAuthStatus(normalizedEndpoint, statusCode);
   const sample = {
     ts: Date.now(),
-    endpoint: String(endpoint || '').split('?')[0].slice(0, 120),
+    endpoint: normalizedEndpoint,
     method: String(method || 'GET').toUpperCase(),
     durationMs: Number.isFinite(durationMs) ? Math.round(durationMs) : null,
-    status: Number(status) || 0,
-    ok: Number(status) ? Number(status) < 400 : !timeout && !networkError,
+    status: statusCode,
+    ok: expectedAuth || (statusCode ? statusCode < 400 : !timeout && !networkError),
     timeout: Boolean(timeout),
     networkError: Boolean(networkError),
     requestId: requestId || null,

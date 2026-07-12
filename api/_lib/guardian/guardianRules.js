@@ -113,11 +113,12 @@ async function ruleDbLatency() {
   });
 }
 
-// 7.2b — Oturum doğrulama yavaş/hatalı
+// 7.2b — Oturum doğrulama yavaş/hatalı (yalnızca gerçek yavaşlık veya kalıcı hata)
 async function ruleAuthSessionSlow() {
   const summary = summarizeService(SERVICE.AUTH);
   const slowStreak = consecutiveSlow(SERVICE.AUTH, THRESHOLDS.AUTH_SESSION_SLOW_MS, THRESHOLDS.CONSECUTIVE_SLOW_FOR_ACTION);
-  const highErrorRate = summary.sampleCount >= 5 && summary.errorRate >= THRESHOLDS.API_ERROR_RATE_DEGRADED;
+  // Beklenen 401 metrikte ok sayılır; yine de yalnızca belirgin hata oranında tetikle
+  const highErrorRate = summary.sampleCount >= 8 && summary.errorRate >= THRESHOLDS.API_ERROR_RATE_DEGRADED;
   if (!slowStreak && !highErrorRate) return null;
 
   return applyIntervention({
@@ -126,8 +127,8 @@ async function ruleAuthSessionSlow() {
     features: { polling: 'reduced' },
     incident: {
       level: STATUS.INCIDENT,
-      title: 'Oturum doğrulama yavaş/hatalı',
-      affectedArea: SERVICE.AUTH,
+      title: 'Oturum servisi geçici olarak yavaş',
+      affectedArea: SERVICE.LOGIN,
       symptoms: [`auth p95 ${summary.p95Ms}ms`, `errorRate ${Math.round(summary.errorRate * 100)}%`],
       safeActionsTaken: ['polling_reduced', 'minimal_bootstrap'],
       suspectedRootCauses: ['Stale DB connection', 'Session bootstrap latency', 'Cold start'],

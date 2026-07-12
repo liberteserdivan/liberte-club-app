@@ -4,6 +4,7 @@ import{googleReviewUrl}from'../lib/constants.js';
 import{usePushEnableFlow}from'../hooks/usePushEnableFlow.js';
 import{
   getPushPromptHint,
+  hasActivePushOnThisDevice,
   markPushDismissed,
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
@@ -301,6 +302,40 @@ export function PushWelcomeBanner({customer,db,commit,defer=false}){
         onOpenSettings={openSettings}
         onDismiss={dismiss}
         showDismiss={!needsSettings}
+      />
+    </div>
+  </div>;
+}
+
+// Profil — bu cihazda bildirim açık mı? Kapalıysa tek dokunuşla aç
+export function PushDeviceStatusCard({customer,db,commit}){
+  if(!customer?.id)return null;
+
+  const active=hasActivePushOnThisDevice(customer,db);
+  const{needsSettings,statusMessage,busy,attemptEnable,openSettings}=usePushEnableFlow(customer,db,commit);
+
+  if(active){
+    return <div className="pushDeviceStatus is-on" data-testid="push-device-status-on">
+      <b>Bildirimler açık</b>
+      <p>Kampanya ve LP bildirimleri bu cihaza gelebilir.</p>
+    </div>;
+  }
+
+  return <div className="pushDeviceStatus is-off" data-testid="push-device-status-off">
+    <b>Bildirimler kapalı</b>
+    <p>
+      {needsSettings
+        ? 'Sistem izni kapalı. Ayarlardan açıp tekrar dene.'
+        : 'İzin verilmeden kampanya bildirimleri bu cihaza ulaşmaz.'}
+    </p>
+    {statusMessage&&!needsSettings&&<p className="pushInlineNote">{statusMessage}</p>}
+    <div className="pushWelcomeActions">
+      <PushEnableActions
+        needsSettings={needsSettings}
+        busy={busy}
+        onEnable={attemptEnable}
+        onOpenSettings={openSettings}
+        showDismiss={false}
       />
     </div>
   </div>;

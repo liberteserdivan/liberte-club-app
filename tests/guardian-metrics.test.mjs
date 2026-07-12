@@ -42,3 +42,20 @@ test('Ring buffer 500 olayda sınırlanır', () => {
   const summary = summarizeService(SERVICE.API);
   assert.ok(summary.sampleCount <= 500);
 });
+
+test('auth/session 401 beklenen yanıt — hata oranını şişirmez', () => {
+  resetMetrics();
+  for (let i = 0; i < 8; i += 1) {
+    recordApiSample({
+      service: SERVICE.AUTH,
+      endpoint: '/api/auth/session',
+      durationMs: 120,
+      status: 401
+    });
+  }
+  const summary = summarizeService(SERVICE.AUTH);
+  assert.equal(summary.sampleCount, 8);
+  assert.equal(summary.errorCount, 0);
+  assert.equal(summary.errorRate, 0);
+  assert.equal(statusFromSummary(summary), STATUS.HEALTHY);
+});

@@ -18,6 +18,31 @@ function store() {
   return globalThis.__liberteGuardianMetrics;
 }
 
+// Beklenen 401/403 — oturumsuz session veya guardian PIN kapısı hata oranını şişirmesin
+function isExpectedAuthStatus(endpoint, status) {
+  const code = Number(status);
+  const path = String(endpoint || '').toLowerCase();
+  if (code === 401 && (
+    path.includes('/api/auth/session')
+    || path.includes('/api/auth/login')
+  )) {
+    return true;
+  }
+  if ((code === 401 || code === 403) && path.includes('/api/guardian/')) {
+    return true;
+  }
+  return false;
+}
+
+// Ölçüm "başarılı" mı? — beklenen auth yanıtları panik üretmez
+function resolveSampleOk(event) {
+  const status = Number(event.status) || 0;
+  if (isExpectedAuthStatus(event.endpoint, status)) return true;
+  if (event.ok === false) return false;
+  if (status) return status < 400;
+  return true;
+}
+
 // Tek bir ölçüm olayını kaydet (en eski olaylar düşer)
 export function recordEvent(event = {}) {
   const s = store();
@@ -28,7 +53,7 @@ export function recordEvent(event = {}) {
     method: String(event.method || 'GET').toUpperCase(),
     durationMs: Number.isFinite(event.durationMs) ? Math.round(event.durationMs) : null,
     status: Number(event.status) || 0,
-    ok: event.ok !== false && (Number(event.status) ? Number(event.status) < 400 : true),
+    ok: resolveSampleOk(event),
     timeout: Boolean(event.timeout),
     networkError: Boolean(event.networkError),
     requestId: event.requestId || null

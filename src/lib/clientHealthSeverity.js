@@ -25,16 +25,35 @@ function isEndpoint(sample, path) {
   return String(sample.endpoint || '').startsWith(path);
 }
 
+// Bir örnek "kötü" sayılır mı? — beklenen 401'ler paneli panikletmesin
+function isExpectedAuthStatus(sample) {
+  const status = Number(sample.status);
+  const endpoint = String(sample.endpoint || '');
+  // Oturumsuz / süresi dolmuş session 401 normaldir
+  if (status === 401 && (
+    endpoint.startsWith('/api/auth/session')
+    || endpoint.startsWith('/api/auth/login')
+    || endpoint.startsWith('/api/guardian/health')
+  )) {
+    return true;
+  }
+  // Admin PIN kapısı — detaylı health için beklenen
+  if ((status === 401 || status === 403) && endpoint.startsWith('/api/guardian/')) {
+    return true;
+  }
+  return false;
+}
+
+function isBadSample(sample) {
+  if (isExpectedAuthStatus(sample)) return false;
+  if (sample.timeout || sample.networkError) return true;
+  return Number(sample.status) >= 400;
+}
+
 // Bir örnek kalıcı sunucu hatası mı? (503/429 geçici — incident sayılmaz)
 function isHardServerError(status) {
   const code = Number(status);
   return code >= 500 && code !== 503 && code !== 429;
-}
-
-// Bir örnek "kötü" sayılır mı? (4xx/5xx, timeout, network)
-function isBadSample(sample) {
-  if (sample.timeout || sample.networkError) return true;
-  return Number(sample.status) >= 400;
 }
 
 // Son N istek üzerinden hata/timeout oranı
@@ -100,18 +119,31 @@ export function deriveClientHealth(samples = []) {
     severity = worse(severity, 'degraded');
   }
 
-  // 2) Herhangi bir timeout varsa → etkilenen alan incident
-  if (summary.timeouts > 0) {
+  // 2) Gerçek timeout (beklenen auth 401 hariç) → degraded; tek timeout panik yaratmasın
+  if (summary.timeouts >= 2) {
     severity = worse(severity, 'incident');
+  } else if (summary.timeouts === 1) {
+    severity = worse(severity, 'degraded');
   }
 
-  // 3) auth/session kalıcı 5xx → auth incident (503/429 geçici — sayılmaz)
-  const sessionBad = recent.some(
+  // 3) auth/session kalıcı 5xx — en az 2 örnek (tek soğuk start false alarm olmasın)
+  const sessionHardFails = recent.filter(
     (s) => isEndpoint(s, '/api/auth/session') && isHardServerError(s.status)
   );
-  if (sessionBad) {
+  if (sessionHardFails.length >= 2) {
     severity = worse(severity, 'incident');
-    incidents.push(makeIncident('incident', 'Oturum doğrulama hata veriyor (auth/session)', 'auth'));
+    // Kart alanı login — admin paneli "Oturum" diye sürekli kırmızı yanmasın diye net ama sakin metin
+    incidents.push(makeIncident('incident', 'Oturum servisi geçici olarak yanıt veremedi', 'login'));
+  } else if (sessionHardFails.length === 1) {
+    severity = worse(severity, 'degraded');
+  }
+
+  // Session timeout'ları login kartına yansıt (incident listesini şişirmeden)
+  const sessionTimeouts = recent.filter(
+    (s) => isEndpoint(s, '/api/auth/session') && s.timeout
+  ).length;
+  if (sessionTimeouts >= 2) {
+    severity = worse(severity, 'degraded');
   }
 
   // 4) realtime 10sn+ yavaşlık, ağ hatası veya kalıcı 5xx → incident (kısa 503 hariç)

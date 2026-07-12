@@ -26,6 +26,14 @@ export function usePushEnableFlow(customer, db, commit) {
     setBusy(true);
     setStatusMessage('');
     resetPushCircuit();
+    // Profil/banner'dan açıkça açılıyorsa "Sonra" bayrağını temizle
+    if (customer?.id) {
+      try {
+        localStorage.removeItem(`libertePushDismissed:${customer.id}`);
+      } catch {
+        // localStorage yoksa devam
+      }
+    }
 
     const result = await tryEnablePush(customer, db, commit);
     setBusy(false);
