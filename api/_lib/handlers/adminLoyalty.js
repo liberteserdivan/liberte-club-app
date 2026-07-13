@@ -5,8 +5,7 @@ import { verifyCustomerQrToken } from '../qrToken.js';
 import { logServerError } from '../logServerError.js';
 import { useRelationalState } from '../relationalConfig.js';
 import {
-  applyLoyaltyActionRelational,
-  loadCustomerSummaryRelational
+  applyLoyaltyActionRelational
 } from '../loyaltyStore.js';
 import {
   applyCategoryStamp,
@@ -17,102 +16,11 @@ import {
   redeemCategoryReward
 } from '../loyaltyOps.js';
 import { menuItems } from '../../../src/lib/menuSeed.js';
-import { runSql, runSqlReadFast } from '../runSql.js';
+import { runSql } from '../runSql.js';
 import { getSql } from '../sql.js';
 import { claimQrNonce } from '../qrNonceStore.js';
 
-// QR token doğrula — kasiyer müşteri kartını açar (süresi dolmuş imzalı QR de açılır)
-export async function handleAdminQrVerify(req, res) {
-  applyCors(req, res, 'POST,OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  try {
-    const session = await requireAdminSession(req, res, { light: true });
-    if (!session) return;
-
-    const body = readBodySafe(req);
-    // Üye kartı için süresi dolmuş token kabul; LP işlemi ayrıca taze QR ister
-    const verified = verifyCustomerQrToken(body.token, { allowExpired: true });
-    if (!verified.ok) {
-      return res.status(400).json({ error: verified.error, expired: Boolean(verified.expired) });
-    }
-
-    if (useRelationalState()) {
-      // Fail-fast okuma — 6sn×retry zinciri kasiyeri "sunucu yanıt vermiyor"a düşürmesin
-      const customer = await runSqlReadFast(() => loadCustomerSummaryRelational(verified.customerId));
-      if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
-      return res.status(200).json({
-        ok: true,
-        customer,
-        expired: Boolean(verified.expired),
-        warning: verified.expired
-          ? 'QR süresi dolmuş. Üye açıldı; LP için müşteri kartını yenilesin.'
-          : null
-      });
-    }
-
-    const remote = await runSqlReadFast(() => loadAppState());
-    if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
-
-    const customer = customerSummary(remote.data, verified.customerId);
-    if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
-
-    return res.status(200).json({
-      ok: true,
-      customer,
-      expired: Boolean(verified.expired),
-      warning: verified.expired
-        ? 'QR süresi dolmuş. Üye açıldı; LP için müşteri kartını yenilesin.'
-        : null
-    });
-  } catch (error) {
-    void logServerError({
-      source: 'admin.qr-verify',
-      error,
-      customerId: null
-    });
-    return res.status(500).json({ error: publicErrorMessage(error, 'QR doğrulanamadı') });
-  }
-}
-
-// Üye no / LC- ile müşteri özeti — imzalı QR olmadan kart açma
-export async function handleAdminMemberLookup(req, res) {
-  applyCors(req, res, 'POST,OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  try {
-    const session = await requireAdminSession(req, res, { light: true });
-    if (!session) return;
-
-    const body = readBodySafe(req);
-    const raw = String(body.memberId || body.query || body.id || '').trim();
-    const memberId = Number(String(raw).replace(/^lc-?/i, '').replace(/\s/g, ''));
-    if (!Number.isFinite(memberId) || memberId < 1) {
-      return res.status(400).json({ error: 'Geçerli üye numarası gir' });
-    }
-
-    if (useRelationalState()) {
-      const customer = await runSqlReadFast(() => loadCustomerSummaryRelational(memberId));
-      if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
-      return res.status(200).json({ ok: true, customer, via: 'member-id' });
-    }
-
-    const remote = await runSqlReadFast(() => loadAppState());
-    if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
-    const customer = customerSummary(remote.data, memberId);
-    if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
-    return res.status(200).json({ ok: true, customer, via: 'member-id' });
-  } catch (error) {
-    void logServerError({
-      source: 'admin.member-lookup',
-      error,
-      customerId: null
-    });
-    return res.status(500).json({ error: publicErrorMessage(error, 'Üye aranamadı') });
-  }
-}
+// QR verify / member-lookup ayrı ince handler'da (adminQrVerify.js)
 
 // İmzalı QR ile damga / ikram / check-in — sunucu doğrular
 export async function handleAdminLoyaltyAction(req, res) {

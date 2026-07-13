@@ -10,8 +10,8 @@ const ADMIN_RESOURCE_LOADERS = {
   'push-cleanup': () => import('./_lib/handlers/adminPushCleanup.js').then((m) => m.handleAdminPushCleanup),
   'account-delete': () => import('./_lib/handlers/adminAccountDelete.js').then((m) => m.handleAdminAccountDelete),
   'member-delete': () => import('./_lib/handlers/adminMemberDelete.js').then((m) => m.handleAdminMemberDelete),
-  'qr-verify': () => import('./_lib/handlers/adminLoyalty.js').then((m) => m.handleAdminQrVerify),
-  'member-lookup': () => import('./_lib/handlers/adminLoyalty.js').then((m) => m.handleAdminMemberLookup),
+  'qr-verify': () => import('./_lib/handlers/adminQrVerify.js').then((m) => m.handleAdminQrVerify),
+  'member-lookup': () => import('./_lib/handlers/adminQrVerify.js').then((m) => m.handleAdminMemberLookup),
   'loyalty-action': () => import('./_lib/handlers/adminLoyalty.js').then((m) => m.handleAdminLoyaltyAction),
   'review-action': () => import('./_lib/handlers/adminReview.js').then((m) => m.handleAdminReviewAction)
 };

@@ -2,12 +2,28 @@ import { cleanPhone, phoneLookupVariants } from './phone.js';
 import { inList } from './sqlIn.js';
 import { normalizeEmail, findCustomerIdByPhone } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
-import { loyaltyTemplate } from './loyaltyOps.js';
 import { migrateLoyaltyCard, getCategoryLpGain, levelByLp, convertLegacyToLp } from './loyaltyPointsServer.js';
 import { isProductionRuntime } from './schemaReady.js';
 import { chunkArray } from './chunk.js';
 
 const STAMP_KEYS = ['coffee', 'dessert', 'sandwich', 'burger'];
+
+// Boş LP kartı — loyaltyOps/menuSeed bağımlılığı yok
+function loyaltyTemplate(customerId) {
+  return migrateLoyaltyCard({
+    customerId,
+    schemaVersion: 2,
+    lpBalance: 0,
+    lpLifetime: 0,
+    usedRewards: 0,
+    level: 'Bronze',
+    categoryStamps: { coffee: 0, dessert: 0, sandwich: 0, burger: 0 },
+    categoryRewards: { coffee: 0, dessert: 0, sandwich: 0, burger: 0 },
+    totalStamps: 0,
+    availableRewards: 0,
+    lifetimeStamps: 0
+  });
+}
 
 // İki damga/ödül haritasını kategori bazında max ile birleştir
 function mergeCategoryMaps(primary = {}, secondary = {}) {

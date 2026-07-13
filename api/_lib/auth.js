@@ -125,8 +125,8 @@ export async function getSessionForQr(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  // Salt-okunur — bayat bağlantıda fail-fast (kısa timeout + az deneme).
-  return runSqlReadFast(async () => {
+  // Salt-okunur — QR/kasiyer için biraz daha sabırlı (3sn fail-fast oturumu düşürmesin)
+  return runSqlRead(async () => {
     const sql = getSql();
     if (!sql) return null;
 
