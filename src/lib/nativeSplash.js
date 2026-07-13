@@ -16,11 +16,16 @@ export async function hideNativeSplash() {
   }
 }
 
-// Mutlak fail-safe — JS takılsa bile splash'i kapat
+// Mutlak fail-safe — JS takılsa bile splash'i kapat ve UI kilidini kaldır
 export function scheduleNativeSplashFailsafe(ms = 2500) {
   if (!isNativeApp() || hideScheduled) return;
   hideScheduled = true;
   setTimeout(() => {
     void hideNativeSplash();
+    try {
+      document.body.classList.add('app-ui-ready');
+    } catch {
+      // DOM henüz yoksa sessiz geç
+    }
   }, Math.max(800, Number(ms) || 2500));
 }

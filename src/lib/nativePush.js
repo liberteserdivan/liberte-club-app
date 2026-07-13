@@ -28,33 +28,46 @@ function notifyTokenRefresh(token) {
 
 // Native FCM bildirim dinleyicilerini bir kez bağla
 export function ensureNativePushNavigation() {
-  attachNativePushListeners();
+  try {
+    attachNativePushListeners();
+  } catch {
+    listenersAttached = false;
+  }
 }
 
 function attachNativePushListeners() {
   if (listenersAttached || !isNativeApp()) return;
   listenersAttached = true;
 
-  FirebaseMessaging.addListener('notificationReceived', (event) => {
-    if (Capacitor.getPlatform() !== 'android') return;
+  try {
+    FirebaseMessaging.addListener('notificationReceived', (event) => {
+      if (Capacitor.getPlatform() !== 'android') return;
 
-    const formatted = formatPushNotification(
-      event?.notification?.title || event?.data?.title,
-      event?.notification?.body || event?.data?.body
-    );
-    void showAndroidForegroundNotification(formatted.title, formatted.body);
-  });
+      const formatted = formatPushNotification(
+        event?.notification?.title || event?.data?.title,
+        event?.notification?.body || event?.data?.body
+      );
+      void showAndroidForegroundNotification(formatted.title, formatted.body);
+    });
 
-  // Tıklama: title/body data veya notification katmanından birleşik gelir
-  FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
-    const payload = extractPushOpenData(action || {});
-    handlePushOpenPayload(payload);
-  });
+    // Tıklama: title/body data veya notification katmanından birleşik gelir
+    FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
+      try {
+        const payload = extractPushOpenData(action || {});
+        handlePushOpenPayload(payload);
+      } catch {
+        // Bildirim açılışı UI'yi kilitlemesin
+      }
+    });
 
-  FirebaseMessaging.addListener('tokenReceived', (event) => {
-    const token = event?.token;
-    if (token) notifyTokenRefresh(token);
-  });
+    FirebaseMessaging.addListener('tokenReceived', (event) => {
+      const token = event?.token;
+      if (token) notifyTokenRefresh(token);
+    });
+  } catch {
+    listenersAttached = false;
+    throw new Error('native_push_listeners_failed');
+  }
 }
 
 // iOS/Android native FCM token al — Firebase Admin ile uyumlu

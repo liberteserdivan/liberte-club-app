@@ -23,16 +23,28 @@ const legalRoute = resolveLegalRoute(window.location.pathname);
 patchFirebaseReferrer(getFirebaseReferrerOrigin());
 if (isNativeApp()) {
   // React mount etmeden önce fail-safe — JS çökerse bile splash kapanır
-  scheduleNativeSplashFailsafe(2800);
-  ensureNativePushNavigation();
-  initNativeForegroundBridge();
+  scheduleNativeSplashFailsafe(2200);
+  try {
+    ensureNativePushNavigation();
+  } catch {
+    // FCM dinleyici hatası uygulamayı başlatmayı engellemesin
+  }
+  try {
+    initNativeForegroundBridge();
+  } catch {
+    // Ön plan köprüsü opsiyonel
+  }
 }
 // Yalnızca hafif health — auth/state warm login ile pooler yarışmasın
 if (!legalRoute) {
-  warmServer({ force: true });
-  subscribeForegroundResume(() => {
-    warmServer();
-  });
+  try {
+    warmServer({ force: true });
+    subscribeForegroundResume(() => {
+      warmServer();
+    });
+  } catch {
+    // Warmup başarısız olsa bile UI açılsın
+  }
 }
 // PWA kurulum istemini React'tan önce yakala
 if (!legalRoute) {
@@ -114,11 +126,23 @@ function mountApp() {
 }
 
 async function boot() {
-  if (import.meta.env.DEV) {
-    const db = load();
-    await bootstrapDevAuth(db.customers || []);
+  try {
+    if (import.meta.env.DEV) {
+      const db = load();
+      await bootstrapDevAuth(db.customers || []);
+    }
+  } catch {
+    // Dev auth hatası mount'u engellemesin
   }
   mountApp();
 }
 
-boot();
+boot().catch(() => {
+  void hideNativeSplash();
+  try {
+    document.body.classList.add('app-ui-ready');
+  } catch {
+    // ignore
+  }
+  mountApp();
+});
