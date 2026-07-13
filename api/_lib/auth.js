@@ -626,17 +626,25 @@ export async function requireAdminSession(req, res, { light = false, members = f
       return identity;
     }
 
+    // Oturum zaten admin ise ikinci müşteri SELECT'ini atla (QR hot path)
+    if (identity.isAdmin) {
+      return {
+        customerId: identity.customerId,
+        isAdmin: true,
+        adminVerified: true,
+        role: 'admin'
+      };
+    }
+
     const sql = getSql();
     if (sql) {
       const { findCustomerById } = await import('./customersStore.js');
-      // Bayat bağlantıda admin doğrulaması fail-fast olsun (admin-members 19sn'lik
-      // okuma yığınını kısar; guardian/health 90sn beklemesin)
       const live = await runSqlReadFast(() => findCustomerById(sql, identity.customerId));
       if (!live?.isAdmin) {
         res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
         return null;
       }
-    } else if (!identity.isAdmin) {
+    } else {
       res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
       return null;
     }

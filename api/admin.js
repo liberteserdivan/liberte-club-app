@@ -1,5 +1,5 @@
 // Yönetici yönlendirici — handler'lar ihtiyaç anında yüklenir (Firebase ağır modülleri atlanır)
-import { withSqlRequest } from './_lib/sqlRequest.js';
+import { withSqlRequest, withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
 
 const ADMIN_RESOURCE_LOADERS = {
   backup: () => import('./_lib/handlers/adminBackup.js').then((m) => m.handleAdminBackup),
@@ -16,7 +16,14 @@ const ADMIN_RESOURCE_LOADERS = {
   'review-action': () => import('./_lib/handlers/adminReview.js').then((m) => m.handleAdminReviewAction)
 };
 
-export default withSqlRequest(async function handler(req, res) {
+// Kasiyer QR yolu — Guardian hydrate yok (timeout / "sunucu hatası" önlemi)
+const CASHIER_FAST_RESOURCES = new Set([
+  'qr-verify',
+  'member-lookup',
+  'loyalty-action'
+]);
+
+async function dispatchAdminResource(req, res) {
   const resource = String(req.query?.resource || '').trim().toLowerCase();
   const loader = ADMIN_RESOURCE_LOADERS[resource];
 
@@ -26,4 +33,15 @@ export default withSqlRequest(async function handler(req, res) {
 
   const route = await loader();
   return route(req, res);
-});
+}
+
+const adminFullHandler = withSqlRequest(dispatchAdminResource);
+const adminCashierHandler = withSqlRequestNoGuardian(dispatchAdminResource);
+
+export default function handler(req, res) {
+  const resource = String(req.query?.resource || '').trim().toLowerCase();
+  if (CASHIER_FAST_RESOURCES.has(resource)) {
+    return adminCashierHandler(req, res);
+  }
+  return adminFullHandler(req, res);
+}

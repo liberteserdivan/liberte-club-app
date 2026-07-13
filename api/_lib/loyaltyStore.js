@@ -106,8 +106,12 @@ export async function loadLoyaltyForCustomer(customerId, externalSql = null, opt
   const storedBalance = row?.lp_balance != null ? Math.trunc(Number(row.lp_balance) || 0) : 0;
   const storedLifetime = row?.lp_lifetime != null ? Math.trunc(Number(row.lp_lifetime) || 0) : 0;
 
-  // Bellekte kurtar — event taraması
-  if ((card.lpBalance || 0) === 0 && (card.lpLifetime || 0) === 0) {
+  // Bellekte kurtar — event taraması (QR/kasiyer hot path'te atlanır)
+  if (
+    !options.skipEventRecovery
+    && (card.lpBalance || 0) === 0
+    && (card.lpLifetime || 0) === 0
+  ) {
     try {
       const recovered = await recoverLpFromEvents(sql, id);
       if (recovered.lpBalance > 0 || recovered.lpLifetime > 0) {
@@ -371,20 +375,23 @@ export async function applyLoyaltyActionRelational({
   });
 }
 
-// QR doğrulama — müşteri özeti normalize tablodan
+// QR doğrulama — müşteri özeti normalize tablodan (event taraması yok; hızlı)
 export async function loadCustomerSummaryRelational(customerId) {
   const sql = getSql();
   if (!sql) return null;
 
-  const customer = await findCustomerById(sql, customerId);
+  const id = Number(customerId);
+  const [customer, loyalty] = await Promise.all([
+    findCustomerById(sql, id),
+    loadLoyaltyForCustomer(id, sql, { skipEventRecovery: true })
+  ]);
   if (!customer) return null;
 
-  const loyalty = await loadLoyaltyForCustomer(customerId, sql);
   const miniState = {
     customers: [customer],
-    loyalty: { [customerId]: loyalty },
+    loyalty: { [id]: loyalty },
     history: []
   };
 
-  return customerSummary(miniState, customerId);
+  return customerSummary(miniState, id);
 }

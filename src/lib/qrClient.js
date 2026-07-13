@@ -310,7 +310,8 @@ export async function verifyCustomerQr(token) {
     });
 
     if (!response.ok) {
-      throw new Error(data?.error || formatQrUserError(null, response, data).message || 'QR doğrulanamadı');
+      const formatted = formatQrUserError(null, response, data);
+      throw new Error(data?.error || formatted.message || 'QR doğrulanamadı');
     }
 
     if (!data?.customer?.id) {
@@ -324,7 +325,8 @@ export async function verifyCustomerQr(token) {
     };
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
-    throw new Error(error?.message || formatQrUserError(error).message || 'QR doğrulanamadı');
+    const formatted = formatQrUserError(error);
+    throw new Error(error?.message || formatted.message || 'QR doğrulanamadı');
   }
 }
 
