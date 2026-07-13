@@ -23,6 +23,8 @@ let memorySession = null;
 // Sunucu çıkış isteği uçuşta — hemen ardından login bu promise'i bekler
 let pendingLogoutPromise = null;
 
+const SESSION_META_KEY = 'liberteSessionMeta';
+
 // Oturum değişiminde nesli ilerlet — eski uçuştaki yanıtları geçersiz kıl
 function bumpAuthEpoch() {
   bumpAuthEpochCounter();
@@ -51,7 +53,96 @@ export function setMemorySession(session) {
 export function patchMemorySession(patch) {
   if (!memorySession) return null;
   memorySession = { ...memorySession, ...patch };
+  persistSessionMeta(memorySession, patch.customer, patch.loyalty);
   return memorySession;
+}
+
+// İnce müşteri özeti — PII minimum (anında açılış)
+function thinCustomerSnapshot(customer) {
+  if (!customer?.id) return null;
+  return {
+    id: Number(customer.id),
+    name: String(customer.name || ''),
+    phone: String(customer.phone || ''),
+    email: String(customer.email || ''),
+    isAdmin: Boolean(customer.isAdmin),
+    birthDate: customer.birthDate || '',
+    referralCode: customer.referralCode || null
+  };
+}
+
+function thinLoyaltySnapshot(loyalty) {
+  if (!loyalty || typeof loyalty !== 'object') return null;
+  return {
+    customerId: loyalty.customerId != null ? Number(loyalty.customerId) : undefined,
+    schemaVersion: Number(loyalty.schemaVersion || 2),
+    lpBalance: Math.max(0, Math.trunc(Number(loyalty.lpBalance || 0))),
+    lpLifetime: Math.max(0, Math.trunc(Number(loyalty.lpLifetime || 0))),
+    level: String(loyalty.level || 'Bronze'),
+    usedRewards: Math.max(0, Math.trunc(Number(loyalty.usedRewards || 0)))
+  };
+}
+
+// Native açılış için oturum metasını yaz
+function persistSessionMeta(session, customer = null, loyalty = null) {
+  if (!isNativeApp() || !session?.customerId) return;
+  try {
+    const payload = {
+      customerId: Number(session.customerId),
+      role: session.role || 'user',
+      isAdmin: Boolean(session.isAdmin),
+      adminVerified: Boolean(session.adminVerified) || Boolean(session.isAdmin),
+      customer: thinCustomerSnapshot(customer),
+      loyalty: thinLoyaltySnapshot(loyalty),
+      savedAt: Date.now()
+    };
+    localStorage.setItem(SESSION_META_KEY, JSON.stringify(payload));
+  } catch {
+    // Depolama kapalıysa sessizce geç
+  }
+}
+
+function clearSessionMeta() {
+  try {
+    localStorage.removeItem(SESSION_META_KEY);
+  } catch {
+    // yoksay
+  }
+}
+
+function readSessionMeta() {
+  try {
+    const raw = localStorage.getItem(SESSION_META_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.customerId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Token + meta varsa ağı beklemeden oturumu geri yükle (yalnız native)
+export function restoreLocalSessionFromStorage() {
+  if (isLocalAuth() || !isNativeApp()) return null;
+  if (!hasStoredAuthToken()) return null;
+
+  const meta = readSessionMeta();
+  if (!meta?.customerId) return null;
+
+  memorySession = {
+    customerId: Number(meta.customerId),
+    role: meta.role || 'user',
+    isAdmin: Boolean(meta.isAdmin),
+    adminVerified: Boolean(meta.isAdmin) || Boolean(meta.adminVerified),
+    realtimeToken: null
+  };
+
+  return {
+    session: memorySession,
+    customer: meta.customer || null,
+    loyalty: meta.loyalty || null
+  };
 }
 
 // Kısa gecikme — pooler/soğuk lambda için
@@ -63,6 +154,7 @@ function sleep(ms) {
 async function fetchBootstrapSession() {
   return apiJson('/api/auth/session', {
     ...AUTH_REQUEST_OPTIONS,
+    timeoutMs: isNativeApp() ? 4_000 : AUTH_REQUEST_OPTIONS.timeoutMs,
     skipUnauthorized: true
   });
 }
@@ -83,12 +175,14 @@ function resolveBootstrapAttempt(response, data, authChangedDuringBootstrap) {
   // 401 — oturum yok/geçersiz; giriş ekranı için normal, modal yok
   if (response.status === 401) {
     memorySession = null;
+    clearSessionMeta();
+    clearNativeAuthToken();
     return null;
   }
 
-  // 503 — geçici DB; giriş formu kullanılabilir kalsın
+  // 503 — geçici DB; yerel oturum varsa koru (anında açılış)
   if (response.status === 503) {
-    memorySession = null;
+    if (memorySession) return { session: memorySession, softUnavailable: true };
     return {
       sessionUnavailable: true,
       code: data?.code || 'SESSION_TEMPORARILY_UNAVAILABLE',
@@ -97,9 +191,9 @@ function resolveBootstrapAttempt(response, data, authChangedDuringBootstrap) {
     };
   }
 
-  // 500 — oturum doğrulama hatası; giriş formu açık kalsın
+  // 500 — oturum doğrulama hatası; yerel varsa koru
   if (response.status >= 500 || data?.code === 'SESSION_RESTORE_FAILED') {
-    memorySession = null;
+    if (memorySession) return { session: memorySession, softUnavailable: true };
     return {
       sessionUnavailable: true,
       code: data?.code || 'SESSION_RESTORE_FAILED',
@@ -109,6 +203,7 @@ function resolveBootstrapAttempt(response, data, authChangedDuringBootstrap) {
   }
 
   if (!response.ok || !data?.ok) {
+    if (memorySession) return { session: memorySession, softUnavailable: true };
     memorySession = null;
     return null;
   }
@@ -125,6 +220,8 @@ function resolveBootstrapAttempt(response, data, authChangedDuringBootstrap) {
     saveNativeAuthToken(data.sessionToken);
   }
 
+  persistSessionMeta(memorySession, data.customer || null, data.loyalty || null);
+
   return {
     session: memorySession,
     customer: data.customer || null,
@@ -139,16 +236,17 @@ export async function bootstrapSession() {
   }
 
   const epochAtStart = getAuthEpoch();
+  const hadLocalSession = Boolean(memorySession);
 
   // Bootstrap bitmeden login/logout olduysa bellek oturumunu ezme
   function authChangedDuringBootstrap() {
     return getAuthEpoch() !== epochAtStart;
   }
 
-  // En fazla 2 deneme — uzun retry zinciri login ile pooler yarışmasın
-  const backoffMs = (hasStoredAuthToken() && isNativeApp())
-    ? [0, 500]
-    : [0, 700];
+  // Yerel oturum varken tek deneme — PIN login yarışmasın
+  const backoffMs = hadLocalSession
+    ? [0]
+    : ((hasStoredAuthToken() && isNativeApp()) ? [0, 400] : [0, 700]);
   let lastNetworkError = null;
 
   try {
@@ -179,6 +277,9 @@ export async function bootstrapSession() {
     if (authChangedDuringBootstrap()) {
       return memorySession ? { session: memorySession } : null;
     }
+    if (memorySession && (error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR')) {
+      return { session: memorySession, softUnavailable: true };
+    }
     memorySession = null;
     if (error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR') {
       return {
@@ -191,6 +292,7 @@ export async function bootstrapSession() {
   }
 
   if (lastNetworkError) {
+    if (memorySession) return { session: memorySession, softUnavailable: true };
     memorySession = null;
     return {
       sessionUnavailable: true,
@@ -239,6 +341,8 @@ export function applyAuthResult(result) {
     saveNativeAuthToken(result.sessionToken);
   }
 
+  persistSessionMeta(memorySession, result.customer || null, result.loyalty || null);
+
   // Yeni oturum temiz ağ durumuyla başlasın — önceki oturumdan kalan backoff
   // veya in-flight /api/state yeni girişi engellemesin/ezmesin.
   resetRemoteFetchState();
@@ -260,29 +364,21 @@ export async function waitForPendingLogout() {
 }
 
 // Oturumu kapat — yerel temizlik ANINDA, sunucu iptali arka planda.
-// Token önce yakalanıp hemen silinir; böylece UI beklemez ve sonraki giriş
-// tazelenen tokenı ezmez.
 export function logoutSession() {
   const token = getStoredAuthToken();
 
   // 1) Yerel oturumu anında temizle
   memorySession = null;
-  // Oturum nesli ilerler — logout'tan önce başlamış /api/state veya admin-customers
-  // yanıtı geç gelse bile yeni (login ekranı) state'i ezemez.
   bumpAuthEpoch();
   clearNativeAuthToken();
+  clearSessionMeta();
   resetSupabaseClient();
-  // Yönetici PII snapshot'ını da temizle — çıkışta cihazda iz kalmasın
   clearAdminSnapshot();
-  // Yerel veri önbelleğini (liberteDB) temizle — müşteri/loyalty/history PII'si
-  // çıkıştan sonra cihazda kalmasın. Son telefon/e-posta/deviceId korunur.
   clearLocalDb();
-  // Modül seviyesindeki ağ ve Safe Mode durumunu sıfırla — eski backoff/in-flight
-  // istek veya bayat Safe Mode durumu sonraki girişi engellemesin/yavaşlatmasın.
   resetRemoteFetchState();
   clearSafeModeState();
 
-  // 2) Sunucudaki oturumu iptal et — native'de kısa süre beklenir (re-login yarışması)
+  // 2) Sunucudaki oturumu iptal et — native'de kısa süre beklenir
   if (!isLocalAuth() && token) {
     const logoutRequest = apiJson('/api/auth/session', {
       method: 'POST',

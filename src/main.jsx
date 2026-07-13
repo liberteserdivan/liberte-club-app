@@ -12,7 +12,8 @@ import { ensureNativePushNavigation } from './lib/nativePush.js';
 import { handlePushOpenPayload } from './lib/pushNavigation.js';
 import { isNativeApp } from './lib/platform.js';
 import { initNativeForegroundBridge, subscribeForegroundResume } from './lib/appForeground.js';
-import { warmServer } from './lib/serverWarmup.js';
+import { warmServer, warmDatabasePool } from './lib/serverWarmup.js';
+import { hasStoredAuthToken } from './lib/apiClient.js';
 import { load } from './lib/db.js';
 import { bootstrapDevAuth } from './lib/devAuth.js';
 import { scheduleNativeSplashFailsafe, hideNativeSplash } from './lib/nativeSplash.js';
@@ -39,6 +40,9 @@ if (isNativeApp()) {
 if (!legalRoute) {
   try {
     warmServer({ force: true });
+    if (hasStoredAuthToken()) {
+      warmDatabasePool({ force: true });
+    }
     subscribeForegroundResume(() => {
       warmServer();
     });

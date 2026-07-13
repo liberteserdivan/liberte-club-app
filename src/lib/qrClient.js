@@ -1,4 +1,4 @@
-import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken, ADMIN_REQUEST_OPTIONS, LOYALTY_ACTION_REQUEST_OPTIONS } from './apiClient.js';
+import { apiJson, getStoredAuthTokenMeta, hasStoredAuthToken, ADMIN_REQUEST_OPTIONS, LOYALTY_ACTION_REQUEST_OPTIONS, QR_VERIFY_REQUEST_OPTIONS } from './apiClient.js';
 import { isLocalAuth } from './devAuth.js';
 import { isNativeApp } from './platform.js';
 
@@ -302,32 +302,50 @@ export async function fetchCustomerQrToken(options = {}) {
 
 // Kasiyer — imzalı QR doğrula (süresi dolmuşsa da üye kartı açılır)
 export async function verifyCustomerQr(token) {
-  try {
-    const { response, data } = await apiJson('/api/admin?resource=qr-verify', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-      ...ADMIN_REQUEST_OPTIONS
-    });
+  let lastError = null;
 
-    if (!response.ok) {
-      const formatted = formatQrUserError(null, response, data);
-      throw new Error(data?.error || formatted.message || 'QR doğrulanamadı');
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const { response, data } = await apiJson('/api/admin?resource=qr-verify', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+        ...QR_VERIFY_REQUEST_OPTIONS
+      });
+
+      if (!response.ok) {
+        const formatted = formatQrUserError(null, response, data);
+        const retryable = response.status === 503 || response.status === 504 || data?.code === 'DATABASE_TRANSIENT';
+        if (retryable && attempt === 0) {
+          await new Promise((resolve) => { setTimeout(resolve, 350); });
+          continue;
+        }
+        throw new Error(data?.error || formatted.message || 'QR doğrulanamadı');
+      }
+
+      if (!data?.customer?.id) {
+        throw new Error('Müşteri bilgisi alınamadı. Tekrar deneyin.');
+      }
+
+      return {
+        customer: data.customer,
+        expired: Boolean(data.expired),
+        warning: data.warning || null
+      };
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      lastError = error;
+      const retryable = error?.code === 'FETCH_TIMEOUT' || error?.code === 'NETWORK_ERROR';
+      if (retryable && attempt === 0) {
+        await new Promise((resolve) => { setTimeout(resolve, 350); });
+        continue;
+      }
+      const formatted = formatQrUserError(error);
+      throw new Error(error?.message || formatted.message || 'QR doğrulanamadı');
     }
-
-    if (!data?.customer?.id) {
-      throw new Error('Müşteri bilgisi alınamadı. Tekrar deneyin.');
-    }
-
-    return {
-      customer: data.customer,
-      expired: Boolean(data.expired),
-      warning: data.warning || null
-    };
-  } catch (error) {
-    if (error?.name === 'AbortError') throw error;
-    const formatted = formatQrUserError(error);
-    throw new Error(error?.message || formatted.message || 'QR doğrulanamadı');
   }
+
+  const formatted = formatQrUserError(lastError);
+  throw new Error(lastError?.message || formatted.message || 'QR doğrulanamadı');
 }
 
 // Kasiyer — üye no / LC- ile üye özeti (imzalı QR yoksa)

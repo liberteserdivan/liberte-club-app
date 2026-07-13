@@ -4,7 +4,7 @@ import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
-import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS, getNativeApiOrigin } from '../lib/apiClient.js';
+import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS, getNativeApiOrigin, hasStoredAuthToken } from '../lib/apiClient.js';
 import { formatClientApiError } from '../lib/apiErrors.js';
 import { humanizeNetworkFailure } from '../lib/networkErrors.js';
 import { isNativeApp } from '../lib/platform.js';
@@ -18,7 +18,7 @@ import {
   verifyDevPin
 } from '../lib/devAuth.js';
 import { getDeviceId } from '../lib/deviceId.js';
-import { applyAuthResult, getAuthEpoch, waitForPendingLogout, hasQuickLogin, readSavedPhone, readSavedPin, saveQuickLogin } from '../lib/session.js';
+import { applyAuthResult, getAuthEpoch, waitForPendingLogout, hasQuickLogin, readSavedPhone, readSavedPin, saveQuickLogin, getMemorySession } from '../lib/session.js';
 import {
   STORE_APP_NAME,
   BRAND_SLOGAN,
@@ -626,9 +626,14 @@ export default function Login({ db, commit, setSession }) {
     setAutoLoginPending(false);
   }
 
-  // Kayıtlı telefon + PIN varsa giriş ekranını atla
+  // Kayıtlı telefon + PIN varsa giriş ekranını atla — token/oturum varken PIN yarışmasın
   useEffect(() => {
-    if (autoLoginStartedRef.current || authMode !== 'login' || !hasQuickLogin()) return;
+    if (autoLoginStartedRef.current || authMode !== 'login') return;
+    if (getMemorySession() || hasStoredAuthToken()) {
+      setAutoLoginPending(false);
+      return;
+    }
+    if (!hasQuickLogin()) return;
     autoLoginStartedRef.current = true;
     const ph = norm(readSavedPhone());
     const pinValue = readSavedPin();

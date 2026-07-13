@@ -462,6 +462,7 @@ export const AUTH_REQUEST_OPTIONS = {
 export const REGISTER_REQUEST_OPTIONS = { timeoutMs: 90_000 };
 export const SYNC_REQUEST_OPTIONS = { timeoutMs: 25000 };
 export const ADMIN_REQUEST_OPTIONS = { timeoutMs: 60_000 };
+export const QR_VERIFY_REQUEST_OPTIONS = { timeoutMs: isNativeApp() ? 8_000 : 6_000 };
 export const ADMIN_MEMBERS_REQUEST_OPTIONS = {
   timeoutMs: isNativeApp() ? 45_000 : 20_000
 };

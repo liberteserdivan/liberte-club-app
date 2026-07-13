@@ -12,9 +12,10 @@ import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
 import { useCustomerNotificationsPoll } from './hooks/useCustomerNotificationsPoll.js';
 import { fetchCustomerLoyaltySnapshot } from './lib/realtimeFetch.js';
-import { getMemorySession, logoutSession, getAuthEpoch } from './lib/session.js';
+import { getMemorySession, logoutSession, getAuthEpoch, restoreLocalSessionFromStorage } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
-import { setUnauthorizedHandler } from './lib/apiClient.js';
+import { setUnauthorizedHandler, hasStoredAuthToken } from './lib/apiClient.js';
+import { warmDatabasePool } from './lib/serverWarmup.js';
 import { setGuardianRole } from './lib/guardianTelemetry.js';
 import { getFirebaseSwUrl, ensurePushRegisteredIfPermitted, startPushForegroundListener, bindNativeTokenRefresh } from './lib/firebasePush.js';
 import { ensureNativePushNavigation } from './lib/nativePush.js';
@@ -48,26 +49,35 @@ import OnboardingOverlay, { shouldShowOnboarding } from './components/Onboarding
 // başlangıcı gizlemek için uzun tutmaya gerek yok. Süreler kısaltıldı: yapay
 // bekleme ~2sn'den ~0.66sn'ye indi. Fade boşluğu (TOTAL - FADE = 420ms) CSS'teki
 // `.appSplash` opacity geçişiyle (0.42s) bilinçli olarak eşleşir; pürüzsüz kalır.
-const SPLASH_MIN_MS = 200;
-const SPLASH_FADE_MS = 240;
-const SPLASH_TOTAL_MS = 660;
-const SPLASH_FORCE_MS = 2800;
+const SPLASH_MIN_MS = 120;
+const SPLASH_FADE_MS = 160;
+const SPLASH_TOTAL_MS = 420;
+const SPLASH_FORCE_MS = 1600;
 /* Snapshot yoksa kısa fail-soft; uzun hydrate ekranı login'i bloke etmesin */
-const CUSTOMER_HYDRATE_RETRY_MS = 1_800;
+const CUSTOMER_HYDRATE_RETRY_MS = 1_200;
+
+// Native: token + meta varsa ağı beklemeden içeri al
+const LOCAL_BOOT = restoreLocalSessionFromStorage();
+const INITIAL_DB = LOCAL_BOOT?.customer
+  ? mergeAuthSnapshot(load(), {
+    customer: LOCAL_BOOT.customer,
+    loyalty: LOCAL_BOOT.loyalty
+  })
+  : load();
 
 export default function App() {
   const sessionRef = useRef(null);
   const [tab, setTab] = useState('home');
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => LOCAL_BOOT?.session || null);
   // sessionRef'i render sırasında senkron güncelle. Aksi halde logout sonrası
   // yeniden render'da useCommit'in effect'i (sessionRef güncelleyen effect'ten
   // ÖNCE çalışır) bayat session görüp login ekranında /api/state tetikleyebilir.
   sessionRef.current = session;
-  const [db, commit, , refreshRemote, syncState, retrySave, resetDb] = useCommit(load(), sessionRef, {
+  const [db, commit, , refreshRemote, syncState, retrySave, resetDb] = useCommit(INITIAL_DB, sessionRef, {
     tab,
     sessionCustomerId: session?.customerId ?? null
   });
-  const [authReady, setAuthReady] = useState(false);
+  const [authReady, setAuthReady] = useState(() => Boolean(LOCAL_BOOT?.session));
   const [splashPhase, setSplashPhase] = useState(getInitialSplashPhase);
   const [splashImageReady, setSplashImageReady] = useState(false);
   const [hydratingCustomer, setHydratingCustomer] = useState(false);
@@ -103,11 +113,26 @@ export default function App() {
   }, [resetDb]);
 
   useEffect(() => {
-    bootstrapSessionWithTimeout().then((result) => {
+    const hadLocal = Boolean(LOCAL_BOOT?.session);
+    if (hadLocal || hasStoredAuthToken()) {
+      warmDatabasePool({ force: true });
+    }
+
+    // Yerel oturum varken kısa doğrulama; yoksa biraz daha sabır
+    bootstrapSessionWithTimeout(hadLocal ? 2_500 : 4_000).then((result) => {
       const live = getMemorySession();
       if (live) {
-        // Login bootstrap'tan önce bittiyse geç gelen bootstrap UI'yı ezmesin
         setSession(live);
+        if (result?.customer) {
+          bootstrapSnapshotRef.current = {
+            customer: result.customer,
+            loyalty: result.loyalty || null
+          };
+          commit((current) => mergeAuthSnapshot(current, {
+            customer: result.customer,
+            loyalty: result.loyalty
+          }), { skipRemote: true });
+        }
       } else if (result?.session) {
         setSession(result.session);
         if (result.customer) {
@@ -120,13 +145,12 @@ export default function App() {
             loyalty: result.loyalty
           }), { skipRemote: true });
         }
-      } else if (result?.sessionUnavailable) {
-        // Oturum ön kontrolü geçici başarısız — giriş formu açık kalsın
+      } else if (result?.sessionUnavailable && !hadLocal) {
         setAuthNotice(result.message || 'Oturum şu an doğrulanamıyor. Giriş yapmayı deneyebilirsiniz.');
       }
       setAuthReady(true);
     });
-  }, []);
+  }, [commit]);
 
   useEffect(() => {
     if (!splashImageReady) return;

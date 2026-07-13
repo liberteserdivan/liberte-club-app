@@ -17,7 +17,7 @@ import {
   redeemCategoryReward
 } from '../loyaltyOps.js';
 import { menuItems } from '../../../src/lib/menuSeed.js';
-import { runSql, runSqlRead } from '../runSql.js';
+import { runSql, runSqlReadFast } from '../runSql.js';
 import { getSql } from '../sql.js';
 import { claimQrNonce } from '../qrNonceStore.js';
 
@@ -27,10 +27,10 @@ export async function handleAdminQrVerify(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const session = await requireAdminSession(req, res, { light: true });
-  if (!session) return;
-
   try {
+    const session = await requireAdminSession(req, res, { light: true });
+    if (!session) return;
+
     const body = readBodySafe(req);
     // Üye kartı için süresi dolmuş token kabul; LP işlemi ayrıca taze QR ister
     const verified = verifyCustomerQrToken(body.token, { allowExpired: true });
@@ -39,7 +39,8 @@ export async function handleAdminQrVerify(req, res) {
     }
 
     if (useRelationalState()) {
-      const customer = await runSqlRead(() => loadCustomerSummaryRelational(verified.customerId));
+      // Fail-fast okuma — 6sn×retry zinciri kasiyeri "sunucu yanıt vermiyor"a düşürmesin
+      const customer = await runSqlReadFast(() => loadCustomerSummaryRelational(verified.customerId));
       if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
       return res.status(200).json({
         ok: true,
@@ -51,7 +52,7 @@ export async function handleAdminQrVerify(req, res) {
       });
     }
 
-    const remote = await runSqlRead(() => loadAppState());
+    const remote = await runSqlReadFast(() => loadAppState());
     if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
 
     const customer = customerSummary(remote.data, verified.customerId);
@@ -66,10 +67,10 @@ export async function handleAdminQrVerify(req, res) {
         : null
     });
   } catch (error) {
-    await logServerError({
+    void logServerError({
       source: 'admin.qr-verify',
       error,
-      customerId: session?.customerId || null
+      customerId: null
     });
     return res.status(500).json({ error: publicErrorMessage(error, 'QR doğrulanamadı') });
   }
@@ -81,10 +82,10 @@ export async function handleAdminMemberLookup(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const session = await requireAdminSession(req, res, { light: true });
-  if (!session) return;
-
   try {
+    const session = await requireAdminSession(req, res, { light: true });
+    if (!session) return;
+
     const body = readBodySafe(req);
     const raw = String(body.memberId || body.query || body.id || '').trim();
     const memberId = Number(String(raw).replace(/^lc-?/i, '').replace(/\s/g, ''));
@@ -93,21 +94,21 @@ export async function handleAdminMemberLookup(req, res) {
     }
 
     if (useRelationalState()) {
-      const customer = await runSqlRead(() => loadCustomerSummaryRelational(memberId));
+      const customer = await runSqlReadFast(() => loadCustomerSummaryRelational(memberId));
       if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
       return res.status(200).json({ ok: true, customer, via: 'member-id' });
     }
 
-    const remote = await runSqlRead(() => loadAppState());
+    const remote = await runSqlReadFast(() => loadAppState());
     if (!remote.data) return res.status(404).json({ error: 'Veri bulunamadı' });
     const customer = customerSummary(remote.data, memberId);
     if (!customer) return res.status(404).json({ error: 'Müşteri bulunamadı' });
     return res.status(200).json({ ok: true, customer, via: 'member-id' });
   } catch (error) {
-    await logServerError({
+    void logServerError({
       source: 'admin.member-lookup',
       error,
-      customerId: session?.customerId || null
+      customerId: null
     });
     return res.status(500).json({ error: publicErrorMessage(error, 'Üye aranamadı') });
   }
