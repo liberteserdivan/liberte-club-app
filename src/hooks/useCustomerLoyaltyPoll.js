@@ -6,7 +6,7 @@ import { isNativeAppActive, subscribeForegroundResume } from '../lib/appForegrou
 import { isCustomerRealtimeDisabled, shouldReducePolling } from '../lib/safeMode.js';
 import { getMemorySession } from '../lib/session.js';
 
-const LP_POLL_STARTUP_DELAY_MS = 5_000;
+const LP_POLL_STARTUP_DELAY_MS = 1_200;
 // Bu yüzden seyrek tutulur — boşa giden egress (giden trafik) ~%90 azalır.
 // Ekran ilk açıldığında kısa bir "hızlı kontrol" penceresi bırakılır ki
 // kasada yapılan işlem realtime gecikirse bile birkaç saniyede yansısın.
@@ -67,13 +67,23 @@ export function useCustomerLoyaltyPoll({
 
       const current = dbRef.current;
       const prev = pickLoyaltyCard(current.loyalty, customerId);
+      // Boş sunucu yanıtı, dolu yerel LP'yi ezmesin (geçici 0 / bozuk satır)
+      if (
+        prev
+        && getLpBalance(loyalty) === 0
+        && getLpLifetime(loyalty) === 0
+        && (getLpBalance(prev) > 0 || getLpLifetime(prev) > 0)
+      ) {
+        return;
+      }
       if (!loyaltySnapshotChanged(prev, loyalty)) return;
 
       commit({
         ...current,
         loyalty: {
           ...(current.loyalty || {}),
-          [customerId]: loyalty
+          [customerId]: loyalty,
+          [String(customerId)]: loyalty
         }
       }, { skipRemote: true });
     }

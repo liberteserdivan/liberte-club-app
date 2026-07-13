@@ -94,15 +94,31 @@ export function emptyCategoryRewards() {
   return { dessert: 0, coffee: 0, sandwich: 0, burger: 0 };
 }
 
-// Eski karttan damga oku (migration öncesi)
+// Damga haritasında pozitif değer var mı
+function categoryMapHasValue(map) {
+  if (!map || typeof map !== 'object') return false;
+  return ['coffee', 'dessert', 'sandwich', 'burger'].some(
+    (key) => Math.trunc(Number(map[key] || 0)) > 0
+  );
+}
+
+// Haritayı güvenli sayıya çevir
+function normalizeCategoryMap(map) {
+  return {
+    dessert: Math.max(0, Math.trunc(map?.dessert || 0)),
+    coffee: Math.max(0, Math.trunc(map?.coffee || 0)),
+    sandwich: Math.max(0, Math.trunc(map?.sandwich || 0)),
+    burger: Math.max(0, Math.trunc(map?.burger || 0))
+  };
+}
+
+// Eski karttan damga oku — boş {} totalStamps yolunu kapatmasın
 function readLegacyStamps(card) {
-  if (card?.categoryStamps) {
-    return {
-      dessert: Math.max(0, Math.trunc(card.categoryStamps.dessert || 0)),
-      coffee: Math.max(0, Math.trunc(card.categoryStamps.coffee || 0)),
-      sandwich: Math.max(0, Math.trunc(card.categoryStamps.sandwich || 0)),
-      burger: Math.max(0, Math.trunc(card.categoryStamps.burger || 0))
-    };
+  if (categoryMapHasValue(card?.categoryStamps)) {
+    return normalizeCategoryMap(card.categoryStamps);
+  }
+  if (categoryMapHasValue(card?._legacy?.categoryStamps)) {
+    return normalizeCategoryMap(card._legacy.categoryStamps);
   }
 
   const legacy = Math.max(0, Math.trunc(card?.totalStamps || 0));
@@ -112,13 +128,11 @@ function readLegacyStamps(card) {
 }
 
 function readLegacyRewards(card) {
-  if (card?.categoryRewards) {
-    return {
-      dessert: Math.max(0, Math.trunc(card.categoryRewards.dessert || 0)),
-      coffee: Math.max(0, Math.trunc(card.categoryRewards.coffee || 0)),
-      sandwich: Math.max(0, Math.trunc(card.categoryRewards.sandwich || 0)),
-      burger: Math.max(0, Math.trunc(card.categoryRewards.burger || 0))
-    };
+  if (categoryMapHasValue(card?.categoryRewards)) {
+    return normalizeCategoryMap(card.categoryRewards);
+  }
+  if (categoryMapHasValue(card?._legacy?.categoryRewards)) {
+    return normalizeCategoryMap(card._legacy.categoryRewards);
   }
 
   const legacy = Math.max(0, Math.trunc(card?.availableRewards || 0));
@@ -150,15 +164,17 @@ export function migrateLoyaltyCard(card) {
     let lpBalance = Math.max(0, Math.trunc(card.lpBalance || 0));
     let lpLifetime = Math.max(lpBalance, Math.trunc(card.lpLifetime || 0));
 
-    // Şema 2 yazılmış ama LP kolonları boş — damga alanlarından kurtar
+    // Şema 2 yazılmış ama LP kolonları boş — damga / lifetime alanlarından kurtar
     if (lpBalance === 0 && lpLifetime === 0) {
       const legacyStamps = readLegacyStamps(card);
       const legacyRewards = readLegacyRewards(card);
       const recovered = convertLegacyToLp(legacyStamps, legacyRewards);
       const stampLifetime = Math.max(0, Math.trunc(card.lifetimeStamps || 0));
-      if (recovered > 0 || stampLifetime > 0) {
-        lpBalance = Math.max(recovered, 0);
-        lpLifetime = Math.max(lpBalance, stampLifetime, recovered);
+      const totalStamps = Math.max(0, Math.trunc(card.totalStamps || 0));
+      const fallback = Math.max(recovered, stampLifetime, totalStamps);
+      if (fallback > 0) {
+        lpBalance = fallback;
+        lpLifetime = Math.max(fallback, stampLifetime, recovered, totalStamps);
       }
     }
 

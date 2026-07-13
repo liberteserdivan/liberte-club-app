@@ -3,9 +3,31 @@ import { inList } from './sqlIn.js';
 import { normalizeEmail, findCustomerIdByPhone } from './customerEmails.js';
 import { generateUniqueReferralCode } from './referralCode.js';
 import { loyaltyTemplate } from './loyaltyOps.js';
-import { migrateLoyaltyCard, getCategoryLpGain, levelByLp } from './loyaltyPointsServer.js';
+import { migrateLoyaltyCard, getCategoryLpGain, levelByLp, convertLegacyToLp } from './loyaltyPointsServer.js';
 import { isProductionRuntime } from './schemaReady.js';
 import { chunkArray } from './chunk.js';
+
+const STAMP_KEYS = ['coffee', 'dessert', 'sandwich', 'burger'];
+
+// İki damga/ödül haritasını kategori bazında max ile birleştir
+function mergeCategoryMaps(primary = {}, secondary = {}) {
+  const out = {};
+  for (const key of STAMP_KEYS) {
+    out[key] = Math.max(
+      Math.trunc(Number(primary?.[key] || 0)),
+      Math.trunc(Number(secondary?.[key] || 0))
+    );
+  }
+  return out;
+}
+
+// Damga toplamı (kategori adedi)
+function stampCount(stamps = {}) {
+  return STAMP_KEYS.reduce(
+    (sum, key) => sum + Math.max(0, Math.trunc(Number(stamps?.[key] || 0))),
+    0
+  );
+}
 
 // RB-3: Tek toplu sorguda yazılacak azami satır (Postgres parametre limiti güvenli payı)
 const BULK_UPSERT_CHUNK = 500;
@@ -72,7 +94,7 @@ function readNullableInt(value) {
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
-// Sadakat satırını API kartına çevir — kolonlar kaynak; bayat legacy_json LP'yi ezmesin
+// Sadakat satırını API kartına çevir — kolonlar kaynak; boş damga kolonları legacy'yi ezmesin
 export function loyaltyRowToCard(row, customerId) {
   if (!row) return loyaltyTemplate(customerId);
 
@@ -81,6 +103,13 @@ export function loyaltyRowToCard(row, customerId) {
   const columnSchema = readNullableInt(row.lp_schema_version);
   const hasColumnLp = columnBalance != null || columnLifetime != null || columnSchema != null;
 
+  const colStamps = row.category_stamps && typeof row.category_stamps === 'object' && !Array.isArray(row.category_stamps)
+    ? row.category_stamps
+    : {};
+  const colRewards = row.category_rewards && typeof row.category_rewards === 'object' && !Array.isArray(row.category_rewards)
+    ? row.category_rewards
+    : {};
+
   const fromColumns = {
     customerId,
     schemaVersion: columnSchema || 2,
@@ -88,8 +117,8 @@ export function loyaltyRowToCard(row, customerId) {
     lpLifetime: columnLifetime ?? 0,
     usedRewards: readNullableInt(row.used_rewards) ?? 0,
     level: row.level || 'Bronze',
-    categoryStamps: row.category_stamps || {},
-    categoryRewards: row.category_rewards || {},
+    categoryStamps: colStamps,
+    categoryRewards: colRewards,
     totalStamps: readNullableInt(row.total_stamps) ?? 0,
     availableRewards: readNullableInt(row.available_rewards) ?? 0,
     lifetimeStamps: readNullableInt(row.lifetime_stamps) ?? 0
@@ -109,12 +138,44 @@ export function loyaltyRowToCard(row, customerId) {
     return migrateLoyaltyCard(fromColumns);
   }
 
-  // Her iki kaynak varsa kolon öncelikli; LP için max ile kayıp önlenir
+  const mergedStamps = mergeCategoryMaps(fromColumns.categoryStamps, legacy.categoryStamps);
+  const mergedRewards = mergeCategoryMaps(fromColumns.categoryRewards, legacy.categoryRewards);
+  const stampLp = convertLegacyToLp(mergedStamps, mergedRewards);
+
+  // Yalnızca açık LP kolonları — lifetime_stamps eski damga ipucu, bakiye sayılmaz
+  const explicitBalance = Math.max(fromColumns.lpBalance, readNullableInt(legacy.lpBalance) ?? 0);
+  const explicitLifetime = Math.max(fromColumns.lpLifetime, readNullableInt(legacy.lpLifetime) ?? 0);
+
+  let lpBalance = explicitBalance;
+  let lpLifetime = Math.max(explicitLifetime, explicitBalance);
+  if (lpBalance === 0 && lpLifetime === 0) {
+    const stampFallback = Math.max(
+      stampLp,
+      fromColumns.totalStamps,
+      readNullableInt(legacy.totalStamps) ?? 0,
+      fromColumns.lifetimeStamps,
+      readNullableInt(legacy.lifetimeStamps) ?? 0
+    );
+    if (stampFallback > 0) {
+      lpBalance = stampFallback;
+      lpLifetime = stampFallback;
+    }
+  }
+
   return migrateLoyaltyCard({
     ...legacy,
     ...fromColumns,
-    lpBalance: Math.max(fromColumns.lpBalance, readNullableInt(legacy.lpBalance) ?? 0),
-    lpLifetime: Math.max(fromColumns.lpLifetime, readNullableInt(legacy.lpLifetime) ?? 0)
+    categoryStamps: mergedStamps,
+    categoryRewards: mergedRewards,
+    totalStamps: Math.max(
+      fromColumns.totalStamps,
+      stampCount(mergedStamps),
+      readNullableInt(legacy.totalStamps) ?? 0
+    ),
+    lifetimeStamps: Math.max(fromColumns.lifetimeStamps, lpLifetime),
+    lpBalance,
+    lpLifetime,
+    schemaVersion: Math.max(columnSchema || 0, readNullableInt(legacy.schemaVersion) ?? 0, 2)
   });
 }
 

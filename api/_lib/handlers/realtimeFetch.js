@@ -4,7 +4,7 @@ import { loadLoyaltyForCustomer, loadHistoryFromSql, loadLoyaltyMapLightFromSql 
 import { listAllCustomers } from '../customersStore.js';
 import { listInAppNotificationsForCustomer } from '../inAppNotificationStore.js';
 import { getSql, primeSqlConnection } from '../sql.js';
-import { runSqlRead, runSqlAdminMembersRead } from '../runSql.js';
+import { runSql, runSqlRead, runSqlAdminMembersRead } from '../runSql.js';
 import { isTransientDbError, publicDbErrorMessage, publicDbErrorCode } from '../dbTransient.js';
 
 // Kampanya/kupon dilimini state'ten oku
@@ -24,10 +24,11 @@ async function loadPromoSlice() {
 
 // Müşteri loyalty + son işlemler — Realtime tetikleyici sonrası hafif fetch
 async function handleCustomerLoyalty(req, res, session) {
-  const loyalty = await runSqlRead(async () => {
+  // Kurtarma yazması olabileceği için runSql (timeout'lu read retry çift yazma riski taşımaz)
+  const loyalty = await runSql(async () => {
     const sql = getSql();
     if (!sql) throw new Error('Veritabanı yapılandırması eksik');
-    return loadLoyaltyForCustomer(session.customerId, sql);
+    return loadLoyaltyForCustomer(session.customerId, sql, { persistRepair: true });
   });
 
   return res.status(200).json({

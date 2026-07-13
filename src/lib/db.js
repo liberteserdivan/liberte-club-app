@@ -239,7 +239,9 @@ export function mergeAuthSnapshot(db, { customer, loyalty } = {}) {
 
   const loyaltyMap = { ...(base.loyalty || {}) };
   if (loyalty) {
-    loyaltyMap[customer.id] = migrateLoyaltyCard(loyalty);
+    const migrated = migrateLoyaltyCard(loyalty);
+    loyaltyMap[customer.id] = migrated;
+    loyaltyMap[String(customer.id)] = migrated;
   }
 
   return {

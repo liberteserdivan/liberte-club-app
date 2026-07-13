@@ -95,16 +95,18 @@ export async function loadLoyaltyMapLightFromSql(externalSql = null) {
   return map;
 }
 
-// Tek müşteri sadakat kartını oku — salt okuma; yazma burada yapılmaz (login/state kilitlemesin)
-export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
+// Tek müşteri sadakat kartını oku — gerekirse event/damga kurtarmasını kalıcı yaz
+export async function loadLoyaltyForCustomer(customerId, externalSql = null, options = {}) {
   const sql = externalSql || getSql();
   if (!sql || !customerId) return null;
 
   const id = Number(customerId);
   const row = await findLoyaltyByCustomerId(sql, id);
   let card = loyaltyRowToCard(row, id);
+  const storedBalance = row?.lp_balance != null ? Math.trunc(Number(row.lp_balance) || 0) : 0;
+  const storedLifetime = row?.lp_lifetime != null ? Math.trunc(Number(row.lp_lifetime) || 0) : 0;
 
-  // Bellekte kurtar — DB'ye yazma (upsert boot/login'i yavaşlatmasın)
+  // Bellekte kurtar — event taraması
   if ((card.lpBalance || 0) === 0 && (card.lpLifetime || 0) === 0) {
     try {
       const recovered = await recoverLpFromEvents(sql, id);
@@ -118,6 +120,20 @@ export async function loadLoyaltyForCustomer(customerId, externalSql = null) {
       }
     } catch {
       // Event taraması başarısız olsa bile şablon/kolon kartı dön
+    }
+  }
+
+  // Poll yolunda kurtarılan LP'yi DB'ye yaz — sonraki login/poll 0 dönmesin
+  if (
+    options.persistRepair
+    && row
+    && card
+    && ((card.lpBalance || 0) > storedBalance || (card.lpLifetime || 0) > storedLifetime)
+  ) {
+    try {
+      await upsertLoyaltyRow(sql, id, card);
+    } catch {
+      // Yazma başarısız olsa bile okunan/kurtarılan kartı dön
     }
   }
 

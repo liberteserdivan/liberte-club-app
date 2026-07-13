@@ -7,6 +7,59 @@ import { dedupeCustomersByPhone } from '../src/lib/adminMemberSync.js';
 import { pickLoyaltyCard, migrateLoyaltyCard } from '../src/lib/loyaltyPoints.js';
 import { createHmac } from 'node:crypto';
 
+test('loyaltyRowToCard bos kolon damgalari legacy damgalari ezmez', () => {
+  const card = loyaltyRowToCard({
+    lp_balance: 0,
+    lp_lifetime: 0,
+    lp_schema_version: 2,
+    used_rewards: 0,
+    level: 'Bronze',
+    category_stamps: {},
+    category_rewards: {},
+    total_stamps: 0,
+    available_rewards: 0,
+    lifetime_stamps: 0,
+    legacy_json: {
+      schemaVersion: 2,
+      lpBalance: 0,
+      lpLifetime: 0,
+      categoryStamps: { coffee: 4, dessert: 1, sandwich: 0, burger: 0 },
+      categoryRewards: { coffee: 0, dessert: 0, sandwich: 0, burger: 0 }
+    }
+  }, 1781893223931);
+
+  assert.equal(card.lpBalance, 6);
+  assert.ok(card.lpLifetime >= 6);
+});
+
+test('loyaltyRowToCard lifetime_stamps ile sifir LP kurtarir', () => {
+  const card = loyaltyRowToCard({
+    lp_balance: 0,
+    lp_lifetime: 0,
+    lp_schema_version: 2,
+    category_stamps: {},
+    category_rewards: {},
+    total_stamps: 0,
+    lifetime_stamps: 9,
+    legacy_json: { schemaVersion: 2, lpBalance: 0, lpLifetime: 0 }
+  }, 1);
+
+  assert.equal(card.lpBalance, 9);
+  assert.equal(card.lpLifetime, 9);
+});
+
+test('migrateLoyaltyCard bos categoryStamps + totalStamps kurtarir', () => {
+  const card = migrateLoyaltyCard({
+    schemaVersion: 2,
+    lpBalance: 0,
+    lpLifetime: 0,
+    categoryStamps: {},
+    totalStamps: 5,
+    lifetimeStamps: 0
+  });
+  assert.equal(card.lpBalance, 5);
+});
+
 test('loyaltyRowToCard kolon LP tercih eder — bayat legacy_json ezmez', () => {
   const card = loyaltyRowToCard({
     lp_balance: 12,
@@ -47,6 +100,18 @@ test('migrateLoyaltyCard sema2 sifir LP iken damgalardan kurtarir', () => {
   });
   assert.equal(card.lpBalance, 6);
   assert.ok(card.lpLifetime >= 6);
+});
+
+test('migrateLoyaltyCard yalniz lifetimeStamps ile bakiyeyi kurtarir', () => {
+  const card = migrateLoyaltyCard({
+    schemaVersion: 2,
+    lpBalance: 0,
+    lpLifetime: 0,
+    categoryStamps: {},
+    lifetimeStamps: 8
+  });
+  assert.equal(card.lpBalance, 8);
+  assert.equal(card.lpLifetime, 8);
 });
 
 test('parseQrScanText ham v1 token ve prefix kabul eder', () => {

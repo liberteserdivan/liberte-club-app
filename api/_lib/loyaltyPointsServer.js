@@ -3,6 +3,7 @@ export {
   LP_HISTORY_EARN,
   LP_HISTORY_REDEEM,
   migrateLoyaltyCard,
+  convertLegacyToLp,
   getCategoryLpGain,
   getCategoryRewardCost,
   canRedeemLpReward,
