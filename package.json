@@ -58,7 +58,12 @@
     "build:v2": "vite build",
     "test:v2": "node --test tests/app-v2-rewrite.test.mjs",
     "play:verify": "node scripts/verify-play-console.mjs",
-    "play:promote-internal": "node scripts/promote-play-alpha-to-internal.mjs"
+    "play:promote-internal": "node scripts/promote-play-alpha-to-internal.mjs",
+    "next:dev": "npm --prefix liberte-next/client run dev",
+    "next:build": "npm --prefix liberte-next/client run build",
+    "next:test": "node --test liberte-next/tests/*.mjs",
+    "next:prepare-native": "node liberte-next/scripts/prepare-native.mjs",
+    "codemagic:android-next": "node scripts/trigger-codemagic.mjs android-next-artifact"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.1.0",

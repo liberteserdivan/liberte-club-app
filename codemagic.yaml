@@ -304,6 +304,63 @@ workflows:
           success: true
           failure: true
 
+  # Liberte Next MVP — production webDir DEĞİŞTİRMEZ; geçici sync + APK
+  android-next-artifact:
+    name: android-next-artifact
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    triggering:
+      events: []
+    environment:
+      groups:
+        - liberte_android
+      vars:
+        ANDROID_RELEASE: "true"
+        PACKAGE_NAME: cafe.liberte.app
+        APP_VERSION: "1.1.31"
+        ANDROID_MIN_VERSION_CODE: "82"
+        VITE_API_BASE_URL: "https://app.liberte.cafe"
+      node: 22
+      java: 21
+    scripts:
+      - name: Node ortami dogrula
+        script: |
+          node --version
+          npm --version
+      - name: npm install
+        script: |
+          npm ci --legacy-peer-deps
+          npm --prefix liberte-next/client ci --legacy-peer-deps
+      - name: Firebase ve imza
+        script: |
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/setup-codemagic-android-signing.mjs
+          test -f android/app/google-services.json || (echo "HATA: GOOGLE_SERVICES_JSON env ekle" && exit 1)
+          test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
+      - name: Liberte Next build + gecici cap sync
+        script: |
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.31}.${BUILD_NUMBER:-0}-next"
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.liberte.cafe}"
+          node liberte-next/scripts/prepare-native.mjs
+          # prepare-native kök config'i geri yükler; dist webDir doğrula
+          grep -q '"webDir": "dist"' capacitor.config.json
+          node scripts/set-android-version-code.mjs
+      - name: Next Release APK
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          echo "[artifact] Liberte Next APK — Play upload YOK"
+    artifacts:
+      - android/app/build/outputs/apk/release/*.apk
+    publishing:
+      email:
+        recipients:
+          - liberteserdivan@gmail.com
+        notify:
+          success: true
+          failure: true
+
   ios-test-artifact:
     name: ios-test-artifact
     max_build_duration: 120

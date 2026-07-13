@@ -1,0 +1,188 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap");
+
+:root {
+  --green: #0B2F26;
+  --green-mid: #143D32;
+  --cream: #FBF6EE;
+  --cream-dim: #EFE6D6;
+  --ink: #12201C;
+  --muted: #5C6B64;
+  --accent: #C4A574;
+  --danger: #8B3A3A;
+  --ok: #2F6B4F;
+  --radius: 14px;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--cream);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #1a4a3c 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #0e3a30 0%, transparent 50%),
+    linear-gradient(165deg, #071c18 0%, var(--green) 45%, #0a2820 100%);
+  background-attachment: fixed;
+}
+
+.app-shell {
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.25rem 1.1rem 5.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0;
+  color: var(--cream);
+}
+
+.sub {
+  margin: 0;
+  color: var(--cream-dim);
+  opacity: 0.85;
+  font-size: 0.95rem;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--cream) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cream) 16%, transparent);
+  border-radius: var(--radius);
+  padding: 1rem 1.05rem;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cream-dim);
+  margin-bottom: 0.35rem;
+}
+
+input, textarea, select {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--cream) 22%, transparent);
+  background: color-mix(in srgb, #000 35%, transparent);
+  color: var(--cream);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  font: inherit;
+  margin-bottom: 0.85rem;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 0.8rem 1.2rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--cream);
+  color: var(--green);
+  width: 100%;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid color-mix(in srgb, var(--cream) 30%, transparent);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tabs {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(480px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, #061612 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid color-mix(in srgb, var(--cream) 12%, transparent);
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  color: var(--cream-dim);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.65rem 0.4rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: color-mix(in srgb, var(--cream) 14%, transparent);
+  color: var(--cream);
+}
+
+.stat {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  margin: 0.2rem 0 0;
+}
+
+.muted { color: var(--muted); }
+.err { color: #f0b4b4; font-size: 0.9rem; }
+.ok { color: #b7e0c8; font-size: 0.9rem; }
+
+.qr-wrap {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--cream);
+  border-radius: var(--radius);
+}
+
+.qr-wrap canvas { width: min(260px, 70vw); height: auto; }
+
+.fade-in {
+  animation: fadeUp 0.35s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

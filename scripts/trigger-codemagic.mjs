@@ -50,6 +50,7 @@ const validWorkflows = new Set([
   'ios-release',
   'android-release',
   'android-test-artifact',
+  'android-next-artifact',
   'ios-test-artifact',
   'android-mobile-smoke',
   'mobile-device-tests'
