@@ -220,7 +220,12 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
         setSecondsLeft(0);
         setQrStatus('error');
       } else {
-        setQrStatus('ready');
+        // Eski QR'ı okutulabilir bırakma — kasiyer sahte/expired LP riski
+        qrValueRef.current = '';
+        setQrValue('');
+        setQrExpiresAt(0);
+        setSecondsLeft(0);
+        setQrStatus('error');
       }
     } finally {
       if (gen === requestGenRef.current) {
@@ -264,7 +269,13 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
     const tick = () => {
       const left = resolveSecondsLeft(qrExpiresAt);
       setSecondsLeft(left);
-      if (left <= 0) refreshSignedQr({ isRefresh: true });
+      if (left <= 0) {
+        // Süresi dolmuş QR'ı okutulabilir bırakma
+        qrValueRef.current = '';
+        setQrValue('');
+        setQrStatus('refreshing');
+        refreshSignedQr({ isRefresh: true });
+      }
     };
 
     tick();

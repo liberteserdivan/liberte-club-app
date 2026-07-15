@@ -43,8 +43,11 @@ export async function scanQrWithNativeCamera() {
   }
 
   const googleModuleReady = await ensureGoogleScannerModule();
-  if (!googleModuleReady && camera !== 'granted' && camera !== 'limited') {
-    throw new Error('Kamera izni kapalı. Ayarlardan Liberte için kamerayı aç.');
+  // Android'de Google Code Scanner yoksa scan opaksız hata verir — net mesaj
+  if (!googleModuleReady) {
+    throw new Error(
+      'QR okuyucu hazır değil. Google Play Hizmetleri güncel mi kontrol et veya uygulamayı yeniden aç.'
+    );
   }
 
   const { barcodes } = await BarcodeScanner.scan({

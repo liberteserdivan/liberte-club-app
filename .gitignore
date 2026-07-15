@@ -60,6 +60,8 @@ ios/AuthKey*.p8
 ios/fastlane/report.xml
 ios/fastlane/test_output/
 *.ipa
+*.apk
+*.aab
 *.p8
 *.p12
 *.key
@@ -67,6 +69,13 @@ ios/fastlane/test_output/
 *.cer
 *.csr
 *.pem
+
+# Yerel / CI artifact klasorleri
+outputs/
+e2e/mobile/reports/*.json
+e2e/mobile/reports/*.log
+!e2e/mobile/reports/.gitkeep
+.tmp-smartpos/
 
 # Android release ciktilari ve imza dosyalari
 android/app/release

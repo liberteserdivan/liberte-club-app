@@ -3,7 +3,7 @@ import { cleanPhone } from './phone.js';
 import { loadAppState, getSql } from './appState.js';
 import { useRelationalState } from './relationalConfig.js';
 import { ensureSchemaReady } from './schemaReady.js';
-import { runSql, runSqlRead, runSqlReadFast, runSqlSessionBootstrap, runSqlSessionDelete } from './runSql.js';
+import { runSql, runSqlReadFast, runSqlSessionBootstrap, runSqlSessionDelete } from './runSql.js';
 import {
   findCustomerIdByEmail,
   listCustomers,
@@ -120,13 +120,13 @@ export async function getSession(req) {
   });
 }
 
-// QR üretimi için hafif oturum — müşteri sync ve invalidate yok
+// QR üretimi / state GET için hafif oturum — müşteri sync ve invalidate yok
 export async function getSessionForQr(req) {
   const token = readAuthToken(req);
   if (!token) return null;
 
-  // Salt-okunur — QR/kasiyer için biraz daha sabırlı (3sn fail-fast oturumu düşürmesin)
-  return runSqlRead(async () => {
+  // Fail-fast: bayat bağlantıda runSqlRead (~30sn) state/QR yollarını donduruyordu
+  return runSqlReadFast(async () => {
     const sql = getSql();
     if (!sql) return null;
 
@@ -626,25 +626,16 @@ export async function requireAdminSession(req, res, { light = false, members = f
       return identity;
     }
 
-    // Oturum zaten admin ise ikinci müşteri SELECT'ini atla (QR hot path)
-    if (identity.isAdmin) {
-      return {
-        customerId: identity.customerId,
-        isAdmin: true,
-        adminVerified: true,
-        role: 'admin'
-      };
+    // Sticky admin yok — yetki iptali oturum bitene kadar sürünmesin
+    const sql = getSql();
+    if (!sql) {
+      res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
+      return null;
     }
 
-    const sql = getSql();
-    if (sql) {
-      const { findCustomerById } = await import('./customersStore.js');
-      const live = await runSqlReadFast(() => findCustomerById(sql, identity.customerId));
-      if (!live?.isAdmin) {
-        res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
-        return null;
-      }
-    } else {
+    const { findCustomerById } = await import('./customersStore.js');
+    const live = await runSqlReadFast(() => findCustomerById(sql, identity.customerId));
+    if (!live?.isAdmin) {
       res.status(403).json({ error: 'Yönetici yetkisi gerekli' });
       return null;
     }

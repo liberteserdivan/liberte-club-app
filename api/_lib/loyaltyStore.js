@@ -316,11 +316,15 @@ export async function applyLoyaltyActionRelational({
     }
 
     // REPLAY KORUMASI transaction İÇİNDE: nonce claim ile loyalty mutasyonu atomik.
+    // stamp işlemlerinde kategori+adet anahtarı — aynı QR ile kahve+tatlı mümkün.
     // İşlem sonradan hata atarsa (transient DB) nonce kaydı da geri alınır (rollback),
     // böylece runSql retry temiz şekilde yeniden deneyebilir. Gerçek tekrar ise
     // (eşzamanlı/replay) FOR UPDATE kilidi + unique (nonce,action) ile engellenir.
     if (nonce) {
-      const claim = await claimQrNonce(tx, { nonce, action, customerId: id });
+      const replayAction = action === 'stamp'
+        ? `stamp:${category}:${count}:${menuItem?.id || 0}`
+        : action;
+      const claim = await claimQrNonce(tx, { nonce, action: replayAction, customerId: id });
       if (!claim.firstUse) {
         return { ok: false, replay: true, error: 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.' };
       }

@@ -306,6 +306,12 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       return false;
     }
 
+    // Production: imzalı QR zorunlu — tokensız yerel LP sahte başarı yaratır
+    if (signedQrRequired && !scannedToken) {
+      setMsg('LP için müşteri taze QR kodunu göstersin. Üye no ile yalnızca kart açılır.');
+      return false;
+    }
+
     if (signedQrRequired && scannedToken) {
       setActionBusy(true);
       try {
@@ -336,6 +342,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       }
     }
 
+    // Dev-only yerel yol — production'da yukarıdaki guard'lar nedeniyle ulaşılmaz
     let nextDb = dbRef.current;
 
     if (action === 'stamp') {

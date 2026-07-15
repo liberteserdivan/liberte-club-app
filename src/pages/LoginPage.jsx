@@ -458,6 +458,7 @@ export default function Login({ db, commit, setSession }) {
         return;
       }
 
+      const epochAtLogin = getAuthEpoch();
       const { response, data } = await apiJson('/api/auth/register-complete', {
         ...REGISTER_REQUEST_OPTIONS,
         skipUnauthorized: true,
@@ -482,7 +483,7 @@ export default function Login({ db, commit, setSession }) {
         }
         throw new Error(readApiError(data, 'Kayıt tamamlanamadı'));
       }
-      finishSession(data, null, pinValue);
+      finishSession(data, epochAtLogin, pinValue);
     } catch (e) {
       notifyRequestError(e, 'Kayıt tamamlanamadı');
     } finally {

@@ -232,7 +232,8 @@ function finalizeAdminMemberSlice(slice) {
       ok: true,
       customers: fallback,
       loyalty: loadAdminSnapshot()?.data?.loyalty || {},
-      count: fallback.length
+      count: fallback.length,
+      fromSnapshot: true
     };
   }
 

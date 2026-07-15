@@ -43,6 +43,7 @@ export default function AdminPage({
   adminMembers = [],
   adminMembersStatus = 'idle',
   adminMembersError = '',
+  adminMembersFromSnapshot = false,
   onRefreshMembers,
   adminDashboardStats = { customerCount: 0, pushDeviceCount: 0 }
 }){
@@ -123,6 +124,7 @@ export default function AdminPage({
           adminMembers={adminMembers}
           adminMembersStatus={adminMembersStatus}
           adminMembersError={adminMembersError}
+          adminMembersFromSnapshot={adminMembersFromSnapshot}
           onRefreshMembers={onRefreshMembers}
           focusUserId={focusUserId}
           onFocusHandled={()=>setFocusUserId(null)}
@@ -155,13 +157,14 @@ function MembersAdmin({
   adminMembers,
   adminMembersStatus,
   adminMembersError,
+  adminMembersFromSnapshot = false,
   onRefreshMembers,
   focusUserId,
   onFocusHandled
 }){
-  // Üyeler sekmesi açılınca listeyi yenile
+  // Üyeler sekmesi açılınca listeyi yenile — circuit baypas
   useEffect(() => {
-    onRefreshMembers?.();
+    onRefreshMembers?.({ manual: true });
   }, [onRefreshMembers]);
 
   return <div className="adminStack">
@@ -172,6 +175,7 @@ function MembersAdmin({
       adminMembers={adminMembers}
       adminMembersStatus={adminMembersStatus}
       adminMembersError={adminMembersError}
+      adminMembersFromSnapshot={adminMembersFromSnapshot}
       onRefreshMembers={onRefreshMembers}
       focusUserId={focusUserId}
       onFocusHandled={onFocusHandled}
@@ -1047,6 +1051,7 @@ function UsersAdmin({
   adminMembers = [],
   adminMembersStatus = 'idle',
   adminMembersError = '',
+  adminMembersFromSnapshot = false,
   onRefreshMembers,
   focusUserId,
   onFocusHandled
@@ -1355,15 +1360,24 @@ function UsersAdmin({
       <div className="adminSectionHead"><div><span>ÜYELER</span><h3>Üye ayarları</h3></div></div>
       <p className="adminHint" data-testid="admin-members-status">
         {adminMembersStatus === 'ready'
-          ? `${customers.length} üye listeleniyor.`
+          ? (adminMembersFromSnapshot
+            ? `${customers.length} üye (önbellek — sunucu güncel değil).`
+            : `${customers.length} üye listeleniyor.`)
           : 'Telefon ve e-posta tekil tutulur. Arama yapıp üye detayına geçebilirsin.'}
       </p>
+      {adminMembersFromSnapshot && adminMembersStatus === 'ready' && (
+        <p className="adminPinError">
+          Liste önbellekten. Güncel veri için yenile.
+          {' '}
+          <button type="button" className="ghost adminPinSkip" onClick={() => onRefreshMembers?.({ manual: true })}>Yenile</button>
+        </p>
+      )}
       {adminMembersStatus === 'loading' && <p className="adminHint">Üyeler yükleniyor…</p>}
       {adminMembersStatus === 'error' && adminMembersError && (
         <p className="adminPinError">
           {adminMembersError}
           {' '}
-          <button type="button" className="ghost adminPinSkip" onClick={() => onRefreshMembers?.()}>Tekrar dene</button>
+          <button type="button" className="ghost adminPinSkip" onClick={() => onRefreshMembers?.({ manual: true })}>Tekrar dene</button>
         </p>
       )}
       {message&&<p className="info">{message}</p>}

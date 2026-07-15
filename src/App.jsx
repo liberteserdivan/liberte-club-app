@@ -315,6 +315,7 @@ export default function App() {
     members: adminMembers,
     status: adminMembersStatus,
     error: adminMembersError,
+    fromSnapshot: adminMembersFromSnapshot,
     refreshMembers: refreshAdminMembers
   } = useAdminMembers({
     enabled: Boolean(isAdmin && adminVerified && !isLocalAuth()),
@@ -330,8 +331,8 @@ export default function App() {
     enabled: Boolean(isAdmin && adminVerified && !isLocalAuth())
   });
 
-  const pullAdminMembers = useCallback(() => {
-    void refreshAdminMembers();
+  const pullAdminMembers = useCallback((opts = {}) => {
+    void refreshAdminMembers(opts);
     void refreshAdminDashboardStats();
   }, [refreshAdminMembers, refreshAdminDashboardStats]);
 
@@ -589,6 +590,7 @@ export default function App() {
                 adminMembers={adminMembers}
                 adminMembersStatus={adminMembersStatus}
                 adminMembersError={adminMembersError}
+                adminMembersFromSnapshot={adminMembersFromSnapshot}
                 onRefreshMembers={refreshAdminMembers}
                 adminDashboardStats={adminDashboardStats}
               />

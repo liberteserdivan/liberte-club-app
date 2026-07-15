@@ -512,7 +512,21 @@ export async function ensurePushRegisteredIfPermitted(customer, db, commit) {
   if (!customer?.id || typeof commit !== 'function') return;
 
   await refreshPushTokenIfSubscribed(customer, db, commit);
-  if (hasActivePushOnThisDevice(customer, db)) return;
+
+  // Yerel token varsa bile sunucuya yeniden sync et — "açık görünüyor gelmiyor" kökü
+  const localToken = getLocalPushToken(customer.id);
+  if (localToken && hasActivePushOnThisDevice(customer, db)) {
+    try {
+      await syncPushDeviceRegistration(customer, {
+        token: localToken,
+        permissionStatus: 'granted',
+        platform: detectPushPlatform()
+      });
+    } catch {
+      // Sync fail — aşağıdaki enable yolları tekrar dener
+    }
+    return;
+  }
 
   if (isNativeApp()) {
     if (await hasNativePushPermission()) {
@@ -579,6 +593,12 @@ export async function refreshPushTokenIfSubscribed(customer, db, commit) {
 
     commit(upsertPushSubscription(db, customer, token), { skipRemote: true });
     markPushEnabledOnDevice(customer.id, token);
+    // Web token rotate — sunucuya yazılmazsa bildirim eski token'a gider
+    await syncPushDeviceRegistration(customer, {
+      token,
+      permissionStatus: 'granted',
+      platform: detectPushPlatform()
+    });
   } catch {
     // Arka planda sessizce dene
   }

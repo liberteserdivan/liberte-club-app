@@ -80,10 +80,13 @@ export async function handleAdminLoyaltyAction(req, res) {
     }
 
     // Legacy (app_state JSON) yol — replay korumasını burada uygula.
-    // 90sn'lik token penceresinde aynı (nonce, action) tekrar denenirse 409 döner.
+    // stamp: kategori+adet anahtarı — aynı QR ile birden fazla ürün mümkün.
+    const replayAction = action === 'stamp'
+      ? `stamp:${category}:${count}:${menuItemId || 0}`
+      : action;
     const claim = await runSql(() => claimQrNonce(getSql(), {
       nonce: verified.nonce,
-      action,
+      action: replayAction,
       customerId: verified.customerId
     }));
     if (!claim.firstUse) {

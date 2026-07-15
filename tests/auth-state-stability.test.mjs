@@ -45,7 +45,7 @@ test('runSql: runSqlReadFast kısa timeout + az deneme ile tanımlı', () => {
 
 test('auth: getSession/getSessionForBootstrap/getSessionForQr fail-fast okuma kullanır', () => {
   const src = read('api/_lib/auth.js');
-  assert.match(src, /import \{ runSql, runSqlRead, runSqlReadFast, runSqlSessionBootstrap, runSqlSessionDelete \}/, 'runSqlSessionBootstrap import edilmeli');
+  assert.match(src, /import \{ runSql, runSqlReadFast, runSqlSessionBootstrap, runSqlSessionDelete \}/, 'runSqlSessionBootstrap import edilmeli');
   // Üç oturum getter'ı da fail-fast okuma kullanmalı
   const count = (src.match(/runSqlReadFast\(async \(\) =>/g) || []).length;
   assert.ok(count >= 2, `getSession/getSessionForQr runSqlReadFast kullanmalı (bulunan: ${count})`);

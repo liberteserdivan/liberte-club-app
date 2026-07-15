@@ -3,6 +3,9 @@ import { apiJson, SYNC_REQUEST_OPTIONS } from './apiClient.js';
 // Eşzamanlı /api/state isteklerini tekilleştir
 let inflightStateRequest = null;
 
+// Oturum nesli — logout/login sonrası eski in-flight backoff'u kirletemez
+let fetchGeneration = 0;
+
 // Hata sonrası üstel backoff — sonsuz retry önlenir
 let failStreak = 0;
 let blockedUntil = 0;
@@ -37,9 +40,9 @@ export function markRemoteFetchFailure() {
 }
 
 // Oturum geçişlerinde (logout/login) modül seviyesindeki ağ durumunu sıfırla.
-// Aksi halde önceki oturumdan kalan backoff (blockedUntil) yeni girişte /api/state
-// isteğini gereksizce reddeder ve eski in-flight GET yeni oturumun verisini ezebilir.
+// Nesil artınca eski in-flight'ın mark* çağrıları yok sayılır.
 export function resetRemoteFetchState() {
+  fetchGeneration += 1;
   inflightStateRequest = null;
   failStreak = 0;
   blockedUntil = 0;
@@ -67,18 +70,24 @@ export function dedupedApiJson(path, options = {}) {
     return inflightStateRequest;
   }
 
+  const gen = fetchGeneration;
   const request = apiJson(path, { ...SYNC_REQUEST_OPTIONS, ...options })
     .then((result) => {
-      if (result.response.ok) markRemoteFetchSuccess();
-      else if (result.response.status >= 500 || result.response.status === 0) markRemoteFetchFailure();
+      // Eski oturumun yanıtı yeni login backoff'unu kirletmesin
+      if (gen === fetchGeneration) {
+        if (result.response.ok) markRemoteFetchSuccess();
+        else if (result.response.status >= 500 || result.response.status === 0) {
+          markRemoteFetchFailure();
+        }
+      }
       return result;
     })
     .catch((error) => {
-      markRemoteFetchFailure();
+      if (gen === fetchGeneration) markRemoteFetchFailure();
       throw error;
     })
     .finally(() => {
-      if (dedupable) inflightStateRequest = null;
+      if (dedupable && gen === fetchGeneration) inflightStateRequest = null;
     });
 
   if (dedupable) inflightStateRequest = request;
