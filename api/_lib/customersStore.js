@@ -634,6 +634,22 @@ export async function listAllCustomers(sql) {
   return rows.map(customerRowToRecord);
 }
 
+// Keyset pagination — afterId sonrası LIMIT satır
+export async function listCustomersPage(sql, { afterId = 0, limit = 200 } = {}) {
+  if (!sql) return [];
+  await ensureCustomersTables(sql);
+  const safeLimit = Math.max(1, Math.min(500, Math.trunc(Number(limit) || 200)));
+  const cursor = Math.max(0, Math.trunc(Number(afterId) || 0));
+  const rows = await sql`
+    SELECT id, phone, name, email, birth_date, referral_code, is_admin, created_at, last_visit
+    FROM customers
+    WHERE id > ${cursor}
+    ORDER BY id ASC
+    LIMIT ${safeLimit}
+  `;
+  return rows.map(customerRowToRecord);
+}
+
 // Üyeyi normalize tablodan sil — CASCADE ile sadakat kayıtları da gider
 export async function deleteCustomerById(sql, customerId) {
   const id = Number(customerId);

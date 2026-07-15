@@ -95,6 +95,28 @@ export async function loadLoyaltyMapLightFromSql(externalSql = null) {
   return map;
 }
 
+// Sayfalı üye listesi için yalnızca istenen id'lerin loyalty satırı
+export async function loadLoyaltyMapLightForIds(customerIds, externalSql = null) {
+  const sql = externalSql || getSql();
+  if (!sql) return {};
+  const ids = (customerIds || []).map((id) => Number(id)).filter((id) => id > 0);
+  if (!ids.length) return {};
+
+  await ensureCustomersTables(sql);
+  const rows = await sql`
+    SELECT customer_id, total_stamps, lifetime_stamps, available_rewards, used_rewards,
+           level, category_stamps, category_rewards, lp_balance, lp_lifetime, lp_schema_version
+    FROM customer_loyalty
+    WHERE customer_id = ANY(${ids})
+  `;
+  const map = {};
+  for (const row of rows) {
+    const id = Number(row.customer_id);
+    map[id] = loyaltyRowToCard(row, id);
+  }
+  return map;
+}
+
 // Tek müşteri sadakat kartını oku — gerekirse event/damga kurtarmasını kalıcı yaz
 export async function loadLoyaltyForCustomer(customerId, externalSql = null, options = {}) {
   const sql = externalSql || getSql();
