@@ -20,20 +20,20 @@ import { ROUTE_TIMING } from '../routeTiming.js';
 import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 import { createLoginPhaseTracker } from '../loginPhase.js';
 
-// Rate-limit — DB gecikirse fail-open (login bloklanmaz)
+// Rate-limit — DB gecikirse fail-closed (brute-force koruması atlanmaz)
 async function isLoginRateLimited(req, action, options) {
-  const failOpenMs = ROUTE_TIMING.LOGIN_RATE_LIMIT_FAILOPEN_MS || 900;
+  const failClosedMs = ROUTE_TIMING.LOGIN_RATE_LIMIT_FAILOPEN_MS || 900;
   try {
     const result = await Promise.race([
       enforceAuthRateLimit(req, action, options),
       new Promise((_, reject) => {
-        setTimeout(() => reject(Object.assign(new Error('rate limit timeout'), { code: 'ETIMEDOUT' })), failOpenMs);
+        setTimeout(() => reject(Object.assign(new Error('rate limit timeout'), { code: 'ETIMEDOUT' })), failClosedMs);
       })
     ]);
     return result;
   } catch (error) {
-    console.warn('[auth.customer-login] rate_limit_skip', error?.message || error);
-    return false;
+    console.warn('[auth.customer-login] rate_limit_fail_closed', error?.message || error);
+    return true;
   }
 }
 

@@ -42,10 +42,11 @@ test('app-v2: sessionStore quick login API', async () => {
   assert.equal(session.customerId, 1);
 });
 
-test('app-v2: login otomatik giris UI', () => {
+test('app-v2: login PIN localStorage auto-login yok', () => {
   const src = read('src/pages/LoginPage.jsx');
-  assert.match(src, /login-auto-restore/);
-  assert.match(src, /Manuel girişe geç/);
+  assert.doesNotMatch(src, /login-auto-restore/);
+  assert.match(src, /purgeLegacyDevicePin/);
+  assert.match(src, /data-testid="login-submit"/);
 });
 
 test('app-v2: profil push durum karti', () => {

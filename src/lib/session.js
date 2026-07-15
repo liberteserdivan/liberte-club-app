@@ -405,7 +405,8 @@ export function readSession() {
 }
 
 const LAST_PHONE_KEY = 'liberteLastPhone';
-const LAST_PIN_KEY = 'liberteDevicePin';
+// Eski düz-metin PIN anahtarı — artık yazılmaz; boot/temizlikte silinir
+const LEGACY_PIN_KEY = 'liberteDevicePin';
 
 // Kayıtlı telefonu oku
 export function readSavedPhone() {
@@ -416,39 +417,38 @@ export function readSavedPhone() {
   }
 }
 
-// Kayıtlı PIN'i oku (cihazda hızlı açılış)
+// Geriye uyumluluk: PIN artık saklanmaz — her zaman boş
 export function readSavedPin() {
-  try {
-    return localStorage.getItem(LAST_PIN_KEY) || '';
-  } catch {
-    return '';
-  }
+  return '';
 }
 
-// Hızlı giriş bilgisi var mı?
+// Kayıtlı telefon var mı? (PIN ile otomatik giriş yok)
 export function hasQuickLogin() {
   const phone = String(readSavedPhone()).replace(/\D/g, '');
-  const pin = String(readSavedPin()).replace(/\D/g, '');
-  return phone.length >= 10 && (pin.length === 4 || pin.length === 6);
+  return phone.length >= 10;
 }
 
-// Başarılı girişten sonra cihaza kaydet
-export function saveQuickLogin(phone, pin) {
+// Başarılı girişten sonra yalnız telefonu kaydet — PIN düz metin yazılmaz
+export function saveQuickLogin(phone, _pin) {
   try {
     const ph = String(phone || '').replace(/\D/g, '');
-    const p = String(pin || '').replace(/\D/g, '');
     if (ph.length >= 10) localStorage.setItem(LAST_PHONE_KEY, ph);
-    if (p.length === 4 || p.length === 6) localStorage.setItem(LAST_PIN_KEY, p);
+    localStorage.removeItem(LEGACY_PIN_KEY);
   } catch {
     // Depolama kapalıysa sessizce geç
   }
 }
 
-// Hesap silme — PIN'i temizle
+// Eski PIN kalıntısını ve hesap silmede temizle
 export function clearQuickLoginPin() {
   try {
-    localStorage.removeItem(LAST_PIN_KEY);
+    localStorage.removeItem(LEGACY_PIN_KEY);
   } catch {
     // yoksay
   }
+}
+
+// Boot: eski liberteDevicePin anahtarını sil (XSS/backup sirkülasyonu kes)
+export function purgeLegacyDevicePin() {
+  clearQuickLoginPin();
 }

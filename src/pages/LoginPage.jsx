@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyRound, Loader2, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
+import { KeyRound, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import MenuPage from './MenuPage.jsx';
-import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS, getNativeApiOrigin, hasStoredAuthToken } from '../lib/apiClient.js';
+import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS, getNativeApiOrigin } from '../lib/apiClient.js';
 import { formatClientApiError } from '../lib/apiErrors.js';
 import { humanizeNetworkFailure } from '../lib/networkErrors.js';
 import { isNativeApp } from '../lib/platform.js';
@@ -18,7 +18,7 @@ import {
   verifyDevPin
 } from '../lib/devAuth.js';
 import { getDeviceId } from '../lib/deviceId.js';
-import { applyAuthResult, getAuthEpoch, waitForPendingLogout, hasQuickLogin, readSavedPhone, readSavedPin, saveQuickLogin, getMemorySession } from '../lib/session.js';
+import { applyAuthResult, getAuthEpoch, waitForPendingLogout, readSavedPhone, saveQuickLogin, purgeLegacyDevicePin } from '../lib/session.js';
 import {
   STORE_APP_NAME,
   BRAND_SLOGAN,
@@ -57,9 +57,6 @@ export default function Login({ db, commit, setSession }) {
   // Duplicate login submit koruması — uçuştaki giriş varken ikinci POST başlatma
   const loginInFlightRef = useRef(false);
   const loginAttemptRef = useRef(0);
-  const autoLoginStartedRef = useRef(false);
-  const [autoLoginPending, setAutoLoginPending] = useState(() => hasQuickLogin());
-  const [autoLoginStep, setAutoLoginStep] = useState(0);
 
   const notify = (message, type = 'warning') => setNotice({ message, type });
 
@@ -181,13 +178,12 @@ export default function Login({ db, commit, setSession }) {
     return p;
   }
 
-  function finishSession(result, epochAtLogin = null, pinUsed = null) {
+  function finishSession(result, epochAtLogin = null) {
     // Hızlı çıkış: uçuştaki login yanıtı oturumu geri açmasın
     if (epochAtLogin != null && getAuthEpoch() !== epochAtLogin) {
       notify('Oturum açılamadı. Lütfen tekrar deneyin.');
       return;
     }
-    const pinToStore = pinUsed || String(pin).replace(/\D/g, '');
     setPin('');
     setPinConfirm('');
     if (result.customer) {
@@ -209,10 +205,10 @@ export default function Login({ db, commit, setSession }) {
       }), { skipRemote: true });
     }
     const session = applyAuthResult(result);
-    saveQuickLogin(phone || readSavedPhone(), pinToStore);
+    // Yalnız telefon hatırlanır — PIN düz metin saklanmaz
+    saveQuickLogin(phone || readSavedPhone());
     if (email) localStorage.setItem('liberteLastEmail', email);
     setSession(session);
-    setAutoLoginPending(false);
   }
 
   async function createCustomerLocal(fields, pinValue) {
@@ -287,7 +283,6 @@ export default function Login({ db, commit, setSession }) {
     const ph = explicitPhone || readPhone();
     const pinValue = explicitPin || readPins(false);
     if (!ph || !pinValue) {
-      setAutoLoginPending(false);
       return;
     }
 
@@ -349,14 +344,12 @@ export default function Login({ db, commit, setSession }) {
       }
 
       logLoginDiag('success', { status: response.status, requestId: data?.requestId, step: data?.step });
-      finishSession(data, epochAtLogin, pinValue);
+      finishSession(data, epochAtLogin);
     } catch (e) {
       notifyRequestError(e, 'Giriş yapılamadı');
     } finally {
       setLoading(false);
       loginInFlightRef.current = false;
-      // 503 / erken return dahil her çıkışta otomatik giriş kilidini aç
-      setAutoLoginPending(false);
     }
   }
 
@@ -624,53 +617,12 @@ export default function Login({ db, commit, setSession }) {
     setResetCode('');
     setRegisterCode('');
     setInfo('');
-    setAutoLoginPending(false);
   }
 
-  // Kayıtlı telefon + PIN varsa giriş ekranını atla — token/oturum varken PIN yarışmasın
+  // Eski düz-metin PIN anahtarını sil; telefon prefill zaten useState'te
   useEffect(() => {
-    if (autoLoginStartedRef.current || authMode !== 'login') return;
-    if (getMemorySession() || hasStoredAuthToken()) {
-      setAutoLoginPending(false);
-      return;
-    }
-    if (!hasQuickLogin()) return;
-    autoLoginStartedRef.current = true;
-    const ph = norm(readSavedPhone());
-    const pinValue = readSavedPin();
-    if (ph.length < 10 || !pinValue) {
-      setAutoLoginPending(false);
-      return;
-    }
-    setPhone(formatPhoneInput(ph));
-    setPin(pinValue);
-    setAutoLoginPending(true);
-    void loginWithPin(ph, pinValue);
-  }, [authMode]);
-
-  // Otomatik giriş adımlarını görsel olarak ilerlet (uzun bekleyişte boş ekran olmasın)
-  useEffect(() => {
-    if (!autoLoginPending) {
-      setAutoLoginStep(0);
-      return undefined;
-    }
-    setAutoLoginStep(0);
-    const t1 = setTimeout(() => setAutoLoginStep(1), 1400);
-    const t2 = setTimeout(() => setAutoLoginStep(2), 3200);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [autoLoginPending]);
-
-  // Uçuştaki otomatik girişi iptal et — geç gelen yanıt oturum açmasın
-  function cancelAutoLogin() {
-    loginAttemptRef.current += 1;
-    loginInFlightRef.current = false;
-    setAutoLoginPending(false);
-    setLoading(false);
-    setPin('');
-  }
+    purgeLegacyDevicePin();
+  }, []);
 
   function onPhoneChange(value) {
     setPhone(formatPhoneInput(value));
@@ -686,48 +638,25 @@ export default function Login({ db, commit, setSession }) {
           <Brand db={db} login />
 
           <h1>
-            {authMode === 'login' && (autoLoginPending ? 'Liberte Club' : 'Giriş Yap')}
+            {authMode === 'login' && 'Giriş Yap'}
             {authMode === 'register' && 'Kayıt Ol'}
             {authMode === 'forgot' && 'PIN Sıfırla'}
           </h1>
           <p>
-            {authMode === 'login' && autoLoginPending && 'Seni içeri alıyoruz — bir saniye…'}
-            {authMode === 'login' && !autoLoginPending && 'Telefon numaranız ve kişisel PIN ile giriş yapın.'}
+            {authMode === 'login' && 'Telefon numaranız ve kişisel PIN ile giriş yapın.'}
             {authMode === 'register' && registerStep === 'form' && 'Bilgilerinizi girin; e-postanıza doğrulama kodu gönderilir.'}
             {authMode === 'register' && registerStep === 'verify' && 'E-postanızdaki kodu girin ve kaydı tamamlayın.'}
             {authMode === 'forgot' && 'E-posta veya telefonunuzu girin; kod kayıtlı e-postanıza gider.'}
           </p>
 
-          {authMode !== 'forgot' && !autoLoginPending && (
+          {authMode !== 'forgot' && (
             <div className="authSwitch">
               <button type="button" className={authMode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>Giriş Yap</button>
               <button type="button" className={authMode === 'register' ? 'active' : ''} onClick={() => switchMode('register')}>Kayıt Ol</button>
             </div>
           )}
 
-          {authMode === 'login' && autoLoginPending && (
-            <div className="loginAutoRestore" data-testid="login-auto-restore">
-              <div className="loginAutoRestorePulse" aria-hidden="true">
-                <Loader2 className="loginAutoRestoreSpin" size={28} />
-              </div>
-              <strong>Otomatik giriş</strong>
-              <p>Kayıtlı hesabın doğrulanıyor. Bu ekran kısa sürer.</p>
-              <ul className="loginAutoRestoreSteps" aria-hidden="true">
-                <li className={autoLoginStep > 0 ? 'is-done' : 'is-active'}>Hesap kontrolü</li>
-                <li className={autoLoginStep > 1 ? 'is-done' : (autoLoginStep === 1 ? 'is-active' : '')}>Oturum açılışı</li>
-                <li className={autoLoginStep >= 2 ? 'is-active' : ''}>Ana sayfa</li>
-              </ul>
-              <button
-                type="button"
-                className="ghost loginAutoRestoreCancel"
-                onClick={cancelAutoLogin}
-              >
-                Manuel girişe geç
-              </button>
-            </div>
-          )}
-
-          {authMode === 'login' && !autoLoginPending && (
+          {authMode === 'login' && (
             <>
               <label>Telefon numaranız</label>
               <input data-testid="login-phone" value={phone} onChange={(e) => onPhoneChange(e.target.value)} placeholder="0532 123 45 67" inputMode="tel" autoComplete="tel" />
