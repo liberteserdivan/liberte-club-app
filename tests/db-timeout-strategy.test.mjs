@@ -18,11 +18,34 @@ test('READ: bayat/asılı bağlantı attemptTimeoutMs ile sınırlı denemede fa
   };
 
   await assert.rejects(
-    withSqlRetry(hung, { retries: 2, attemptTimeoutMs: 50 }),
+    withSqlRetry(hung, {
+      retries: 2,
+      attemptTimeoutMs: 50,
+      // Testte gerçek sql.end yok — sayaç ile slot-serbest bırakma sözleşmesi
+      onAttemptTimeout: async () => {}
+    }),
     /ETIMEDOUT/
   );
   // Her deneme attemptTimeoutMs ile kesilir; toplam deneme = retries + 1
   assert.equal(attempts, 3);
+});
+
+test('READ attempt timeout: her timeout onAttemptTimeout cagirir (max:1 slot)', async () => {
+  let releases = 0;
+  const hung = () => new Promise(() => {});
+
+  await assert.rejects(
+    withSqlRetry(hung, {
+      retries: 1,
+      attemptTimeoutMs: 40,
+      onAttemptTimeout: async () => {
+        releases += 1;
+      }
+    }),
+    /ETIMEDOUT/
+  );
+  // retries:1 → 2 deneme → 2 timeout → 2 release
+  assert.equal(releases, 2);
 });
 
 test('WRITE: attemptTimeoutMs yokken görev tek kez çalışır (çift mutasyon yok)', async () => {

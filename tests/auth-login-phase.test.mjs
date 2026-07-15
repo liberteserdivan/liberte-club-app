@@ -109,10 +109,31 @@ test('withRouteDeadline: phase error payload', async () => {
   const { withRouteDeadline, isRouteDeadlineError } = await import('../api/_lib/routeDeadline.js');
   let phase = 'credential_lookup';
   try {
-    await withRouteDeadline(() => new Promise(() => {}), 50, 'test', { getPhase: () => phase });
+    await withRouteDeadline(() => new Promise(() => {}), 50, 'test', {
+      getPhase: () => phase,
+      // Testte gerçek sql.end çağırma — enjekte edilmiş no-op
+      onDeadline: async () => {}
+    });
     assert.fail('deadline bekleniyordu');
   } catch (e) {
     assert.equal(isRouteDeadlineError(e), true);
     assert.equal(e.phase, 'credential_lookup');
   }
+});
+
+test('withRouteDeadline: deadline asilinca onDeadline once calisir', async () => {
+  const { withRouteDeadline, isRouteDeadlineError } = await import('../api/_lib/routeDeadline.js');
+  const order = [];
+  try {
+    await withRouteDeadline(() => new Promise(() => {}), 40, 'slot-free', {
+      onDeadline: async () => {
+        order.push('release');
+      }
+    });
+    assert.fail('deadline bekleniyordu');
+  } catch (e) {
+    assert.equal(isRouteDeadlineError(e), true);
+    order.push('reject');
+  }
+  assert.deepEqual(order, ['release', 'reject']);
 });
