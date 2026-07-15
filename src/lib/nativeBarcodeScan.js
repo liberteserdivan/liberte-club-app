@@ -1,5 +1,5 @@
 import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
-import { isNativeApp } from './platform.js';
+import { isAndroid, isNativeApp } from './platform.js';
 
 // Native cihazda ML Kit destekleniyor mu?
 // Not: iOS'ta CapacitorMlkitBarcodeScanning Podfile'a ekli olduğundan native
@@ -16,8 +16,10 @@ export async function canUseNativeBarcodeScan() {
   }
 }
 
-// Android Play Services — Google Code Scanner modülü
+// Yalnızca Android Play Services — Google Code Scanner modülü
 async function ensureGoogleScannerModule() {
+  if (!isAndroid()) return true;
+
   try {
     const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
     if (available) return true;
@@ -42,8 +44,8 @@ export async function scanQrWithNativeCamera() {
     throw new Error('Kamera izni kapalı. Ayarlardan Liberte için kamerayı aç.');
   }
 
+  // iOS'ta Google modülü yok — zorunlu tutmak kamerayı hiç açtırmazdı
   const googleModuleReady = await ensureGoogleScannerModule();
-  // Android'de Google Code Scanner yoksa scan opaksız hata verir — net mesaj
   if (!googleModuleReady) {
     throw new Error(
       'QR okuyucu hazır değil. Google Play Hizmetleri güncel mi kontrol et veya uygulamayı yeniden aç.'

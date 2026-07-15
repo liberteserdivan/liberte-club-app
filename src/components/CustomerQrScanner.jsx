@@ -182,38 +182,6 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     }
   }, [actionBusy, resolveCustomerFromScan, scanBusy, stopScanner, syncScannedCustomer]);
 
-  // Effect yeniden boot'unda stale closure olmasın
-  const onScanSuccessRef = useRef(onScanSuccess);
-  useEffect(() => {
-    onScanSuccessRef.current = onScanSuccess;
-  }, [onScanSuccess]);
-
-  // Native ML Kit — tam ekran kamera (Play Store güvenilir yol)
-  const requestNativeScan = useCallback(async () => {
-    if (startingRef.current || busy) return;
-    startingRef.current = true;
-    setFound(null);
-    setScannedToken('');
-    setSuccess(false);
-    setMsg('Kamera açılıyor...');
-    setActive(true);
-
-    try {
-      const rawValue = await scanQrWithNativeCamera();
-      await onScanSuccess(rawValue);
-    } catch (error) {
-      const message = String(error?.message || '');
-      if (/cancel/i.test(message) || /iptal/i.test(message)) {
-        setMsg('Tarama iptal edildi.');
-      } else {
-        setMsg(message || 'QR okunamadı. Tekrar dene.');
-      }
-    } finally {
-      startingRef.current = false;
-      setActive(false);
-    }
-  }, [busy, onScanSuccess]);
-
   // Web — Html5Qrcode satır içi kamera
   const requestInlineScan = useCallback(() => {
     if (startingRef.current) return;
@@ -224,6 +192,41 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     setActive(true);
     setScanRequested(true);
   }, []);
+
+  // Native ML Kit — tam ekran kamera; başarısızsa satır içi kameraya düş
+  const requestNativeScan = useCallback(async () => {
+    if (startingRef.current || busy) return;
+    startingRef.current = true;
+    setFound(null);
+    setScannedToken('');
+    setSuccess(false);
+    setMsg('Kamera açılıyor...');
+    setActive(true);
+    let fellBackToInline = false;
+
+    try {
+      const rawValue = await scanQrWithNativeCamera();
+      await onScanSuccess(rawValue);
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (/cancel/i.test(message) || /iptal/i.test(message)) {
+        setMsg('Tarama iptal edildi.');
+      } else if (/desteklenmiyor|Play Hizmetleri|hazır değil|Kamera izni/i.test(message)) {
+        // Native yol kapalıysa WebView kamerası dene (finally active'i kapatmasın)
+        fellBackToInline = true;
+        setNativeScanReady(false);
+        startingRef.current = false;
+        requestInlineScan();
+      } else {
+        setMsg(message || 'QR okunamadı. Tekrar dene.');
+      }
+    } finally {
+      if (!fellBackToInline) {
+        startingRef.current = false;
+        setActive(false);
+      }
+    }
+  }, [busy, onScanSuccess, requestInlineScan]);
 
   const requestScan = useCallback(() => {
     if (nativeScanReady) {
@@ -255,7 +258,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
 
         const scanner = await bootInlineQrScanner({
           elementId: readerId,
-          onDecoded: (decoded) => { void onScanSuccessRef.current(decoded); }
+          onDecoded: (decoded) => { onScanSuccess(decoded); }
         });
 
         if (cancelled) {
@@ -286,7 +289,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       cancelled = true;
       void stopScanner();
     };
-  }, [scanRequested, nativeScanReady, readerId, stopScanner]);
+  }, [scanRequested, nativeScanReady, readerId, onScanSuccess, stopScanner]);
 
   useEffect(() => () => {
     stopScanner();
