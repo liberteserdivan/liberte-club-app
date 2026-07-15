@@ -108,5 +108,8 @@
     "@wdio/mocha-framework": "^9.20.0",
     "@wdio/spec-reporter": "^9.20.0",
     "webdriverio": "^9.20.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }
