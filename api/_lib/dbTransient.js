@@ -65,11 +65,25 @@ function sleep(ms) {
   });
 }
 
+// Attempt timeout'ta SQL bağlantısını serbest bırak (dinamik import — sql↔dbTransient döngüsü yok)
+async function releaseSqlOnAttemptTimeout() {
+  try {
+    const { forceResetSqlClient } = await import('./sql.js');
+    await forceResetSqlClient('attempt_timeout');
+  } catch {
+    // ignore
+  }
+}
+
 // Görevi zaman sınırıyla yarıştır — bayat bağlantıda postgres.js'in TCP
 // zaman aşımını (~15sn) beklemek yerine erken vazgeçip yeniden bağlanmayı sağlar.
 // timeoutMs <= 0 ise sınır uygulanmaz (varsayılan davranış korunur).
-function runWithAttemptTimeout(task, timeoutMs) {
+// Timeout sonrası forceReset: terk edilmiş sorgu max:1 slot'u 25sn tutmasın.
+// WRITE yolları attemptTimeoutMs kullanmaz → çift yazma riski yok.
+function runWithAttemptTimeout(task, timeoutMs, { onTimeout } = {}) {
   if (!timeoutMs || timeoutMs <= 0) return Promise.resolve().then(task);
+
+  const release = typeof onTimeout === 'function' ? onTimeout : releaseSqlOnAttemptTimeout;
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -79,7 +93,10 @@ function runWithAttemptTimeout(task, timeoutMs) {
       // Mesaj 'etimedout' içerir ki isTransientDbError geçici sayıp retry tetiklesin
       const err = new Error('ETIMEDOUT: sql attempt timeout');
       err.code = 'ETIMEDOUT';
-      reject(err);
+      Promise.resolve()
+        .then(() => release())
+        .catch(() => {})
+        .finally(() => reject(err));
     }, timeoutMs);
 
     Promise.resolve()
@@ -103,12 +120,18 @@ function runWithAttemptTimeout(task, timeoutMs) {
 
 // Kopan/bayat bağlantıda isteği kısa gecikmeyle yeniden dene.
 // attemptTimeoutMs verilirse her deneme bu süreyle sınırlanır (stall koruması).
-export async function withSqlRetry(task, { retries = 4, resetClient, attemptTimeoutMs = 0 } = {}) {
+// onAttemptTimeout: test/enjeksiyon; yoksa forceResetSqlClient (max:1 slot).
+export async function withSqlRetry(task, {
+  retries = 4,
+  resetClient,
+  attemptTimeoutMs = 0,
+  onAttemptTimeout
+} = {}) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      return await runWithAttemptTimeout(task, attemptTimeoutMs);
+      return await runWithAttemptTimeout(task, attemptTimeoutMs, { onTimeout: onAttemptTimeout });
     } catch (error) {
       lastError = error;
       if (!isTransientDbError(error) || attempt >= retries) {
