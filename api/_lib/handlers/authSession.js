@@ -101,3 +101,5 @@ export async function handleAuthSession(req, res) {
       timings: trace.successTimings(),
       error: e
     });
+  }
+}
