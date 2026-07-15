@@ -18,6 +18,8 @@ import {
 } from '../guardian/guardianApprovals.js';
 import { getProposal } from '../guardian/guardianActionProposals.js';
 import { readBodySafe } from '../http.js';
+import { getSql } from '../sql.js';
+import { purgeExpiredAuthData } from '../maintenance.js';
 
 // Liberte Guardian — HTTP yönlendiricisi
 // Tek sorumluluk: guardian resource'larını uygun yetki ile servis etmek.
@@ -274,9 +276,42 @@ async function handleMetrics(req, res) {
 // kalmak için reddederiz — autopilot herkese açık tetiklenemez.
 function isAuthorizedCron(req) {
   const secret = String(process.env.CRON_SECRET || '').trim();
-  if (!secret) return false;
+  if (!secret) {
+    // BUG-019: fail-closed + görünür ops alarmı (secret sızdırılmaz)
+    console.error(JSON.stringify({
+      level: 'error',
+      service: 'guardian-cron',
+      code: 'CRON_SECRET_MISSING',
+      message: 'CRON_SECRET tanimli degil; cron reddedildi'
+    }));
+    return false;
+  }
   const auth = String(req.headers?.authorization || '').trim();
   return auth === `Bearer ${secret}`;
+}
+
+// Best-effort auth purge — cron bütçesini boğmaz
+async function runCronAuthPurge() {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const counts = await purgeExpiredAuthData(sql);
+    console.info(JSON.stringify({
+      level: 'info',
+      service: 'guardian-cron',
+      step: 'purge_expired_auth',
+      ...counts
+    }));
+    return counts;
+  } catch (error) {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      service: 'guardian-cron',
+      step: 'purge_expired_auth',
+      error: String(error?.code || 'PURGE_FAILED')
+    }));
+    return null;
+  }
 }
 
 // GET cron — bot'u PERIYODIK tetikler (Vercel Cron). Admin oturumu yerine
@@ -286,6 +321,7 @@ async function handleCron(req, res) {
   if (!isAuthorizedCron(req)) {
     return envelope(res, 401, { ok: false, service: 'cron', error: 'Yetkisiz' });
   }
+  const purge = await withHealthDeadline(runCronAuthPurge(), null);
   await withHealthDeadline(evaluateAndIntervene().catch(() => {}), null);
   const overall = await withHealthDeadline(checkOverall(), DEGRADED_OVERALL_FALLBACK);
   return envelope(res, 200, {
@@ -294,6 +330,7 @@ async function handleCron(req, res) {
     status: overall.status,
     requiresHuman: overall.requiresHuman,
     safeMode: overall.safeMode,
+    purge,
     incidents: listIncidents({ status: 'open', limit: 10 })
   });
 }
