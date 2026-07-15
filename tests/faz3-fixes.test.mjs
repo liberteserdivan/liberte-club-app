@@ -78,3 +78,8 @@ test('Platform: web/iOS/Android surumleri 1.1.31 hizali', () => {
   assert.doesNotMatch(pbx, /MARKETING_VERSION = 1\.1\.22;/);
   assert.match(pbx, /MARKETING_VERSION = 1\.1\.31;/);
 });
+
+test('B-9: guardian cron purgeExpiredAuthData cagirir', () => {
+  const guardian = read('api/_lib/handlers/guardian.js');
+  assert.match(guardian, /purgeExpiredAuthData/);
+});
