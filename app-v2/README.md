@@ -1,19 +1,6 @@
-# Liberte Club — istemci v2 (Capacitor rewrite)
+# app-v2 (arsiv / deneysel)
 
-API/DB ayni kalir. Bundle: `cafe.liberte.app`.
+Bu agac su an production Vite build yolunda degildir.
 
-## Mimari
-- `pages/` → UI
-- `hooks/` → ekran durumu
-- `services/` → domain (auth, state, push, qr, admin)
-- `lib/` → apiClient, sessionStore, platform
-
-## Build cutover
-- `vite.config.js` root: `app-v2` → cikti: `dist`
-- Capacitor `webDir`: `dist` (degismedi)
-- Eski `src/` referans icin duruyor; store dogrulamasindan sonra arsivlenecek
-
-## Komutlar
-- `npm run dev` / `npx vite` — v2 gelistirme
-- `npx vite build` — production web asset
-- `node --test tests/app-v2-rewrite.test.mjs` — v2 kritik testler
+Kok ite.config.js acil rollback sonrasi stabil **v1** (src/) istemcisini derler.
+app-v2 native crash sonrasi askida birakilmistir; yeniden acmadan once Store + native smoke gereklidir.

@@ -8,14 +8,15 @@ Bu belge, **Liberte Gastro Cafe sadakat uygulamasının** veri katmanını açı
 
 | Özellik | Değer |
 |---------|--------|
-| Veritabanı | **PostgreSQL** (Neon — serverless) |
-| Node sürücüsü | `@neondatabase/serverless` |
-| Bağlantı | Vercel ortam değişkeni `DATABASE_URL` |
+| Veritabanı | **PostgreSQL** (production: **Supabase**; transaction pooler `:6543`) |
+| Node sürücüsü | `postgres` (postgres.js). `@neondatabase/serverless` bağımlılıkta kalabilir; **production Neon engellidir** (`api/_lib/sql.js`) |
+| Bağlantı | Vercel ortam değişkeni `DATABASE_URL` (secret değerleri bu dosyada yok) |
+| Havuz | Serverless instance başına `max: 1`, `prepare: false` (pooler), `statement_timeout` ~25s |
 | API katmanı | Vercel Serverless Functions (`/api/*`) |
-| Ana veri modeli | **Tek JSONB belgesi** + ilişkisel yardımcı tablolar |
+| Ana veri modeli | Hibrit: normalize tablolar (`USE_RELATIONAL_STATE=1`) + `app_state` JSONB dilimleri |
 | İstemci önbelleği | `localStorage` (`liberteDB`) |
 
-Proje klasik “her tablo bir entity” ORM yapısına sahip değildir. Üyelik, sadakat, menü, kampanya ve geçmiş verilerinin büyük kısmı **`app_state.data`** JSON alanında tutulur. Kimlik doğrulama, PIN, oturum ve e-posta arama gibi güvenlik kritik alanlar ayrı SQL tablolarında normalize edilmiştir.
+Production istemci girişi Vite **v1** (`src/`), bkz. `src/LEGACY.md`. Kimlik doğrulama, PIN, oturum ve e-posta arama güvenlik kritik alanlarda ayrı SQL tablolarındadır.
 
 ---
 
@@ -34,11 +35,11 @@ Proje klasik “her tablo bir entity” ORM yapısına sahip değildir. Üyelik,
 │  Vercel Serverless API (Node.js)                            │
 │  api/_lib/appState.js, auth.js, pinAuth.js, stateAccess.js │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ @neondatabase/serverless
+                           │ postgres.js (Supabase pooler)
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Neon PostgreSQL                                            │
-│  app_state (jsonb) · auth_sessions · customer_pin_auth · …  │
+│  Supabase PostgreSQL                                        │
+│  app_state · customers · customer_loyalty · auth_sessions   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,7 +47,7 @@ Proje klasik “her tablo bir entity” ORM yapısına sahip değildir. Üyelik,
 
 ## PostgreSQL tabloları
 
-Tablolar uygulama ilk çalıştığında **lazy migration** ile oluşturulur (`CREATE TABLE IF NOT EXISTS`). Şema referansı: `neon.sql` ve `api/_lib/*` modülleri.
+Tablolar geliştirmede lazy ensure veya `scripts/sql/*` bootstrap ile oluşur. Production'da DDL genelde bootstrap migration ile gelir (`api/_lib/schemaReady.js` production DDL atlar).
 
 ### 1. `app_state` — ana uygulama durumu
 

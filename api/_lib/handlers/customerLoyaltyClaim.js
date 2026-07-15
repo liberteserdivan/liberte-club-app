@@ -5,6 +5,7 @@ import { logServerError } from '../logServerError.js';
 import { runSql } from '../runSql.js';
 import { publicDbErrorCode, publicDbErrorMessage, isUndefinedTableError, isTransientDbError } from '../dbTransient.js';
 import { recordIncident } from '../guardian/guardianIncidents.js';
+import { rejectIfSafeModeBlocks } from '../guardian/guardianSafeMode.js';
 
 // daily_claims tablosu eksikse Guardian'a tek seferlik (dedup'lı) incident düş.
 // Admin panelde "migration eksik" uyarısını görür; ham DB hatası kullanıcıya gitmez.
@@ -42,6 +43,9 @@ export async function handleDailyLoginClaim(req, res) {
 
   const session = await requireSession(req, res);
   if (!session?.customerId) return;
+
+  // Safe Mode dailyClaim bayrağını sunucuda zorunlu uygula
+  if (rejectIfSafeModeBlocks(res, 'dailyClaim')) return;
 
   try {
     readBodySafe(req);
