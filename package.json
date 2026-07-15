@@ -63,7 +63,9 @@
     "next:build": "npm --prefix liberte-next/client run build",
     "next:test": "node --test liberte-next/tests/*.mjs",
     "next:prepare-native": "node liberte-next/scripts/prepare-native.mjs",
-    "codemagic:android-next": "node scripts/trigger-codemagic.mjs android-next-artifact"
+    "codemagic:android-next": "node scripts/trigger-codemagic.mjs android-next-artifact",
+    "db:probe-rls": "node scripts/probe-rls-status.mjs",
+    "db:apply-auth-indexes": "node scripts/apply-auth-indexes.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.1.0",
