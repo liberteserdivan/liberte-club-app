@@ -204,9 +204,11 @@ test('claimQrNonce aynı nonce+action için ikinci kez reddeder', async () => {
 
 test('handleAdminLoyaltyAction replay\'de 409 döner', () => {
   const src = read('api/_lib/handlers/adminLoyalty.js');
-  assert.match(src, /claimQrNonce/);
+  // Nonce claim loyaltyStore TX icinde; handler replay sonucunu 409 yapar
+  assert.match(src, /applyLoyaltyActionRelational/);
   assert.match(src, /409/);
   assert.match(src, /QR_REPLAY/);
+  assert.match(src, /RELATIONAL_REQUIRED/);
 });
 
 test('nonce claim loyalty transaction İÇİNDE yapılır (atomik) - hata olursa geri alınır', () => {

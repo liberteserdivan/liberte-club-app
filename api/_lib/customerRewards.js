@@ -12,17 +12,24 @@ import {
 
 // Gün anahtarı — Türkiye saatine sabit (istemci cihaz saatiyle uyumlu).
 // Sunucu UTC çalıştığı için sabit TZ olmadan gece saatlerinde gün kayardı.
-function localDayKey() {
+function localDayKey(date = new Date()) {
   // en-CA biçimi YYYY-MM-DD üretir
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Istanbul',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).format(new Date());
+  }).format(date);
 }
 
-// Giriş serisi hesapla
+// Istanbul gününde bir gün geri (UTC Date kaydırmaz)
+function previousIstanbulDayKey(dayKey) {
+  const noonUtc = new Date(`${dayKey}T12:00:00.000Z`);
+  noonUtc.setUTCDate(noonUtc.getUTCDate() - 1);
+  return localDayKey(noonUtc);
+}
+
+// Giriş serisi hesapla — tüm anahtarlar Europe/Istanbul
 function getCustomerStreak(dailyClaims, customerId) {
   const days = new Set(
     (dailyClaims || [])
@@ -32,15 +39,12 @@ function getCustomerStreak(dailyClaims, customerId) {
   if (!days.size) return 0;
 
   let streak = 0;
-  const cursor = new Date();
-  const today = localDayKey();
-  if (!days.has(today)) cursor.setDate(cursor.getDate() - 1);
+  let key = localDayKey();
+  if (!days.has(key)) key = previousIstanbulDayKey(key);
 
-  while (true) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-    if (!days.has(key)) break;
+  while (days.has(key)) {
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    key = previousIstanbulDayKey(key);
   }
   return streak;
 }

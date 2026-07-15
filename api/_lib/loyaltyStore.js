@@ -321,12 +321,22 @@ export async function applyLoyaltyActionRelational({
     // böylece runSql retry temiz şekilde yeniden deneyebilir. Gerçek tekrar ise
     // (eşzamanlı/replay) FOR UPDATE kilidi + unique (nonce,action) ile engellenir.
     if (nonce) {
-      const replayAction = action === 'stamp'
-        ? `stamp:${category}:${count}:${menuItem?.id || 0}`
-        : action;
+      // Admin manuel: nonce = Idempotency-Key; QR: stamp/action anahtarı
+      const looksManual = String(note || '').toLowerCase().includes('admin');
+      const replayAction = looksManual
+        ? `manual:${action}:${category}:${count}:${menuItem?.id || 0}`
+        : (action === 'stamp'
+          ? `stamp:${category}:${count}:${menuItem?.id || 0}`
+          : action);
       const claim = await claimQrNonce(tx, { nonce, action: replayAction, customerId: id });
       if (!claim.firstUse) {
-        return { ok: false, replay: true, error: 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.' };
+        return {
+          ok: false,
+          replay: true,
+          error: looksManual
+            ? 'Bu istek zaten işlendi'
+            : 'Bu QR kodu bu işlem için zaten kullanıldı. Müşteri ekranı QR\'ı yenilesin.'
+        };
       }
     }
 

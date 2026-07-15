@@ -49,16 +49,26 @@ export async function applyAdminMemberLoyalty({
   action = 'stamp',
   category = 'coffee',
   menuItemId = null,
-  note = 'Admin manuel'
+  note = 'Admin manuel',
+  idempotencyKey = null
 }) {
+  // Çift tıklama: istemci tek kullanım anahtarı üretir
+  const key = String(idempotencyKey || (
+    (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `m-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  )).slice(0, 120);
+
   const { response, data } = await apiJson('/api/admin?resource=member-loyalty', {
     method: 'POST',
+    headers: { 'Idempotency-Key': key },
     body: JSON.stringify({
       customerId: Number(customerId),
       action,
       category,
       menuItemId,
-      note
+      note,
+      idempotencyKey: key
     }),
     timeoutMs: 60000
   });
