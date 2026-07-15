@@ -6,12 +6,9 @@ import {
   LP_CATEGORIES,
   LP_GAIN,
   LP_COSTS,
-  applyLpEarn,
-  applyLpRedeem,
-  claimQrNonce,
-  insertLoyaltyEvent,
-  loadLoyaltyForCustomer,
-  writeLoyaltyCard
+  applyCashierLpMutation,
+  isLpMutationRejected,
+  loadLoyaltyForCustomer
 } from './_lib/loyalty.js';
 
 // Admin oturum zorunlu — role admin veya customers.is_admin
@@ -99,33 +96,21 @@ async function handleLp(req, res, sql) {
     return sendJson(res, 400, { ok: false, error: 'count 1-10 olmalı' });
   }
 
-  const nonceAction = `${action}:${category}:${count}`;
-  const claim = await claimQrNonce(sql, {
-    nonce: verified.nonce,
-    action: nonceAction,
-    customerId: verified.customerId
-  });
-  if (!claim.firstUse) {
-    return sendJson(res, 409, { ok: false, error: 'Bu QR zaten kullanıldı' });
+  let mutation;
+  try {
+    mutation = await applyCashierLpMutation(sql, {
+      customerId: verified.customerId,
+      action,
+      category,
+      count,
+      nonce: verified.nonce
+    });
+  } catch (error) {
+    if (isLpMutationRejected(error)) {
+      return sendJson(res, error.status || 400, { ok: false, error: error.message });
+    }
+    throw error;
   }
-
-  const current = await loadLoyaltyForCustomer(sql, verified.customerId);
-  const result = action === 'earn'
-    ? applyLpEarn(current, category, count)
-    : applyLpRedeem(current, category, count);
-
-  if (!result.ok) {
-    return sendJson(res, 400, { ok: false, error: result.error });
-  }
-
-  await writeLoyaltyCard(sql, verified.customerId, result.card);
-  await insertLoyaltyEvent(sql, {
-    customerId: verified.customerId,
-    eventType: action === 'earn' ? `earn_${category}` : `redeem_${category}`,
-    category,
-    delta: result.delta,
-    note: 'kasiyer-next'
-  });
 
   const summary = await loadCustomerSummary(sql, verified.customerId);
   return sendJson(res, 200, {
@@ -133,7 +118,7 @@ async function handleLp(req, res, sql) {
     action,
     category,
     count,
-    delta: result.delta,
+    delta: mutation.delta,
     unitGain: LP_GAIN[category],
     unitCost: LP_COSTS[category],
     ...summary
