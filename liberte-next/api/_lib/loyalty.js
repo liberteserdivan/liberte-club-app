@@ -178,7 +178,7 @@ export async function writeLoyaltyCard(sql, customerId, card) {
   `;
 }
 
-// QR nonce tek kullanımlık — tablo yoksa sessizce geç
+// QR nonce tek kullanımlık. Tablo yoksa fail-closed (replay korumasız yazıma izin yok).
 export async function claimQrNonce(sql, { nonce, action, customerId = null }) {
   if (!sql || !nonce) return { firstUse: true, skipped: !nonce };
   try {
@@ -192,10 +192,83 @@ export async function claimQrNonce(sql, { nonce, action, customerId = null }) {
   } catch (error) {
     const msg = String(error?.message || error || '');
     if (/relation .*qr_used_tokens.* does not exist/i.test(msg) || error?.code === '42P01') {
-      return { firstUse: true, skipped: true };
+      throw Object.assign(new Error('QR nonce tablosu yok'), {
+        code: 'QR_NONCE_TABLE_MISSING'
+      });
     }
     throw error;
   }
+}
+
+// İş kuralı reddi — postgres.js begin içinde throw → rollback (nonce yanmaz)
+function rejectLpMutation(status, error, extra = {}) {
+  return Object.assign(new Error(error), {
+    code: 'LP_MUTATION_REJECTED',
+    status,
+    ...extra
+  });
+}
+
+// Kasiyer LP: nonce + okuma + yazma tek transaction (FOR UPDATE serileştirir)
+export async function applyCashierLpMutation(sql, {
+  customerId,
+  action,
+  category,
+  count,
+  nonce
+}) {
+  const id = Number(customerId);
+  const nonceAction = `${action}:${category}:${count}`;
+
+  return sql.begin(async (tx) => {
+    await tx`SET LOCAL statement_timeout = '8000ms'`;
+
+    const locked = await tx`
+      SELECT id FROM customers WHERE id = ${id} FOR UPDATE
+    `;
+    if (!locked[0]) {
+      throw rejectLpMutation(404, 'Müşteri bulunamadı');
+    }
+
+    // Nonce claim TX içinde: mutasyon hata/rollback olursa nonce da geri alınır
+    const claim = await claimQrNonce(tx, {
+      nonce,
+      action: nonceAction,
+      customerId: id
+    });
+    if (!claim.firstUse) {
+      throw rejectLpMutation(409, 'Bu QR zaten kullanıldı', { replay: true });
+    }
+
+    const current = await loadLoyaltyForCustomer(tx, id);
+    const result = action === 'earn'
+      ? applyLpEarn(current, category, count)
+      : applyLpRedeem(current, category, count);
+
+    if (!result.ok) {
+      throw rejectLpMutation(400, result.error || 'LP işlemi reddedildi');
+    }
+
+    await writeLoyaltyCard(tx, id, result.card);
+    await insertLoyaltyEvent(tx, {
+      customerId: id,
+      eventType: action === 'earn' ? `earn_${category}` : `redeem_${category}`,
+      category,
+      delta: result.delta,
+      note: 'kasiyer-next'
+    });
+
+    return {
+      ok: true,
+      delta: result.delta,
+      card: result.card
+    };
+  });
+}
+
+// LP mutasyon reddini HTTP yanıta çevir
+export function isLpMutationRejected(error) {
+  return error?.code === 'LP_MUTATION_REJECTED';
 }
 
 // Müşteri sadakat satırını oku
