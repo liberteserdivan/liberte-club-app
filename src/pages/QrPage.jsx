@@ -245,6 +245,8 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
       mountedRef.current = false;
       cancelAnimationFrame(t);
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      // Unmount'ta uçuştaki QR fetch'i iptal et (BUG-016)
+      abortRef.current?.abort();
     };
   }, []);
 
@@ -252,6 +254,7 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
     refreshSignedQr();
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      abortRef.current?.abort();
     };
   }, [refreshSignedQr]);
 
