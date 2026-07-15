@@ -13,7 +13,7 @@ const bundle = readdirSync(distAssets)
   .map((n) => readFileSync(join(distAssets, n), "utf8"))
   .join("\n");
 
-const needles = ["Ayarları Aç", "Bildirimleri Aç", "Otomatik giriş", "login-auto-restore"];
+const needles = ["Ayarları Aç", "Bildirimleri Aç", "login-submit", "Giriş Yap"];
 const found = needles.filter((n) => bundle.includes(n));
 if (!found.length) {
   console.error(`[verify-android-dist] UI imzasi yok: ${needles.join(", ")}`);
