@@ -1,7 +1,7 @@
 import { applyCors, sendApiError } from '../http.js';
 import { requireAdminSession } from '../auth.js';
-import { listAllCustomers } from '../customersStore.js';
-import { loadLoyaltyMapLightFromSql } from '../loyaltyStore.js';
+import { listCustomersPage } from '../customersStore.js';
+import { loadLoyaltyMapLightForIds } from '../loyaltyStore.js';
 import { getSql, primeSqlConnection } from '../sql.js';
 import { runSqlAdminMembersRead } from '../runSql.js';
 import { classifyLoginDbError } from '../dbTransient.js';
@@ -42,10 +42,13 @@ export async function handleAdminMembers(req, res) {
     });
   }
 
+  const limit = Math.max(1, Math.min(500, Math.trunc(Number(req.query?.limit ?? 200) || 200)));
+  const afterId = Math.max(0, Math.trunc(Number(req.query?.afterId ?? 0) || 0));
+
   const tQueryStart = Date.now();
   let customers = [];
   try {
-    customers = await runSqlAdminMembersRead(() => listAllCustomers(getSql()));
+    customers = await runSqlAdminMembersRead(() => listCustomersPage(getSql(), { afterId, limit }));
   } catch (error) {
     const queryMs = Date.now() - tQueryStart;
     const dbErrorType = classifyLoginDbError(error);
@@ -66,19 +69,27 @@ export async function handleAdminMembers(req, res) {
   let loyaltyDegraded = false;
 
   try {
-    loyalty = await runSqlAdminMembersRead(() => loadLoyaltyMapLightFromSql(getSql()));
+    const ids = customers.map((row) => row.id);
+    loyalty = await runSqlAdminMembersRead(() => loadLoyaltyMapLightForIds(ids, getSql()));
   } catch (error) {
     loyaltyDegraded = true;
     console.warn('[admin.members] loyalty map skipped:', error?.message || error);
   }
 
   const loyaltyMs = Date.now() - tLoyaltyStart;
+  const nextCursor = customers.length === limit
+    ? Number(customers[customers.length - 1]?.id) || null
+    : null;
 
   return res.status(200).json({
     ok: true,
     customers,
     loyalty,
     count: customers.length,
+    limit,
+    afterId,
+    nextCursor,
+    hasMore: nextCursor != null,
     loyaltyDegraded,
     requestId: req.requestId || null,
     timings: buildTimings({ t0, authMs, queryMs, loyaltyMs })

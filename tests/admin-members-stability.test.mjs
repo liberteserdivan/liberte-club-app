@@ -65,8 +65,8 @@ test('getSessionForBootstrap: musteri yoksa null doner', () => {
 test('adminMembers: veri okumaları runSqlAdminMembersRead ile fail-fast', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
   assert.match(src, /import \{ runSqlAdminMembersRead \} from '\.\.\/runSql\.js'/);
-  assert.match(src, /runSqlAdminMembersRead\(\(\) => listAllCustomers\(getSql\(\)\)\)/, 'müşteri listesi fail-fast olmalı');
-  assert.match(src, /loadLoyaltyMapLightFromSql/, 'loyalty hafif okuma olmalı');
+  assert.match(src, /runSqlAdminMembersRead\(\(\) => listCustomersPage\(getSql\(\)/, 'müşteri listesi fail-fast olmalı');
+  assert.match(src, /loadLoyaltyMapLightForIds/, 'loyalty sayfalı okuma olmalı');
   assert.match(src, /loyaltyDegraded/, 'loyalty hatasında kısmi yanıt olmalı');
 });
 
@@ -80,7 +80,7 @@ test('adminMembers: geçici DB hatasında sendApiError ile 503', () => {
 test('adminMembers: auth/PIN kontrolü veri okumasından ÖNCE (hızlı 401/403)', () => {
   const src = read('api/_lib/handlers/adminMembers.js');
   const authIdx = src.indexOf('requireAdminSession(req, res');
-  const readIdx = src.indexOf('listAllCustomers(getSql())');
+  const readIdx = src.indexOf('listCustomersPage(getSql()');
   assert.ok(authIdx !== -1 && readIdx !== -1);
   assert.ok(authIdx < readIdx, 'admin/PIN kontrolü DB okumasından önce olmalı');
   // requireAdminSession başarısızsa erken return (401/403 handler içinde yazılır)
@@ -176,6 +176,8 @@ test('adminMemberClient: 503 transient icin retry var', () => {
   const src = read('src/lib/adminMemberClient.js');
   assert.match(src, /ADMIN_MEMBERS_TEMPORARILY_UNAVAILABLE/);
   assert.match(src, /await sleep\(2000\)/);
+  assert.match(src, /fetchAdminMembersPage/);
+  assert.match(src, /nextCursor/);
 });
 
 test('App: admin members yalnızca adminVerified sonrası çağrılır (login ekranında yok)', () => {

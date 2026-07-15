@@ -97,9 +97,13 @@ test('useAdminMembers: in-flight dedup + circuit breaker entegre', () => {
 
 test('adminMemberClient: native icin ADMIN_MEMBERS_REQUEST_OPTIONS kullanir', () => {
   const src = read('src/lib/adminMemberClient.js');
-  const fn = src.slice(src.indexOf('export async function fetchAdminMembersList'), src.indexOf('export async function applyAdminMemberLoyalty'));
+  // Timeout ayari fetchAdminMembersPage icinde; list wrapper sayfalar� cagirir
+  const start = src.indexOf('async function fetchAdminMembersPage');
+  const end = src.indexOf('export async function applyAdminMemberLoyalty');
+  const fn = src.slice(start, end);
   assert.match(fn, /ADMIN_MEMBERS_REQUEST_OPTIONS/, 'admin members native uzun timeout kullanmali');
   assert.doesNotMatch(fn, /timeoutMs:\s*60000/, '60sn sabit timeout kaldirilmali');
+  assert.match(fn, /fetchAdminMembersPage/, 'keyset sayfa cekimi olmali');
 });
 
 // Davranissal: devre 3 hatadan sonra acilir, 60sn skip eder, basari sifirlar

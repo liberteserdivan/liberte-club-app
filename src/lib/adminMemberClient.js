@@ -6,12 +6,16 @@ function sleep(ms) {
   });
 }
 
-// Yönetici — tüm üyeleri sunucudan çek (503 için tek retry).
-export async function fetchAdminMembersList() {
+// Tek sayfa üye listesi
+async function fetchAdminMembersPage({ afterId = 0, limit = 200 } = {}) {
   let lastError = null;
+  const qs = new URLSearchParams({
+    afterId: String(afterId),
+    limit: String(limit)
+  });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const { response, data } = await apiJson('/api/admin/members', {
+    const { response, data } = await apiJson(`/api/admin/members?${qs}`, {
       ...ADMIN_MEMBERS_REQUEST_OPTIONS,
       skipUnauthorized: true
     });
@@ -41,6 +45,37 @@ export async function fetchAdminMembersList() {
   }
 
   throw lastError || new Error('Üye listesi alınamadı');
+}
+
+// Yönetici — tüm üyeleri keyset sayfalama ile çek
+export async function fetchAdminMembersList() {
+  const customers = [];
+  const loyalty = {};
+  let afterId = 0;
+  let loyaltyDegraded = false;
+  let lastTimings = null;
+  let requestId = null;
+
+  for (let page = 0; page < 50; page += 1) {
+    const data = await fetchAdminMembersPage({ afterId, limit: 200 });
+    customers.push(...(data.customers || []));
+    Object.assign(loyalty, data.loyalty || {});
+    loyaltyDegraded = loyaltyDegraded || Boolean(data.loyaltyDegraded);
+    lastTimings = data.timings || lastTimings;
+    requestId = data.requestId || requestId;
+    if (!data.hasMore || data.nextCursor == null) break;
+    afterId = Number(data.nextCursor) || afterId;
+  }
+
+  return {
+    ok: true,
+    customers,
+    loyalty,
+    count: customers.length,
+    loyaltyDegraded,
+    requestId,
+    timings: lastTimings
+  };
 }
 
 // Yönetici — manuel LP / ikram işlemi

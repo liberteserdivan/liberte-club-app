@@ -65,7 +65,9 @@
     "next:prepare-native": "node liberte-next/scripts/prepare-native.mjs",
     "codemagic:android-next": "node scripts/trigger-codemagic.mjs android-next-artifact",
     "db:probe-rls": "node scripts/probe-rls-status.mjs",
-    "db:apply-auth-indexes": "node scripts/apply-auth-indexes.mjs"
+    "db:apply-auth-indexes": "node scripts/apply-auth-indexes.mjs",
+    "db:verify-schema": "node scripts/verify-schema-drift.mjs",
+    "db:apply-schema-drift": "node scripts/apply-schema-drift.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.1.0",
