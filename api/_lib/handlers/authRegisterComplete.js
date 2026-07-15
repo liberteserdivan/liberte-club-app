@@ -9,6 +9,7 @@ import { enforceAuthRateLimit } from '../rateLimit.js';
 import { logServerError } from '../logServerError.js';
 import { createRequestTrace } from '../requestTrace.js';
 import { withRealtimeToken } from '../supabaseRealtimeJwt.js';
+import { maskEmail, maskPhone } from '../guardian/mask.js';
 import {
   normalizeEmail,
   upsertCustomerEmail
@@ -103,8 +104,9 @@ async function handleSendCode(req, res, trace, body) {
   logRegisterDuplicate(trace, 'register_check', {
     ...analysis,
     blocked: conflict.blocked,
-    rawPhone: body.phone,
-    rawEmail: body.email
+    phoneLen: phone.length,
+    phoneMasked: maskPhone(phone),
+    emailMasked: maskEmail(email)
   });
 
   if (conflict.blocked) {
@@ -198,8 +200,9 @@ async function handleComplete(req, res, trace, body) {
   logRegisterDuplicate(trace, 'register_complete_check', {
     ...analysis,
     blocked: conflict.blocked,
-    rawPhone: body.phone,
-    rawEmail: body.email
+    phoneLen: phone.length,
+    phoneMasked: maskPhone(phone),
+    emailMasked: maskEmail(email)
   });
   trace.markStep('customer_find');
   if (conflict.blocked) {
