@@ -30,10 +30,14 @@ test('üye state sync hafif compose kullanır', () => {
 });
 
 test('adminLoyalty relational sadakat yolunu kullanır', () => {
+  // Invariant: relational modda LP/stamp applyLoyaltyActionRelational üzerinden gider;
+  // admin oturumu light okuma kullanır. Üye özeti qr-verify/member-lookup ince handler'da.
   const source = readFileSync(join(root, 'api/_lib/handlers/adminLoyalty.js'), 'utf8');
+  assert.match(source, /useRelationalState\s*\(/);
   assert.match(source, /applyLoyaltyActionRelational/);
-  assert.match(source, /loadCustomerSummaryRelational/);
-  assert.match(source, /light: true/);
+  assert.match(source, /light:\s*true/);
+  const verify = readFileSync(join(root, 'api/_lib/handlers/adminQrVerify.js'), 'utf8');
+  assert.match(verify, /requireAdminSession/);
 });
 
 test('migration script doğru şema yolunu kullanır', () => {

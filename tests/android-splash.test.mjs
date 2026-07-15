@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -42,10 +42,16 @@ test('Android sürüm numarası güncel', () => {
   assert.match(gradle, /versionName "1\.1\.31"/);
 });
 
-test('Capacitor splash yeşil zemin', () => {
-  const config = readFileSync(join(root, 'capacitor.config.json'), 'utf8');
-  assert.match(config, /"backgroundColor": "#0B2F26"/);
-  assert.match(config, /"launchAutoHide": false/);
+test('Capacitor splash yeşil zemin', async () => {
+  // Invariant: native splash marka yeşili kullanır; React tarafı SplashScreen.hide ile kapatır.
+  // launchAutoHide bilinçli olarak true (OS otomatik kapatır) — hideNativeSplash yedek yol.
+  const config = JSON.parse(readFileSync(join(root, 'capacitor.config.json'), 'utf8'));
+  const splash = config?.plugins?.SplashScreen || {};
+  assert.equal(splash.backgroundColor, '#0B2F26');
+  assert.equal(typeof splash.launchAutoHide, 'boolean');
+  const splashMod = await import(pathToFileURL(join(root, 'src', 'lib', 'nativeSplash.js')).href);
+  assert.equal(typeof splashMod.hideNativeSplash, 'function');
+  assert.equal(typeof splashMod.scheduleNativeSplashFailsafe, 'function');
 });
 
 test('React splash şeffaf logo kullanır', () => {

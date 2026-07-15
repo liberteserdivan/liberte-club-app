@@ -78,11 +78,12 @@ test('App.jsx useAdminRealtime VITE_DISABLE_REALTIME ile kapanır', () => {
 
 test('App.jsx sessionRef render sırasında senkron güncellenir (logout race önlemi)', () => {
   const src = read('src/App.jsx');
-  // useCommit çağrısından ÖNCE sessionRef.current = session olmalı
-  const refIdx = src.indexOf('sessionRef.current = session;');
-  const commitIdx = src.indexOf('= useCommit(load()');
+  // Invariant: sessionRef render gövdesinde senkron güncellenir ve useCommit'ten ÖNCE gelir
+  // (effect ile gecikirse logout race oluşur). useCommit imzası INITIAL_DB/sessionRef olabilir.
+  const refIdx = src.indexOf('sessionRef.current = session');
+  const commitIdx = src.search(/=\s*useCommit\s*\(/);
   assert.ok(refIdx !== -1, 'sessionRef.current = session render gövdesinde olmalı');
+  assert.ok(commitIdx !== -1, 'useCommit çağrısı bulunmalı');
   assert.ok(refIdx < commitIdx, 'sessionRef güncellemesi useCommit çağrısından önce olmalı');
-  // Eski effect tabanlı güncelleme kaldırılmış olmalı
   assert.doesNotMatch(src, /useEffect\(\(\) => \{\s*sessionRef\.current = session;\s*\}, \[session\]\)/);
 });

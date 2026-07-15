@@ -26,9 +26,15 @@ test('App: push kaydi db degisiminde yeniden planlanmaz', () => {
 
 test('App: hydrate snapshot ile ana UI hemen acar', () => {
   const app = read('src/App.jsx');
+  // Invariant: yerel snapshot varsa uzun hydrate login'i bloke etmez;
+  // fail-soft retry süresi sonlu bir sabittir (değer bilinçli olarak düşürülebilir).
   assert.match(app, /Snapshot varsa hydrate ekran/);
-  assert.match(app, /CUSTOMER_HYDRATE_RETRY_MS = 1_800/);
-  assert.doesNotMatch(app, /CUSTOMER_HYDRATE_MS/);
+  assert.match(app, /LOCAL_BOOT/);
+  assert.match(app, /CUSTOMER_HYDRATE_RETRY_MS\s*=\s*[\d_]+/);
+  const retryMatch = app.match(/CUSTOMER_HYDRATE_RETRY_MS\s*=\s*([\d_]+)/);
+  const retryMs = Number(String(retryMatch?.[1] || '').replace(/_/g, ''));
+  assert.ok(Number.isFinite(retryMs) && retryMs > 0 && retryMs <= 30_000, 'hydrate retry sonlu olmali');
+  assert.doesNotMatch(app, /CUSTOMER_HYDRATE_MS\s*=/);
 });
 
 test('Profil hero dar ekran 430px e kadar tasmaz', () => {

@@ -83,8 +83,13 @@ test('daily-claim: auth requireSession ile (oturum yoksa hizli 401)', () => {
 
 test('useAdminMembers: in-flight dedup + circuit breaker entegre', () => {
   const src = read('src/hooks/useAdminMembers.js');
-  assert.match(src, /inFlightRef = useRef\(null\)/, 'in-flight ref olmali');
-  assert.match(src, /if \(inFlightRef\.current\) return inFlightRef\.current;/, 'es zamanli istek tek isteğe inmeli');
+  // Invariant: eşzamanlı non-manual pull tek promise'e iner; circuit breaker bağlıdır.
+  assert.match(src, /inFlightRef\s*=\s*useRef\(\s*null\s*\)/, 'in-flight ref olmali');
+  assert.match(
+    src,
+    /(?:else\s+)?if\s*\(\s*inFlightRef\.current\s*\)\s*\{?\s*return\s+inFlightRef\.current/,
+    'es zamanli istek tek isteğe inmeli'
+  );
   assert.match(src, /canAttempt\(ADMIN_MEMBERS_CIRCUIT\)/, 'devre kesici kontrolu olmali');
   assert.match(src, /recordFailure\(ADMIN_MEMBERS_CIRCUIT\)/, 'hata devre sayacini artirmali');
   assert.match(src, /recordSuccess\(ADMIN_MEMBERS_CIRCUIT\)/, 'basari devreyi sifirlamali');

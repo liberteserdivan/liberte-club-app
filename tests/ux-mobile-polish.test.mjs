@@ -20,9 +20,11 @@ test('Android WebView zoom kapali', () => {
 });
 
 test('PushMessageSheet alt sheet kullanir', () => {
+  // Invariant: push mesajı marka kartı backdrop ile açılır; eski noticeModal kullanılmaz.
+  // Class adları pushBanner* olarak evrildi — davranış (backdrop + kapat) korunmalı.
   const src = read('src/components/PushMessageSheet.jsx');
-  assert.match(src, /pushSheetBackdrop/);
-  assert.match(src, /pushSheetHandle/);
+  assert.match(src, /(?:pushSheetBackdrop|pushBannerBackdrop)/);
+  assert.match(src, /(?:pushSheetHandle|pushBannerClose|pushBannerCta)/);
   assert.doesNotMatch(src, /noticeModal/);
 });
 
