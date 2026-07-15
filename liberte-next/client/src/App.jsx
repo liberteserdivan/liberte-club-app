@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MemberQrPage from './pages/MemberQrPage.jsx';
@@ -17,23 +17,25 @@ export default function App() {
   const [tab, setTab] = useState('home');
   const [booting, setBooting] = useState(Boolean(initial));
 
-  // Arka planda oturum doğrula
+  // Arka planda oturum doğrula — hata/cancel sonrası booting asla kilitlenmez
   useEffect(() => {
     let cancelled = false;
     async function revalidate() {
-      if (!auth?.token) {
-        setBooting(false);
-        return;
+      try {
+        if (!auth?.token) return;
+        const { ok, data } = await apiJson('/api/n-auth?action=me');
+        if (cancelled) return;
+        if (!ok || !data?.ok) {
+          logoutLocal();
+          setAuth(null);
+        } else {
+          setAuth(applyAuthResult({ ...data, sessionToken: auth.token }));
+        }
+      } catch {
+        // Ağ hatası: yerel oturumu koru, boot kilidini bırak
+      } finally {
+        if (!cancelled) setBooting(false);
       }
-      const { ok, data } = await apiJson('/api/n-auth?action=me');
-      if (cancelled) return;
-      if (!ok || !data?.ok) {
-        logoutLocal();
-        setAuth(null);
-      } else {
-        setAuth(applyAuthResult({ ...data, sessionToken: auth.token }));
-      }
-      setBooting(false);
     }
     revalidate();
     return () => { cancelled = true; };
@@ -54,6 +56,11 @@ export default function App() {
     setAuth(null);
   }
 
+  // Stable callback — HomePage /me döngüsünü önler (BUG-014)
+  const handleLoyalty = useCallback((loyalty) => {
+    setAuth((prev) => (prev ? { ...prev, loyalty } : prev));
+  }, []);
+
   if (!auth) {
     return (
       <div className="app-shell fade-in">
@@ -71,9 +78,7 @@ export default function App() {
         <HomePage
           auth={auth}
           onLogout={handleLogout}
-          onLoyalty={(loyalty) => {
-            setAuth((prev) => (prev ? { ...prev, loyalty } : prev));
-          }}
+          onLoyalty={handleLoyalty}
         />
       ) : null}
       {tab === 'qr' ? <MemberQrPage /> : null}

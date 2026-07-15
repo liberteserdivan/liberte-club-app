@@ -182,6 +182,12 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     }
   }, [actionBusy, resolveCustomerFromScan, scanBusy, stopScanner, syncScannedCustomer]);
 
+  // Effect yeniden boot'unda stale closure olmasın
+  const onScanSuccessRef = useRef(onScanSuccess);
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+  }, [onScanSuccess]);
+
   // Native ML Kit — tam ekran kamera (Play Store güvenilir yol)
   const requestNativeScan = useCallback(async () => {
     if (startingRef.current || busy) return;
@@ -249,7 +255,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
 
         const scanner = await bootInlineQrScanner({
           elementId: readerId,
-          onDecoded: (decoded) => { onScanSuccess(decoded); }
+          onDecoded: (decoded) => { void onScanSuccessRef.current(decoded); }
         });
 
         if (cancelled) {
@@ -280,7 +286,7 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
       cancelled = true;
       void stopScanner();
     };
-  }, [scanRequested, nativeScanReady, readerId, onScanSuccess, stopScanner]);
+  }, [scanRequested, nativeScanReady, readerId, stopScanner]);
 
   useEffect(() => () => {
     stopScanner();

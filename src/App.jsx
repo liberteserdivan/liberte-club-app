@@ -386,10 +386,16 @@ export default function App() {
     });
   }, []);
 
+  const tabRef = useRef(tab);
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
+
   useEffect(() => {
     if (!isNativeApp()) return undefined;
     let disposed = false;
     let removeOpenListener = () => {};
+    let removeBackListener = () => {};
 
     CapApp.getLaunchUrl()
       .then((result) => {
@@ -403,9 +409,26 @@ export default function App() {
       removeOpenListener = () => { handle.remove(); };
     }).catch(() => {});
 
+    // Android donanım geri tuşu — sekme geçmişi / uygulamadan çıkış
+    CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (disposed) return;
+      if (tabRef.current !== 'home') {
+        setTab('home');
+        return;
+      }
+      if (canGoBack) {
+        window.history.back();
+        return;
+      }
+      CapApp.minimizeApp().catch(() => {});
+    }).then((handle) => {
+      removeBackListener = () => { handle.remove(); };
+    }).catch(() => {});
+
     return () => {
       disposed = true;
       removeOpenListener();
+      removeBackListener();
     };
   }, []);
 
