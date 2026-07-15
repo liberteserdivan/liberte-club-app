@@ -6,8 +6,18 @@ import {
   LOYALTY_PROMO
 } from '../../src/lib/constants.js';
 
+// Production'da varsayılan kasiyer PIN'i asla gömme (BUG-026)
+function resolveSeedCashierPin() {
+  const isProd = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+  if (!isProd) return '5454';
+  const fromEnv = String(process.env.INITIAL_CASHIER_PIN || '').trim();
+  if (/^\d{4,8}$/.test(fromEnv) && fromEnv !== '5454') return fromEnv;
+  return null;
+}
+
 // Boş Supabase projesinde ilk app_state satırı için minimal seed
 export function buildInitialAppState() {
+  const cashierPin = resolveSeedCashierPin();
   return {
     settings: {
       stamp_threshold: 7,
@@ -22,7 +32,7 @@ export function buildInitialAppState() {
       hero_title: 'Bugünün Favorileri',
       hero_subtitle: BRAND_SLOGAN,
       promo_text: `${BRAND_SLOGAN} ${LOYALTY_PROMO}`,
-      cashier_pin: '5454',
+      ...(cashierPin ? { cashier_pin: cashierPin } : {}),
       review_popup: true,
       daily_popup: true,
       wheel_unlimited: false

@@ -1,3 +1,5 @@
 # Git'in otomatik LF/CRLF satir sonu donusumunu kapat.
 # Boylece "LF will be replaced by CRLF" uyarilari cikmaz (Windows/OneDrive ortami).
 * -text
+
+# BUG-030: charset icin .editorconfig (charset=utf-8); UTF-16 korumasi tests/api-import-smoke + ci-test.yml

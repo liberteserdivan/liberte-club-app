@@ -19,6 +19,7 @@ import { runSqlReadFast, getLoginReadAttemptTimeoutMs } from '../runSql.js';
 import { ROUTE_TIMING } from '../routeTiming.js';
 import { isRouteDeadlineError, withRouteDeadline } from '../routeDeadline.js';
 import { createLoginPhaseTracker } from '../loginPhase.js';
+import { rejectIfSafeModeBlocks } from '../guardian/guardianSafeMode.js';
 
 // Rate-limit — DB gecikirse fail-closed (brute-force koruması atlanmaz)
 async function isLoginRateLimited(req, action, options) {
@@ -127,6 +128,9 @@ export async function handleAuthLogin(req, res) {
   applyCors(req, res, 'POST,OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Safe Mode authLogin bayrağı kapalıysa girişi reddet (varsayılan: açık)
+  if (rejectIfSafeModeBlocks(res, 'authLogin')) return;
 
   const trace = createRequestTrace('auth.customer-login');
   const phases = createLoginPhaseTracker(trace, ROUTE_TIMING.LOGIN_CREDENTIAL_MS);

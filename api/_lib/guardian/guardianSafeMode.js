@@ -19,6 +19,7 @@ function normalFeatures() {
     adminDashboardRefresh: 'normal',
     fullStatePull: 'enabled',
     dailyClaim: 'enabled',
+    authLogin: 'enabled',
     qr: 'enabled',
     loyalty: 'enabled',
     push: 'enabled'
@@ -33,6 +34,8 @@ function degradedFeatures(overrides = {}) {
     adminDashboardRefresh: 'reduced',
     fullStatePull: 'disabled_for_customer',
     dailyClaim: 'disabled_temporarily',
+    // Giriş kurtarma yolu açık kalır; yalnızca featureFlags ile kapanır
+    authLogin: 'enabled',
     qr: 'enabled',
     loyalty: 'enabled_with_short_timeout',
     push: 'enabled',
@@ -147,6 +150,27 @@ export function disableSafeMode() {
 // Belirli bir özellik için Safe Mode değerini döndür
 export function safeModeFeature(name) {
   return readSafeModeSync().features[name] ?? 'normal';
+}
+
+// Özellik sunucuda reddedilmeli mi? (istemci ipucu yetmez — BUG-022)
+export function isSafeModeFeatureBlocked(name) {
+  const value = String(safeModeFeature(name) || '');
+  return value === 'disabled_temporarily'
+    || value === 'disabled'
+    || value === 'disabled_for_customer';
+}
+
+// Engelse 503 yazar ve true döner
+export function rejectIfSafeModeBlocks(res, featureName) {
+  if (!readSafeModeSync().enabled) return false;
+  if (!isSafeModeFeatureBlocked(featureName)) return false;
+  res.status(503).json({
+    ok: false,
+    code: 'SAFE_MODE_ACTIVE',
+    message: 'Sistem yoğunluğu nedeniyle bu işlem geçici olarak durduruldu. Lütfen biraz sonra tekrar dene.',
+    feature: featureName
+  });
+  return true;
 }
 
 // Test/temizlik
