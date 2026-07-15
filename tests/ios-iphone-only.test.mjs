@@ -22,10 +22,15 @@ test('Info.plist iPad yönelim anahtarı yok', () => {
 });
 
 test('Production index göreli asset yolları kullanır', () => {
-  const html = readFileSync(join(root, 'dist', 'index.html'), 'utf8');
-  assert.match(html, /src="\.\/assets\//);
-  assert.match(html, /href="\.\/assets\//);
+  // Invariant: Capacitor WebView göreli asset ister — Vite base './' bunu sağlar.
+  // dist/ yalnızca build sonrası oluşur; birim testleri kaynak yapılandırmayı doğrular.
+  const vite = readFileSync(join(root, 'vite.config.js'), 'utf8');
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  assert.match(vite, /base:\s*['"]\.\/['"]/);
   assert.match(html, /liberte-club-splash-master\.png/);
+  // Kaynak giriş göreli veya kök-relatif; mutlak CDN entry yok
+  assert.match(html, /src=["']\/?src\/main\.jsx["']/);
+  assert.doesNotMatch(html, /src=["']https?:\/\/[^"']+\/assets\//);
 });
 
 test('Vite base göreli — Capacitor WebView uyumlu', () => {

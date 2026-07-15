@@ -55,8 +55,18 @@ test('authLogin: credential yolunda primeSqlConnection YOK', () => {
   assert.doesNotMatch(src, /runSqlLoginRead/);
 });
 
-test('authLogin: LOGIN_READ_ATTEMPT_MS 10000ms', () => {
-  assert.match(read('api/_lib/routeTiming.js'), /LOGIN_READ_ATTEMPT_MS:\s*10000/);
+test('authLogin: LOGIN_READ_ATTEMPT_MS fail-fast ve credential bütçesinden küçük', async () => {
+  // Invariant: login read attempt süresi >0 ve LOGIN_CREDENTIAL_MS üst sınırının altında
+  // (fail-fast — bilinçli olarak 10s değil; export edilen sabiti davranışsal doğrula).
+  const { ROUTE_TIMING } = await import('../api/_lib/routeTiming.js');
+  assert.equal(typeof ROUTE_TIMING.LOGIN_READ_ATTEMPT_MS, 'number');
+  assert.ok(ROUTE_TIMING.LOGIN_READ_ATTEMPT_MS > 0);
+  assert.ok(
+    ROUTE_TIMING.LOGIN_READ_ATTEMPT_MS < ROUTE_TIMING.LOGIN_CREDENTIAL_MS,
+    'read attempt, credential deadline içine sığmalı'
+  );
+  const runSql = read('api/_lib/runSql.js');
+  assert.match(runSql, /LOGIN_READ_ATTEMPT_MS/);
 });
 
 test('authLogin: rate limit paralel Promise.all', () => {

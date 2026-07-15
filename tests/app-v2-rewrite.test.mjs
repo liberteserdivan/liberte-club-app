@@ -60,10 +60,16 @@ test('app-v2: admin saglik minimal health', () => {
   assert.doesNotMatch(src, /guardian\/health/);
 });
 
-test('vite cutover: root app-v2', () => {
+test('vite production: stabil v1 kökü + göreli base', async () => {
+  // Invariant: production build app-v2 root kullanmaz (acil v1 rollback);
+  // Capacitor WebView için base göreli kalır. app-v2 scaffold ayrı yaşar.
   const vite = readFileSync(join(root, 'vite.config.js'), 'utf8');
-  assert.match(vite, /app-v2/);
-  assert.match(vite, /outDir/);
+  assert.match(vite, /base:\s*["']\.\/["']/);
+  assert.doesNotMatch(vite, /root:\s*["']\.\/?app-v2/);
+  assert.ok(existsSync(v2('src/main.jsx')), 'app-v2 scaffold korunmali');
+  const mod = await import(pathToFileURL(join(root, 'vite.config.js')).href);
+  const cfg = typeof mod.default === 'function' ? mod.default() : mod.default;
+  assert.equal(cfg.base, './');
 });
 
 test('phoneMask TR format', async () => {

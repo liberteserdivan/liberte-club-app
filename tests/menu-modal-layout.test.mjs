@@ -49,9 +49,10 @@ test('Açılış bootstrap zaman aşımı tanımlı', () => {
 // session useCommit'ten önce tanımlanmalı — aksi halde production TDZ crash
 test('App.jsx session useCommit öncesinde tanımlı', () => {
   const app = readFileSync(join(root, 'src/App.jsx'), 'utf8');
-  const sessionIdx = app.indexOf('const [session, setSession] = useState(null)');
-  const commitIdx = app.indexOf('sessionCustomerId: session?.customerId');
+  // Invariant: session state, useCommit'ten önce gelir (lazy init LOCAL_BOOT olabilir).
+  const sessionIdx = app.search(/const\s*\[\s*session\s*,\s*setSession\s*\]\s*=\s*useState\s*\(/);
+  const commitIdx = app.search(/=\s*useCommit\s*\(/);
   assert.ok(sessionIdx >= 0, 'session state tanımı bulunamadı');
-  assert.ok(commitIdx >= 0, 'sessionCustomerId kullanımı bulunamadı');
+  assert.ok(commitIdx >= 0, 'useCommit çağrısı bulunamadı');
   assert.ok(sessionIdx < commitIdx, 'session useCommit çağrısından önce tanımlanmalı');
 });
