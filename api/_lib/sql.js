@@ -110,6 +110,14 @@ export function resetSqlClient() {
   if (holder) holder.sql = null;
 }
 
+// Route deadline / stall kurtarma — resetSqlClient ile aynı, gerekçe loglanır
+export async function forceResetSqlClient(reason = '') {
+  if (reason) {
+    console.warn('[sql.forceReset]', String(reason));
+  }
+  resetSqlClient();
+}
+
 // Aktif SQL istemcisi — istek kapsamı ile paylaşılan istemci aynıdır.
 // Kapsam bağlaması temizlenmişse (reset sonrası) yeniden taze istemciye bağlanır.
 export function getSql() {
