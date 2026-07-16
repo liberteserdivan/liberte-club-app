@@ -15,6 +15,7 @@ import { resolvePushAudience } from '../../../src/lib/pushAudience.js';
 import { sanitizePushSubscriptions } from '../../../src/lib/pushSubscriptionSanitize.js';
 import { collectFailedPushTokens, pruneInvalidPushTokens } from '../../../src/lib/pushTokens.js';
 import { isValidPrivateKeyPem } from '../fcmProbe.js';
+import { publicDbErrorCode, publicDbErrorMessage, isTransientDbError } from '../dbTransient.js';
 
 const SITE_ORIGIN = 'https://app.liberte.cafe';
 
@@ -428,15 +429,16 @@ export async function handleAdminPushSend(req, res) {
       message: error?.message || 'Push gönderilemedi',
       durationMs: Date.now() - startedAt
     });
-    return res.status(500).json({
+    const userMessage = publicDbErrorMessage(error, 'Push gönderilemedi.');
+    return res.status(isTransientDbError(error) ? 503 : 500).json({
       ok: false,
-      code: 'PUSH_SEND_FAILED',
-      message: 'Push gönderilemedi.',
+      code: publicDbErrorCode(error, 'PUSH_SEND_FAILED'),
+      message: userMessage,
       pushErrorStep: 'unexpected',
       requestId: trace.requestId,
       sent: 0,
-      error: error?.message || 'Push gönderilemedi',
-      note: `Push hatası: ${error?.message || 'bilinmeyen hata'}`
+      error: userMessage,
+      note: `Push hatası: ${userMessage}`
     });
   }
 }
