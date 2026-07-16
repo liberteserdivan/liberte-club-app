@@ -1,16 +1,6 @@
-import { handlePushRegisterDevice } from './_lib/handlers/pushRegisterDevice.js';
-import { handleAdminPushSend } from './_lib/handlers/adminPushSend.js';
 import { withSqlRequest, withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
-import { getSql } from './_lib/sql.js';
-import { loadPushMedia } from './_lib/pushMediaStore.js';
 
-// Cihaz kaydı — Guardian hydrate yok; login/ana ekranı bloklanmamalı
-const registerSqlHandler = withSqlRequestNoGuardian(handlePushRegisterDevice);
-
-// Admin push gönderimi — tam Guardian gözlemi
-const sendSqlHandler = withSqlRequest(handleAdminPushSend);
-
-// Public push görseli (FCM imageUrl) — ayrı serverless function yok (Hobby limiti)
+// Public push görseli (FCM imageUrl) — ağır Firebase import'u yok
 async function handlePushMedia(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -22,6 +12,8 @@ async function handlePushMedia(req, res) {
   }
 
   try {
+    const { getSql } = await import('./_lib/sql.js');
+    const { loadPushMedia } = await import('./_lib/pushMediaStore.js');
     const row = await loadPushMedia(getSql(), id);
     if (!row) {
       return res.status(404).json({ error: 'Görsel bulunamadı' });
@@ -44,16 +36,18 @@ const mediaSqlHandler = withSqlRequestNoGuardian(handlePushMedia);
 export default async function pushRouter(req, res) {
   const action = String(req.query?.action || '').trim().toLowerCase();
 
+  if (action === 'media') {
+    return mediaSqlHandler(req, res);
+  }
+
   if (action === 'send') {
-    return sendSqlHandler(req, res);
+    const { handleAdminPushSend } = await import('./_lib/handlers/adminPushSend.js');
+    return withSqlRequest(handleAdminPushSend)(req, res);
   }
 
   if (action === 'register-device') {
-    return registerSqlHandler(req, res);
-  }
-
-  if (action === 'media') {
-    return mediaSqlHandler(req, res);
+    const { handlePushRegisterDevice } = await import('./_lib/handlers/pushRegisterDevice.js');
+    return withSqlRequestNoGuardian(handlePushRegisterDevice)(req, res);
   }
 
   return res.status(400).json({ error: 'Geçersiz push action' });
