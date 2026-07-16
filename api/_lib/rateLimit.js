@@ -56,9 +56,24 @@ export async function isRateLimited(key, options = {}) {
 // anahtar kimlik bazlı olur. Kafe gibi paylaşımlı IP'lerde, bir IP'ye bağlı tüm
 // müşterilerin tek havuzda kilitlenmesini önlemek için login'de telefon bazlı
 // (hesap başına) limit kullanılır; ayrıca gevşek bir IP limiti üst sınır görevi görür.
-export async function enforceAuthRateLimit(req, action, { maxHits = 10, identifier = '' } = {}) {
+export async function enforceAuthRateLimit(req, action, { maxHits = 10, identifier = '', failOpenMs = 900 } = {}) {
   const id = String(identifier || '').trim();
   const key = id ? `${action}:id:${id}` : `${action}:${readClientIp(req)}`;
-  const limited = await isRateLimited(key, { maxHits });
-  return limited;
+  // DB/pooler gecikirse auth (forgot/register) asılı kalmasın — fail-open
+  try {
+    if (!failOpenMs || failOpenMs <= 0) {
+      return await isRateLimited(key, { maxHits });
+    }
+    return await Promise.race([
+      isRateLimited(key, { maxHits }),
+      new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(Object.assign(new Error('auth rate limit timeout'), { code: 'ETIMEDOUT' }));
+        }, failOpenMs);
+      })
+    ]);
+  } catch (error) {
+    console.warn('[auth.rate_limit_skip]', action, error?.message || error);
+    return false;
+  }
 }

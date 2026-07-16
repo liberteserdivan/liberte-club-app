@@ -1,9 +1,9 @@
-# Liberte Club — Codemagic iOS + Android mağaza derlemesi
+﻿# Liberte Club â€” Codemagic iOS + Android maÄŸaza derlemesi
 #
 # Ortak Secure env: GOOGLE_SERVICE_INFO_PLIST, GOOGLE_SERVICES_JSON
 # Android ek Secure: PLAY_STORE_SERVICE_ACCOUNT_JSON
-# Android imza — iki yol:
-#   A) Code signing → Android keystore reference: liberte_club_release
+# Android imza â€” iki yol:
+#   A) Code signing â†’ Android keystore reference: liberte_club_release
 #   B) Env: ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PROPERTIES
 # Android Secure env (grup: liberte_android):
 #   GOOGLE_SERVICES_JSON, PLAY_STORE_SERVICE_ACCOUNT_JSON
@@ -37,7 +37,7 @@ workflows:
         IOS_MIN_BUILD_NUMBER: "61"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
-        # Native build'in vuracağı API kökü — domain/Vercel URL değişiminde burayı güncelle
+        # Native build'in vuracaÄŸÄ± API kÃ¶kÃ¼ â€” domain/Vercel URL deÄŸiÅŸiminde burayÄ± gÃ¼ncelle
         VITE_API_BASE_URL: "https://app.liberte.cafe"
         # App Store post-processing: Apple isleme suresi 5-30+ dk surer; kisa timeout kirmizi build uretir
         APP_STORE_CONNECT_MAX_FIND_BUILD_WAIT: "20"
@@ -59,7 +59,7 @@ workflows:
         script: |
           export VITE_APP_VERSION="${APP_VERSION:-1.1.31}.${BUILD_NUMBER:-0}"
           export VITE_BUILD_NUMBER="${BUILD_NUMBER:-0}"
-          # Native API kökü Vite build'e geçer; ayarlı değilse production fallback
+          # Native API kÃ¶kÃ¼ Vite build'e geÃ§er; ayarlÄ± deÄŸilse production fallback
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.liberte.cafe}"
           echo "[build] VITE_API_BASE_URL=$VITE_API_BASE_URL"
           npm run build:release
@@ -72,7 +72,7 @@ workflows:
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
 
-          # Sayisal Apple ID'yi bundle id uzerinden coz — manuel deger gerekmez.
+          # Sayisal Apple ID'yi bundle id uzerinden coz â€” manuel deger gerekmez.
           # Kimlik bilgileri app_store_connect grubundan otomatik okunur.
           APPLE_ID="$(app-store-connect apps list \
             --bundle-id-identifier "$BUNDLE_ID" \
@@ -81,7 +81,7 @@ workflows:
             | python3 -c "import sys,json; a=json.load(sys.stdin); print(a[0]['id'] if a else '')" \
             || echo '')"
 
-          # TestFlight'taki en yuksek build numarasini al, +1 yap — cakismayi kesin onler.
+          # TestFlight'taki en yuksek build numarasini al, +1 yap â€” cakismayi kesin onler.
           IOS_BUILD=""
           if [ -n "$APPLE_ID" ]; then
             LATEST="$(app-store-connect get-latest-testflight-build-number "$APPLE_ID" 2>/dev/null || echo '')"
@@ -149,13 +149,13 @@ workflows:
         - liberte_android
       vars:
         ANDROID_RELEASE: "true"
-        PLAY_TRACK: alpha
+        PLAY_TRACK: production
         ENABLE_PLAY_UPLOAD: "true"
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.31"
         ANDROID_MIN_VERSION_CODE: "82"
-        PROMOTE_ALPHA_TO_INTERNAL: "true"
-        # Native build'in vuracağı API kökü — domain/Vercel URL değişiminde burayı güncelle
+        PROMOTE_ALPHA_TO_INTERNAL: "false"
+        # Native build'in vuracaÄŸÄ± API kÃ¶kÃ¼ â€” domain/Vercel URL deÄŸiÅŸiminde burayÄ± gÃ¼ncelle
         VITE_API_BASE_URL: "https://app.liberte.cafe"
       node: 22
       java: 21
@@ -178,7 +178,7 @@ workflows:
       - name: Web build
         script: |
           export VITE_APP_VERSION="${APP_VERSION:-1.1.31}.${BUILD_NUMBER:-0}"
-          # Native API kökü Vite build'e geçer; ayarlı değilse production fallback
+          # Native API kÃ¶kÃ¼ Vite build'e geÃ§er; ayarlÄ± deÄŸilse production fallback
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.liberte.cafe}"
           echo "[build] VITE_APP_VERSION=$VITE_APP_VERSION VITE_API_BASE_URL=$VITE_API_BASE_URL commit=$(git rev-parse --short HEAD)"
           npm run build:release
@@ -189,7 +189,7 @@ workflows:
       - name: Android surum kodu
         script: |
           set -eo pipefail
-          # Google Play'deki en yuksek versionCode'u al, +1 yap — cakismayi kesin onler.
+          # Google Play'deki en yuksek versionCode'u al, +1 yap â€” cakismayi kesin onler.
           # Kimlik: bir onceki adimda yazilan servis hesabi JSON dosyasi.
           CREDS="$CM_BUILD_DIR/android/play-console-service-account.json"
           LATEST="$(google-play get-latest-build-number \
@@ -199,7 +199,7 @@ workflows:
             export ANDROID_VERSION_CODE="$((LATEST + 1))"
             echo "[android-version] Play latest=$LATEST -> versionCode=$ANDROID_VERSION_CODE"
           else
-            echo "[android-version] Play sorgusu basarisiz — taban/BUILD_NUMBER kullanilacak"
+            echo "[android-version] Play sorgusu basarisiz â€” taban/BUILD_NUMBER kullanilacak"
           fi
           node scripts/set-android-version-code.mjs
       - name: Derleme dogrulama
@@ -216,13 +216,13 @@ workflows:
         script: |
           set -eo pipefail
           if [ "${ENABLE_PLAY_UPLOAD:-false}" != "true" ]; then
-            echo "[play] Upload atlandi — ENABLE_PLAY_UPLOAD=true olmadan Play'e yuklenmez"
+            echo "[play] Upload atlandi â€” ENABLE_PLAY_UPLOAD=true olmadan Play'e yuklenmez"
             exit 0
           fi
           cd android
           AAB_PATH="app/build/outputs/bundle/release/app-release.aab"
           if [ ! -f "$AAB_PATH" ]; then
-            echo "[play] HATA: AAB bulunamadi — once bundleRelease basarili olmali"
+            echo "[play] HATA: AAB bulunamadi â€” once bundleRelease basarili olmali"
             exit 1
           fi
           TRACK="${PLAY_TRACK:-alpha}"
@@ -293,7 +293,7 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
-          echo "[artifact] Play Store upload YAPILMADI — yalnizca APK uretildi"
+          echo "[artifact] Play Store upload YAPILMADI â€” yalnizca APK uretildi"
     artifacts:
       - android/app/build/outputs/apk/release/*.apk
     publishing:
@@ -304,7 +304,7 @@ workflows:
           success: true
           failure: true
 
-  # Liberte Next MVP — production webDir DEĞİŞTİRMEZ; geçici sync + APK
+  # Liberte Next MVP â€” production webDir DEÄÄ°ÅTÄ°RMEZ; geÃ§ici sync + APK
   android-next-artifact:
     name: android-next-artifact
     max_build_duration: 90
@@ -342,7 +342,7 @@ workflows:
           export VITE_APP_VERSION="${APP_VERSION:-1.1.31}.${BUILD_NUMBER:-0}-next"
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.liberte.cafe}"
           node liberte-next/scripts/prepare-native.mjs
-          # prepare-native kök config'i geri yükler; dist webDir doğrula
+          # prepare-native kÃ¶k config'i geri yÃ¼kler; dist webDir doÄŸrula
           grep -q '"webDir": "dist"' capacitor.config.json
           node scripts/set-android-version-code.mjs
       - name: Next Release APK
@@ -350,7 +350,7 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
-          echo "[artifact] Liberte Next APK — Play upload YOK"
+          echo "[artifact] Liberte Next APK â€” Play upload YOK"
     artifacts:
       - android/app/build/outputs/apk/release/*.apk
     publishing:
@@ -415,7 +415,7 @@ workflows:
           xcode-project build-ipa \
             --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
-          echo "[artifact] TestFlight / App Store upload YAPILMADI — yalnizca IPA uretildi"
+          echo "[artifact] TestFlight / App Store upload YAPILMADI â€” yalnizca IPA uretildi"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -480,7 +480,7 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-          echo "[smoke] Debug APK — Play upload yok, WebView debug acik"
+          echo "[smoke] Debug APK â€” Play upload yok, WebView debug acik"
       - name: BrowserStack gercek cihaz smoke testleri
         script: |
           export MOBILE_ANDROID_APK_PATH="$CM_BUILD_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
@@ -545,3 +545,4 @@ workflows:
         notify:
           success: true
           failure: true
+

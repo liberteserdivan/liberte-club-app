@@ -58,20 +58,23 @@ async function loadCashierCustomerSummary(customerId) {
   if (!sql) return null;
   const id = Number(customerId);
 
-  if (useRelationalState()) {
-    const [customer, loyaltyRow] = await Promise.all([
-      findCustomerById(sql, id),
-      findLoyaltyByCustomerId(sql, id)
-    ]);
+  // Cutover sonrası app_state'te customers olmayabilir — önce normalize tablo
+  const [customer, loyaltyRow] = await Promise.all([
+    findCustomerById(sql, id),
+    findLoyaltyByCustomerId(sql, id)
+  ]);
+  if (customer) {
     return buildCashierCustomerSummary(customer, loyaltyRow);
   }
 
+  if (useRelationalState()) return null;
+
   const remote = await loadAppState();
   if (!remote?.data) return null;
-  const customer = (remote.data.customers || []).find((row) => Number(row.id) === id);
-  if (!customer) return null;
+  const fromState = (remote.data.customers || []).find((row) => Number(row.id) === id);
+  if (!fromState) return null;
   const loyalty = remote.data.loyalty?.[id] || remote.data.loyalty?.[String(id)] || null;
-  return buildCashierCustomerSummary(customer, loyalty);
+  return buildCashierCustomerSummary(fromState, loyalty);
 }
 
 // Kasiyer QR doğrula — LP action / menuSeed yolundan ayrı
