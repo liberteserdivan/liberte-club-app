@@ -130,8 +130,12 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        # IPA yuklendikten sonra TestFlight beta incelemesine gonder
+        # IPA yuklendikten sonra TestFlight + App Store incelemesine gonder
         submit_to_testflight: true
+        submit_to_app_store: true
+        cancel_previous_submissions: true
+        release_type: AFTER_APPROVAL
+        copyright: "2026 Liberte Gastro Cafe"
 
   android-release:
     name: android-release
@@ -231,6 +235,10 @@ workflows:
           # Basarisiz yukleme build'i yesil gostermesin
           ./gradlew publishReleaseBundle --track="$TRACK"
           echo "[play] Otomatik yukleme tamamlandi: $TRACK"
+          if [ "$TRACK" = "production" ]; then
+            cd "$CM_BUILD_DIR"
+            node scripts/rollout-play-production.mjs || echo "[play] production rollout atlandi (draft veya izin)"
+          fi
           # Dahili test kanalini da ayni surume cek (testerlar geride kalmasin)
           if [ "$TRACK" = "alpha" ] && [ "${PROMOTE_ALPHA_TO_INTERNAL:-true}" = "true" ]; then
             cd "$CM_BUILD_DIR"
