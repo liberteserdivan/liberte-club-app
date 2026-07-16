@@ -1,0 +1,117 @@
+﻿
+> liberte-club-app@1.1.30 lint
+> eslint . --max-warnings 9999
+
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\auth.js
+  6:18  warning  'runSqlRead' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\customersStore.js
+  402:59  warning  'customerName' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\handlers\realtimeFetch.js
+  11:10  warning  'readPromoSlice' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\inAppNotificationStore.js
+  1:10  warning  'getSql' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\loyaltyOps.js
+  221:37  warning  'state' is defined but never used. Allowed unused args must match /^_/u       no-unused-vars
+  221:44  warning  'customerId' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\qrToken.js
+  33:19  warning  'source' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\registerAppStateSync.js
+  8:46  warning  'requestId' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\api\_lib\stateAccess.js
+  24:11  warning  'isAdmin' is assigned a value but never used. Allowed unused vars must match /^_/u      no-unused-vars
+  83:13  warning  'cashier_pin' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\scripts\debug-jsonb-insert.mjs
+  2:10  warning  'existsSync' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\scripts\generate-ios-assets.mjs
+  5:34  warning  'buildSplashFromMaster' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\scripts\generate-splash-assets.mjs
+  4:52  warning  'ensureSplashMaster' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\scripts\import-menu-from-xlsx.mjs
+  175:15  warning  'key' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\scripts\import-neon-backup.mjs
+  36:10  warning  'getTargetUrl' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\App.jsx
+   24:10  warning  'canRequestPushOnThisDevice' is defined but never used. Allowed unused vars must match /^_/u                 no-unused-vars
+   53:7   warning  'CUSTOMER_HYDRATE_MS' is assigned a value but never used. Allowed unused vars must match /^_/u               no-unused-vars
+  127:6   warning  React Hook useEffect has a missing dependency: 'commit'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  292:6   warning  React Hook useEffect has a missing dependency: 'session'. Either include it or remove the dependency array   react-hooks/exhaustive-deps
+  375:6   warning  React Hook useEffect has a missing dependency: 'commit'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  449:6   warning  React Hook useEffect has a missing dependency: 'customer'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\components\Cards.jsx
+    2:13  warning  'Coffee' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                 no-unused-vars
+    2:43  warning  'Send' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                   no-unused-vars
+    2:60  warning  'Sparkles' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                               no-unused-vars
+  267:5   warning  React Hook useEffect has missing dependencies: 'customer' and 'db'. Either include them or remove the dependency array. If 'setVisible' needs the current value of 'customer', you can also switch to useReducer instead of useState and read 'customer' in the reducer  react-hooks/exhaustive-deps
+  410:41  warning  'commit' is defined but never used. Allowed unused args must match /^_/u                                                                                                                                                                                                 no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\hooks\useCommit.js
+  224:15  warning  Redundant Boolean call                                                                                                                     no-extra-boolean-cast
+  254:6   warning  React Hook useCallback has a missing dependency: 'persistLocal'. Either include it or remove the dependency array                          react-hooks/exhaustive-deps
+  388:6   warning  React Hook useCallback has missing dependencies: 'persistLocal' and 'queueSaveRemote'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  396:6   warning  React Hook useCallback has a missing dependency: 'queueSaveRemote'. Either include it or remove the dependency array                       react-hooks/exhaustive-deps
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\lib\adminMemberSync.js
+   25:34  warning  Redundant Boolean call                                                              no-extra-boolean-cast
+   26:8   warning  Redundant Boolean call                                                              no-extra-boolean-cast
+  245:45  warning  'session' is assigned a value but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\lib\db.js
+    3:3   warning  'STAMP_SLOT_COUNT' is defined but never used. Allowed unused vars must match /^_/u               no-unused-vars
+    6:3   warning  'normalizeCategoryStamps' is defined but never used. Allowed unused vars must match /^_/u        no-unused-vars
+    7:3   warning  'normalizeCategoryRewards' is defined but never used. Allowed unused vars must match /^_/u       no-unused-vars
+    9:3   warning  'stampsRemaining' is defined but never used. Allowed unused vars must match /^_/u                no-unused-vars
+   14:3   warning  'lpRewardStatusText' is defined but never used. Allowed unused vars must match /^_/u             no-unused-vars
+   28:3   warning  'getMembershipView' is defined but never used. Allowed unused vars must match /^_/u              no-unused-vars
+   32:3   warning  'UNIVERSAL_MEMBERSHIP_BENEFITS' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+   33:3   warning  'TIER_DISCOUNT_RULES' is defined but never used. Allowed unused vars must match /^_/u            no-unused-vars
+   35:10  warning  'apiJson' is defined but never used. Allowed unused vars must match /^_/u                        no-unused-vars
+   35:19  warning  'SYNC_REQUEST_OPTIONS' is defined but never used. Allowed unused vars must match /^_/u           no-unused-vars
+  831:40  warning  'id' is defined but never used. Allowed unused args must match /^_/u                             no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\lib\localStateCache.js
+  12:11  warning  'isAdmin' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\pages\AdminPage.jsx
+     2:41   warning  'Gift' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                       no-unused-vars
+     2:91   warning  'Minus' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                      no-unused-vars
+     2:149  warning  'Sparkles' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                   no-unused-vars
+     6:54   warning  'applyCouponToCustomer' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                      no-unused-vars
+     6:90   warning  'levelByStamps' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                              no-unused-vars
+     6:104  warning  'localDayKey' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                no-unused-vars
+   462:34   warning  'isError' is assigned a value but never used. Allowed unused args must match /^_/u                                                                                                                                                                                           no-unused-vars
+  1130:5    warning  React Hook useEffect has missing dependencies: 'beginEdit', 'customers', and 'onFocusHandled'. Either include them or remove the dependency array. If 'onFocusHandled' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\pages\LoginPage.jsx
+  28:3  warning  'getReferralCode' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\pages\MenuPage.jsx
+  30:9  warning  The 'cats' logical expression could make the dependencies of useMemo Hook (at line 35) change on every render. To fix this, wrap the initialization of 'cats' in its own useMemo() Hook                                                 react-hooks/exhaustive-deps
+  31:9  warning  The 'allItems' logical expression could make the dependencies of useMemo Hook (at line 35) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'allItems' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\src\pages\QrPage.jsx
+  74:57  warning  'refreshRemote' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\tests\admin-member-sync.test.mjs
+  122:9  warning  'admin' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\ss\OneDrive\Belgeler\GitHub\liberte-club-app\tests\guardian-ai-fix.test.mjs
+  5:57  warning  'dismissAiFixForResolvedIncident' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+Ô£û 59 problems (0 errors, 59 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.
+

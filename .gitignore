@@ -1,0 +1,102 @@
+node_modules/
+node_modules_old/
+dist/
+
+# Ortam degiskenleri — .env.example haric
+.env
+.env.*
+!.env.example
+
+# Capacitor / Android build ciktilari
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/app/src/main/assets/public/
+
+# Capacitor / iOS build ciktilari
+ios/App/App/public/
+ios/App/Pods/
+ios/DerivedData/
+*.xcuserdata
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Kullanilmayan / ham GLB dosyalari
+public/Liberte_Cup.glb
+public/Liberte_Cup_3d.glb
+public/Liberte_Cup_Basic.glb
+public/Liberte_Cup_Textured.glb
+public/Liberte_White_Cup_App_Ready.glb
+public/Liberte_Cup_Luwai.glb
+
+# Android imza ve Play Console kimlik bilgileri
+*.jks
+*.keystore
+android/keystore.properties
+android/play-console-service-account.json
+
+# Firebase native config — gizli anahtarlar içerir, commit etme
+google-services.json
+android/app/google-services.json
+GoogleService-Info.plist
+ios/App/App/GoogleService-Info.plist
+ios/App/GoogleService-Info.plist
+*firebase*service*account*.json
+
+# iOS CI / imza ve sertifika dosyalari
+ios/certificates/
+ios/build/
+ios/App/App.xcarchive
+ios/App/build
+ios/AuthKey*.p8
+ios/fastlane/report.xml
+ios/fastlane/test_output/
+*.ipa
+*.apk
+*.aab
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.cer
+*.csr
+*.pem
+
+# Yerel / CI artifact klasorleri
+outputs/
+e2e/mobile/reports/*.json
+e2e/mobile/reports/*.log
+!e2e/mobile/reports/.gitkeep
+.tmp-smartpos/
+
+# Android release ciktilari ve imza dosyalari
+android/app/release
+android/app/*.jks
+android/app/*.keystore
+.vercel
+
+# Firebase admin ve gizli anahtar yedekleri — commit etme
+service-account*.txt
+backups/
+*.neon-backup.json
+
+*adminsdk*.json
+liberte-app-review-package.zip
+
+.vercel
+.env*
+
+# Yerel teshis/audit ciktilari — repoya girmesin (buyuk zip + ic analiz)
+audit-export/
+diagnostics/
+
+.vercel
+.env*

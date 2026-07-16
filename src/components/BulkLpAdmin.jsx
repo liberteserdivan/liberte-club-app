@@ -1,0 +1,127 @@
+import { useState } from 'react';
+import { Loader2, Users } from 'lucide-react';
+import { LP_CATEGORIES } from '../lib/loyaltyStamps.js';
+import { parsePhoneList } from '../lib/phoneMask.js';
+import { norm, addCategoryStampToCustomer } from '../lib/db.js';
+import { applyBulkAdminMemberLoyalty } from '../lib/adminMemberClient.js';
+import { isLocalAuth } from '../lib/devAuth.js';
+
+export default function BulkLpAdmin({ db, commit, customers = [], onMessage }) {
+  const [phonesText, setPhonesText] = useState('');
+  const [category, setCategory] = useState('coffee');
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState(null);
+
+  const previewPhones = parsePhoneList(phonesText);
+  const selectedCat = LP_CATEGORIES.find((row) => row.id === category);
+
+  async function handleSubmit() {
+    const phones = parsePhoneList(phonesText);
+    if (!phones.length) {
+      onMessage?.('Gecerli telefon numarasi girin (her satira bir numara).');
+      return;
+    }
+
+    setBusy(true);
+    setResults(null);
+
+    try {
+      if (!isLocalAuth()) {
+        const data = await applyBulkAdminMemberLoyalty({ phonesText, category });
+        setResults(data.results || []);
+        onMessage?.(`${data.successCount}/${data.total} uyeye +${selectedCat?.lpGain || '?'} LP eklendi.`);
+        return;
+      }
+
+      const localResults = [];
+      let nextDb = db;
+
+      for (const phone of phones) {
+        const customer = customers.find((row) => norm(row.phone) === phone);
+        if (!customer) {
+          localResults.push({ phone, ok: false, error: 'Uye bulunamadi' });
+          continue;
+        }
+        const preview = addCategoryStampToCustomer(nextDb, customer.id, category, 1, 'Admin toplu LP');
+        if (preview === nextDb) {
+          localResults.push({ phone, ok: false, error: 'LP eklenemedi' });
+          continue;
+        }
+        nextDb = preview;
+        localResults.push({ phone, ok: true, name: customer.name, customerId: customer.id });
+      }
+
+      commit(nextDb);
+      const okCount = localResults.filter((row) => row.ok).length;
+      setResults(localResults);
+      onMessage?.(`${okCount}/${phones.length} uyeye LP eklendi.`);
+    } catch (error) {
+      onMessage?.(error?.message || 'Toplu LP eklenemedi.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card adminSectionCard bulkLpCard" data-testid="bulk-lp-admin">
+      <div className="adminSectionHead">
+        <div>
+          <span>TOPLU LP</span>
+          <h3>Telefon listesiyle LP ekle</h3>
+        </div>
+      </div>
+      <p className="adminHint">
+        QR okutmadan toplu puan ekleyin. Her satira bir telefon yazin. Burger dogrudan +3 LP verir.
+      </p>
+      <label className="bulkLpLabel">Telefon numaralari</label>
+      <textarea
+        className="bulkLpTextarea"
+        rows={5}
+        placeholder={'5051234567\n5059876543'}
+        value={phonesText}
+        onChange={(event) => setPhonesText(event.target.value)}
+        disabled={busy}
+      />
+      <p className="adminHint">
+        {previewPhones.length ? `${previewPhones.length} gecerli numara algilandi.` : 'Ornek: 5051234567'}
+      </p>
+      <label className="bulkLpLabel">Kategori</label>
+      <div className="bulkLpCategoryRow">
+        {LP_CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            type="button"
+            className={category === cat.id ? 'bulkLpCatBtn active' : 'bulkLpCatBtn'}
+            disabled={busy}
+            onClick={() => setCategory(cat.id)}
+          >
+            {cat.shortLabel || cat.label} +{cat.lpGain} LP
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="bulkLpSubmit"
+        disabled={busy || !previewPhones.length}
+        onClick={handleSubmit}
+      >
+        {busy ? <Loader2 className="spin" size={18} /> : <Users size={18} />}
+        {busy ? 'Ekleniyor...' : `Toplu +${selectedCat?.lpGain || 1} LP ekle`}
+      </button>
+      {results?.length > 0 && (
+        <div className="bulkLpResults">
+          <strong>Sonuclar</strong>
+          <ul>
+            {results.map((row) => (
+              <li key={row.phone} className={row.ok ? 'ok' : 'fail'}>
+                {row.phone}
+                {row.name ? ` · ${row.name}` : ''}
+                {row.ok ? ' - eklendi' : ` - ${row.error || 'hata'}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}

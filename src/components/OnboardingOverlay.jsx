@@ -1,0 +1,119 @@
+import { useState } from 'react';
+import { Bell, QrCode, Sparkles, X } from 'lucide-react';
+import { usePushEnableFlow } from '../hooks/usePushEnableFlow.js';
+import { canRequestPushOnThisDevice } from '../lib/pushPrompt.js';
+import { PushEnableActions } from './Cards.jsx';
+
+const STEPS = [
+  {
+    icon: QrCode,
+    title: 'Kasada QR göster',
+    body: 'Kartım sekmesinden QR kodunu kasiyere göster; alışverişlerin Liberte Puan olarak hesabına işlensin.'
+  },
+  {
+    icon: Sparkles,
+    title: 'LP biriktir, ikram kazan',
+    body: 'Kahve +1 LP, tatlı +2 LP, burger +3 LP. 7 LP kahve, 15 LP tatlı, 25 LP burger ikramı.'
+  },
+  {
+    icon: Bell,
+    title: 'Bildirimlere izin ver',
+    body: 'Kampanyalar, puan bildirimleri ve özel fırsatlardan haberdar olmak için bildirimleri açabilirsin.'
+  }
+];
+
+function storageKey(customerId) {
+  return `liberteOnboarded:${customerId}`;
+}
+
+// İlk girişte kısa tanıtım — müşteri yolculuğu
+export function shouldShowOnboarding(customerId) {
+  if (!customerId) return false;
+  try {
+    return localStorage.getItem(storageKey(customerId)) !== '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markOnboardingDone(customerId) {
+  if (!customerId) return;
+  try {
+    localStorage.setItem(storageKey(customerId), '1');
+  } catch {
+    // Depolama kapalıysa sessizce geç
+  }
+}
+
+export default function OnboardingOverlay({ customerId, customer, db, commit, onDone }) {
+  const [step, setStep] = useState(0);
+  const current = STEPS[step];
+  const Icon = current.icon;
+  const isLast = step >= STEPS.length - 1;
+  const canAskPush = Boolean(isLast && customer && db && commit && canRequestPushOnThisDevice());
+  const {
+    needsSettings,
+    statusMessage,
+    busy,
+    attemptEnable,
+    openSettings
+  } = usePushEnableFlow(customer, db, commit);
+
+  function finish() {
+    markOnboardingDone(customerId);
+    onDone?.();
+  }
+
+  function next() {
+    if (isLast) {
+      finish();
+      return;
+    }
+    setStep((value) => value + 1);
+  }
+
+  async function enablePushAndFinish() {
+    if (canAskPush) {
+      await attemptEnable();
+    }
+    finish();
+  }
+
+  return (
+    <div className="onboardingOverlay" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+      <div className="onboardingCard">
+        <button type="button" className="onboardingSkip" data-testid="onboarding-skip" onClick={finish} aria-label="Tanıtımı atla">
+          <X size={18} />
+        </button>
+        <div className="onboardingIcon"><Icon size={28} aria-hidden="true" /></div>
+        <span className="onboardingStep">{step + 1} / {STEPS.length}</span>
+        <h2 id="onboardingTitle">{current.title}</h2>
+        <p>{current.body}</p>
+        {canAskPush && statusMessage && !needsSettings && (
+          <p className="onboardingPushNote">{statusMessage}</p>
+        )}
+        <div className="onboardingDots" aria-hidden="true">
+          {STEPS.map((_, index) => (
+            <i key={index} className={index === step ? 'isActive' : ''} />
+          ))}
+        </div>
+        {canAskPush ? (
+          <div className="pushWelcomeActions onboardingPushActions">
+            <PushEnableActions
+              needsSettings={needsSettings}
+              busy={busy}
+              onEnable={enablePushAndFinish}
+              onOpenSettings={openSettings}
+              onDismiss={finish}
+              showDismiss
+            />
+          </div>
+        ) : (
+          <button type="button" className="goldBtn onboardingNext" data-testid="onboarding-next" onClick={next}>
+            {isLast ? 'Başla' : 'Devam'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

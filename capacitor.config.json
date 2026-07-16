@@ -1,0 +1,23 @@
+{
+  "appId": "cafe.liberte.app",
+  "appName": "Liberte",
+  "webDir": "dist",
+  "server": {
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0B2F26",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": ["alert", "badge", "sound"]
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

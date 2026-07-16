@@ -1,0 +1,81 @@
+# TestFlight yukleme — GitHub macOS runner
+# Gerekli GitHub Secrets:
+#   GOOGLE_SERVICE_INFO_PLIST
+#   GOOGLE_SERVICES_JSON
+#   APP_STORE_CONNECT_PRIVATE_KEY
+#   APP_STORE_CONNECT_KEY_ID
+#   APP_STORE_CONNECT_ISSUER_ID
+#   APPLE_TEAM_ID
+
+name: iOS TestFlight Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'iOS build numarasi (App Store Connectte kullanilmamis olmali)'
+        required: false
+        default: '24'
+      changelog:
+        description: 'TestFlight surum notu'
+        required: false
+        default: 'Liberte Club guncellemesi'
+
+jobs:
+  testflight:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Web build ve Capacitor sync
+        working-directory: .
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          CI: true
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+          node scripts/materialize-firebase-native-config.mjs
+          node scripts/setup-ios-cocoapods.mjs
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: ios
+
+      - name: App Store Connect API anahtari
+        env:
+          ASC_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          echo "$ASC_KEY" > AuthKey.p8
+          echo "APP_STORE_CONNECT_KEY_PATH=$PWD/AuthKey.p8" >> $GITHUB_ENV
+
+      - name: iOS build numarasi
+        env:
+          BUILD_NO: ${{ inputs.build_number }}
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" App/App/Info.plist 2>/dev/null || true
+          agv="MARKETING_VERSION = 1.1.1;"
+          bgv="CURRENT_PROJECT_VERSION = $BUILD_NO;"
+          sed -i '' "s/MARKETING_VERSION = .*/$agv/" App/App.xcodeproj/project.pbxproj
+          sed -i '' "s/CURRENT_PROJECT_VERSION = .*/$bgv/" App/App.xcodeproj/project.pbxproj
+
+      - name: TestFlight'a yukle
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_CHANGELOG: ${{ inputs.changelog }}
+          CI: true
+        run: bundle exec fastlane beta

@@ -1,0 +1,556 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ImagePlus, Send, Smartphone, Trash2, Users, X } from 'lucide-react';
+import { dispatchPush } from '../lib/pushDispatch.js';
+import { apiFetch, ADMIN_REQUEST_OPTIONS } from '../lib/apiClient.js';
+import { sanitizePushSubscriptions } from '../lib/pushSubscriptionSanitize.js';
+import {
+  PUSH_AUDIENCE_OPTIONS,
+  getAudienceOptionState,
+  resolvePushAudience,
+  resolvePushChannel
+} from '../lib/pushAudience.js';
+import { PUSH_BODY_MAX, PUSH_TITLE_MAX } from '../lib/pushNotificationText.js';
+import { compressPushImage, isHttpsImageUrl } from '../lib/pushImage.js';
+import { PUSH_EMOJI_PRESETS, PUSH_ICON_PRESETS } from '../lib/pushMediaPresets.js';
+
+// Örnek bildirim şablonları
+const PUSH_TEMPLATES = [
+  {
+    label: 'Genel',
+    title: "Liberte'den Haber Var",
+    body: 'Bugün kahvenin yanına tatlı keyfi seni bekliyor.',
+    audience: 'all'
+  },
+  {
+    label: 'Gold',
+    title: 'Gold Üyelere Özel',
+    body: 'Bugüne özel tatlı keyfini kaçırma.',
+    audience: 'gold'
+  },
+  {
+    label: 'Gelmeyenler',
+    title: 'Liberte Seni Özledi',
+    body: 'Son ziyaretinden beri yeni lezzetler eklendi.',
+    audience: 'inactive_30d'
+  },
+  {
+    label: 'LP 7+',
+    title: 'İkramına Çok Yakınsın',
+    body: "LP'lerini kullanarak kahve ikramını alabilirsin.",
+    audience: 'lp_gte_7'
+  }
+];
+
+// İmleç konumuna emoji ekle
+function insertAtCursor(value, emoji, start, end) {
+  const before = value.slice(0, start);
+  const after = value.slice(end);
+  return {
+    next: `${before}${emoji}${after}`,
+    caret: before.length + emoji.length
+  };
+}
+
+// Admin — hedefli push bildirim gönderimi (metin + emoji + ikon + görsel)
+export default function PushNotificationAdmin({ db, commit, serverStats = null }) {
+  const [title, setTitle] = useState("Liberte'den Haber Var");
+  const [body, setBody] = useState('Bugün kahvenin yanına tatlı keyfi seni bekliyor.');
+  const [audience, setAudience] = useState('all');
+  const [iconUrl, setIconUrl] = useState(PUSH_ICON_PRESETS[0].url);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState('');
+  const [imageName, setImageName] = useState('');
+  const [emojiTarget, setEmojiTarget] = useState('body');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+  const [cleanupNote, setCleanupNote] = useState('');
+  const [formError, setFormError] = useState('');
+  const cleanupStarted = useRef(false);
+  const titleRef = useRef(null);
+  const bodyRef = useRef(null);
+  const fileRef = useRef(null);
+
+  const devices = db.pushSubscriptions || [];
+  const pushLog = db.pushLog || [];
+  const previewImage = imageDataUrl || imageUrl;
+  const preview = useMemo(() => {
+    const local = resolvePushAudience(db, audience);
+    const serverMembers = Number(serverStats?.customerCount || 0);
+    const serverDevices = Number(serverStats?.pushDeviceCount || 0);
+
+    if (audience === 'all' || audience === 'granted_devices') {
+      return {
+        ...local,
+        targetUserCount: serverMembers > 0 ? serverMembers : local.targetUserCount,
+        deviceCount: serverDevices > 0 ? serverDevices : local.deviceCount
+      };
+    }
+
+    return local;
+  }, [db, audience, serverStats]);
+  const audienceState = getAudienceOptionState(db, audience);
+
+  // Eski/pasif kayıtları arka planda temizle — gönderim isteğiyle yarışmasın
+  useEffect(() => {
+    if (cleanupStarted.current) return;
+    cleanupStarted.current = true;
+
+    const timer = setTimeout(() => {
+      runPushCleanup();
+    }, 2500);
+
+    async function runPushCleanup() {
+      try {
+        const response = await apiFetch('/api/admin?resource=push-cleanup', {
+          method: 'POST',
+          body: JSON.stringify({ mode: 'sanitize' })
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (response.ok && payload?.ok) {
+          if (payload.removed > 0) {
+            const cleaned = sanitizePushSubscriptions(db.pushSubscriptions || []);
+            commit({ ...db, pushSubscriptions: cleaned.subscriptions }, { skipRemote: true });
+            setCleanupNote(`${payload.removed} eski cihaz kaydı temizlendi.`);
+          }
+          return;
+        }
+      } catch {
+        // Sunucu endpoint yoksa yerel temizliğe düş
+      }
+
+      const cleaned = sanitizePushSubscriptions(db.pushSubscriptions || []);
+      if (!cleaned.summary.removed) return;
+
+      commit({
+        ...db,
+        pushSubscriptions: cleaned.subscriptions
+      }, { skipRemote: true });
+      setCleanupNote(`${cleaned.summary.removed} eski cihaz kaydı temizlendi.`);
+    }
+
+    return () => clearTimeout(timer);
+  }, [db, commit]);
+
+  function formatDeviceLabel(device) {
+    const platform = device.platform === 'ios'
+      ? 'iOS'
+      : device.platform === 'android'
+        ? 'Android'
+        : 'Web';
+    const channel = resolvePushChannel(device) === 'native' ? 'uygulama' : 'web';
+    return `${platform} (${channel})`;
+  }
+
+  function applyEmoji(emoji) {
+    if (emojiTarget === 'title') {
+      const el = titleRef.current;
+      const start = el?.selectionStart ?? title.length;
+      const end = el?.selectionEnd ?? title.length;
+      const { next, caret } = insertAtCursor(title, emoji, start, end);
+      if (next.length > PUSH_TITLE_MAX) return;
+      setTitle(next);
+      requestAnimationFrame(() => {
+        if (!titleRef.current) return;
+        titleRef.current.focus();
+        titleRef.current.setSelectionRange(caret, caret);
+      });
+      return;
+    }
+
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? body.length;
+    const end = el?.selectionEnd ?? body.length;
+    const { next, caret } = insertAtCursor(body, emoji, start, end);
+    if (next.length > PUSH_BODY_MAX) return;
+    setBody(next);
+    requestAnimationFrame(() => {
+      if (!bodyRef.current) return;
+      bodyRef.current.focus();
+      bodyRef.current.setSelectionRange(caret, caret);
+    });
+  }
+
+  async function onImageFileChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      const dataUrl = await compressPushImage(file);
+      setImageDataUrl(dataUrl);
+      setImageUrl('');
+      setImageName(file.name || 'görsel');
+      setFormError('');
+    } catch (error) {
+      setFormError(error?.message || 'Görsel hazırlanamadı');
+    }
+  }
+
+  function clearImage() {
+    setImageDataUrl('');
+    setImageUrl('');
+    setImageName('');
+  }
+
+  async function resetDevices() {
+    const ok = confirm('Tüm bildirim cihaz kayıtları silinsin mi? Üyeler bildirimleri yeniden açmalı.');
+    if (!ok) return;
+
+    try {
+      const response = await apiFetch('/api/admin?resource=push-cleanup', {
+        method: 'POST',
+        body: JSON.stringify({ mode: 'reset' })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload?.ok) {
+        commit({ ...db, pushSubscriptions: [] }, { skipRemote: true });
+        setCleanupNote('Tüm cihaz kayıtları sıfırlandı. Telefonda bildirimleri yeniden aç.');
+        return;
+      }
+    } catch {
+      // Yerel sıfırlama
+    }
+
+    commit({ ...db, pushSubscriptions: [] }, { skipRemote: true });
+    setCleanupNote('Cihaz kayıtları temizlendi. Telefonda bildirimleri yeniden aç.');
+  }
+
+  async function sendPush() {
+    if (!body.trim()) {
+      setFormError('Mesaj zorunlu.');
+      return;
+    }
+
+    if (imageUrl.trim() && !isHttpsImageUrl(imageUrl)) {
+      setFormError('Görsel linki http(s) ile başlamalı.');
+      return;
+    }
+
+    if (preview.disabled) {
+      setFormError(preview.disabledReason || 'Seçilen hedef kitle kullanılamıyor.');
+      return;
+    }
+
+    if (preview.deviceCount <= 0) {
+      setFormError('Kayıtlı bildirim cihazı yok. Önce telefonda Profil → Bildirimler bölümünden izin verin.');
+      return;
+    }
+
+    setFormError('');
+
+    const ok = confirm('Bu bildirim seçilen hedef kitleye gönderilecek. Devam etmek istiyor musunuz?');
+    if (!ok) return;
+
+    setSending(true);
+    setResult(null);
+
+    const response = await dispatchPush(db, commit, {
+      title: title.trim().slice(0, PUSH_TITLE_MAX),
+      body: body.trim().slice(0, PUSH_BODY_MAX),
+      audience,
+      iconUrl: iconUrl.trim(),
+      imageUrl: imageDataUrl ? '' : imageUrl.trim(),
+      imageDataUrl: imageDataUrl || ''
+    });
+
+    setResult({
+      ok: response.ok,
+      audienceLabel: preview.audienceLabel,
+      targetUserCount: preview.targetUserCount,
+      deviceCount: preview.deviceCount,
+      sent: response.sent || 0,
+      failed: response.failed || 0,
+      invalidRemoved: response.removedInvalid || 0,
+      note: response.note || '',
+      requestId: response.requestId || null
+    });
+    setSending(false);
+  }
+
+  async function removeDevice(id, token) {
+    if (!confirm('Bu cihaz listeden kaldırılsın mı?')) return;
+
+    commit({
+      ...db,
+      pushSubscriptions: devices.filter((row) => row.id !== id && row.token !== token)
+    }, { skipRemote: true });
+
+    if (!token) return;
+
+    try {
+      await apiFetch('/api/admin?resource=push-cleanup', {
+        method: 'POST',
+        body: JSON.stringify({ mode: 'remove', tokens: [token] }),
+        ...ADMIN_REQUEST_OPTIONS
+      });
+    } catch {
+      // Yerel listeden kaldırıldı; sunucu senkronu sonraki açılışta tamamlanır
+    }
+  }
+
+  return (
+    <div className="notificationAdmin">
+      <div className="card adminSectionCard pushComposer pushComposerPro">
+        <div className="adminSectionHead">
+          <div><span>BİLDİRİM</span><h3>Bildirim Gönder</h3></div>
+          <span className="deviceCountBadge">
+            <Smartphone size={14} /> {preview.deviceCount} cihaz
+          </span>
+        </div>
+
+        {cleanupNote && <p className="pushAudienceNote">{cleanupNote}</p>}
+        {formError && <p className="adminStatusNotice isError">{formError}</p>}
+
+        <p className="pushHint">
+          Başlık {PUSH_TITLE_MAX}, mesaj {PUSH_BODY_MAX} karakter. Emoji, ikon ve görsel (rich push) desteklenir.
+        </p>
+
+        <label htmlFor="pushTitle">Başlık</label>
+        <input
+          id="pushTitle"
+          ref={titleRef}
+          value={title}
+          maxLength={PUSH_TITLE_MAX}
+          onFocus={() => setEmojiTarget('title')}
+          onChange={(e) => setTitle(e.target.value.slice(0, PUSH_TITLE_MAX))}
+          placeholder="Liberte'den Haber Var ☕"
+        />
+        <p className="pushCharCount">{title.length}/{PUSH_TITLE_MAX}</p>
+
+        <label htmlFor="pushBody">Mesaj</label>
+        <textarea
+          id="pushBody"
+          ref={bodyRef}
+          value={body}
+          maxLength={PUSH_BODY_MAX}
+          onFocus={() => setEmojiTarget('body')}
+          onChange={(e) => setBody(e.target.value.slice(0, PUSH_BODY_MAX))}
+          placeholder="Bugün kahvenin yanına tatlı keyfi seni bekliyor. 🍰"
+          rows={4}
+        />
+        <p className="pushCharCount">{body.length}/{PUSH_BODY_MAX}</p>
+
+        <div className="pushEmojiRow" aria-label="Emoji ekle">
+          {PUSH_EMOJI_PRESETS.map((emoji) => (
+            <button
+              type="button"
+              key={emoji}
+              className="pushEmojiChip"
+              onClick={() => applyEmoji(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+
+        <label>Bildirim ikonu</label>
+        <div className="pushIconPresets">
+          {PUSH_ICON_PRESETS.map((preset) => (
+            <button
+              type="button"
+              key={preset.id}
+              className={`pushIconChip${iconUrl === preset.url ? ' isActive' : ''}`}
+              onClick={() => setIconUrl(preset.url)}
+            >
+              <img src={preset.url} alt="" width={28} height={28} />
+              <span>{preset.label}</span>
+            </button>
+          ))}
+        </div>
+        <input
+          value={iconUrl}
+          onChange={(e) => setIconUrl(e.target.value)}
+          placeholder="https://… ikon URL (isteğe bağlı)"
+        />
+
+        <label>Görsel (rich push)</label>
+        <div className="pushImageActions">
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => fileRef.current?.click()}
+          >
+            <ImagePlus size={16} /> Dosyadan yükle
+          </button>
+          {(imageDataUrl || imageUrl) && (
+            <button type="button" className="ghost" onClick={clearImage}>
+              <X size={16} /> Kaldır
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={onImageFileChange}
+        />
+        <input
+          value={imageDataUrl ? '' : imageUrl}
+          onChange={(e) => {
+            setImageUrl(e.target.value);
+            setImageDataUrl('');
+            setImageName('');
+          }}
+          placeholder="veya https://… görsel linki"
+          disabled={Boolean(imageDataUrl)}
+        />
+        {imageName && <p className="pushAudienceNote">Seçilen: {imageName}</p>}
+
+        <label htmlFor="pushAudience">Hedef Kitle</label>
+        <select
+          id="pushAudience"
+          className="pushAudienceSelect"
+          value={audience}
+          onChange={(e) => setAudience(e.target.value)}
+        >
+          {PUSH_AUDIENCE_OPTIONS.map((option) => {
+            const state = getAudienceOptionState(db, option.id);
+            return (
+              <option key={option.id} value={option.id} disabled={state.disabled}>
+                {option.label}{state.disabled ? ' — pasif' : ''}
+              </option>
+            );
+          })}
+        </select>
+
+        {audienceState.disabled && (
+          <p className="pushAudienceNote">{audienceState.reason}</p>
+        )}
+
+        <div className="pushReachStats">
+          <div><Users size={14} aria-hidden="true" /><span>{preview.targetUserCount} üye</span></div>
+          <div><Smartphone size={14} aria-hidden="true" /><span>{preview.deviceCount} kayıtlı cihaz</span></div>
+        </div>
+
+        <div className="pushPreview pushPreviewPro">
+          <span>ÖNİZLEME</span>
+          <div className="pushPreviewRich">
+            {iconUrl ? <img className="pushPreviewIcon" src={iconUrl} alt="" /> : null}
+            <div>
+              <b>{title.trim() || 'Başlık'}</b>
+              <p>{body.trim() || 'Mesaj içeriği'}</p>
+            </div>
+          </div>
+          {previewImage ? (
+            <img className="pushPreviewImage" src={previewImage} alt="Bildirim görseli önizleme" />
+          ) : null}
+          <em>Hedef: {preview.audienceLabel}</em>
+        </div>
+
+        <div className="pushTemplates">
+          {PUSH_TEMPLATES.map((item) => (
+            <button
+              type="button"
+              key={item.label}
+              className="ghost"
+              onClick={() => {
+                setTitle(item.title);
+                setBody(item.body);
+                setAudience(item.audience);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="goldBtn pushSendBtn"
+          onClick={sendPush}
+          disabled={sending || preview.disabled || preview.deviceCount === 0}
+        >
+          <Send size={18} /> {sending ? 'Gönderiliyor…' : 'Bildirimi Gönder'}
+        </button>
+
+        {sending && (
+          <p className="pushAudienceNote">
+            Sunucu bildirimi hazırlıyor; görselli gönderimde biraz daha sürebilir. Lütfen uygulamayı kapatma.
+          </p>
+        )}
+
+        {preview.deviceCount === 0 && !preview.disabled && (
+          <p className="pushAudienceNote">Seçilen hedef kitlede kayıtlı bildirim cihazı yok.</p>
+        )}
+
+        {result && (
+          <div className={`pushSendResult${result.sent > 0 ? ' isSuccess' : result.ok ? ' isWarning' : ''}`}>
+            <strong>
+              {result.sent > 0
+                ? 'Bildirim gönderildi'
+                : result.ok
+                  ? 'Cihaza push ulaşmadı'
+                  : 'Gönderim tamamlanamadı'}
+            </strong>
+            <ul>
+              <li>Hedef kitle: {result.audienceLabel}</li>
+              <li>Ulaşılan / kayıtlı cihaz: {result.deviceCount}</li>
+              <li>Başarılı gönderim: {result.sent}</li>
+              <li>Başarısız token: {result.failed}</li>
+              {result.invalidRemoved > 0 && (
+                <li>Geçersiz token kaldırıldı: {result.invalidRemoved}</li>
+              )}
+            </ul>
+            {result.note && <p>{result.note}</p>}
+            {result.requestId && <p className="pushAudienceNote">Ref: {result.requestId}</p>}
+          </div>
+        )}
+      </div>
+
+      <div className="card adminSectionCard">
+        <div className="adminSectionHead">
+          <div><span>CİHAZLAR</span><h3>Kayıtlı bildirim cihazları</h3></div>
+          <button type="button" className="ghost" onClick={resetDevices}>
+            Tümünü sıfırla
+          </button>
+        </div>
+        {devices.length ? devices.map((device) => (
+          <div className="deviceRow" key={device.id || device.token}>
+            <div>
+              <b>{device.name || 'Üye'}</b>
+              <p>
+                {device.phone || '—'} · {formatDeviceLabel(device)}
+                {device.active === false ? ' · pasif' : ''}
+                {' · '}{device.lastSeenAt || device.updatedAt || device.createdAt || 'Tarih yok'}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="ghost deviceRemoveBtn"
+              onClick={() => removeDevice(device.id, device.token)}
+              aria-label="Kaldır"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )) : (
+          <p className="emptySmall">
+            Henüz bildirim izni veren cihaz yok. Üyeler uygulamada bildirimleri açmalı.
+          </p>
+        )}
+      </div>
+
+      {pushLog.length > 0 && (
+        <div className="card adminSectionCard">
+          <div className="adminSectionHead">
+            <div><span>GEÇMİŞ</span><h3>Son gönderimler</h3></div>
+          </div>
+          {pushLog.slice(0, 8).map((row) => (
+            <div className="historyMini" key={row.id}>
+              <div>
+                <b>{row.title || 'Bildirim'}</b>
+                <p>
+                  {row.createdAt} · {row.audienceLabel || 'Tüm kullanıcılar'} · {row.sent || 0}/{row.deviceCount || 0} cihaz
+                  {row.note ? ` · ${row.note}` : ''}
+                </p>
+              </div>
+              <strong>{row.sent || 0}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

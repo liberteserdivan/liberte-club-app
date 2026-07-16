@@ -1,0 +1,11 @@
+import { primeSqlConnection } from '../sql.js';
+
+// DB havuzu isitma: bu lambda izolasyonunun PostgreSQL baglantisini gercekten
+// kurar (SELECT 1). Her api/*.js ayri bir lambda ve ayri bir baglanti havuzu
+// oldugundan sadece Node'u uyandirmak yetmez; ilk gercek sorgu (orn. login)
+// baglanti kurmayi beklerse kullanici bekler. Bu uc o bekleyisi onceden yapar.
+// Tek is: baglantiyi hazirla ve hizlica 200 don. Kimlik dogrulamasi gerektirmez.
+export async function handleWarmPing(req, res) {
+  const dbReady = await primeSqlConnection().catch(() => false);
+  return res.status(200).json({ ok: true, dbReady: Boolean(dbReady) });
+}

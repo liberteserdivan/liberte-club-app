@@ -1,0 +1,119 @@
+import { applyCors, readBodySafe, publicErrorMessage } from '../http.js';
+import { requireAdminSession } from '../auth.js';
+import { applyLoyaltyActionRelational } from '../loyaltyStore.js';
+import { findCustomerByPhone } from '../customersStore.js';
+import { getSql } from '../sql.js';
+import { logServerError } from '../logServerError.js';
+import { cleanPhone } from '../phone.js';
+import { LP_CATEGORIES } from '../loyaltyPointsServer.js';
+
+const MAX_BULK = 50;
+
+function parsePhonesInput(body) {
+  if (Array.isArray(body.phones)) {
+    return body.phones.map((row) => cleanPhone(row)).filter(Boolean);
+  }
+  const raw = String(body.phonesText || body.text || '').trim();
+  if (!raw) return [];
+  const seen = new Set();
+  const out = [];
+  for (const chunk of raw.split(/[\n,;]+/)) {
+    const phone = cleanPhone(chunk.trim());
+    if (!phone || phone.length !== 10 || !phone.startsWith('5')) continue;
+    if (seen.has(phone)) continue;
+    seen.add(phone);
+    out.push(phone);
+  }
+  return out;
+}
+
+export async function handleAdminMemberLoyaltyBulk(req, res) {
+  applyCors(req, res, 'POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const session = await requireAdminSession(req, res);
+  if (!session) return;
+
+  try {
+    const body = readBodySafe(req);
+    const category = String(body.category || 'coffee').trim();
+    const phones = parsePhonesInput(body);
+
+    if (!phones.length) {
+      return res.status(400).json({ ok: false, error: 'Gecerli telefon numarasi bulunamadi' });
+    }
+    if (phones.length > MAX_BULK) {
+      return res.status(400).json({
+        ok: false,
+        error: `En fazla ${MAX_BULK} numara islenebilir`
+      });
+    }
+    if (!LP_CATEGORIES.some((row) => row.id === category)) {
+      return res.status(400).json({ ok: false, error: 'Gecersiz LP kategorisi' });
+    }
+
+    const sql = getSql();
+    if (!sql) {
+      return res.status(503).json({ ok: false, error: 'Veritabani baglantisi yok' });
+    }
+
+    const results = [];
+    let successCount = 0;
+
+    for (const phone of phones) {
+      const customer = await findCustomerByPhone(sql, phone);
+      if (!customer?.id) {
+        results.push({ phone, ok: false, error: 'Uye bulunamadi' });
+        continue;
+      }
+
+      const result = await applyLoyaltyActionRelational({
+        customerId: customer.id,
+        action: 'stamp',
+        category,
+        menuItem: null,
+        note: 'Admin toplu LP'
+      });
+
+      if (!result.ok) {
+        results.push({
+          phone,
+          ok: false,
+          customerId: customer.id,
+          name: customer.name || null,
+          error: result.error || 'LP eklenemedi'
+        });
+        continue;
+      }
+
+      successCount += 1;
+      results.push({
+        phone,
+        ok: true,
+        customerId: customer.id,
+        name: customer.name || null,
+        lpBalance: result.loyalty?.lpBalance ?? null
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      category,
+      total: phones.length,
+      successCount,
+      failCount: phones.length - successCount,
+      results
+    });
+  } catch (error) {
+    await logServerError({
+      source: 'admin.member-loyalty-bulk',
+      error,
+      customerId: session?.customerId || null
+    });
+    return res.status(500).json({
+      ok: false,
+      error: publicErrorMessage(error, 'Toplu LP islemi basarisiz')
+    });
+  }
+}

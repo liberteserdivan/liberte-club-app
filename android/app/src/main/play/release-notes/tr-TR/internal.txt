@@ -1,0 +1,1 @@
+Liberte Club 1.1.31 — Dahili test: app-v2 istemci, otomatik giriş, push durum kartı, minimal sağlık paneli.

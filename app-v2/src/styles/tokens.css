@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --forest: #0B2F26;
+  --forest-2: #16473A;
+  --cream: #FBF6EE;
+  --cream-2: #F4EBDD;
+  --card: #FFFDF8;
+  --gold: #D8C29D;
+  --gold-2: #B9945E;
+  --text: #132C26;
+  --muted: #75827C;
+  --line: rgba(11, 47, 38, 0.1);
+  --danger: #FF5A4F;
+  --success: #16a34a;
+  --shadow: 0 18px 48px rgba(11, 47, 38, 0.14);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nav-h: 64px;
+}
