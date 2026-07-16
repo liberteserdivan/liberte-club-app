@@ -30,6 +30,8 @@ workflows:
         certificates:
           - liberte_distribution
       vars:
+        # initializing takilmasini azalt — kisa clone
+        CM_CLONE_DEPTH: "20"
         IOS_RELEASE: "true"
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
@@ -37,7 +39,7 @@ workflows:
         IOS_MIN_BUILD_NUMBER: "61"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
-        # Native build'in vuracaÄŸÄ± API kÃ¶kÃ¼ â€” domain/Vercel URL deÄŸiÅŸiminde burayÄ± gÃ¼ncelle
+        # Native build'in vuracagi API koku — domain/Vercel URL degisiminde burayi guncelle
         VITE_API_BASE_URL: "https://app.liberte.cafe"
         # App Store post-processing: Apple isleme suresi 5-30+ dk surer; kisa timeout kirmizi build uretir
         APP_STORE_CONNECT_MAX_FIND_BUILD_WAIT: "20"
@@ -140,7 +142,8 @@ workflows:
   android-release:
     name: android-release
     max_build_duration: 90
-    instance_type: mac_mini_m2
+    # Mac kuyrugu initializing'de takiliyor — Android Linux'ta daha hizli baslar
+    instance_type: linux
     triggering:
       events:
         - push
@@ -152,14 +155,16 @@ workflows:
       groups:
         - liberte_android
       vars:
+        # initializing takilmasini azalt — kisa clone
+        CM_CLONE_DEPTH: "20"
         ANDROID_RELEASE: "true"
-        PLAY_TRACK: production
+        PLAY_TRACK: alpha
         ENABLE_PLAY_UPLOAD: "true"
         PACKAGE_NAME: cafe.liberte.app
         APP_VERSION: "1.1.31"
-        ANDROID_MIN_VERSION_CODE: "82"
-        PROMOTE_ALPHA_TO_INTERNAL: "false"
-        # Native build'in vuracaÄŸÄ± API kÃ¶kÃ¼ â€” domain/Vercel URL deÄŸiÅŸiminde burayÄ± gÃ¼ncelle
+        ANDROID_MIN_VERSION_CODE: "95"
+        PROMOTE_ALPHA_TO_INTERNAL: "true"
+        # Native build'in vuracagi API koku — domain/Vercel URL degisiminde burayi guncelle
         VITE_API_BASE_URL: "https://app.liberte.cafe"
       node: 22
       java: 21
