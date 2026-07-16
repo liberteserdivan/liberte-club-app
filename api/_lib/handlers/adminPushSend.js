@@ -1,6 +1,7 @@
 import admin from 'firebase-admin';
 import { parseServiceAccount, validateServiceAccount } from '../serviceAccount.js';
 import { formatPushNotification } from '../pushNotificationText.js';
+import { normalizeIconUrl, resolvePushImageUrl } from '../pushMediaStore.js';
 import { applyCors, readBodySafe } from '../http.js';
 import { requireAdminSession } from '../auth.js';
 import { enforceAuthRateLimit } from '../rateLimit.js';
@@ -88,12 +89,14 @@ function explainPushFailure(codes = '', platformCounts = null) {
   return text;
 }
 
-// Platforma göre FCM mesajı oluştur
-function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, messageMeta = {}) {
+// Platforma göre FCM mesajı oluştur (emoji metinde; icon/image URL ile)
+function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, imageUrl, messageMeta = {}) {
   const normalized = String(platform || 'web').toLowerCase();
   const nativeData = {
     title: pushText.title,
     body: pushText.body || '',
+    icon: iconUrl || '',
+    image: imageUrl || '',
     route: 'message',
     openMessage: '1',
     messageId: String(messageMeta.id || ''),
@@ -103,21 +106,24 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, mess
     ...nativeData,
     url: SITE_ORIGIN
   };
+  const notification = {
+    title: pushText.title,
+    body: pushText.body || '',
+    ...(imageUrl ? { imageUrl } : {})
+  };
 
   if (normalized === 'android') {
     return {
       token,
-      notification: {
-        title: pushText.title,
-        body: pushText.body || ''
-      },
+      notification,
       data: nativeData,
       android: {
         priority: 'high',
         notification: {
           channelId: 'liberte_campaign',
           icon: 'notification_icon',
-          color: '#0B2F26'
+          color: '#0B2F26',
+          ...(imageUrl ? { imageUrl } : {})
         }
       }
     };
@@ -126,10 +132,7 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, mess
   if (normalized === 'ios') {
     return {
       token,
-      notification: {
-        title: pushText.title,
-        body: pushText.body || ''
-      },
+      notification,
       data: nativeData,
       apns: {
         headers: {
@@ -142,19 +145,18 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, mess
               body: pushText.body || ''
             },
             sound: 'default',
-            badge: 1
+            badge: 1,
+            ...(imageUrl ? { 'mutable-content': 1 } : {})
           }
-        }
+        },
+        ...(imageUrl ? { fcmOptions: { imageUrl } } : {})
       }
     };
   }
 
   return {
     token,
-    notification: {
-      title: pushText.title,
-      body: pushText.body || ''
-    },
+    notification,
     data: webData,
     webpush: {
       headers: {
@@ -166,7 +168,8 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, mess
       },
       notification: {
         icon: iconUrl,
-        badge: badgeUrl
+        badge: badgeUrl,
+        ...(imageUrl ? { image: imageUrl } : {})
       }
     }
   };
@@ -221,10 +224,28 @@ export async function handleAdminPushSend(req, res) {
     const title = String(body.title || '').trim();
     const message = String(body.body || body.message || 'Yeni kampanya var!').trim();
     const pushText = formatPushNotification(title, message);
+    const sql = getSql();
+    let imageUrl = '';
+    try {
+      imageUrl = await resolvePushImageUrl(sql, {
+        imageUrl: body.imageUrl,
+        imageDataUrl: body.imageDataUrl,
+        publicOrigin: SITE_ORIGIN
+      });
+    } catch (mediaError) {
+      const status = Number(mediaError?.statusCode) || 400;
+      return res.status(status).json(trace.failBody(
+        'media',
+        'PUSH_MEDIA_INVALID',
+        mediaError?.message || 'Görsel işlenemedi'
+      ));
+    }
+    const iconUrl = normalizeIconUrl(body.iconUrl, SITE_ORIGIN);
 
     trace.log('start', {
       adminCustomerId: adminSession.customerId,
       audience,
+      hasImage: Boolean(imageUrl),
       step: 'parse_body'
     });
 
@@ -325,8 +346,8 @@ export async function handleAdminPushSend(req, res) {
     }
 
     const fb = getAdmin(serviceAccount);
-    const iconUrl = `${SITE_ORIGIN}/icon-192.png?v=8`;
     const badgeUrl = `${SITE_ORIGIN}/notification-badge.png`;
+    const resolvedIconUrl = iconUrl || `${SITE_ORIGIN}/icon-192.png?v=8`;
     const tokenPlatforms = mapTokenPlatforms(resolved.subscriptions);
     const messageId = Date.now();
     const messageMeta = { id: messageId, audience };
@@ -334,8 +355,9 @@ export async function handleAdminPushSend(req, res) {
       token,
       tokenPlatforms.get(token) || 'web',
       pushText,
-      iconUrl,
+      resolvedIconUrl,
       badgeUrl,
+      imageUrl,
       messageMeta
     ));
 
@@ -393,7 +415,13 @@ export async function handleAdminPushSend(req, res) {
             title: pushText.title,
             body: pushText.body || '',
             audience,
-            payload: { messageId, audience, pushSendId: logEntry.id }
+            payload: {
+              messageId,
+              audience,
+              pushSendId: logEntry.id,
+              imageUrl: imageUrl || '',
+              iconUrl: resolvedIconUrl
+            }
           }).catch(() => {});
         }
       }

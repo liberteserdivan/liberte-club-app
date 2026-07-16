@@ -1,17 +1,19 @@
-const IOS_TITLE_MAX = 30;
+// Bildirim metin limitleri (iOS/Android kilit ekranı için dengeli)
+export const PUSH_TITLE_MAX = 65;
+export const PUSH_BODY_MAX = 500;
 
 function isAppName(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return normalized === 'liberte club' || normalized === 'liberte';
 }
 
-function truncateIosTitle(title) {
-  const clean = String(title || '').trim();
-  if (clean.length <= IOS_TITLE_MAX) return clean;
-  return `${clean.slice(0, IOS_TITLE_MAX - 1)}…`;
+function clampText(value, max) {
+  const clean = String(value || '').trim();
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, Math.max(0, max - 1))}…`;
 }
 
-// Bildirim başlık ve gövdesini iOS düzenine göre hazırla
+// Bildirim başlık ve gövdesini platformlara uygun hazırla
 export function formatPushNotification(title = '', body = '') {
   const cleanTitle = String(title || '').trim();
   const cleanBody = String(body || '').trim();
@@ -36,14 +38,16 @@ export function formatPushNotification(title = '', body = '') {
     finalBody = '';
   }
 
-  if (finalTitle.length > IOS_TITLE_MAX && finalBody) {
-    finalTitle = truncateIosTitle(finalTitle);
-  } else if (finalTitle.length > IOS_TITLE_MAX) {
-    finalBody = finalTitle;
-    finalTitle = truncateIosTitle(finalTitle);
-  } else {
-    finalTitle = truncateIosTitle(finalTitle);
+  // Uzun başlık + gövde varsa başlığı kısalt; gövde ayrı kalsın
+  if (finalTitle.length > PUSH_TITLE_MAX && finalBody) {
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
+  } else if (finalTitle.length > PUSH_TITLE_MAX) {
+    finalBody = finalTitle.slice(PUSH_TITLE_MAX).trim() || finalBody;
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
   }
 
-  return { title: finalTitle, body: finalBody };
+  return {
+    title: clampText(finalTitle, PUSH_TITLE_MAX),
+    body: clampText(finalBody, PUSH_BODY_MAX)
+  };
 }

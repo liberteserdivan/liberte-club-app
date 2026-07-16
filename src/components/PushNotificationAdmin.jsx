@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Smartphone, Trash2, Users } from 'lucide-react';
+import { ImagePlus, Send, Smartphone, Trash2, Users, X } from 'lucide-react';
 import { dispatchPush } from '../lib/pushDispatch.js';
 import { apiFetch, ADMIN_REQUEST_OPTIONS } from '../lib/apiClient.js';
 import { sanitizePushSubscriptions } from '../lib/pushSubscriptionSanitize.js';
@@ -9,6 +9,9 @@ import {
   resolvePushAudience,
   resolvePushChannel
 } from '../lib/pushAudience.js';
+import { PUSH_BODY_MAX, PUSH_TITLE_MAX } from '../lib/pushNotificationText.js';
+import { compressPushImage, isHttpsImageUrl } from '../lib/pushImage.js';
+import { PUSH_EMOJI_PRESETS, PUSH_ICON_PRESETS } from '../lib/pushMediaPresets.js';
 
 // Örnek bildirim şablonları
 const PUSH_TEMPLATES = [
@@ -38,19 +41,38 @@ const PUSH_TEMPLATES = [
   }
 ];
 
-// Admin — hedefli push bildirim gönderimi
+// İmleç konumuna emoji ekle
+function insertAtCursor(value, emoji, start, end) {
+  const before = value.slice(0, start);
+  const after = value.slice(end);
+  return {
+    next: `${before}${emoji}${after}`,
+    caret: before.length + emoji.length
+  };
+}
+
+// Admin — hedefli push bildirim gönderimi (metin + emoji + ikon + görsel)
 export default function PushNotificationAdmin({ db, commit, serverStats = null }) {
   const [title, setTitle] = useState("Liberte'den Haber Var");
   const [body, setBody] = useState('Bugün kahvenin yanına tatlı keyfi seni bekliyor.');
   const [audience, setAudience] = useState('all');
+  const [iconUrl, setIconUrl] = useState(PUSH_ICON_PRESETS[0].url);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState('');
+  const [imageName, setImageName] = useState('');
+  const [emojiTarget, setEmojiTarget] = useState('body');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [cleanupNote, setCleanupNote] = useState('');
   const [formError, setFormError] = useState('');
   const cleanupStarted = useRef(false);
+  const titleRef = useRef(null);
+  const bodyRef = useRef(null);
+  const fileRef = useRef(null);
 
   const devices = db.pushSubscriptions || [];
   const pushLog = db.pushLog || [];
+  const previewImage = imageDataUrl || imageUrl;
   const preview = useMemo(() => {
     const local = resolvePushAudience(db, audience);
     const serverMembers = Number(serverStats?.customerCount || 0);
@@ -120,6 +142,57 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
     return `${platform} (${channel})`;
   }
 
+  function applyEmoji(emoji) {
+    if (emojiTarget === 'title') {
+      const el = titleRef.current;
+      const start = el?.selectionStart ?? title.length;
+      const end = el?.selectionEnd ?? title.length;
+      const { next, caret } = insertAtCursor(title, emoji, start, end);
+      if (next.length > PUSH_TITLE_MAX) return;
+      setTitle(next);
+      requestAnimationFrame(() => {
+        if (!titleRef.current) return;
+        titleRef.current.focus();
+        titleRef.current.setSelectionRange(caret, caret);
+      });
+      return;
+    }
+
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? body.length;
+    const end = el?.selectionEnd ?? body.length;
+    const { next, caret } = insertAtCursor(body, emoji, start, end);
+    if (next.length > PUSH_BODY_MAX) return;
+    setBody(next);
+    requestAnimationFrame(() => {
+      if (!bodyRef.current) return;
+      bodyRef.current.focus();
+      bodyRef.current.setSelectionRange(caret, caret);
+    });
+  }
+
+  async function onImageFileChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      const dataUrl = await compressPushImage(file);
+      setImageDataUrl(dataUrl);
+      setImageUrl('');
+      setImageName(file.name || 'görsel');
+      setFormError('');
+    } catch (error) {
+      setFormError(error?.message || 'Görsel hazırlanamadı');
+    }
+  }
+
+  function clearImage() {
+    setImageDataUrl('');
+    setImageUrl('');
+    setImageName('');
+  }
+
   async function resetDevices() {
     const ok = confirm('Tüm bildirim cihaz kayıtları silinsin mi? Üyeler bildirimleri yeniden açmalı.');
     if (!ok) return;
@@ -149,6 +222,11 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
       return;
     }
 
+    if (imageUrl.trim() && !isHttpsImageUrl(imageUrl)) {
+      setFormError('Görsel linki http(s) ile başlamalı.');
+      return;
+    }
+
     if (preview.disabled) {
       setFormError(preview.disabledReason || 'Seçilen hedef kitle kullanılamıyor.');
       return;
@@ -168,9 +246,12 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
     setResult(null);
 
     const response = await dispatchPush(db, commit, {
-      title: title.trim(),
-      body: body.trim(),
-      audience
+      title: title.trim().slice(0, PUSH_TITLE_MAX),
+      body: body.trim().slice(0, PUSH_BODY_MAX),
+      audience,
+      iconUrl: iconUrl.trim(),
+      imageUrl: imageDataUrl ? '' : imageUrl.trim(),
+      imageDataUrl: imageDataUrl || ''
     });
 
     setResult({
@@ -222,26 +303,100 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
         {formError && <p className="adminStatusNotice isError">{formError}</p>}
 
         <p className="pushHint">
-          Kampanyalar, LP fırsatları ve ikram haklarından haberdar olmak için üyeler bildirim izni vermelidir.
-          Gönderim sunucu üzerinden Firebase Admin SDK ile yapılır.
+          Başlık {PUSH_TITLE_MAX}, mesaj {PUSH_BODY_MAX} karakter. Emoji, ikon ve görsel (rich push) desteklenir.
         </p>
 
         <label htmlFor="pushTitle">Başlık</label>
         <input
           id="pushTitle"
+          ref={titleRef}
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Liberte'den Haber Var"
+          maxLength={PUSH_TITLE_MAX}
+          onFocus={() => setEmojiTarget('title')}
+          onChange={(e) => setTitle(e.target.value.slice(0, PUSH_TITLE_MAX))}
+          placeholder="Liberte'den Haber Var ☕"
         />
+        <p className="pushCharCount">{title.length}/{PUSH_TITLE_MAX}</p>
 
         <label htmlFor="pushBody">Mesaj</label>
         <textarea
           id="pushBody"
+          ref={bodyRef}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Bugün kahvenin yanına tatlı keyfi seni bekliyor."
-          rows={3}
+          maxLength={PUSH_BODY_MAX}
+          onFocus={() => setEmojiTarget('body')}
+          onChange={(e) => setBody(e.target.value.slice(0, PUSH_BODY_MAX))}
+          placeholder="Bugün kahvenin yanına tatlı keyfi seni bekliyor. 🍰"
+          rows={4}
         />
+        <p className="pushCharCount">{body.length}/{PUSH_BODY_MAX}</p>
+
+        <div className="pushEmojiRow" aria-label="Emoji ekle">
+          {PUSH_EMOJI_PRESETS.map((emoji) => (
+            <button
+              type="button"
+              key={emoji}
+              className="pushEmojiChip"
+              onClick={() => applyEmoji(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+
+        <label>Bildirim ikonu</label>
+        <div className="pushIconPresets">
+          {PUSH_ICON_PRESETS.map((preset) => (
+            <button
+              type="button"
+              key={preset.id}
+              className={`pushIconChip${iconUrl === preset.url ? ' isActive' : ''}`}
+              onClick={() => setIconUrl(preset.url)}
+            >
+              <img src={preset.url} alt="" width={28} height={28} />
+              <span>{preset.label}</span>
+            </button>
+          ))}
+        </div>
+        <input
+          value={iconUrl}
+          onChange={(e) => setIconUrl(e.target.value)}
+          placeholder="https://… ikon URL (isteğe bağlı)"
+        />
+
+        <label>Görsel (rich push)</label>
+        <div className="pushImageActions">
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => fileRef.current?.click()}
+          >
+            <ImagePlus size={16} /> Dosyadan yükle
+          </button>
+          {(imageDataUrl || imageUrl) && (
+            <button type="button" className="ghost" onClick={clearImage}>
+              <X size={16} /> Kaldır
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={onImageFileChange}
+        />
+        <input
+          value={imageDataUrl ? '' : imageUrl}
+          onChange={(e) => {
+            setImageUrl(e.target.value);
+            setImageDataUrl('');
+            setImageName('');
+          }}
+          placeholder="veya https://… görsel linki"
+          disabled={Boolean(imageDataUrl)}
+        />
+        {imageName && <p className="pushAudienceNote">Seçilen: {imageName}</p>}
 
         <label htmlFor="pushAudience">Hedef Kitle</label>
         <select
@@ -271,8 +426,16 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
 
         <div className="pushPreview pushPreviewPro">
           <span>ÖNİZLEME</span>
-          <b>{title.trim() || 'Başlık'}</b>
-          <p>{body.trim() || 'Mesaj içeriği'}</p>
+          <div className="pushPreviewRich">
+            {iconUrl ? <img className="pushPreviewIcon" src={iconUrl} alt="" /> : null}
+            <div>
+              <b>{title.trim() || 'Başlık'}</b>
+              <p>{body.trim() || 'Mesaj içeriği'}</p>
+            </div>
+          </div>
+          {previewImage ? (
+            <img className="pushPreviewImage" src={previewImage} alt="Bildirim görseli önizleme" />
+          ) : null}
           <em>Hedef: {preview.audienceLabel}</em>
         </div>
 
@@ -304,7 +467,7 @@ export default function PushNotificationAdmin({ db, commit, serverStats = null }
 
         {sending && (
           <p className="pushAudienceNote">
-            Sunucu bildirimi hazırlıyor; ilk denemede 10–30 sn sürebilir. Lütfen uygulamayı kapatma.
+            Sunucu bildirimi hazırlıyor; görselli gönderimde biraz daha sürebilir. Lütfen uygulamayı kapatma.
           </p>
         )}
 

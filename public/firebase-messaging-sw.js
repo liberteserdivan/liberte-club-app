@@ -1,19 +1,20 @@
-// Liberte Club push service worker (v17)
+// Liberte Club push service worker (v18 — rich media)
 const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png?v=8';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
 
-const IOS_TITLE_MAX = 30;
+const PUSH_TITLE_MAX = 65;
+const PUSH_BODY_MAX = 500;
 
 function isAppName(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return normalized === 'liberte club' || normalized === 'liberte';
 }
 
-function truncateIosTitle(title) {
-  const clean = String(title || '').trim();
-  if (clean.length <= IOS_TITLE_MAX) return clean;
-  return clean.slice(0, IOS_TITLE_MAX - 1) + '…';
+function clampText(value, max) {
+  const clean = String(value || '').trim();
+  if (clean.length <= max) return clean;
+  return clean.slice(0, Math.max(0, max - 1)) + '…';
 }
 
 function formatPushNotification(title, body) {
@@ -39,16 +40,17 @@ function formatPushNotification(title, body) {
     finalBody = '';
   }
 
-  if (finalTitle.length > IOS_TITLE_MAX && finalBody) {
-    finalTitle = truncateIosTitle(finalTitle);
-  } else if (finalTitle.length > IOS_TITLE_MAX) {
-    finalBody = finalTitle;
-    finalTitle = truncateIosTitle(finalTitle);
-  } else {
-    finalTitle = truncateIosTitle(finalTitle);
+  if (finalTitle.length > PUSH_TITLE_MAX && finalBody) {
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
+  } else if (finalTitle.length > PUSH_TITLE_MAX) {
+    finalBody = finalTitle.slice(PUSH_TITLE_MAX).trim() || finalBody;
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
   }
 
-  return { title: finalTitle, body: finalBody };
+  return {
+    title: clampText(finalTitle, PUSH_TITLE_MAX),
+    body: clampText(finalBody, PUSH_BODY_MAX)
+  };
 }
 
 function parsePushPayload(event) {
@@ -78,19 +80,25 @@ function showLiberteNotification(payload) {
     payload.notification?.title || data.title,
     payload.notification?.body || data.body
   );
+  const icon = data.icon || payload.notification?.icon || PUSH_ICON;
+  const image = data.image || payload.notification?.image || '';
   const noticeData = {
     ...data,
     title: formatted.title,
     body: formatted.body,
+    icon,
+    image,
     url: data.url || 'https://app.liberte.cafe'
   };
-  return self.registration.showNotification(formatted.title, {
+  const options = {
     body: formatted.body || undefined,
-    icon: PUSH_ICON,
+    icon,
     badge: PUSH_BADGE,
     tag: 'liberte-club-push',
     data: noticeData
-  });
+  };
+  if (image) options.image = image;
+  return self.registration.showNotification(formatted.title, options);
 }
 
 // iOS — event.waitUntil zorunlu; aksi halde abonelik iptal edilir

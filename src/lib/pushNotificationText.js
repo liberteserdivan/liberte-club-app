@@ -1,5 +1,6 @@
 export const APP_PUSH_NAME = 'Liberte';
-const IOS_TITLE_MAX = 30;
+export const PUSH_TITLE_MAX = 65;
+export const PUSH_BODY_MAX = 500;
 
 // iOS PWA'da "from [uygulama adı]" satırı sistemden gelir — kaldırılamaz
 function isAppName(value) {
@@ -7,13 +8,13 @@ function isAppName(value) {
   return normalized === 'liberte club' || normalized === 'liberte';
 }
 
-function truncateIosTitle(title) {
-  const clean = String(title || '').trim();
-  if (clean.length <= IOS_TITLE_MAX) return clean;
-  return `${clean.slice(0, IOS_TITLE_MAX - 1)}…`;
+function clampText(value, max) {
+  const clean = String(value || '').trim();
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, Math.max(0, max - 1))}…`;
 }
 
-// Bildirim başlık ve gövdesini iOS düzenine göre hazırla
+// Bildirim başlık ve gövdesini platformlara uygun hazırla
 export function formatPushNotification(title = '', body = '') {
   const cleanTitle = String(title || '').trim();
   const cleanBody = String(body || '').trim();
@@ -38,32 +39,34 @@ export function formatPushNotification(title = '', body = '') {
     finalBody = '';
   }
 
-  if (finalTitle.length > IOS_TITLE_MAX && finalBody) {
-    finalTitle = truncateIosTitle(finalTitle);
-  } else if (finalTitle.length > IOS_TITLE_MAX) {
-    finalBody = finalTitle;
-    finalTitle = truncateIosTitle(finalTitle);
-  } else {
-    finalTitle = truncateIosTitle(finalTitle);
+  if (finalTitle.length > PUSH_TITLE_MAX && finalBody) {
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
+  } else if (finalTitle.length > PUSH_TITLE_MAX) {
+    finalBody = finalTitle.slice(PUSH_TITLE_MAX).trim() || finalBody;
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
   }
 
-  return { title: finalTitle, body: finalBody };
+  return {
+    title: clampText(finalTitle, PUSH_TITLE_MAX),
+    body: clampText(finalBody, PUSH_BODY_MAX)
+  };
 }
 
 // Service worker şablonu için aynı mantık
 export function pushNotificationFormatterSource() {
   return `
-const IOS_TITLE_MAX = 30;
+const PUSH_TITLE_MAX = ${PUSH_TITLE_MAX};
+const PUSH_BODY_MAX = ${PUSH_BODY_MAX};
 
 function isAppName(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return normalized === 'liberte club' || normalized === 'liberte';
 }
 
-function truncateIosTitle(title) {
-  const clean = String(title || '').trim();
-  if (clean.length <= IOS_TITLE_MAX) return clean;
-  return clean.slice(0, IOS_TITLE_MAX - 1) + '…';
+function clampText(value, max) {
+  const clean = String(value || '').trim();
+  if (clean.length <= max) return clean;
+  return clean.slice(0, Math.max(0, max - 1)) + '…';
 }
 
 function formatPushNotification(title, body) {
@@ -89,15 +92,16 @@ function formatPushNotification(title, body) {
     finalBody = '';
   }
 
-  if (finalTitle.length > IOS_TITLE_MAX && finalBody) {
-    finalTitle = truncateIosTitle(finalTitle);
-  } else if (finalTitle.length > IOS_TITLE_MAX) {
-    finalBody = finalTitle;
-    finalTitle = truncateIosTitle(finalTitle);
-  } else {
-    finalTitle = truncateIosTitle(finalTitle);
+  if (finalTitle.length > PUSH_TITLE_MAX && finalBody) {
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
+  } else if (finalTitle.length > PUSH_TITLE_MAX) {
+    finalBody = finalTitle.slice(PUSH_TITLE_MAX).trim() || finalBody;
+    finalTitle = clampText(finalTitle, PUSH_TITLE_MAX);
   }
 
-  return { title: finalTitle, body: finalBody };
+  return {
+    title: clampText(finalTitle, PUSH_TITLE_MAX),
+    body: clampText(finalBody, PUSH_BODY_MAX)
+  };
 }`;
 }
