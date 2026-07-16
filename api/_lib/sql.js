@@ -22,9 +22,10 @@ function assertProductionDatabaseAllowed(connectionString) {
   return true;
 }
 
+// Yalnızca :6543 = transaction mode. :5432 pooler session mode'dur
+// (EMAXCONNSESSION — pool_size limiti); onu transaction sanmayız.
 function isTransactionPooler(connectionString) {
-  const url = String(connectionString || '');
-  return /:6543(\/|\?|$)/.test(url) || /pooler\.supabase\.com/i.test(url);
+  return /:6543(\/|\?|$)/.test(String(connectionString || ''));
 }
 
 // RB-4: Her SQL statement'i DB tarafında üst sınırla. Bayat/asılı bağlantıda
@@ -107,31 +108,6 @@ export function resetSqlClient() {
   // Aktif istek kapsamındaki bağlamayı da temizle ki retry taze istemci alsın
   const holder = requestStorage.getStore();
   if (holder) holder.sql = null;
-}
-
-// Route deadline / attempt timeout sonrası: terk edilmiş sorgu max:1 slot'u
-// statement_timeout'a (25sn) kadar tutmasın. Soft reset yalnız referansı düşürür;
-// pooler bağlantısı durur → sonraki istekler kuyrukta 504 zinciri üretir.
-// Bu çağrı eski istemciyi kısa sürede kapatır; in-flight sorgu kesilir,
-// sonraki getSql taze bağlantı açar. WRITE yolları attemptTimeout kullanmaz.
-export async function forceResetSqlClient(reason = 'force_reset') {
-  const old = sharedSql;
-  sharedSql = null;
-  sharedConnectionString = '';
-  const holder = requestStorage.getStore();
-  if (holder) holder.sql = null;
-  if (!old) return;
-
-  console.warn(`[sql] force reset (${reason})`);
-  try {
-    // timeout:0 — bekleyen sorguları beklemeden bağlantıyı kes
-    await Promise.race([
-      old.end({ timeout: 0 }),
-      new Promise((resolve) => setTimeout(resolve, 1500))
-    ]);
-  } catch {
-    // Kapatma hatası yutulur; referans zaten düşürüldü
-  }
 }
 
 // Aktif SQL istemcisi — istek kapsamı ile paylaşılan istemci aynıdır.

@@ -18,6 +18,8 @@ const TRANSIENT_PATTERNS = [
   'client_idle_timeout',
   'canceling statement due to statement timeout',
   'too many connections',
+  'emaxconnsession',
+  'max clients reached',
   '57p01',
   '08006',
   '08003',
@@ -65,25 +67,11 @@ function sleep(ms) {
   });
 }
 
-// Attempt timeout'ta SQL bağlantısını serbest bırak (dinamik import — sql↔dbTransient döngüsü yok)
-async function releaseSqlOnAttemptTimeout() {
-  try {
-    const { forceResetSqlClient } = await import('./sql.js');
-    await forceResetSqlClient('attempt_timeout');
-  } catch {
-    // ignore
-  }
-}
-
 // Görevi zaman sınırıyla yarıştır — bayat bağlantıda postgres.js'in TCP
 // zaman aşımını (~15sn) beklemek yerine erken vazgeçip yeniden bağlanmayı sağlar.
 // timeoutMs <= 0 ise sınır uygulanmaz (varsayılan davranış korunur).
-// Timeout sonrası forceReset: terk edilmiş sorgu max:1 slot'u 25sn tutmasın.
-// WRITE yolları attemptTimeoutMs kullanmaz → çift yazma riski yok.
-function runWithAttemptTimeout(task, timeoutMs, { onTimeout } = {}) {
+function runWithAttemptTimeout(task, timeoutMs) {
   if (!timeoutMs || timeoutMs <= 0) return Promise.resolve().then(task);
-
-  const release = typeof onTimeout === 'function' ? onTimeout : releaseSqlOnAttemptTimeout;
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -93,10 +81,7 @@ function runWithAttemptTimeout(task, timeoutMs, { onTimeout } = {}) {
       // Mesaj 'etimedout' içerir ki isTransientDbError geçici sayıp retry tetiklesin
       const err = new Error('ETIMEDOUT: sql attempt timeout');
       err.code = 'ETIMEDOUT';
-      Promise.resolve()
-        .then(() => release())
-        .catch(() => {})
-        .finally(() => reject(err));
+      reject(err);
     }, timeoutMs);
 
     Promise.resolve()
@@ -120,18 +105,12 @@ function runWithAttemptTimeout(task, timeoutMs, { onTimeout } = {}) {
 
 // Kopan/bayat bağlantıda isteği kısa gecikmeyle yeniden dene.
 // attemptTimeoutMs verilirse her deneme bu süreyle sınırlanır (stall koruması).
-// onAttemptTimeout: test/enjeksiyon; yoksa forceResetSqlClient (max:1 slot).
-export async function withSqlRetry(task, {
-  retries = 4,
-  resetClient,
-  attemptTimeoutMs = 0,
-  onAttemptTimeout
-} = {}) {
+export async function withSqlRetry(task, { retries = 4, resetClient, attemptTimeoutMs = 0 } = {}) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      return await runWithAttemptTimeout(task, attemptTimeoutMs, { onTimeout: onAttemptTimeout });
+      return await runWithAttemptTimeout(task, attemptTimeoutMs);
     } catch (error) {
       lastError = error;
       if (!isTransientDbError(error) || attempt >= retries) {
