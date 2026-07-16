@@ -6,7 +6,7 @@ import { pushNotificationFormatterSource } from '../src/lib/pushNotificationText
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // iOS uyumlu push SW — Firebase messaging SDK kullanılmaz (çakışma ve sessiz push riski)
-const sw = `// Liberte Club push service worker (v17)
+const sw = `// Liberte Club push service worker (v18 — rich media)
 const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png?v=8';
 const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
 
@@ -39,19 +39,25 @@ function showLiberteNotification(payload) {
     payload.notification?.title || data.title,
     payload.notification?.body || data.body
   );
+  const icon = data.icon || payload.notification?.icon || PUSH_ICON;
+  const image = data.image || payload.notification?.image || '';
   const noticeData = {
     ...data,
     title: formatted.title,
     body: formatted.body,
+    icon,
+    image,
     url: data.url || 'https://app.liberte.cafe'
   };
-  return self.registration.showNotification(formatted.title, {
+  const options = {
     body: formatted.body || undefined,
-    icon: PUSH_ICON,
+    icon,
     badge: PUSH_BADGE,
     tag: 'liberte-club-push',
     data: noticeData
-  });
+  };
+  if (image) options.image = image;
+  return self.registration.showNotification(formatted.title, options);
 }
 
 // iOS — event.waitUntil zorunlu; aksi halde abonelik iptal edilir

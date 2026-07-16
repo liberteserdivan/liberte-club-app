@@ -18,7 +18,15 @@ function formatPushErrorMessage(result = {}, error = null) {
   return formatted.message || 'Push gönderilemedi.';
 }
 
-export async function dispatchPush(db, commit, { title, body, audience = 'all', customerId = null }) {
+export async function dispatchPush(db, commit, {
+  title,
+  body,
+  audience = 'all',
+  customerId = null,
+  imageUrl = '',
+  imageDataUrl = '',
+  iconUrl = ''
+}) {
   const resolved = resolvePushAudience(db, audience);
   const createdAt = new Date().toLocaleString('tr-TR');
   const logId = Date.now();
@@ -30,6 +38,8 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
     audience,
     audienceLabel: resolved.audienceLabel,
     createdAt,
+    imageUrl: imageUrl || '',
+    iconUrl: iconUrl || '',
     ...(customerId ? { customerId } : {})
   };
 
@@ -78,7 +88,14 @@ export async function dispatchPush(db, commit, { title, body, audience = 'all', 
   try {
     const { response, data } = await apiJson('/api/admin?resource=push-send', {
       method: 'POST',
-      body: JSON.stringify({ title, body, audience }),
+      body: JSON.stringify({
+        title,
+        body,
+        audience,
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(imageDataUrl ? { imageDataUrl } : {}),
+        ...(iconUrl ? { iconUrl } : {})
+      }),
       timeoutMs: PUSH_SEND_TIMEOUT_MS
     });
 

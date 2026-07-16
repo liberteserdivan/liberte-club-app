@@ -99,16 +99,24 @@ export async function showPushNotification(payload) {
     payload?.notification?.body || payload?.data?.body
   );
 
+  const icon = payload?.data?.icon
+    || payload?.notification?.icon
+    || `${PUSH_SITE_ORIGIN}${NOTIFICATION_ICON}`;
+  const image = payload?.data?.image || payload?.notification?.image || '';
+
   const options = {
     body: formatted.body || undefined,
-    icon: `${PUSH_SITE_ORIGIN}${NOTIFICATION_ICON}`,
+    icon,
     badge: `${PUSH_SITE_ORIGIN}${NOTIFICATION_BADGE}`,
     tag: 'liberte-club-push',
     data: {
       ...(payload?.data || {}),
+      icon,
+      image,
       url: payload?.data?.url || PUSH_SITE_ORIGIN
     }
   };
+  if (image) options.image = image;
 
   if ('serviceWorker' in navigator) {
     const registration = await navigator.serviceWorker.ready;

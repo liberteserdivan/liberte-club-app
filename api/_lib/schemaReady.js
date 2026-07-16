@@ -86,6 +86,13 @@ async function runSchemaEnsure(sql) {
   await sql`ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS admin_pin_locked_until timestamptz`;
   await sql`CREATE INDEX IF NOT EXISTS app_error_logs_created_at_idx
     ON app_error_logs (created_at DESC)`;
+  await sql`CREATE TABLE IF NOT EXISTS push_media_assets (
+    id TEXT PRIMARY KEY,
+    mime_type TEXT NOT NULL,
+    bytes BYTEA NOT NULL,
+    byte_size INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
 }
 
 // Tablolar hazır mı — production'da atlanır (Supabase SQL bootstrap)

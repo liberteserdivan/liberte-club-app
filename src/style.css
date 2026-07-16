@@ -4897,6 +4897,98 @@ body{
   color:#1D6A55;
 }
 
+.pushCharCount{
+  margin:-10px 0 12px!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  color:#7a8680!important;
+  text-align:right;
+}
+
+.pushEmojiRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:0 0 14px;
+}
+
+.pushEmojiChip{
+  width:36px!important;
+  height:36px!important;
+  padding:0!important;
+  border-radius:12px!important;
+  border:1px solid rgba(11,47,38,.12)!important;
+  background:#fff!important;
+  font-size:18px!important;
+  line-height:1!important;
+  cursor:pointer;
+}
+
+.pushIconPresets{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 10px;
+}
+
+.pushIconChip{
+  display:inline-flex!important;
+  align-items:center;
+  gap:8px;
+  height:40px!important;
+  padding:0 12px!important;
+  border-radius:12px!important;
+  border:1px solid rgba(11,47,38,.12)!important;
+  background:#fff!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  color:var(--forest)!important;
+  cursor:pointer;
+}
+
+.pushIconChip.isActive{
+  border-color:rgba(29,106,85,.45)!important;
+  background:#eef7f3!important;
+}
+
+.pushIconChip img{
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  object-fit:cover;
+}
+
+.pushImageActions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 10px;
+}
+
+.pushPreviewRich{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  margin-top:8px;
+}
+
+.pushPreviewIcon{
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  object-fit:cover;
+  flex-shrink:0;
+}
+
+.pushPreviewImage{
+  display:block;
+  width:100%;
+  max-height:160px;
+  margin-top:12px;
+  border-radius:14px;
+  object-fit:cover;
+}
+
 .pushSendResult{
   margin-top:14px;
   padding:14px;
