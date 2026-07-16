@@ -14,9 +14,6 @@
     "api/push.js": {
       "maxDuration": 60
     },
-    "api/media.js": {
-      "maxDuration": 15
-    },
     "api/auth.js": {
       "maxDuration": 60
     },
@@ -134,6 +131,10 @@
     {
       "source": "/api/push/send",
       "destination": "/api/admin?resource=push-send"
+    },
+    {
+      "source": "/api/media",
+      "destination": "/api/push?action=media"
     },
     {
       "source": "/api/push/register-device",
