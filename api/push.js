@@ -1,1 +1,54 @@
-import { withSqlRequest, withSqlRequestNoGuardian } from "./_lib/sqlRequest.js";\n\n// Public push görseli (FCM imageUrl) — ayrı serverless function yok (Hobby limiti)\nasync function handlePushMedia(req, res) {\n  if (req.method !== "GET") {\n    return res.status(405).json({ error: "Method Not Allowed" });\n  }\n\n  const id = String(req.query?.id || "").trim();\n  if (!id) {\n    return res.status(400).json({ error: "id gerekli" });\n  }\n\n  try {\n    const { getSql } = await import("./_lib/sql.js");\n    const { loadPushMedia } = await import("./_lib/pushMediaStore.js");\n    const row = await loadPushMedia(getSql(), id);\n    if (!row) {\n      return res.status(404).json({ error: "Görsel bulunamadı" });\n    }\n\n    const bytes = row.bytes;\n    const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);\n    res.setHeader("Content-Type", row.mime_type || "image/jpeg");\n    res.setHeader("Cache-Control", "public, max-age=86400, immutable");\n    res.setHeader("Content-Length", String(buffer.length));\n    return res.status(200).end(buffer);\n  } catch (error) {\n    console.error("[push.media]", error?.message || error);\n    return res.status(500).json({ error: "Görsel okunamadı" });\n  }\n}\n\nconst mediaSqlHandler = withSqlRequestNoGuardian(handlePushMedia);\n\nexport default async function pushRouter(req, res) {\n  const action = String(req.query?.action || "").trim().toLowerCase();\n\n  if (action === "media") {\n    return mediaSqlHandler(req, res);\n  }\n\n  if (action === "send") {\n    const { handleAdminPushSend } = await import("./_lib/handlers/adminPushSend.js");\n    return withSqlRequest(handleAdminPushSend)(req, res);\n  }\n\n  if (action === "register-device") {\n    const { handlePushRegisterDevice } = await import("./_lib/handlers/pushRegisterDevice.js");\n    return withSqlRequestNoGuardian(handlePushRegisterDevice)(req, res);\n  }\n\n  return res.status(400).json({ error: "Geçersiz push action" });\n}\n\n
+import { withSqlRequest, withSqlRequestNoGuardian } from './_lib/sqlRequest.js';
+
+// Public push görseli (FCM imageUrl) — ayrı serverless function yok (Hobby limiti)
+async function handlePushMedia(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const id = String(req.query?.id || '').trim();
+  if (!id) {
+    return res.status(400).json({ error: 'id gerekli' });
+  }
+
+  try {
+    const { getSql } = await import('./_lib/sql.js');
+    const { loadPushMedia } = await import('./_lib/pushMediaStore.js');
+    const row = await loadPushMedia(getSql(), id);
+    if (!row) {
+      return res.status(404).json({ error: 'Görsel bulunamadı' });
+    }
+
+    const bytes = row.bytes;
+    const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+    res.setHeader('Content-Type', row.mime_type || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.setHeader('Content-Length', String(buffer.length));
+    return res.status(200).end(buffer);
+  } catch (error) {
+    console.error('[push.media]', error?.message || error);
+    return res.status(500).json({ error: 'Görsel okunamadı' });
+  }
+}
+
+const mediaSqlHandler = withSqlRequestNoGuardian(handlePushMedia);
+
+export default async function pushRouter(req, res) {
+  const action = String(req.query?.action || '').trim().toLowerCase();
+
+  if (action === 'media') {
+    return mediaSqlHandler(req, res);
+  }
+
+  if (action === 'send') {
+    const { handleAdminPushSend } = await import('./_lib/handlers/adminPushSend.js');
+    return withSqlRequest(handleAdminPushSend)(req, res);
+  }
+
+  if (action === 'register-device') {
+    const { handlePushRegisterDevice } = await import('./_lib/handlers/pushRegisterDevice.js');
+    return withSqlRequestNoGuardian(handlePushRegisterDevice)(req, res);
+  }
+
+  return res.status(400).json({ error: 'Geçersiz push action' });
+}
