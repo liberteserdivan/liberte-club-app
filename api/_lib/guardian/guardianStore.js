@@ -1,10 +1,16 @@
 import { getSql } from '../sql.js';
+import { isProductionRuntime } from '../schemaReady.js';
 
 const SAFE_MODE_ROW_ID = 'singleton';
 let tablesReady = false;
 
+// Guardian tabloları — production'da DDL YAPILMAZ (transaction pooler DDL'de asılı kalır)
 async function ensureGuardianTables(sql) {
   if (tablesReady) return;
+  if (isProductionRuntime()) {
+    tablesReady = true;
+    return;
+  }
   await sql`CREATE TABLE IF NOT EXISTS guardian_safe_mode (
     id text PRIMARY KEY DEFAULT 'singleton',
     config jsonb NOT NULL,

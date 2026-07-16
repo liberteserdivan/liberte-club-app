@@ -59,9 +59,20 @@ const sessionSqlHandler = withSqlRequestNoGuardian(async function handler(req, r
   return route(req, res);
 });
 
-// Giriş — Guardian hydrate yok; müşteri çekirdeği izole
+  // Giriş — Guardian hydrate yok; müşteri çekirdeği izole
 const loginSqlHandler = withSqlRequestNoGuardian(async function handler(req, res) {
   const route = await AUTH_ACTIONS.login();
+  return route(req, res);
+});
+
+// PIN unut / kayıt — Guardian hydrate yok (pooler DDL/hydrate login'i değil auth'u kilitlemesin)
+const forgotPinSqlHandler = withSqlRequestNoGuardian(async function handler(req, res) {
+  const route = await AUTH_ACTIONS['forgot-pin']();
+  return route(req, res);
+});
+
+const registerCompleteSqlHandler = withSqlRequestNoGuardian(async function handler(req, res) {
+  const route = await AUTH_ACTIONS['register-complete']();
   return route(req, res);
 });
 
@@ -93,6 +104,24 @@ export default async function authRouter(req, res) {
       return res.status(200).end();
     }
     return loginSqlHandler(req, res);
+  }
+
+  // /api/auth/forgot-pin — müşteri PIN kurtarma; Guardian hydrate yok
+  if (action === 'forgot-pin') {
+    if (req.method === 'OPTIONS') {
+      applyCors(req, res, 'POST,OPTIONS');
+      return res.status(200).end();
+    }
+    return forgotPinSqlHandler(req, res);
+  }
+
+  // /api/auth/register-complete — kayıt kodu/tamamlama; Guardian hydrate yok
+  if (action === 'register-complete') {
+    if (req.method === 'OPTIONS') {
+      applyCors(req, res, 'POST,OPTIONS');
+      return res.status(200).end();
+    }
+    return registerCompleteSqlHandler(req, res);
   }
 
   // /api/admin/members — Guardian hydrate yok; üye listesi hızlı yanıt
