@@ -26,6 +26,7 @@ test('PushMessageSheet alt sheet kullanir', () => {
   assert.match(src, /(?:pushSheetBackdrop|pushBannerBackdrop)/);
   assert.match(src, /(?:pushSheetHandle|pushBannerClose|pushBannerCta)/);
   assert.doesNotMatch(src, /noticeModal/);
+  assert.match(src, /pushBannerMedia|imageUrl/);
 });
 
 test('Bildirim merkezi inbox duzeni', () => {

@@ -49,6 +49,24 @@ public class NotificationPermissionPlugin extends Plugin {
         return manager != null && manager.areNotificationsEnabled();
     }
 
+    // Allow sonrası OEM'lerde NotificationManager gecikebilir — kısa poll
+    private boolean waitUntilNotificationsEnabled(int attempts, int delayMs) {
+        for (int i = 0; i < attempts; i++) {
+            if (areNotificationsEnabled()) {
+                return true;
+            }
+            if (i < attempts - 1) {
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        return false;
+    }
+
     @PluginMethod
     public void checkPermission(PluginCall call) {
         JSObject result = new JSObject();
@@ -58,18 +76,28 @@ public class NotificationPermissionPlugin extends Plugin {
 
     @PluginMethod
     public void requestPermission(PluginCall call) {
-        if (areNotificationsEnabled()) {
+        if (waitUntilNotificationsEnabled(3, 80)) {
             call.resolve();
             return;
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            call.resolve();
+            // Eski Android'de runtime diyalog yok — uygulama bildirimi açıksa yeterli
+            if (areNotificationsEnabled()) {
+                call.resolve();
+                return;
+            }
+            call.reject("Android bildirimleri kapalı. Ayarlardan açın.");
             return;
         }
 
+        // Runtime GRANTED ama app-level bildirim kapalıysa tekrar diyalog açılmaz
         if (getPermissionState("notifications") == PermissionState.GRANTED) {
-            call.resolve();
+            if (waitUntilNotificationsEnabled(6, 120)) {
+                call.resolve();
+                return;
+            }
+            call.reject("Android bildirimleri kapalı. Ayarlardan açın.");
             return;
         }
 
@@ -78,7 +106,7 @@ public class NotificationPermissionPlugin extends Plugin {
 
     @PermissionCallback
     private void permissionCallback(PluginCall call) {
-        if (areNotificationsEnabled()) {
+        if (waitUntilNotificationsEnabled(8, 120)) {
             call.resolve();
             return;
         }

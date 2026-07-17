@@ -82,7 +82,29 @@ export function extractPushOpenData(actionOrNotification = {}) {
   if (!data.title && actionOrNotification.title) data.title = actionOrNotification.title;
   if (!data.body && actionOrNotification.body) data.body = actionOrNotification.body;
 
+  // Görsel URL — data veya notification katmanından
+  if (!data.imageUrl && notification?.imageUrl) data.imageUrl = notification.imageUrl;
+  if (!data.image && notification?.image) data.image = notification.image;
+  if (!data.imageUrl && actionOrNotification.imageUrl) data.imageUrl = actionOrNotification.imageUrl;
+  if (!data.image && actionOrNotification.image) data.image = actionOrNotification.image;
+
   return data;
+}
+
+// HTTPS görsel URL'sini payload alanlarından seç
+function resolvePushImageUrl(data = {}) {
+  const candidates = [
+    data.imageUrl,
+    data.image,
+    data.image_url,
+    data.payload?.imageUrl,
+    data.payload?.image
+  ];
+  for (const candidate of candidates) {
+    const url = String(candidate || '').trim();
+    if (/^https:\/\//i.test(url)) return url;
+  }
+  return '';
 }
 
 // Push verisinden okunabilir mesaj nesnesi üret
@@ -91,11 +113,14 @@ export function normalizePushMessage(data = {}) {
   const body = String(data.body || '').trim();
   if (!title && !body) return null;
 
+  const imageUrl = resolvePushImageUrl(data);
+
   return {
     id: data.messageId || data.id || null,
     title: title || 'Liberte Club',
     body,
     audience: data.audience || null,
+    imageUrl: imageUrl || null,
     createdAt: data.createdAt || new Date().toISOString()
   };
 }
@@ -145,6 +170,7 @@ export function handlePushOpenPayload(raw = {}) {
       title: 'Liberte Club',
       body: 'Yeni bir bildirimin var.',
       audience: data.audience || null,
+      imageUrl: resolvePushImageUrl(data) || null,
       createdAt: data.createdAt || new Date().toISOString()
     };
     emitPushMessage(payload);

@@ -28,6 +28,12 @@ export async function ensureInAppNotificationTable(sql) {
 function rowToNotification(row) {
   if (!row) return null;
   const legacy = row.legacy_json && typeof row.legacy_json === 'object' ? row.legacy_json : {};
+  const payload = row.payload || legacy.payload || null;
+  const payloadObj = payload && typeof payload === 'object' ? payload : {};
+  // Payload icinden ust seviye gorsel URL (kart acilisinda kolaylik)
+  const imageUrl = String(
+    payloadObj.imageUrl || payloadObj.image || legacy.imageUrl || ''
+  ).trim();
   return {
     id: Number(row.id),
     customerId: row.customer_id != null ? Number(row.customer_id) : null,
@@ -38,7 +44,8 @@ function rowToNotification(row) {
       ? new Date(row.created_at).toLocaleString('tr-TR')
       : (legacy.createdAt || new Date().toLocaleString('tr-TR')),
     readAt: row.read_at || null,
-    payload: row.payload || legacy.payload || null,
+    payload,
+    imageUrl: imageUrl || null,
     active: row.is_active !== false
   };
 }

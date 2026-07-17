@@ -2,7 +2,11 @@ import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from './platform.js';
 import { detectPushTokenType, isFcmRegistrationToken } from './pushTokenFormat.js';
-import { showAndroidForegroundNotification, ensureAndroidNotificationPermission, checkAndroidNotificationPermission } from './androidNotificationPermission.js';
+import {
+  showAndroidForegroundNotification,
+  waitForAndroidNotificationPermission,
+  checkAndroidNotificationPermission
+} from './androidNotificationPermission.js';
 import { formatPushNotification } from './pushNotificationText.js';
 import { handlePushOpenPayload, extractPushOpenData } from './pushNavigation.js';
 
@@ -80,11 +84,14 @@ export async function registerNativePushToken() {
   const platform = Capacitor.getPlatform();
 
   try {
-    // Android: sistem iznini kontrol et, Firebase izin API'sini atla
+    // Android: izin isteği enableNativePush'ta yapılır — burada yalnızca doğrula
     if (platform === 'android') {
-      const androidPerm = await ensureAndroidNotificationPermission();
-      if (!androidPerm.ok) {
-        return { ok: false, reason: 'denied', permissionStatus: 'denied' };
+      const ready = await waitForAndroidNotificationPermission();
+      if (!ready) {
+        const { granted } = await checkAndroidNotificationPermission();
+        if (!granted) {
+          return { ok: false, reason: 'denied', permissionStatus: 'denied' };
+        }
       }
 
       const { token } = await FirebaseMessaging.getToken();
