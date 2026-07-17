@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, X } from 'lucide-react';
 
 // Tarih metnini okunabilir göster
@@ -25,6 +25,13 @@ export default function PushMessageSheet({ message, onClose }) {
   const when = formatMessageWhen(message?.createdAt);
   const bodyText = message?.body
     || 'Bu bildirimin ayrıntısı yok; ana ekrandan devam edebilirsin.';
+  const imageUrl = String(message?.imageUrl || '').trim();
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(imageUrl) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -45,7 +52,7 @@ export default function PushMessageSheet({ message, onClose }) {
   return (
     <div className="pushBannerBackdrop" onClick={onClose} role="presentation">
       <div
-        className="pushBanner"
+        className={`pushBanner${showImage ? ' pushBannerHasMedia' : ''}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-labelledby="push-message-title"
@@ -56,17 +63,30 @@ export default function PushMessageSheet({ message, onClose }) {
           <X size={18} />
         </button>
 
-        <div className="pushBannerHero">
-          <div className="pushBannerRing" aria-hidden="true">
-            <div className="pushBannerBadge">
-              <Bell size={26} strokeWidth={2.1} />
-            </div>
+        {showImage ? (
+          <div className="pushBannerMedia">
+            <img
+              src={imageUrl}
+              alt=""
+              onError={() => setImageFailed(true)}
+            />
           </div>
-          <p className="pushBannerBrand">Liberte Club</p>
-          <span className="pushBannerLabel">Yeni bildirim</span>
-        </div>
+        ) : (
+          <div className="pushBannerHero">
+            <div className="pushBannerRing" aria-hidden="true">
+              <div className="pushBannerBadge">
+                <Bell size={26} strokeWidth={2.1} />
+              </div>
+            </div>
+            <p className="pushBannerBrand">Liberte Club</p>
+            <span className="pushBannerLabel">Yeni bildirim</span>
+          </div>
+        )}
 
         <div className="pushBannerContent">
+          {showImage ? (
+            <span className="pushBannerLabel">Yeni bildirim</span>
+          ) : null}
           <h2 id="push-message-title">{message.title || 'Liberte Club'}</h2>
           {when ? (
             <time className="pushBannerWhen" dateTime={message.createdAt}>{when}</time>

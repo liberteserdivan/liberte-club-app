@@ -441,7 +441,8 @@ export function NotificationCenterCard({ db, customer, onOpenMessage = null }) {
       id: row.id,
       title: row.title,
       body: row.body,
-      createdAt: row.createdAt
+      createdAt: row.createdAt,
+      imageUrl: row.imageUrl || row.payload?.imageUrl || row.payload?.image || ''
     });
   }
 

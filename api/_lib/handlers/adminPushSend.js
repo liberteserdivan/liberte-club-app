@@ -97,6 +97,7 @@ function buildPlatformMessage(token, platform, pushText, iconUrl, badgeUrl, imag
     body: pushText.body || '',
     icon: iconUrl || '',
     image: imageUrl || '',
+    imageUrl: imageUrl || '',
     route: 'message',
     openMessage: '1',
     messageId: String(messageMeta.id || ''),

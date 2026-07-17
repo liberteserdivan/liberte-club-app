@@ -55,3 +55,20 @@ test('title/body yoksa openMessage ile yedek banner acilir', () => {
   assert.equal(seen?.title, 'Liberte Club');
   assert.ok(seen?.body);
 });
+
+test('normalizePushMessage data.image ve data.imageUrl https gorselini korur', () => {
+  const fromImage = normalizePushMessage({
+    title: 'Gorsel',
+    body: 'Test',
+    image: 'https://cdn.example.com/a.jpg'
+  });
+  assert.equal(fromImage?.imageUrl, 'https://cdn.example.com/a.jpg');
+
+  const fromImageUrl = normalizePushMessage({
+    title: 'Gorsel',
+    body: 'Test',
+    imageUrl: 'https://cdn.example.com/b.jpg'
+  });
+  assert.equal(fromImageUrl?.imageUrl, 'https://cdn.example.com/b.jpg');
+});
+

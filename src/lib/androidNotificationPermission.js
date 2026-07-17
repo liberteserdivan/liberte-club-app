@@ -3,6 +3,10 @@ import { isAndroid, isNativeApp } from './platform.js';
 
 const LiberteNotifications = registerPlugin('LiberteNotifications');
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Android sistem bildirim iznini oku — ayarlardan açılmışsa da algılar
 export async function checkAndroidNotificationPermission() {
   if (!isNativeApp() || !isAndroid()) {
@@ -13,8 +17,22 @@ export async function checkAndroidNotificationPermission() {
     const result = await LiberteNotifications.checkPermission();
     return { granted: Boolean(result?.granted) };
   } catch {
+    // Plugin yoksa (eski APK) false — sessizce ayarlara yönlendirilir
     return { granted: false };
   }
+}
+
+// OEM'lerde Allow sonrası areNotificationsEnabled kısa süre false kalabilir
+export async function waitForAndroidNotificationPermission({
+  attempts = 8,
+  delayMs = 150
+} = {}) {
+  for (let i = 0; i < attempts; i += 1) {
+    const { granted } = await checkAndroidNotificationPermission();
+    if (granted) return true;
+    if (i < attempts - 1) await sleep(delayMs);
+  }
+  return false;
 }
 
 // Android 13+ sistem bildirim iznini iste
@@ -23,8 +41,7 @@ export async function ensureAndroidNotificationPermission() {
     return { ok: true };
   }
 
-  const before = await checkAndroidNotificationPermission();
-  if (before.granted) {
+  if (await waitForAndroidNotificationPermission({ attempts: 1, delayMs: 0 })) {
     return { ok: true };
   }
 
@@ -34,8 +51,7 @@ export async function ensureAndroidNotificationPermission() {
     // Sistem diyaloğu reddedildi — ayarlardan açılabilir
   }
 
-  const after = await checkAndroidNotificationPermission();
-  if (after.granted) {
+  if (await waitForAndroidNotificationPermission()) {
     return { ok: true };
   }
 
