@@ -207,7 +207,7 @@ workflows:
             export ANDROID_VERSION_CODE="$((LATEST + 1))"
             echo "[android-version] Play latest=$LATEST -> versionCode=$ANDROID_VERSION_CODE"
           else
-            echo "[android-version] Play sorgusu basarisiz " taban/BUILD_NUMBER kullanilacak"
+            echo "[android-version] Play sorgusu basarisiz - taban/BUILD_NUMBER kullanilacak"
           fi
           node scripts/set-android-version-code.mjs
       - name: Derleme dogrulama
@@ -224,13 +224,13 @@ workflows:
         script: |
           set -eo pipefail
           if [ "${ENABLE_PLAY_UPLOAD:-false}" != "true" ]; then
-            echo "[play] Upload atlandi " ENABLE_PLAY_UPLOAD=true olmadan Play'e yuklenmez"
+            echo "[play] Upload atlandi - ENABLE_PLAY_UPLOAD=true olmadan Play'e yuklenmez"
             exit 0
           fi
           cd android
           AAB_PATH="app/build/outputs/bundle/release/app-release.aab"
           if [ ! -f "$AAB_PATH" ]; then
-            echo "[play] HATA: AAB bulunamadi " once bundleRelease basarili olmali"
+            echo "[play] HATA: AAB bulunamadi - once bundleRelease basarili olmali"
             exit 1
           fi
           TRACK="${PLAY_TRACK:-alpha}"
@@ -305,7 +305,7 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
-          echo "[artifact] Play Store upload YAPILMADI " yalnizca APK uretildi"
+          echo "[artifact] Play Store upload YAPILMADI - yalnizca APK uretildi"
     artifacts:
       - android/app/build/outputs/apk/release/*.apk
     publishing:
@@ -362,7 +362,7 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
-          echo "[artifact] Liberte Next APK " Play upload YOK"
+          echo "[artifact] Liberte Next APK - Play upload YOK"
     artifacts:
       - android/app/build/outputs/apk/release/*.apk
     publishing:
@@ -427,7 +427,7 @@ workflows:
           xcode-project build-ipa \
             --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
-          echo "[artifact] TestFlight / App Store upload YAPILMADI " yalnizca IPA uretildi"
+          echo "[artifact] TestFlight / App Store upload YAPILMADI - yalnizca IPA uretildi"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -492,7 +492,7 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-          echo "[smoke] Debug APK " Play upload yok, WebView debug acik"
+          echo "[smoke] Debug APK - Play upload yok, WebView debug acik"
       - name: BrowserStack gercek cihaz smoke testleri
         script: |
           export MOBILE_ANDROID_APK_PATH="$CM_BUILD_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
