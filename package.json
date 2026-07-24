@@ -1,7 +1,7 @@
 {
   "name": "liberte-club-app",
   "private": true,
-  "version": "1.1.31",
+  "version": "1.1.32",
   "description": "Liberte Club — Liberte Gastro Cafe sadakat uygulaması",
   "type": "module",
   "scripts": {
