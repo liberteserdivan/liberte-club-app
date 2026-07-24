@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyRound, LogIn, ShieldCheck, ShoppingBag, UserPlus, X } from 'lucide-react';
+import { KeyRound, LogIn, ShieldCheck, UserPlus } from 'lucide-react';
 import Brand from '../components/Brand.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
-import MenuPage from './MenuPage.jsx';
 import { apiJson, AUTH_REQUEST_OPTIONS, REGISTER_REQUEST_OPTIONS, getNativeApiOrigin } from '../lib/apiClient.js';
 import { formatClientApiError } from '../lib/apiErrors.js';
 import { humanizeNetworkFailure } from '../lib/networkErrors.js';
@@ -52,7 +51,6 @@ export default function Login({ db, commit, setSession }) {
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState('');
   const [legalType, setLegalType] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState(null);
   // Duplicate login submit koruması — uçuştaki giriş varken ikinci POST başlatma
   const loginInFlightRef = useRef(false);
@@ -816,27 +814,6 @@ export default function Login({ db, commit, setSession }) {
           <CafeContactBar compact />
         </div>
       </div>
-
-      <div className="loginMenuDock">
-        <button type="button" className="loginMenuBtn" onClick={() => setMenuOpen(true)}>
-          <ShoppingBag size={20} aria-hidden="true" />
-          Menüyü Gör
-        </button>
-      </div>
-
-      {menuOpen && (
-        <div className="loginMenuOverlay">
-          <div className="loginMenuOverlayHead">
-            <button type="button" className="loginMenuClose" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">
-              <X size={22} />
-            </button>
-            <span>Menü</span>
-          </div>
-          <div className="loginMenuOverlayBody">
-            <MenuPage db={db} embedded />
-          </div>
-        </div>
-      )}
 
       {legalType && <LegalSheet type={legalType} onClose={() => setLegalType('')} />}
 
