@@ -4,7 +4,7 @@
 - **Commit hash:** `85dcf83` — `fix: stabilize logout relogin and daily claim error handling`
 - **Branch:** `main` (push: `daf1c93..85dcf83`)
 - **Önceki commit:** `daf1c93` (Level 1 gece koruması)
-- **Production URL:** https://app.liberte.cafe
+- **Production URL:** https://app.libertegastrocafe.com
 - **Doğrulama zamanı:** 2026-06-28 ~16:40 (UTC+3)
 
 ## Otomatik (kimlik gerektirmeyen) probe sonuçları

@@ -4,7 +4,7 @@
 
 ### Yedek al
 
-1. **https://app.liberte.cafe** aç (veya yüklü mobil uygulama)
+1. **https://app.libertegastrocafe.com** aç (veya yüklü mobil uygulama)
 2. Yönetici hesabıyla giriş + **kasa PIN**
 3. **Yönetim** → **Ayarlar** sekmesi
 4. **Veri yedeği & geri yükleme** bölümü:
@@ -77,7 +77,7 @@ npm run neon:import -- backups/neon-export-XXXX.json
 
 ## 6. Doğrula
 
-- `https://app.liberte.cafe` → giriş / QR / admin PIN
+- `https://app.libertegastrocafe.com` → giriş / QR / admin PIN
 - Neon yeni projede Usage → ağ aktarımı düşük kalmalı (güncel client: 60 sn sync, `?since=`)
 
 ## Notlar

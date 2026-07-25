@@ -2,7 +2,7 @@
 
 Tarih: 2026-06-29
 Commit: `3fa40e7` — fix: fail fast session reads and stop production retry storm
-Deploy: production `dpl_FHmUAf7my1sBuSph7PLHRk5DoT7U` (READY) → https://app.liberte.cafe
+Deploy: production `dpl_FHmUAf7my1sBuSph7PLHRk5DoT7U` (READY) → https://app.libertegastrocafe.com
 Vercel env: `VITE_DISABLE_REALTIME=true` (Production) eklendi ve **bu env ile yeniden build edilerek** deploy alındı.
 
 ## 1. HTTP seviyesinde fail-fast doğrulaması (production)

@@ -1,5 +1,5 @@
 export const CLUB_APP_NAME = 'Liberte Club';
-export const DEFAULT_API_ORIGIN = 'https://app.liberte.cafe';
+export const DEFAULT_API_ORIGIN = 'https://app.libertegastrocafe.com';
 export const supportEmail = 'liberteserdivan@gmail.com';
 export const supportUrl = `${DEFAULT_API_ORIGIN}/support`;
 export const privacyPolicyUrl = `${DEFAULT_API_ORIGIN}/privacy`;

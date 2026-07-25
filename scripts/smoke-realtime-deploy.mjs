@@ -4,7 +4,7 @@
  */
 import { diagFetchInit } from './_diagHeaders.mjs';
 
-const BASE = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
+const BASE = process.env.SMOKE_BASE_URL || 'https://app.libertegastrocafe.com';
 
 async function get(path) {
   const started = Date.now();

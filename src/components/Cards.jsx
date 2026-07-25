@@ -60,7 +60,7 @@ export function ReferralCard({db,customer}){
 
   async function share(){
     if(navigator.share){
-      try{await navigator.share({title:'Liberte Club Davet',text:shareText,url:'https://app.liberte.cafe'});return;}catch{}
+      try{await navigator.share({title:'Liberte Club Davet',text:shareText,url:'https://app.libertegastrocafe.com'});return;}catch{}
     }
     copy();
   }

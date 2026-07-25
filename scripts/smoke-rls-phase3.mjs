@@ -9,7 +9,7 @@ import { getSql } from './_lib/getSql.mjs';
 import { diagFetchInit } from './_diagHeaders.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const BASE = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
+const BASE = process.env.SMOKE_BASE_URL || 'https://app.libertegastrocafe.com';
 
 function loadEnv() {
   const envPath = join(root, '.env');

@@ -7,7 +7,7 @@ assert.equal(resolveOrigin(nativeReq('https://localhost')), 'https://localhost')
 assert.equal(resolveOrigin(nativeReq('capacitor://localhost')), 'capacitor://localhost');
 assert.equal(resolveOrigin(nativeReq('ionic://localhost')), 'ionic://localhost');
 
-process.env.ALLOWED_ORIGINS = 'https://app.liberte.cafe';
+process.env.ALLOWED_ORIGINS = 'https://app.libertegastrocafe.com';
 // ALLOWED_ORIGINS modül yüklendikten sonra değişmez; native köken yine izinli olmalı
 assert.equal(resolveOrigin(nativeReq('https://localhost')), 'https://localhost');
 

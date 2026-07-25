@@ -1,6 +1,6 @@
 // Liberte Club push service worker (v18 — rich media)
-const PUSH_ICON = 'https://app.liberte.cafe/icon-192.png?v=8';
-const PUSH_BADGE = 'https://app.liberte.cafe/notification-badge.png';
+const PUSH_ICON = 'https://app.libertegastrocafe.com/icon-192.png?v=8';
+const PUSH_BADGE = 'https://app.libertegastrocafe.com/notification-badge.png';
 
 
 const PUSH_TITLE_MAX = 65;
@@ -55,7 +55,7 @@ function formatPushNotification(title, body) {
 
 function parsePushPayload(event) {
   if (!event.data) {
-    return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+    return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.libertegastrocafe.com' } };
   }
 
   try {
@@ -67,9 +67,9 @@ function parsePushPayload(event) {
   } catch {
     try {
       const text = event.data.text();
-      return { data: { title: text || 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+      return { data: { title: text || 'Yeni bildirim', body: '', url: 'https://app.libertegastrocafe.com' } };
     } catch {
-      return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.liberte.cafe' } };
+      return { data: { title: 'Yeni bildirim', body: '', url: 'https://app.libertegastrocafe.com' } };
     }
   }
 }
@@ -88,7 +88,7 @@ function showLiberteNotification(payload) {
     body: formatted.body,
     icon,
     image,
-    url: data.url || 'https://app.liberte.cafe'
+    url: data.url || 'https://app.libertegastrocafe.com'
   };
   const options = {
     body: formatted.body || undefined,
@@ -122,12 +122,12 @@ self.addEventListener('notificationclick', (event) => {
   };
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      const open = list.find((item) => item.url && (item.url.includes('app.liberte.cafe') || item.url.includes('localhost')));
+      const open = list.find((item) => item.url && (item.url.includes('app.libertegastrocafe.com') || item.url.includes('localhost')));
       if (open) {
         open.postMessage(payload);
         return open.focus();
       }
-      const targetUrl = data.url || 'https://app.liberte.cafe';
+      const targetUrl = data.url || 'https://app.libertegastrocafe.com';
       return clients.openWindow(targetUrl).then((client) => {
         if (!client) return null;
         return new Promise((resolve) => {

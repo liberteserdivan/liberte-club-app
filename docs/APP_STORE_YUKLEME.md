@@ -16,7 +16,7 @@ Apple inceleme notu ayrı dosyada kalır: `APP_STORE_REVIEW.md` (App Store Conne
 | Bundle ID | `cafe.liberte.app` |
 | SKU | `liberte-gastro-cafe-ios` |
 | App Store Connect App ID | `6778118148` |
-| Privacy Policy URL | https://app.liberte.cafe/privacy |
+| Privacy Policy URL | https://app.libertegastrocafe.com/privacy |
 | Age Rating | 4+ |
 | Pricing | Free |
 | Birincil kategori | Food & Drink (veya Lifestyle) |
@@ -178,8 +178,8 @@ App Store (TestFlight + App Store incelemesi).
 
 | Sayfa | URL |
 |-------|-----|
-| Gizlilik Politikası | https://app.liberte.cafe/privacy |
-| Kullanım Şartları | https://app.liberte.cafe/terms |
+| Gizlilik Politikası | https://app.libertegastrocafe.com/privacy |
+| Kullanım Şartları | https://app.libertegastrocafe.com/terms |
 
 Eski yönlendirmeler: `/gizlilik` → `/privacy`, `/kullanim-sartlari` → `/terms`.
 
@@ -285,7 +285,7 @@ npm run publish:android:internal
 ```
 
 - Servis hesabı JSON: `android/play-console-service-account.json` (git'e eklenmez)
-- Gizlilik URL: https://app.liberte.cafe/privacy
+- Gizlilik URL: https://app.libertegastrocafe.com/privacy
 - Her yüklemede `versionCode` +1 (`android/app/build.gradle`)
 
 ---
@@ -297,8 +297,8 @@ npm run publish:android:internal
 - [ ] App Store Connect durumu: **Ready for Sale** veya **Pending Developer Release**
 - [ ] Canlı uygulama: giriş, QR, menü, kampanyalar, profil
 - [ ] **Hesabımı Sil** akışı production'da çalışıyor
-- [ ] Privacy URL canlı: https://app.liberte.cafe/privacy
-- [ ] Terms URL canlı: https://app.liberte.cafe/terms
+- [ ] Privacy URL canlı: https://app.libertegastrocafe.com/privacy
+- [ ] Terms URL canlı: https://app.libertegastrocafe.com/terms
 - [ ] Push bildirim izni ve kampanya bildirimi test edildi
 - [ ] App Store sayfasındaki açıklama ve screenshot güncel
 

@@ -15,7 +15,7 @@ import { getSql } from './_lib/getSql.mjs';
 import { cleanPhone } from '../api/_lib/phone.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const BASE = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
+const BASE = process.env.SMOKE_BASE_URL || 'https://app.libertegastrocafe.com';
 const ADMIN_PHONE = cleanPhone(process.env.E2E_ADMIN_PHONE || '05058665406');
 
 function loadEnv() {

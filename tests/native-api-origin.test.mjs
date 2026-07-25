@@ -14,7 +14,7 @@ test('Web/PWA: resolveApiUrl relative path döner (same-origin)', () => {
 });
 
 // 2) Native + env yok — kalıcı özel domain fallback kullanılır
-test('Native: env yoksa kalıcı app.liberte.cafe API kökü kullanılır', () => {
+test('Native: env yoksa kalıcı app.libertegastrocafe.com API kökü kullanılır', () => {
   const origin = normalizeApiOrigin(undefined) || FALLBACK;
   assert.equal(origin, FALLBACK);
   assert.match(origin, /app\.liberte\.cafe/);

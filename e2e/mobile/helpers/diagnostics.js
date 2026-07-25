@@ -12,7 +12,7 @@ const FORBIDDEN_KEYS = new Set([
   'body'
 ]);
 
-const API_HOST = process.env.MOBILE_API_HOST || 'https://app.liberte.cafe';
+const API_HOST = process.env.MOBILE_API_HOST || 'https://app.libertegastrocafe.com';
 
 /** Log nesnesinde yasak anahtar var mi */
 export function assertSafeLogPayload(payload) {

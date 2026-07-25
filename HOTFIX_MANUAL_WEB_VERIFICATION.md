@@ -6,7 +6,7 @@
 > bilgiler.
 
 - **Commit:** `85dcf83` (kod) + `19738ae` (docs/SQL)
-- **Production:** https://app.liberte.cafe
+- **Production:** https://app.libertegastrocafe.com
 - **Test tarihi/saati:** ___________
 
 ---

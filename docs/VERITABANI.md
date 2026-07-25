@@ -283,7 +283,7 @@ useCommit (src/hooks/useCommit.js)
 | Öne gelince | Tek sync tetiklenir |
 | Değişiklik yok | `{ unchanged: true }` — tam JSON gönderilmez |
 
-Native uygulama API kökü: `https://app.liberte.cafe` (`src/lib/apiClient.js`).
+Native uygulama API kökü: `https://app.libertegastrocafe.com` (`src/lib/apiClient.js`).
 
 ---
 

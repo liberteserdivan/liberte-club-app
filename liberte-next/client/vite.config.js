@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       // Aynı origin n-* uçları — yerel Vite → production API
       '/api': {
-        target: process.env.LIBERTE_NEXT_API_PROXY || 'https://app.liberte.cafe',
+        target: process.env.LIBERTE_NEXT_API_PROXY || 'https://app.libertegastrocafe.com',
         changeOrigin: true,
         secure: true
       }

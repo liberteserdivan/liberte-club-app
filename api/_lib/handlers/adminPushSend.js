@@ -18,7 +18,7 @@ import { collectFailedPushTokens, pruneInvalidPushTokens } from '../../../src/li
 import { isValidPrivateKeyPem } from '../fcmProbe.js';
 import { publicDbErrorCode, publicDbErrorMessage, isTransientDbError } from '../dbTransient.js';
 
-const SITE_ORIGIN = 'https://app.liberte.cafe';
+const SITE_ORIGIN = 'https://app.libertegastrocafe.com';
 
 // State içindeki push kayıtlarını güncelle
 async function persistPushSubscriptions(state, subscriptions) {

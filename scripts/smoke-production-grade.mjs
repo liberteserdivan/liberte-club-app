@@ -2,7 +2,7 @@
 /**
  * Production-grade smoke test — deploy sonrasi guvenli kontrol
  * Kullanim: node scripts/smoke-production-grade.mjs
- * Ortam: SMOKE_BASE_URL (varsayilan https://app.liberte.cafe)
+ * Ortam: SMOKE_BASE_URL (varsayilan https://app.libertegastrocafe.com)
  * Opsiyonel: SMOKE_ADMIN_CUSTOMER_PIN veya SMOKE_CUSTOMER_PIN (.env) — oturumlu admin üye listesi
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const base = (process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe').replace(/\/$/, '');
+const base = (process.env.SMOKE_BASE_URL || 'https://app.libertegastrocafe.com').replace(/\/$/, '');
 
 function loadEnv() {
   for (const name of ['.env', '.env.local', '.env.mobile-test.local']) {

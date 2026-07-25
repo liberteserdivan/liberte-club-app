@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { diagFetchHeaders } from './_diagHeaders.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const base = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
+const base = process.env.SMOKE_BASE_URL || 'https://app.libertegastrocafe.com';
 const apply = process.argv.includes('--apply');
 const check = process.argv.includes('--check') || !apply;
 

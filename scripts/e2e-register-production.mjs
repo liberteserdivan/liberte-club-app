@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { getSql } from './_lib/getSql.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const API = 'https://app.liberte.cafe/api/auth/register-complete';
+const API = 'https://app.libertegastrocafe.com/api/auth/register-complete';
 
 function loadEnv() {
   const envPath = join(root, '.env');

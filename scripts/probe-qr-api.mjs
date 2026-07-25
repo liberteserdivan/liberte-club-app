@@ -42,7 +42,7 @@ if (signing.secret) {
   console.log('samplePayloadPrefix:', payload.slice(0, 24) + '...');
 }
 
-const base = process.env.QR_PROBE_URL || 'https://app.liberte.cafe';
+const base = process.env.QR_PROBE_URL || 'https://app.libertegastrocafe.com';
 const started = Date.now();
 const res = await fetch(`${base}/api/qr/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
 const body = await res.text();

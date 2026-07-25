@@ -6,7 +6,7 @@ import { applySafeModeHeader, isSafeModeEnabled } from './safeMode.js';
 import { getAuthEpoch } from './authEpoch.js';
 
 // Kalıcı native API kökü — özel domain (Vercel *.vercel.app bazı mobil DNS'lerde çözülmüyor)
-export const DEFAULT_NATIVE_API_ORIGIN = 'https://app.liberte.cafe';
+export const DEFAULT_NATIVE_API_ORIGIN = 'https://app.libertegastrocafe.com';
 export const DEFAULT_PUBLIC_SITE_ORIGIN = DEFAULT_NATIVE_API_ORIGIN;
 
 const TOKEN_KEY = 'liberteAuthToken';

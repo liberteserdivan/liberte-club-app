@@ -21,4 +21,4 @@ jobs:
     steps:
       - name: Sunucuyu isit (hafif health — DB yok)
         run: |
-          curl -fsS --max-time 15 "https://app.liberte.cafe/api/health" -o /dev/null || true
+          curl -fsS --max-time 15 "https://app.libertegastrocafe.com/api/health" -o /dev/null || true

@@ -1,18 +1,18 @@
 [
   {
     "language": "tr",
-    "text": "Günlük görevler ve giriş ödülü kaldırıldı. Performans ve kararlılık iyileştirmeleri.",
+    "text": "Uygulama adresi app.libertegastrocafe.com olarak guncellendi. Performans ve kararlilik iyilestirmeleri.",
     "description": "Liberte Gastro Cafe sadakat uygulamasi. Kampanyalar, QR odulleri ve push bildirimleri.",
     "keywords": "liberte, cafe, sadakat, kampanya, qr, bildirim",
-    "support_url": "https://app.liberte.cafe/support.html",
-    "marketing_url": "https://app.liberte.cafe"
+    "support_url": "https://app.libertegastrocafe.com/support.html",
+    "marketing_url": "https://app.libertegastrocafe.com"
   },
   {
     "language": "en-US",
-    "text": "Daily tasks and login reward removed. Performance and stability improvements.",
+    "text": "App endpoint moved to app.libertegastrocafe.com. Performance and stability improvements.",
     "description": "Liberte Gastro Cafe loyalty app. Campaigns, QR rewards, and push notifications.",
     "keywords": "liberte, cafe, loyalty, campaign, qr, notification",
-    "support_url": "https://app.liberte.cafe/support.html",
-    "marketing_url": "https://app.liberte.cafe"
+    "support_url": "https://app.libertegastrocafe.com/support.html",
+    "marketing_url": "https://app.libertegastrocafe.com"
   }
 ]

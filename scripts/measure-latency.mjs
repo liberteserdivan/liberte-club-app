@@ -1,5 +1,5 @@
 // Production API gecikme ölçümü — soğuk/sıcak başlangıç farkını görmek için
-const base = process.argv[2] || 'https://app.liberte.cafe';
+const base = process.argv[2] || 'https://app.libertegastrocafe.com';
 const paths = ['/api/auth/session', '/api/realtime?resource=promos'];
 
 for (const path of paths) {

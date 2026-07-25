@@ -32,7 +32,7 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
-const base = process.env.SMOKE_BASE_URL || 'https://app.liberte.cafe';
+const base = process.env.SMOKE_BASE_URL || 'https://app.libertegastrocafe.com';
 const diagHeaders = diagFetchHeaders();
 
 async function probe(name, url, options = {}) {

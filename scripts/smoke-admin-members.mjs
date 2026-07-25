@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const ORIGIN = process.env.SMOKE_ORIGIN || 'https://app.liberte.cafe';
+const ORIGIN = process.env.SMOKE_ORIGIN || 'https://app.libertegastrocafe.com';
 
 function loadEnv() {
   for (const name of ['.env', '.env.local', '.env.mobile-test.local']) {

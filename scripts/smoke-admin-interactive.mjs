@@ -43,7 +43,7 @@ if (adminPin.length !== 4 || customerPin.length !== 4) {
   process.exit(1);
 }
 
-console.log('\nCanlı sunucu test ediliyor (https://app.liberte.cafe)…\n');
+console.log('\nCanlı sunucu test ediliyor (https://app.libertegastrocafe.com)…\n');
 
 const child = spawn(
   process.execPath,

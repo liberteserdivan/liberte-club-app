@@ -19,9 +19,9 @@ Admin features (QR scan, admin panel) are available for admin accounts after log
 
 Account deletion: Profile → Delete Account (Hesabımı Sil). Permanent server-side deletion.
 
-Privacy Policy: https://app.liberte.cafe/privacy
-Terms of Use: https://app.liberte.cafe/terms
-Support: https://app.liberte.cafe/support
+Privacy Policy: https://app.libertegastrocafe.com/privacy
+Terms of Use: https://app.libertegastrocafe.com/terms
+Support: https://app.libertegastrocafe.com/support
 
 Demo account (customer — recommended for review):
 Phone: 5550100001
@@ -46,7 +46,7 @@ Camera: only used when admin opens QR scanner from admin panel.
 - [ ] Demo PIN written in Review Notes (not in git)
 - [ ] Demo account active on production API
 - [ ] Privacy Policy URL loads without JavaScript
-- [ ] Support URL: https://app.liberte.cafe/support
+- [ ] Support URL: https://app.libertegastrocafe.com/support
 - [ ] Export compliance: No (standard HTTPS only)
 - [ ] Play Console / App Store screenshots uploaded
 - [ ] Production smoke test: login → QR → admin members (if admin) → delete account

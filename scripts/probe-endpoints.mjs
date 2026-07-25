@@ -1,5 +1,5 @@
 // Production uç noktası sağlık probu — kimlik gerektirmeyen yanıtlar ölçülür
-const base = process.argv[2] || 'https://app.liberte.cafe';
+const base = process.argv[2] || 'https://app.libertegastrocafe.com';
 
 const checks = [
   { name: 'health', method: 'GET', path: '/api/health' },

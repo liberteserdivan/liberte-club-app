@@ -23,7 +23,7 @@ Opsiyonel:
 | `BROWSERSTACK_APP_ANDROID_URL` | Onceden yuklenmis `bs://` Android URL |
 | `BROWSERSTACK_APP_IOS_URL` | Onceden yuklenmis `bs://` iOS URL |
 | `MOBILE_E2E_PLATFORMS` | `android`, `ios` veya `android,ios` (varsayilan: ikisi) |
-| `MOBILE_API_HOST` | API host (varsayilan: `https://app.liberte.cafe`) |
+| `MOBILE_API_HOST` | API host (varsayilan: `https://app.libertegastrocafe.com`) |
 
 ## Codemagic workflow'lari
 

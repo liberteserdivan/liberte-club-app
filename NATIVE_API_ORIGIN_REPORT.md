@@ -1,6 +1,6 @@
 # Native API Origin — Yapılandırma Raporu
 
-Bu değişiklik, native (iOS/Android) uygulamanın `app.liberte.cafe`'e **hardcoded
+Bu değişiklik, native (iOS/Android) uygulamanın `app.libertegastrocafe.com`'e **hardcoded
 kilitlenmesini** kaldırır ve API kökünü build-time env (`VITE_API_BASE_URL`) ile
 yönetilebilir hale getirir. Web/PWA same-origin davranışı **değişmedi**.
 
@@ -20,22 +20,22 @@ resolveApiUrl('/api/auth/login', false) // → '/api/auth/login'
 ## Native iOS hangi API base'ini kullanıyor?
 
 `import.meta.env.VITE_API_BASE_URL` → `normalizeApiOrigin(...)` → geçerliyse o
-köken; değilse fallback `https://app.liberte.cafe`.
+köken; değilse fallback `https://app.libertegastrocafe.com`.
 
 - `capacitor.config.json` → `iosScheme: https` (WebView https kökeninde çalışır).
-- Codemagic `ios-release` workflow'unda `VITE_API_BASE_URL` default `https://app.liberte.cafe`.
+- Codemagic `ios-release` workflow'unda `VITE_API_BASE_URL` default `https://app.libertegastrocafe.com`.
 
 ## Native Android hangi API base'ini kullanıyor?
 
 iOS ile aynı mantık. `CapacitorHttp.enabled: true`. Codemagic `android-release`
-workflow'unda `VITE_API_BASE_URL` default `https://app.liberte.cafe`.
+workflow'unda `VITE_API_BASE_URL` default `https://app.libertegastrocafe.com`.
 
 ## Çözümleme mantığı (`src/lib/apiClient.js`)
 
 ```js
 const NATIVE_API_ORIGIN =
   normalizeApiOrigin(import.meta.env?.VITE_API_BASE_URL, { allowInsecure: isDevEnv() })
-  || 'https://app.liberte.cafe';
+  || 'https://app.libertegastrocafe.com';
 ```
 
 `normalizeApiOrigin`:

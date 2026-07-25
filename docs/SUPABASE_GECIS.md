@@ -70,7 +70,7 @@ npm run neon:import -- "C:\yol\liberte-onbellek-yedek-....json"
 
 ## 5. Test
 
-1. https://app.liberte.cafe → admin giriş
+1. https://app.libertegastrocafe.com → admin giriş
 2. Yeni üye kaydı dene
 3. Kasa PIN / sadakat işlemi
 

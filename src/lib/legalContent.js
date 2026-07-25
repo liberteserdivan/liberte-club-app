@@ -31,7 +31,7 @@ export const privacyPolicySections = [
   },
   {
     title: 'İletişim',
-    body: `Gizlilik talepleriniz için ${supportEmail} adresine yazabilir veya https://app.liberte.cafe üzerinden işletme iletişim bilgilerine ulaşabilirsiniz.`
+    body: `Gizlilik talepleriniz için ${supportEmail} adresine yazabilir veya https://app.libertegastrocafe.com üzerinden işletme iletişim bilgilerine ulaşabilirsiniz.`
   }
 ];
 

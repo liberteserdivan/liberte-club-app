@@ -125,5 +125,5 @@ export function normalizeIconUrl(iconUrl, fallbackOrigin) {
   const external = ensureHttpsUrl(iconUrl);
   if (external) return external;
   const origin = String(fallbackOrigin || '').replace(/\/$/, '');
-  return origin ? `${origin}/icon-192.png?v=8` : 'https://app.liberte.cafe/icon-192.png?v=8';
+  return origin ? `${origin}/icon-192.png?v=8` : 'https://app.libertegastrocafe.com/icon-192.png?v=8';
 }
