@@ -10,7 +10,7 @@ test('apiClient: native Bearer + credentials omit, web credentials include', () 
   const src = read('src/lib/apiClient.js');
   assert.match(src, /credentials: native \? 'omit' : 'include'/);
   assert.match(src, /headers\.Authorization = `Bearer \$\{token\}`/);
-  assert.match(src, /DEFAULT_NATIVE_API_ORIGIN = 'https:\/\/app\.liberte\.cafe'/);
+  assert.match(src, /DEFAULT_NATIVE_API_ORIGIN = 'https:\/\/app\.libertegastrocafe\.com'/);
   assert.doesNotMatch(src, /liberte-club-app\.vercel\.app/);
 });
 
@@ -46,7 +46,7 @@ test('migrateLoyaltyCard: double-encoded categoryStamps crash etmez', async () =
 
 test('capacitor: production API codemagic vars — ozel domain', () => {
   const yaml = read('codemagic.yaml');
-  assert.match(yaml, /VITE_API_BASE_URL.*app\.liberte\.cafe/);
+  assert.match(yaml, /VITE_API_BASE_URL.*app\.libertegastrocafe\.com/);
   assert.doesNotMatch(yaml, /VITE_API_BASE_URL.*liberte-club-app\.vercel\.app/);
   const cap = JSON.parse(read('capacitor.config.json'));
   assert.equal(cap.webDir, 'dist');
