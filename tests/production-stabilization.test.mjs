@@ -41,28 +41,17 @@ test('/api/state gecici DB hatasi 503 STATE_TEMPORARILY_UNAVAILABLE', () => {
   assert.match(src, /status\(503\)/);
 });
 
-test('daily-claim basarida loyalty + dailyClaims doner', () => {
+test('daily-claim kapalı — LP basmaz', () => {
   const src = read('api/_lib/handlers/customerLoyaltyClaim.js');
-  assert.match(src, /loyalty: result\.loyalty/);
-  assert.match(src, /dailyClaims: result\.dailyClaims/);
-});
-
-test('duplicate daily claim is kurali yaniti', () => {
-  const src = read('api/_lib/handlers/customerLoyaltyClaim.js');
-  assert.match(src, /DAILY_CLAIM_ALREADY_CLAIMED/);
-  assert.match(src, /status\(200\)/);
-});
-
-test('daily-claim transient 503 DAILY_CLAIM_TEMPORARILY_UNAVAILABLE', () => {
-  const src = read('api/_lib/handlers/customerLoyaltyClaim.js');
-  assert.match(src, /DAILY_CLAIM_TEMPORARILY_UNAVAILABLE/);
+  assert.match(src, /DAILY_CLAIM_DISABLED/);
+  assert.match(src, /status\(410\)/);
+  assert.doesNotMatch(src, /loyalty: result\.loyalty/);
+  assert.doesNotMatch(src, /applyDailyLoginRewardRelational/);
 });
 
 test('customerRewardsClient throw etmez', () => {
   const src = read('src/lib/customerRewardsClient.js');
   assert.doesNotMatch(src, /\bthrow\b/);
-  assert.match(src, /DAILY_CLAIM_ALREADY_CLAIMED/);
-  assert.match(src, /DAILY_CLAIM_TEMPORARILY_UNAVAILABLE/);
 });
 
 test('admin members musteri state sync ini bozmaz', () => {

@@ -59,24 +59,22 @@ test('state: customer yolu admin tam state degil, customer slice yukler', () => 
   );
 });
 
-// --- daily-claim hata ayrimi ---
+// --- daily-claim kapalı ---
 
-test('daily-claim: transient -> 503 DAILY_CLAIM_TEMPORARILY_UNAVAILABLE (tablo eksikten ayri)', () => {
+test('daily-claim: özellik kapalı DAILY_CLAIM_DISABLED', () => {
   const src = read('api/_lib/handlers/customerLoyaltyClaim.js');
-  assert.match(src, /isUndefinedTableError\(error\)[\s\S]*DAILY_CLAIMS_TABLE_MISSING/);
-  assert.match(src, /isTransientDbError\(error\)[\s\S]*DAILY_CLAIM_TEMPORARILY_UNAVAILABLE/);
-  // Tablo-eksik kontrolu transient kontrolunden ONCE olmali (spesifik once)
-  assert.ok(
-    src.indexOf('DAILY_CLAIMS_TABLE_MISSING') < src.indexOf('DAILY_CLAIM_TEMPORARILY_UNAVAILABLE'),
-    'tablo-eksik ayrimi transient ayrimindan once olmali'
-  );
+  assert.match(src, /DAILY_CLAIM_DISABLED/);
+  assert.match(src, /status\(410\)/);
+  assert.doesNotMatch(src, /applyDailyLoginRewardRelational/);
 });
 
 test('daily-claim: auth requireSession ile (oturum yoksa hizli 401)', () => {
   const src = read('api/_lib/handlers/customerLoyaltyClaim.js');
-  const authIdx = src.indexOf('requireSession(req, res)');
-  const tryIdx = src.indexOf('try {');
-  assert.ok(authIdx !== -1 && authIdx < tryIdx, 'auth kontrolu DB islemlerinden once olmali');
+  assert.match(src, /requireSession\(req, res\)/);
+  assert.ok(
+    src.indexOf('requireSession(req, res)') < src.indexOf('status(410)'),
+    'auth kontrolu disabled yanıttan once olmali'
+  );
 });
 
 // --- admin members retry storm: dedup + circuit breaker ---

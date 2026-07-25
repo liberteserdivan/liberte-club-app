@@ -1,6 +1,6 @@
 import { apiJson } from './apiClient.js';
 
-// Gunluk giris odulunu sunucuda kaydet - yapilandirilmis yanit
+// Günlük giriş ödülü kaldırıldı — eski çağrılar da LP basmaz
 export async function claimDailyLoginRewardRemote() {
   const { response, data } = await apiJson('/api/loyalty/daily-claim', {
     method: 'POST',
@@ -9,38 +9,10 @@ export async function claimDailyLoginRewardRemote() {
     skipUnauthorized: true
   });
 
-  // Geçici altyapı sorunu — kontrollü 503
-  if (response.status === 503) {
-    return {
-      ok: false,
-      transient: true,
-      code: data?.code || 'DAILY_CLAIM_TEMPORARILY_UNAVAILABLE',
-      error: data?.error || 'Günlük ödül şu an alınamıyor. Lütfen tekrar deneyin.'
-    };
-  }
-
-  // Aynı gün tekrar — iş kuralı, crash değil
-  if (data?.code === 'DAILY_CLAIM_ALREADY_CLAIMED' || (response.ok && data?.ok === false)) {
-    return {
-      ok: false,
-      alreadyClaimed: true,
-      code: data?.code || 'DAILY_CLAIM_ALREADY_CLAIMED',
-      error: data?.error || 'Günlük giriş ödülünü bugün zaten aldın.'
-    };
-  }
-
-  if (!response.ok || !data?.ok) {
-    return {
-      ok: false,
-      error: data?.error || data?.message || 'Günlük ödül kaydedilemedi',
-      code: data?.code || null
-    };
-  }
-
   return {
-    ok: true,
-    message: data.message,
-    loyalty: data.loyalty,
-    dailyClaims: data.dailyClaims
+    ok: false,
+    disabled: true,
+    code: data?.code || (response.status === 410 ? 'DAILY_CLAIM_DISABLED' : null),
+    error: data?.error || 'Günlük giriş ödülü artık sunulmuyor.'
   };
 }

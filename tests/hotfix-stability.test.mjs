@@ -101,12 +101,11 @@ test('isUndefinedTableError 42P01 ve "relation does not exist" tespit eder', asy
   assert.equal(isTransientDbError(byCode), false, 'tablo eksik geçici hata olmamalı (retry ile düzelmez)');
 });
 
-test('daily-claim handler tablo eksikse DAILY_CLAIMS_TABLE_MISSING döner', () => {
+test('daily-claim handler kapalı — DAILY_CLAIM_DISABLED', () => {
   const source = readFileSync(join(root, 'api/_lib/handlers/customerLoyaltyClaim.js'), 'utf8');
-  assert.match(source, /isUndefinedTableError/, 'handler tablo eksik hatasını ayırt etmeli');
-  assert.match(source, /DAILY_CLAIMS_TABLE_MISSING/, 'net kod dönmeli');
-  assert.match(source, /status\(503\)/, 'tablo eksik 503 dönmeli (500 ham hata değil)');
-  assert.match(source, /reportDailyClaimsTableMissing|recordIncident/, 'Guardian incident\u0027i üretmeli');
+  assert.match(source, /DAILY_CLAIM_DISABLED/, 'özellik kapatma kodu dönmeli');
+  assert.match(source, /status\(410\)/, 'kaldırılmış özellik 410 dönmeli');
+  assert.doesNotMatch(source, /applyDailyLoginRewardRelational/, 'ödül uygulanmamalı');
 });
 
 // ---------------------------------------------------------------------------

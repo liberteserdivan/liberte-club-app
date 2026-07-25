@@ -52,7 +52,7 @@ export default function HomePage({
         <PushWelcomeBanner db={db} customer={customer} commit={commit} defer={pushBannerDeferred} />
         <InstallAppCard />
 
-        <DailyTasksStrip db={db} customer={customer} commit={commit} setTab={setTab} />
+        <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
 
         <PageSection label="Hızlı erişim">
           <div className="homeHubGrid homeHubGrid--three">

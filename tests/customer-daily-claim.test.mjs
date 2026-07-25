@@ -6,17 +6,16 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('günlük LP ödülü sunucu API ile kaydedilir', () => {
+test('günlük giriş ödülü UI ve API kapalı', () => {
   const loyalty = readFileSync(join(root, 'api', 'loyalty.js'), 'utf8');
   const handler = readFileSync(join(root, 'api', '_lib', 'handlers', 'customerLoyaltyClaim.js'), 'utf8');
-  const client = readFileSync(join(root, 'src', 'lib', 'customerRewardsClient.js'), 'utf8');
   const strip = readFileSync(join(root, 'src', 'components', 'DailyTasksStrip.jsx'), 'utf8');
 
   assert.match(loyalty, /daily-claim/);
-  assert.match(handler, /applyDailyLoginRewardRelational/);
-  assert.match(client, /\/api\/loyalty\/daily-claim/);
-  assert.match(strip, /claimDailyLoginRewardRemote/);
-  assert.match(strip, /skipRemote: true/);
+  assert.match(handler, /DAILY_CLAIM_DISABLED/);
+  assert.doesNotMatch(handler, /applyDailyLoginRewardRelational/);
+  assert.doesNotMatch(strip, /claimDailyLoginRewardRemote/);
+  assert.doesNotMatch(strip, /Günlük giriş ödülünü al/);
 });
 
 test('vercel loyalty rewrite tanımlı', () => {
