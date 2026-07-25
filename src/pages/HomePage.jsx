@@ -9,7 +9,6 @@ import { TIER_TONE } from '../lib/membershipTier.js';
 import { DEVICE_APP_NAME } from '../lib/constants.js';
 import { StampRulesInline } from '../components/StampRulesCopy.jsx';
 import { DailyCampaignCard, InstallAppCard, PushWelcomeBanner } from '../components/Cards.jsx';
-import DailyTasksStrip from '../components/DailyTasksStrip.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 
 // Ana sayfa — özet kart ve keşif
@@ -51,8 +50,6 @@ export default function HomePage({
       <div className="homeBody">
         <PushWelcomeBanner db={db} customer={customer} commit={commit} defer={pushBannerDeferred} />
         <InstallAppCard />
-
-        <DailyTasksStrip db={db} customer={customer} setTab={setTab} />
 
         <PageSection label="Hızlı erişim">
           <div className="homeHubGrid homeHubGrid--three">

@@ -490,45 +490,6 @@ export function hasDailyClaim(db,customerId,type){
   return (db.dailyClaims||[]).some(x=>x.customerId===customerId&&x.type===type&&x.day===day);
 }
 
-// Ardışık günlük giriş serisini hesaplar
-export function getCustomerStreak(db,customerId){
-  const days=new Set(
-    (db.dailyClaims||[])
-      .filter(x=>x.customerId===customerId&&x.type==='daily_login')
-      .map(x=>x.day)
-  );
-  if(!days.size)return 0;
-  let streak=0;
-  const cursor=new Date();
-  const today=localDayKey();
-  if(!days.has(today))cursor.setDate(cursor.getDate()-1);
-  while(true){
-    const key=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
-    if(!days.has(key))break;
-    streak++;
-    cursor.setDate(cursor.getDate()-1);
-  }
-  return streak;
-}
-
-// Ana sayfa günlük görev listesini üretir
-export function getDailyTasks(db,customerId){
-  const card=migrateLoyaltyCard(db.loyalty[customerId]||loyaltyTemplate(customerId));
-  const lpBalance=getLpBalance(card);
-  const redeemable=getRedeemableRewards(card);
-  const { remaining } = (() => {
-    const sorted=[...STAMP_CATEGORIES].sort((a,b)=>a.rewardCost-b.rewardCost);
-    for (const tier of sorted) {
-      if (lpBalance < tier.rewardCost) return { remaining: tier.rewardCost - lpBalance };
-    }
-    return { remaining: 0 };
-  })();
-  return[
-    {id:'lp',label:'Liberte Puan',desc:remaining===0?'Ödül kullanıma hazır!':`Sonraki ödüle ${remaining} LP`,done:remaining===0,tab:'qr',icon:'coffee',progress:stampCardProgress(card)},
-    {id:'rewards',label:'Kazanılabilir ödüller',desc:redeemable.length?`${redeemable.length} ödül kullanılabilir`:'Henüz yeterli LP yok',done:redeemable.length>0,tab:'qr',icon:'gift'}
-  ];
-}
-
 // Günlük giriş ödülü kaldırıldı — yerel yol da LP basmaz
 export function claimDailyLoginReward(db,_customerId){
   return { ok:false, db, message:'Günlük giriş ödülü artık sunulmuyor.', code:'DAILY_CLAIM_DISABLED' };
