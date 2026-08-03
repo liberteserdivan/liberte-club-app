@@ -6,6 +6,7 @@ import PageShell from '../components/PageShell.jsx';
 // müşteri açılışını yavaşlatmamak için tembel yüklenir.
 const CustomerQrScanner = lazy(() => import('../components/CustomerQrScanner.jsx'));
 import MembershipTierCard from '../components/MembershipTierCard.jsx';
+import { FullHistoryCard } from '../components/Cards.jsx';
 import {
   STAMP_CATEGORIES,
   getLpCardView,
@@ -55,6 +56,7 @@ export default function QrPage({
 
   return (
     <CustomerQrCard
+      db={db}
       customer={customer}
       card={card}
       history={db?.history || []}
@@ -71,7 +73,7 @@ function resolveSecondsLeft(expiresAt) {
 }
 
 // Müşteri sadakat kartı QR görünümü
-function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
+function CustomerQrCard({ db, customer, card, history = [], refreshRemote }) {
   const [entered, setEntered] = useState(false);
   const [qrValue, setQrValue] = useState('');
   const [qrError, setQrError] = useState('');
@@ -429,6 +431,9 @@ function CustomerQrCard({ customer, card, history = [], refreshRemote }) {
             ? 'QR kodu kısa sürede yenilenir. Kasada birkaç saniye göster.'
             : 'Ekran parlaklığını açık tut, kasada birkaç saniye göster.'}
         </p>
+
+        {/* QR altında kazanılan / harcanan LP hareketleri */}
+        {db && customer ? <FullHistoryCard db={db} customer={customer} /> : null}
       </article>
     </PageShell>
   );

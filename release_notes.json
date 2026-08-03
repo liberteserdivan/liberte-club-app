@@ -1,7 +1,7 @@
 [
   {
     "language": "tr",
-    "text": "Uygulama adresi app.libertegastrocafe.com olarak guncellendi. Performans ve kararlilik iyilestirmeleri.",
+    "text": "Kartim sayfasina LP gecmisi eklendi. Performans ve kararlilik iyilestirmeleri.",
     "description": "Liberte Gastro Cafe sadakat uygulamasi. Kampanyalar, QR odulleri ve push bildirimleri.",
     "keywords": "liberte, cafe, sadakat, kampanya, qr, bildirim",
     "support_url": "https://app.libertegastrocafe.com/support.html",
@@ -9,7 +9,7 @@
   },
   {
     "language": "en-US",
-    "text": "App endpoint moved to app.libertegastrocafe.com. Performance and stability improvements.",
+    "text": "LP history added under My Card (QR). Performance and stability improvements.",
     "description": "Liberte Gastro Cafe loyalty app. Campaigns, QR rewards, and push notifications.",
     "keywords": "liberte, cafe, loyalty, campaign, qr, notification",
     "support_url": "https://app.libertegastrocafe.com/support.html",

@@ -6070,6 +6070,11 @@ body{
   text-align:center;
 }
 
+/* QR kartının altında LP geçmişi */
+.qrPassCard .fullHistory{
+  margin-top:16px;
+}
+
 /* =========================
    ŞANS ÇARKI — PREMIUM
    ========================= */
