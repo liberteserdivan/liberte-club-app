@@ -423,7 +423,9 @@ export default function CustomerQrScanner({ db, commit, refreshRemote }) {
     const cat = STAMP_CATEGORIES.find((c) => c.id === category);
     const catLabel = cat?.label || category;
     const cost = cat?.rewardCost || 0;
-    const ok = confirm(`${found.name} için ${cat?.rewardLabel || catLabel} ödülü (${cost} LP) kullanılsın mı?`);
+    // Burger vb. ikramlarda kapsam notunu kasiyere de göster
+    const note = cat?.rewardNote ? `\n\n${cat.rewardNote}` : '';
+    const ok = confirm(`${found.name} için ${cat?.rewardLabel || catLabel} ödülü (${cost} LP) kullanılsın mı?${note}`);
     if (!ok) return;
     const done = await runLoyaltyAction('redeem', category);
     if (!done) return;

@@ -76,8 +76,10 @@ export const LP_CATEGORIES = [
     lpGain: 3,
     rewardCost: 25,
     threshold: 25,
-    redeemTitle: 'Burger İkram',
-    rewardLabel: '25 LP Burger İkram',
+    redeemTitle: '90g Oklahoma Burger',
+    rewardLabel: '25 LP · 90g Oklahoma Burger',
+    // Müşteriye ikram kapsamı ve fark ücreti net anlatılır
+    rewardNote: 'İkram 90 gram Oklahoma burgerdir. Farklı gramaj veya başka bir burger istersen 90g Oklahoma ücreti alışveriş tutarından düşülür; kalan farkı sen ödersin.',
     image: '/stamps/burger.png?v=8',
     imagePosition: 'center center'
   }

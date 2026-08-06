@@ -5,7 +5,7 @@ import PageSection from '../components/PageSection.jsx';
 import CafeContactBar from '../components/CafeContactBar.jsx';
 import LegalSheet from '../components/LegalSheet.jsx';
 import MembershipTierCard from '../components/MembershipTierCard.jsx';
-import { PushWelcomeBanner, PushDeviceStatusCard } from '../components/Cards.jsx';
+import { FullHistoryCard, PushWelcomeBanner, PushDeviceStatusCard } from '../components/Cards.jsx';
 import { getLpCardView } from '../lib/db.js';
 import { TIER_TONE } from '../lib/membershipTier.js';
 import { apiJson } from '../lib/apiClient.js';
@@ -79,6 +79,11 @@ export default function ProfilePage({
     >
       <PageSection>
         <MembershipTierCard card={card} customer={customer} history={db.history || []} />
+      </PageSection>
+
+      {/* Kazanılan LP ve alışveriş / ikram hareketleri */}
+      <PageSection label="LP & alışverişler">
+        <FullHistoryCard db={db} customer={customer} />
       </PageSection>
 
       <PageSection label="İletişim">

@@ -97,9 +97,9 @@ export const LOYALTY_RULES_HIGHLIGHTS = [
   { label: '7 LP Kahve İkram', tone: 'coffee' },
   { label: '15 LP Tatlı İkram', tone: 'dessert' },
   { label: '18 LP Sandviç İkram', tone: 'sandwich' },
-  { label: '25 LP Burger İkram', tone: 'burger' }
+  { label: '25 LP · 90g Oklahoma', tone: 'burger' }
 ];
-export const LOYALTY_RULES_DETAIL_SUFFIX = '';
+export const LOYALTY_RULES_DETAIL_SUFFIX = ' Burger ikramı 90g Oklahoma’dır; farklı tercihde Oklahoma bedeli düşülür, fark ödenir.';
 
 export function getStampRulesText() {
   return `${BRAND_SLOGAN} ${LOYALTY_PROMO}`;
@@ -116,20 +116,20 @@ export function getLpCardView(card) {
   };
 }
 
-// İşlem geçmişi etiketleri — LP ve eski kayıtlar
+// İşlem geçmişi etiketleri — LP ve alışveriş
 export function historyTypeLabel(type) {
   return {
     lp_add: 'LP kazanıldı',
     lp_remove: 'LP düzeltildi',
     lp_reward_redeem: 'İkram kullanıldı',
-    earn_coffee: 'Kahve satışı',
-    earn_dessert: 'Tatlı satışı',
-    earn_sandwich: 'Sandviç satışı',
-    earn_burger: 'Burger satışı',
+    earn_coffee: 'Alışveriş · Kahve',
+    earn_dessert: 'Alışveriş · Tatlı',
+    earn_sandwich: 'Alışveriş · Sandviç',
+    earn_burger: 'Alışveriş · Burger',
     redeem_coffee: 'Kahve ikram',
     redeem_dessert: 'Tatlı ikram',
     redeem_sandwich: 'Sandviç ikram',
-    redeem_burger: 'Burger ikram',
+    redeem_burger: 'Burger ikram (90g Oklahoma)',
     stamp_add: 'LP kazanıldı',
     stamp_remove: 'LP düzeltildi',
     reward_redeem: 'Ödül kullanıldı',

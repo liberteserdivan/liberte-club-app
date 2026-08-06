@@ -1321,7 +1321,9 @@ function UsersAdmin({
   async function redeemCategory(c, category) {
     const cat = STAMP_CATEGORIES.find(x => x.id === category);
     const catLabel = cat?.label || category;
-    const ok = confirm(`${c.name} için ${cat?.rewardLabel || catLabel} ödülü (${cat?.rewardCost || 0} LP) kullanılsın mı?`);
+    // Burger vb. ikramlarda kapsam notunu yöneticiye de göster
+    const note = cat?.rewardNote ? `\n\n${cat.rewardNote}` : '';
+    const ok = confirm(`${c.name} için ${cat?.rewardLabel || catLabel} ödülü (${cat?.rewardCost || 0} LP) kullanılsın mı?${note}`);
     if (!ok) return;
 
     const preview = redeemCategoryRewardForCustomer(db, c.id, category, 'Admin manuel');

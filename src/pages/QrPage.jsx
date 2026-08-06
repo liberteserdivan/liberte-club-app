@@ -414,6 +414,11 @@ function CustomerQrCard({ db, customer, card, history = [], refreshRemote }) {
           })}
         </div>
 
+        {/* Burger ikram kapsamı — 90g Oklahoma ve fark ücreti */}
+        {STAMP_CATEGORIES.filter((cat) => cat.rewardNote).map((cat) => (
+          <p key={`note-${cat.id}`} className="qrPassRewardNote">{cat.rewardNote}</p>
+        ))}
+
         <div className="qrPassProgress">
           <div className="progress"><span style={{ width: `${progress}%` }} /></div>
           <p>

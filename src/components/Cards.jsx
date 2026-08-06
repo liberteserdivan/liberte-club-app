@@ -404,7 +404,11 @@ export function RewardsCenterCard({db,customer,card}){
   const redeemable=getRedeemableRewards(card);
   const birthday=(db.history||[]).some(h=>h.customerId===customer.id&&(h.type==='birthday_coffee'||h.type==='birthday_reward'));
   const rows=[
-    ...redeemable.map((cat)=>({title:cat.rewardLabel,count:1,desc:'Kasada QR göstererek kullandırılır.'})),
+    ...redeemable.map((cat)=>({
+      title:cat.rewardLabel,
+      count:1,
+      desc:cat.rewardNote || 'Kasada QR göstererek kullandırılır.'
+    })),
   ];
   if(!birthday){
     rows.push({title:'Doğum günü kahve ikramı',count:1,desc:'Doğum gününde 1 kahve ikramı tüm üyeler için geçerlidir.'});
@@ -421,14 +425,14 @@ export function RewardsCenterCard({db,customer,card}){
 }
 
 export function FullHistoryCard({db,customer}){
-  const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,30);
-  const label=(t)=>historyTypeLabel(t);
+  const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,40);
   return <div className="fullHistory card">
-      <div className="centerHead"><div><span>İŞLEM GEÇMİŞİ</span><h3>LP geçmişi</h3></div><ShieldCheck/></div>
+      <div className="centerHead"><div><span>HESAP GEÇMİŞİ</span><h3>LP & alışverişler</h3></div><ShieldCheck/></div>
+    <p className="fullHistoryLead">Kasada QR ile kazandığın LP’ler ve alışveriş / ikram hareketlerin.</p>
     {rows.length?rows.map(h=><div className="historyLine" key={h.id}>
-      <div><b>{label(h.type)}</b><p>{h.createdAt} · {h.source||h.categoryLabel||'Liberte Club'}</p></div>
+      <div><b>{historyTypeLabel(h.type)}</b><p>{h.createdAt} · {h.source||h.categoryLabel||'Liberte Club'}</p></div>
       <strong>{historyAmountLabel(h)}</strong>
-    </div>):<p className="emptySmall">Henüz işlem geçmişi yok.</p>}
+    </div>):<p className="emptySmall">Henüz işlem geçmişi yok. İlk alışverişinde QR göstererek LP kazanabilirsin.</p>}
   </div>;
 }
 

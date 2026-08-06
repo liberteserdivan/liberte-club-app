@@ -35,7 +35,7 @@ workflows:
         IOS_RELEASE: "true"
         BUNDLE_ID: cafe.liberte.app
         APP_STORE_APP_NAME: Liberte Gastro Cafe
-        APP_VERSION: "1.1.36"
+        APP_VERSION: "1.1.37"
         IOS_MIN_BUILD_NUMBER: "61"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
@@ -59,7 +59,7 @@ workflows:
           test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.36}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.37}.${BUILD_NUMBER:-0}"
           export VITE_BUILD_NUMBER="${BUILD_NUMBER:-0}"
           # Native API kk Vite build'e geer; ayarl deilse production fallback
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.libertegastrocafe.com}"
@@ -160,7 +160,7 @@ workflows:
         PLAY_TRACK: alpha
         ENABLE_PLAY_UPLOAD: "true"
         PACKAGE_NAME: cafe.liberte.app
-        APP_VERSION: "1.1.36"
+        APP_VERSION: "1.1.37"
         ANDROID_MIN_VERSION_CODE: "96"
         PROMOTE_ALPHA_TO_INTERNAL: "true"
         # Native build'in vuracagi API koku - domain/Vercel URL degisiminde burayi guncelle
@@ -185,7 +185,7 @@ workflows:
           test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.36}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.37}.${BUILD_NUMBER:-0}"
           # Native API kk Vite build'e geer; ayarl deilse production fallback
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.libertegastrocafe.com}"
           echo "[build] VITE_APP_VERSION=$VITE_APP_VERSION VITE_API_BASE_URL=$VITE_API_BASE_URL commit=$(git rev-parse --short HEAD)"
@@ -271,7 +271,7 @@ workflows:
       vars:
         ANDROID_RELEASE: "true"
         PACKAGE_NAME: cafe.liberte.app
-        APP_VERSION: "1.1.36"
+        APP_VERSION: "1.1.37"
         ANDROID_MIN_VERSION_CODE: "82"
         VITE_API_BASE_URL: "https://app.libertegastrocafe.com"
       node: 22
@@ -291,7 +291,7 @@ workflows:
           test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.36}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.37}.${BUILD_NUMBER:-0}"
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.libertegastrocafe.com}"
           npm run build:release
       - name: Capacitor Android sync
@@ -329,7 +329,7 @@ workflows:
       vars:
         ANDROID_RELEASE: "true"
         PACKAGE_NAME: cafe.liberte.app
-        APP_VERSION: "1.1.36"
+        APP_VERSION: "1.1.37"
         ANDROID_MIN_VERSION_CODE: "82"
         VITE_API_BASE_URL: "https://app.libertegastrocafe.com"
       node: 22
@@ -351,7 +351,7 @@ workflows:
           test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Liberte Next build + gecici cap sync
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.36}.${BUILD_NUMBER:-0}-next"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.37}.${BUILD_NUMBER:-0}-next"
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.libertegastrocafe.com}"
           node liberte-next/scripts/prepare-native.mjs
           # prepare-native kk config'i geri ykler; dist webDir dorula
@@ -390,7 +390,7 @@ workflows:
       vars:
         IOS_RELEASE: "true"
         BUNDLE_ID: cafe.liberte.app
-        APP_VERSION: "1.1.36"
+        APP_VERSION: "1.1.37"
         IOS_MIN_BUILD_NUMBER: "61"
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
@@ -410,7 +410,7 @@ workflows:
           test -f ios/App/App/GoogleService-Info.plist || (echo "HATA: GOOGLE_SERVICE_INFO_PLIST env ekle" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.36}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.37}.${BUILD_NUMBER:-0}"
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.libertegastrocafe.com}"
           npm run build:release
       - name: Capacitor iOS sync ve CocoaPods
@@ -451,7 +451,7 @@ workflows:
       vars:
         ANDROID_RELEASE: "true"
         PACKAGE_NAME: cafe.liberte.app
-        APP_VERSION: "1.1.36"
+        APP_VERSION: "1.1.37"
         ANDROID_MIN_VERSION_CODE: "82"
         VITE_API_BASE_URL: "https://app.libertegastrocafe.com"
         MOBILE_API_HOST: "https://app.libertegastrocafe.com"
@@ -478,7 +478,7 @@ workflows:
           test -f android/keystore.properties || (echo "HATA: Android imza ayari eksik" && exit 1)
       - name: Web build
         script: |
-          export VITE_APP_VERSION="${APP_VERSION:-1.1.36}.${BUILD_NUMBER:-0}"
+          export VITE_APP_VERSION="${APP_VERSION:-1.1.37}.${BUILD_NUMBER:-0}"
           export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://app.libertegastrocafe.com}"
           npm run build:release
       - name: Capacitor Android sync
