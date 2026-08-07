@@ -12,11 +12,14 @@ const FAILED_RESULT = Object.freeze({ response: { ok: false, status: 0 }, data: 
 const inflightRealtime = new Map();
 
 // Arka plan sync — ağ hatasında toast tetikleme + devre kesici
+// allowWhenRealtimeDisabled: LP/geçmiş gibi zorunlu REST hydrate için kill-switch'i aş
 async function safeRealtimeRequest(path, options = {}) {
-  // VITE_DISABLE_REALTIME=true → hiçbir realtime isteği gönderilmez (sert kill switch)
-  if (isRealtimeDisabledByFlag()) return FAILED_RESULT;
-  // Devre açıksa (3 ardışık hata) yeni istek başlatma — retry storm engeli
-  if (!canAttempt(REALTIME_CIRCUIT_KEY)) return FAILED_RESULT;
+  const allowWhenDisabled = Boolean(options.allowWhenRealtimeDisabled);
+  const { allowWhenRealtimeDisabled: _ignore, ...requestOptions } = options;
+  // VITE_DISABLE_REALTIME=true → arka plan realtime istekleri kapalı (zorunlu hydrate hariç)
+  if (!allowWhenDisabled && isRealtimeDisabledByFlag()) return FAILED_RESULT;
+  // Devre açıksa yeni istek başlatma — zorunlu hydrate yine de denesin
+  if (!allowWhenDisabled && !canAttempt(REALTIME_CIRCUIT_KEY)) return FAILED_RESULT;
 
   // Pending istek varsa onu paylaş (in-flight dedup)
   const existing = inflightRealtime.get(path);
@@ -24,7 +27,7 @@ async function safeRealtimeRequest(path, options = {}) {
 
   const promise = (async () => {
     try {
-      const result = await apiJson(path, { ...REALTIME_FETCH_OPTIONS, ...options });
+      const result = await apiJson(path, { ...REALTIME_FETCH_OPTIONS, ...requestOptions });
       if (result.response.ok) recordSuccess(REALTIME_CIRCUIT_KEY);
       else recordFailure(REALTIME_CIRCUIT_KEY);
       return result;
@@ -44,7 +47,7 @@ async function safeRealtimeRequest(path, options = {}) {
 async function safeRealtimeRequestWithRetry(path, options = {}) {
   const first = await safeRealtimeRequest(path, options);
   if (first.response.ok && first.data?.ok) return first;
-  if (!canAttempt(REALTIME_CIRCUIT_KEY)) return first;
+  if (!options.allowWhenRealtimeDisabled && !canAttempt(REALTIME_CIRCUIT_KEY)) return first;
   await new Promise((resolve) => setTimeout(resolve, 350));
   return safeRealtimeRequest(path, options);
 }
@@ -53,15 +56,18 @@ async function safeRealtimeRequestWithRetry(path, options = {}) {
 export async function fetchCustomerLoyaltySnapshot() {
   const { response, data } = await safeRealtimeRequestWithRetry(
     '/api/realtime?resource=customer-loyalty',
-    LOYALTY_FETCH_OPTIONS
+    { ...LOYALTY_FETCH_OPTIONS, allowWhenRealtimeDisabled: true }
   );
   if (!response.ok || !data?.ok) return null;
   return data.loyalty || null;
 }
 
-// Son LP işlemleri
+// Son LP işlemleri — açılış hydrate için kill-switch'ten bağımsız
 export async function fetchCustomerHistory(limit = 20) {
-  const { response, data } = await safeRealtimeRequest(`/api/realtime?resource=customer-history&limit=${limit}`);
+  const { response, data } = await safeRealtimeRequest(
+    `/api/realtime?resource=customer-history&limit=${limit}`,
+    { allowWhenRealtimeDisabled: true }
+  );
   if (!response.ok || !data?.ok) return null;
   return data.history || [];
 }

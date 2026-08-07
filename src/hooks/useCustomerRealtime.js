@@ -58,6 +58,23 @@ export function useCustomerRealtime({
 
       const filter = `customer_id=eq.${customerId}`;
 
+      // Açılışta geçmişi bir kez çek — yalnızca INSERT beklenmesin
+      async function hydrateHistoryOnce() {
+        if (!canCommitForCustomer(customerId)) return;
+        const historyRows = await fetchCustomerHistory(40);
+        if (!historyRows || cancelled || !canCommitForCustomer(customerId)) return;
+        const current = dbRef.current;
+        const others = (current.history || []).filter(
+          (row) => Number(row.customerId) !== Number(customerId)
+        );
+        commit({
+          ...current,
+          history: [...historyRows, ...others].slice(0, 500)
+        }, { skipRemote: true });
+      }
+
+      hydrateHistoryOnce().catch(() => {});
+
       await openRealtimeChannel(channelKey, (channel, listen) => {
         if (cancelled) return;
 
@@ -97,7 +114,7 @@ export function useCustomerRealtime({
 
             debouncedHistory.current(async () => {
               if (!canCommitForCustomer(customerId)) return;
-              const historyRows = await fetchCustomerHistory(20);
+              const historyRows = await fetchCustomerHistory(40);
               if (!historyRows || cancelled || !canCommitForCustomer(customerId)) return;
               const current = dbRef.current;
               const others = (current.history || []).filter((row) => Number(row.customerId) !== Number(customerId));

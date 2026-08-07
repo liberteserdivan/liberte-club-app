@@ -1,7 +1,7 @@
 [
   {
     "language": "tr",
-    "text": "Profilde LP ve alisveris gecmisi. Burger ikrami 90g Oklahoma; farkli tercihde Oklahoma bedeli dusulur, fark odenir.",
+    "text": "LP ve alisveris gecmisi acilista yuklenir. Fatura/hareketler ve LP tutarlari duzeltildi.",
     "description": "Liberte Gastro Cafe sadakat uygulamasi. Kampanyalar, QR odulleri ve push bildirimleri.",
     "keywords": "liberte, cafe, sadakat, kampanya, qr, bildirim",
     "support_url": "https://app.libertegastrocafe.com/support.html",
@@ -9,7 +9,7 @@
   },
   {
     "language": "en-US",
-    "text": "LP and purchase history on Profile. Burger reward is 90g Oklahoma; other choices deduct Oklahoma price, you pay the difference.",
+    "text": "LP and purchase history now load on open. Receipts and LP amounts fixed.",
     "description": "Liberte Gastro Cafe loyalty app. Campaigns, QR rewards, and push notifications.",
     "keywords": "liberte, cafe, loyalty, campaign, qr, notification",
     "support_url": "https://app.libertegastrocafe.com/support.html",

@@ -48,18 +48,28 @@ test('safeMode isRealtimeDisabledByFlag export eder ve customer realtime bunu ku
   assert.match(customer, /isRealtimeDisabledByFlag\(\)/, 'customer realtime flag\'i kullanmalı');
 });
 
-// 5) realtimeFetch — bayrak açıkken hiçbir /api/realtime isteği gönderilmez (admin dahil)
+// 5) realtimeFetch — bayrak açıkken arka plan istekleri kısa devre; LP/geçmiş hydrate istisnası var
 test('realtimeFetch bayrak açıkken customer + admin + admin-customers isteklerini kısa devre yapar', () => {
   const src = read('src/lib/realtimeFetch.js');
   assert.match(src, /import \{ isRealtimeDisabledByFlag \} from '\.\/safeMode\.js'/, 'flag import edilmeli');
-  // safeRealtimeRequest (customer) başında flag guard
+  // safeRealtimeRequest (customer) flag guard — zorunlu hydrate allowWhenRealtimeDisabled ile aşılabilir
   const safe = src.slice(src.indexOf('async function safeRealtimeRequest'));
-  assert.match(safe.slice(0, 300), /isRealtimeDisabledByFlag\(\)/, 'customer realtime flag ile kısa devre yapmalı');
+  assert.match(safe.slice(0, 500), /isRealtimeDisabledByFlag\(\)/, 'customer realtime flag ile kısa devre yapmalı');
+  assert.match(safe.slice(0, 500), /allowWhenRealtimeDisabled/, 'LP/geçmiş hydrate için istisna olmalı');
   // admin feed ve admin-customers da kapanmalı
   const feed = src.slice(src.indexOf('export async function fetchAdminFeed'));
   assert.match(feed.slice(0, 200), /isRealtimeDisabledByFlag\(\)/, 'admin feed flag ile kapanmalı');
   const customers = src.slice(src.indexOf('export async function fetchAdminCustomersStrict'));
   assert.match(customers.slice(0, 250), /isRealtimeDisabledByFlag\(\)/, 'admin-customers flag ile kapanmalı');
+});
+
+// 5b) LP ve geçmiş snapshot kill-switch'ten bağımsız hydrate edilebilir
+test('fetchCustomerLoyaltySnapshot ve fetchCustomerHistory allowWhenRealtimeDisabled kullanır', () => {
+  const src = read('src/lib/realtimeFetch.js');
+  const loyalty = src.slice(src.indexOf('export async function fetchCustomerLoyaltySnapshot'));
+  assert.match(loyalty.slice(0, 350), /allowWhenRealtimeDisabled:\s*true/, 'loyalty hydrate bayrağı aşmalı');
+  const history = src.slice(src.indexOf('export async function fetchCustomerHistory'));
+  assert.match(history.slice(0, 350), /allowWhenRealtimeDisabled:\s*true/, 'history hydrate bayrağı aşmalı');
 });
 
 // 6) App.jsx — login ekranında background 401 UI'ı bozmaz, admin realtime flag'e tabi

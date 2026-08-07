@@ -34,9 +34,10 @@ function publicSettings(settings = {}) {
   return next;
 }
 
-// customerId içeren satırları filtrele
+// customerId içeren satırları filtrele (string/number uyumu)
 function rowsForCustomer(list, customerId) {
-  return (list || []).filter((row) => row.customerId === customerId);
+  const id = Number(customerId);
+  return (list || []).filter((row) => Number(row.customerId) === id);
 }
 
 // Kullanıcıya yalnızca kendi verisini döndür

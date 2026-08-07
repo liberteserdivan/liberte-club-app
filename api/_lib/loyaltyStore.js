@@ -19,18 +19,37 @@ import { migrateLoyaltyCard } from './loyaltyPointsServer.js';
 import { bumpAppStateRevision } from './relationalState.js';
 import { claimQrNonce } from './qrNonceStore.js';
 
+// LP miktarını count veya delta kolonundan çıkar
+function historyLpAmount(entry = {}) {
+  if (entry.count != null && entry.count !== '') return Math.abs(Number(entry.count) || 0);
+  if (entry.delta != null && entry.delta !== '') return Math.abs(Number(entry.delta) || 0);
+  return 0;
+}
+
 // loyalty_events satırını history formatına çevir
 function eventRowToHistory(row) {
   if (row.legacy_json && typeof row.legacy_json === 'object') {
-    return row.legacy_json;
+    const legacy = row.legacy_json;
+    const count = historyLpAmount(legacy) || historyLpAmount({ delta: row.delta });
+    return {
+      ...legacy,
+      id: legacy.id ?? Number(row.id),
+      customerId: Number(legacy.customerId ?? row.customer_id),
+      count,
+      delta: legacy.delta != null ? Number(legacy.delta) : (row.delta != null ? Number(row.delta) : null),
+      source: legacy.source || legacy.note || row.note || null
+    };
   }
+  const delta = row.delta != null ? Number(row.delta) : null;
   return {
     id: Number(row.id),
     customerId: Number(row.customer_id),
     type: row.event_type,
     category: row.category || null,
-    delta: row.delta != null ? Number(row.delta) : null,
+    delta,
+    count: Math.abs(delta || 0),
     note: row.note || null,
+    source: row.note || null,
     menuItemId: row.menu_item_id != null ? Number(row.menu_item_id) : null,
     menuItemName: row.menu_item_name || null,
     createdAt: row.created_at || new Date().toLocaleString('tr-TR')
@@ -263,7 +282,9 @@ export async function insertLoyaltyEvent(sql, customerId, historyEntry) {
       ${Number(customerId)},
       ${historyEntry.type || historyEntry.eventType || 'unknown'},
       ${historyEntry.category || null},
-      ${historyEntry.delta != null ? Number(historyEntry.delta) : null},
+      ${historyEntry.delta != null
+        ? Number(historyEntry.delta)
+        : (historyEntry.count != null ? Number(historyEntry.count) : null)},
       ${historyEntry.note || historyEntry.source || null},
       ${historyEntry.menuItemId != null ? Number(historyEntry.menuItemId) : null},
       ${historyEntry.menuItemName || null},

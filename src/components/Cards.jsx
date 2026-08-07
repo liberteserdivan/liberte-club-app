@@ -8,7 +8,7 @@ import{
   markPushDismissed,
   shouldShowPushPrompt
 }from'../lib/pushPrompt.js';
-import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,customerBadges,redeemRewardForCustomer,getLpBalance,getRedeemableRewards}from'../lib/db.js';
+import{addStampToCustomer,checkInCustomer,getReferralCode,levelByStamps,loyaltyTemplate,money,productImageSrc,seed,vipBenefits,customerBadges,redeemRewardForCustomer,getLpBalance,getRedeemableRewards,sameCustomerId}from'../lib/db.js';
 import{apiJson,ADMIN_REQUEST_OPTIONS}from'../lib/apiClient.js';
 import{formatClientApiError}from'../lib/apiErrors.js';
 import{historyTypeLabel,historyAmountLabel}from'../lib/loyaltyStamps.js';
@@ -21,7 +21,7 @@ import{
   shouldShowInstallCard
 }from'../lib/pwaInstall.js';
 export function CustomerHistoryCard({db,customer}){
-  const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,5);
+  const rows=(db.history||[]).filter(h=>sameCustomerId(h.customerId,customer.id)).slice(0,5);
 
   const label=(h)=>historyTypeLabel(h.type);
 
@@ -85,8 +85,8 @@ export function ReferralCard({db,customer}){
 
 export function GoogleReviewBonusCard({db,customer,commit,compact=false}){
   const requests=db.googleReviewRequests||[];
-  const approved=(db.history||[]).some(h=>h.customerId===customer.id&&h.type==='google_review_bonus');
-  const pending=requests.some(r=>r.customerId===customer.id&&r.status==='pending');
+  const approved=(db.history||[]).some(h=>sameCustomerId(h.customerId,customer.id)&&h.type==='google_review_bonus');
+  const pending=requests.some(r=>sameCustomerId(r.customerId,customer.id)&&r.status==='pending');
 
   function requestBonus(){
     window.open(googleReviewUrl,'_blank','noopener,noreferrer');
@@ -402,7 +402,7 @@ export function VipBenefitsCard({db,customer}){
 export function RewardsCenterCard({db,customer,card}){
   const lp=getLpBalance(card);
   const redeemable=getRedeemableRewards(card);
-  const birthday=(db.history||[]).some(h=>h.customerId===customer.id&&(h.type==='birthday_coffee'||h.type==='birthday_reward'));
+  const birthday=(db.history||[]).some(h=>sameCustomerId(h.customerId,customer.id)&&(h.type==='birthday_coffee'||h.type==='birthday_reward'));
   const rows=[
     ...redeemable.map((cat)=>({
       title:cat.rewardLabel,
@@ -425,7 +425,7 @@ export function RewardsCenterCard({db,customer,card}){
 }
 
 export function FullHistoryCard({db,customer}){
-  const rows=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,40);
+  const rows=(db.history||[]).filter(h=>sameCustomerId(h.customerId,customer.id)).slice(0,40);
   return <div className="fullHistory card">
       <div className="centerHead"><div><span>HESAP GEÇMİŞİ</span><h3>LP & alışverişler</h3></div><ShieldCheck/></div>
     <p className="fullHistoryLead">Kasada QR ile kazandığın LP’ler ve alışveriş / ikram hareketlerin.</p>
@@ -542,7 +542,7 @@ export function CustomerCardsAdmin({db,commit}){
   const customer=(db.customers||[]).find(c=>String(c.id)===String(first));
   const l=customer?(db.loyalty[customer.id]||loyaltyTemplate(customer.id)):null;
   if(!customer)return <div className="empty">Müşteri bulunamadı.</div>;
-  const history=(db.history||[]).filter(h=>h.customerId===customer.id).slice(0,10);
+  const history=(db.history||[]).filter(h=>sameCustomerId(h.customerId,customer.id)).slice(0,10);
   const notes=(db.customerNotes||{})[customer.id]||'';
   return <div className="customerCardAdmin">
     <div className="card">

@@ -11,7 +11,7 @@ import { useAdminMembers } from './hooks/useAdminMembers.js';
 import { useAdminDashboardStats } from './hooks/useAdminDashboardStats.js';
 import { useCustomerLoyaltyPoll } from './hooks/useCustomerLoyaltyPoll.js';
 import { useCustomerNotificationsPoll } from './hooks/useCustomerNotificationsPoll.js';
-import { fetchCustomerLoyaltySnapshot } from './lib/realtimeFetch.js';
+import { fetchCustomerLoyaltySnapshot, fetchCustomerHistory } from './lib/realtimeFetch.js';
 import { getMemorySession, logoutSession, getAuthEpoch, restoreLocalSessionFromStorage } from './lib/session.js';
 import { bootstrapSessionWithTimeout } from './lib/appBootstrap.js';
 import { setUnauthorizedHandler, hasStoredAuthToken } from './lib/apiClient.js';
@@ -268,34 +268,53 @@ export default function App() {
     commit
   });
 
-  // Login sonrası LP'yi hemen çek — 5sn poll gecikmesi / boş snapshot yüzünden 0 görünmesin
+  // Login sonrası LP + geçmişi hemen çek — boş snapshot / gecikmeli state yüzünden 0 ve fiş yok görünmesin
   useEffect(() => {
     if (!customerBackgroundSyncEnabled || !customer?.id || !commit) return undefined;
     let cancelled = false;
 
     (async () => {
-      const loyalty = await fetchCustomerLoyaltySnapshot();
-      if (cancelled || !loyalty) return;
+      const [loyalty, historyRows] = await Promise.all([
+        fetchCustomerLoyaltySnapshot(),
+        fetchCustomerHistory(40)
+      ]);
+      if (cancelled) return;
       const sessionNow = getMemorySession();
       if (!sessionNow || Number(sessionNow.customerId) !== Number(customer.id)) return;
 
       commit((current) => {
-        const prev = pickLoyaltyCard(current.loyalty, customer.id);
-        const nextBalance = Number(loyalty.lpBalance || 0);
-        const nextLifetime = Number(loyalty.lpLifetime || 0);
-        const prevBalance = Number(prev?.lpBalance || 0);
-        const prevLifetime = Number(prev?.lpLifetime || 0);
-        if (nextBalance === 0 && nextLifetime === 0 && (prevBalance > 0 || prevLifetime > 0)) {
-          return current;
-        }
-        return {
-          ...current,
-          loyalty: {
-            ...(current.loyalty || {}),
-            [customer.id]: loyalty,
-            [String(customer.id)]: loyalty
+        let next = current;
+
+        if (loyalty) {
+          const prev = pickLoyaltyCard(current.loyalty, customer.id);
+          const nextBalance = Number(loyalty.lpBalance || 0);
+          const nextLifetime = Number(loyalty.lpLifetime || 0);
+          const prevBalance = Number(prev?.lpBalance || 0);
+          const prevLifetime = Number(prev?.lpLifetime || 0);
+          // Sunucu 0 döndüyse yerel dolu bakiyeyi ezme
+          if (!(nextBalance === 0 && nextLifetime === 0 && (prevBalance > 0 || prevLifetime > 0))) {
+            next = {
+              ...next,
+              loyalty: {
+                ...(next.loyalty || {}),
+                [customer.id]: loyalty,
+                [String(customer.id)]: loyalty
+              }
+            };
           }
-        };
+        }
+
+        if (Array.isArray(historyRows)) {
+          const others = (next.history || []).filter(
+            (row) => Number(row.customerId) !== Number(customer.id)
+          );
+          next = {
+            ...next,
+            history: [...historyRows, ...others].slice(0, 500)
+          };
+        }
+
+        return next;
       }, { skipRemote: true });
     })();
 

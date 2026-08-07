@@ -150,24 +150,32 @@ export function historyTypeLabel(type) {
   }[type] || 'İşlem';
 }
 
+// Geçmiş satırındaki LP miktarı (count veya delta)
+function historyEntryAmount(entry) {
+  if (entry?.count != null && entry.count !== '') return Math.abs(Number(entry.count) || 0);
+  if (entry?.delta != null && entry.delta !== '') return Math.abs(Number(entry.delta) || 0);
+  return 0;
+}
+
 // Geçmiş satırındaki LP miktarı
 export function historyAmountLabel(entry) {
   const redeemTypes = ['lp_reward_redeem', 'reward_redeem', 'redeem_coffee', 'redeem_dessert', 'redeem_sandwich', 'redeem_burger'];
   const earnTypes = ['lp_add', 'stamp_add', 'earn_coffee', 'earn_dessert', 'earn_sandwich', 'earn_burger'];
+  const amount = historyEntryAmount(entry);
 
   if (redeemTypes.includes(entry.type)) {
-    return `-${entry.count || 0} LP`;
+    return `-${amount} LP`;
   }
   if (earnTypes.includes(entry.type)) {
-    return `+${entry.count || 0} LP`;
+    return `+${amount} LP`;
   }
   if (entry.type === 'lp_remove' || entry.type === 'stamp_remove') {
-    return `-${entry.count || 0} LP`;
+    return `-${amount} LP`;
   }
   if (entry.type === 'birthday_reward') return '+7 LP';
   if (entry.type === 'birthday_coffee') return 'Kahve ikramı';
-  if (entry.type === 'tier_discount') return `%${entry.count || 0} indirim`;
+  if (entry.type === 'tier_discount') return `%${amount || entry.count || 0} indirim`;
   if (entry.type === 'google_review_bonus') return '+3 LP';
-  if (entry.count > 0) return `+${entry.count}`;
-  return entry.count || '•';
+  if (amount > 0) return `+${amount}`;
+  return amount || entry.count || '•';
 }
