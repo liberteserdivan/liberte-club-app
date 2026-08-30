@@ -44,7 +44,8 @@ async function storeVerificationCode(sql, { email, phone, purpose }) {
 // Resend ile doğrulama e-postası gönder
 async function dispatchVerificationEmail({ email, subject, greeting, code }) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || 'Liberte <noreply@liberte.cafe>';
+  // Eski liberte.cafe domaini süresi doldu — doğrulanmış yeni alan adı kullanılır
+  const from = process.env.RESEND_FROM_EMAIL || 'Liberte <noreply@libertegastrocafe.com>';
   // greeting kullanıcı adı içerebilir → escape; code zaten yalnızca rakam
   const safeGreeting = escapeHtml(greeting);
   const safeCode = escapeHtml(code);
@@ -78,6 +79,15 @@ async function dispatchVerificationEmail({ email, subject, greeting, code }) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const raw = String(payload.message || payload.error || '');
+    // Resend domain doğrulama hatasını kullanıcıya anlaşılır Türkçe mesajla dön
+    if (/domain is not verified/i.test(raw) || /not verified/i.test(raw)) {
+      return {
+        ok: false,
+        status: 503,
+        error: 'Doğrulama e-postası şu an gönderilemiyor. Lütfen biraz sonra tekrar deneyin.'
+      };
+    }
     return { ok: false, status: 500, error: payload.message || 'E-posta gönderilemedi' };
   }
 

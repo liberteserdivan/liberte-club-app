@@ -58,7 +58,7 @@ export function formatAlertText(incident) {
 async function trySendEmail(subject, text) {
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.GUARDIAN_ALERT_EMAIL;
-  const from = process.env.RESEND_FROM_EMAIL || 'Liberte Guardian <noreply@liberte.cafe>';
+  const from = process.env.RESEND_FROM_EMAIL || 'Liberte Guardian <noreply@libertegastrocafe.com>';
   if (!apiKey || !to) return { sent: false, reason: 'not_configured' };
 
   try {
